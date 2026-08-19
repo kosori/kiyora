@@ -1,26 +1,51 @@
 {
-  "name": "@repo/ui",
+  "name": "@kiyora/ui",
   "version": "0.0.0",
   "private": true,
+  "description": "Shared UI components for Kiyora, built with Base UI and shadcn patterns.",
+  "homepage": "https://github.com/kosori/kiyora",
+  "bugs": {
+    "url": "https://github.com/kosori/kiyora/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://www.codingcodax.dev"
+  },
   "exports": {
-    "./*": "./src/*.tsx"
+    ".": "./src/index.ts",
+    "./*": "./src/components/*.tsx",
+    "./hooks/*": "./src/hooks/*.ts"
   },
   "scripts": {
-    "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
-    "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
-    "typescript": "5.9.2"
+    "typecheck": "tsc --noEmit",
+    "ui-add": "bunx --bun shadcn@latest add"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@base-ui/react": "^1.7.0",
+    "@shadcn/react": "^0.3.0",
+    "@tabler/icons-react": "catalog:",
+    "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.4.0",
+    "embla-carousel-react": "^8.6.0",
+    "input-otp": "^1.5.0",
+    "react": "catalog:",
+    "react-day-picker": "^10.0.1",
+    "react-dom": "catalog:",
+    "react-resizable-panels": "^4.12.3",
+    "recharts": "3.8.0",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@kiyora/typescript": "*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
   }
 }

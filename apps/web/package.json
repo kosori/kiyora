@@ -1,28 +1,53 @@
 {
-  "name": "web",
-  "version": "0.1.0",
-  "type": "module",
+  "name": "@kiyora/web",
+  "version": "0.0.0",
   "private": true,
+  "description": "The Kiyora web application for creating and editing hand-drawn diagrams from diagram code.",
+  "homepage": "https://github.com/kosori/kiyora",
+  "bugs": {
+    "url": "https://github.com/kosori/kiyora/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://www.codingcodax.dev"
+  },
+  "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint --max-warnings 0",
-    "check-types": "next typegen && tsc --noEmit"
+    "build": "vite build",
+    "dev": "vite dev",
+    "generate-routes": "tsr generate",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/ui": "*",
-    "next": "16.3.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@kiyora/ui": "*",
+    "@tanstack/react-devtools": "^0.10.10",
+    "@tanstack/react-router": "^1.170.31",
+    "@tanstack/react-router-devtools": "^1.167.1",
+    "@tanstack/react-start": "^1.168.48",
+    "nitro": "3.0.260610-beta",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
-    "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
-    "typescript": "5.9.2"
+    "@kiyora/tailwind": "*",
+    "@kiyora/typescript": "*",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/devtools-vite": "^0.8.3",
+    "@tanstack/router-cli": "^1.132.0",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.1",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "^8.0.0"
   }
 }

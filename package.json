@@ -1,29 +1,76 @@
 {
   "name": "kiyora",
   "private": true,
+  "description": "A diagram-as-code platform for creating hand-drawn diagrams on an interactive canvas.",
+  "keywords": [
+    "diagram-as-code",
+    "diagrams",
+    "canvas",
+    "svg",
+    "dsl",
+    "react",
+    "typescript"
+  ],
+  "homepage": "https://github.com/kosori/kiyora",
+  "bugs": {
+    "url": "https://github.com/kosori/kiyora/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://www.codingcodax.dev"
+  },
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*",
+      "tooling/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.4.2",
+      "typescript": "^7.0.2",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "tailwindcss": "^4.3.3",
+      "@tabler/icons-react": "^3.46.0",
+      "@tailwindcss/postcss": "^4.3.3",
+      "@tailwindcss/vite": "^4.3.3",
+      "@types/node": "^26.1.2",
+      "@types/react": "^19.2.18",
+      "@types/react-dom": "^19.2.4"
+    }
+  },
   "scripts": {
     "build": "turbo run build",
+    "check": "ultracite check",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "dev:web": "turbo run dev -F @kiyora/web --",
+    "fix": "ultracite fix",
+    "typecheck": "turbo run typecheck",
+    "ui-add": "turbo run ui-add"
+  },
+  "dependencies": {
+    "dotenv": "catalog:"
   },
   "devDependencies": {
-    "prettier": "^3.7.4",
+    "@biomejs/biome": "^2.5.9",
+    "@types/node": "catalog:",
     "turbo": "^2.10.10",
-    "typescript": "5.9.2"
+    "typescript": "catalog:",
+    "ultracite": "^7.10.5"
   },
+  "packageManager": "bun@1.3.14",
   "engines": {
-    "node": ">=18"
+    "node": ">=26"
   },
   "devEngines": {
     "packageManager": {
       "name": "bun",
       "version": "1.3.14"
     }
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  }
 }
