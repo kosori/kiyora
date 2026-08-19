@@ -19,7 +19,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite dev",
+    "dev": "portless kiyora vite dev",
     "generate-routes": "tsr generate",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
