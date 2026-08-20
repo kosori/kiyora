@@ -1,0 +1,50 @@
+{
+  "name": "@kiyora/dsl",
+  "version": "0.1.0",
+  "description": "The Kiyora DSL parser: turns .kira diagram code into a typed Diagram AST with diagnostics.",
+  "keywords": [
+    "diagram",
+    "dsl",
+    "parser",
+    "kiyora",
+    "kira"
+  ],
+  "homepage": "https://github.com/kosori/kiyora",
+  "bugs": {
+    "url": "https://github.com/kosori/kiyora/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://www.codingcodax.dev"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@kiyora/typescript": "*",
+    "typescript": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
