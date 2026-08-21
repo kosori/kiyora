@@ -9,6 +9,18 @@
     "ignoreUnknown": false,
     "includes": ["!tooling/typescript/base.json", "!.agents"]
   },
+  "overrides": [
+    {
+      "includes": ["packages/dsl/src/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    }
+  ],
   "formatter": {
     "enabled": true
   },

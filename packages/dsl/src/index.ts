@@ -15,6 +15,27 @@ export type {
 	Position,
 	Span,
 } from './types';
+export type { Direction, Frame, Head, Shape } from './vocab';
+/** Canonical shape names, aliases, palette colors, style tokens, and resolution helpers. */
+export {
+	COLOR_ALIASES,
+	COLORS,
+	CORNERS,
+	DIRECTIONS,
+	FILLS,
+	FRAMES,
+	HEADS,
+	resolveColor,
+	resolveCorner,
+	resolveFill,
+	resolveFrame,
+	resolveHead,
+	resolveShape,
+	SHAPE_ALIASES,
+	SHAPES,
+	slugify,
+	uniqueId,
+} from './vocab';
 
 /**
  * Parse Kiyora DSL source text into a `Diagram` plus diagnostics.
