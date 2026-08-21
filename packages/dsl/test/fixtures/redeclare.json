@@ -1,0 +1,26 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "edges": [],
+    "groups": [],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 11,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
+        "color": "red"
+      }
+    ],
+    "title": ""
+  }
+}

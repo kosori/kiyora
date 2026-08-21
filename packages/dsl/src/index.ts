@@ -1,3 +1,20 @@
+/**
+ * The Kiyora DSL parser: turns Kira source text into a typed `Diagram` AST
+ * plus a list of diagnostics with full source spans.
+ *
+ * Tolerant contract (ADR-0001): `parse` never throws and never returns null.
+ * An `error`-severity diagnostic means that statement was dropped; a
+ * `warning` means it parsed with a caveat. Parsing continues past malformed
+ * statements, and unclosed blocks are reported at end of input.
+ *
+ * Module layout: AST types live in `./types`, the vocabulary (shapes, colors,
+ * aliases, resolution helpers) in `./vocab`, quote/bracket-aware scanning in
+ * `./scan`, attribute-block parsing in `./attributes`, and the graph-family
+ * statement parser in `./graph`. Scanner internals are not exported; this
+ * entry point is the package's public surface.
+ */
+
+import { parseGraph } from './graph';
 import type { ParseResult } from './types';
 
 export type {
@@ -45,18 +62,8 @@ export {
  * malformed statements.
  *
  * v1 parses the graph family (architecture, flowchart, bpmn, orgchart,
- * statemachine); statement parsing lands in later increments. Until then
- * any input parses to an empty graph Diagram.
+ * statemachine).
  */
-export function parse(_source: string): ParseResult {
-	return {
-		diagnostics: [],
-		diagram: {
-			edges: [],
-			groups: [],
-			kind: 'graph',
-			nodes: [],
-			title: '',
-		},
-	};
+export function parse(source: string): ParseResult {
+	return parseGraph(source);
 }

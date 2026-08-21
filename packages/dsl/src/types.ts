@@ -57,6 +57,7 @@ export type Node = {
 	link?: string;
 	shadow?: boolean;
 	shape?: string;
+	span: Span;
 };
 
 /** A group of nodes inside a graph-family Diagram. */
@@ -67,6 +68,7 @@ export type Group = {
 	id: string;
 	label: string;
 	parent?: string;
+	span: Span;
 };
 
 /** A directed connection between two nodes inside a graph-family Diagram. */

@@ -1,0 +1,72 @@
+{
+  "diagnostics": [
+    {
+      "code": "unknown-attribute",
+      "message": "unknown attribute \"blob\"",
+      "severity": "warning",
+      "span": {
+        "end": {
+          "column": 11,
+          "line": 1
+        },
+        "start": {
+          "column": 8,
+          "line": 1
+        }
+      }
+    },
+    {
+      "code": "attribute-ignored",
+      "message": "attribute \"width\" is recognized but not supported in v1",
+      "severity": "warning",
+      "span": {
+        "end": {
+          "column": 24,
+          "line": 1
+        },
+        "start": {
+          "column": 20,
+          "line": 1
+        }
+      }
+    },
+    {
+      "code": "unknown-color",
+      "message": "unknown color \"crimson\"",
+      "severity": "warning",
+      "span": {
+        "end": {
+          "column": 48,
+          "line": 1
+        },
+        "start": {
+          "column": 42,
+          "line": 1
+        }
+      }
+    }
+  ],
+  "diagram": {
+    "edges": [],
+    "groups": [],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 49,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
+        "color": "teal"
+      }
+    ],
+    "title": ""
+  }
+}
