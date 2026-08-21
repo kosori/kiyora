@@ -1,0 +1,156 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "edges": [
+      {
+        "from": "a",
+        "to": "c"
+      },
+      {
+        "from": "a",
+        "to": "d"
+      },
+      {
+        "from": "b",
+        "to": "c"
+      },
+      {
+        "from": "b",
+        "to": "d"
+      },
+      {
+        "from": "x",
+        "to": "y"
+      },
+      {
+        "from": "x",
+        "to": "z"
+      },
+      {
+        "from": "y",
+        "to": "w"
+      },
+      {
+        "from": "z",
+        "to": "w"
+      }
+    ],
+    "groups": [],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "a",
+        "label": "A",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      },
+      {
+        "id": "b",
+        "label": "B",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      },
+      {
+        "id": "c",
+        "label": "C",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      },
+      {
+        "id": "d",
+        "label": "D",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      },
+      {
+        "id": "x",
+        "label": "X",
+        "span": {
+          "end": {
+            "column": 14,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      },
+      {
+        "id": "y",
+        "label": "Y",
+        "span": {
+          "end": {
+            "column": 14,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      },
+      {
+        "id": "z",
+        "label": "Z",
+        "span": {
+          "end": {
+            "column": 14,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      },
+      {
+        "id": "w",
+        "label": "W",
+        "span": {
+          "end": {
+            "column": 14,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      }
+    ],
+    "title": ""
+  }
+}

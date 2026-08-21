@@ -144,6 +144,30 @@ const HEAD_ALIASES: Record<string, Head> = {
 	x: 'cross',
 };
 
+/**
+ * Edge connector tokens, longest first so scanning prefers `<-.-` over `<-`.
+ * Solid: `->`; dashed: `-->`, `<--`; dotted: `-.->`, `..>`, `<-.-`, `<..`;
+ * bidirectional: `<->`, `<-->`, `<..>`, `<-.->`; reverse: `<-`, `<--`, `<..`;
+ * plus the bare `>`/`<` shorthand and `<>`.
+ */
+export const ARROWS = [
+	'<-.->',
+	'<-->',
+	'<..>',
+	'-.->',
+	'<-.-',
+	'<->',
+	'-->',
+	'<--',
+	'<..',
+	'..>',
+	'<-',
+	'->',
+	'<>',
+	'>',
+	'<',
+] as const;
+
 /** Layout directions. */
 export const DIRECTIONS = ['right', 'down', 'left', 'up'] as const;
 export type Direction = (typeof DIRECTIONS)[number];

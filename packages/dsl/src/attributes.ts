@@ -15,7 +15,7 @@
  * text is tracked so warnings point at the exact source token.
  */
 
-import { findToken, splitOn, unquote } from './scan';
+import { findToken, splitListOffsets, unquote } from './scan';
 import type { Color, Corner, Diagnostic, Fill, Span } from './types';
 import {
 	resolveColor,
@@ -30,6 +30,7 @@ export type Attrs = {
 	color?: Color;
 	corner?: Corner;
 	fill?: Fill;
+	flow?: boolean;
 	group?: string;
 	head?: string;
 	icon?: string;
@@ -44,6 +45,8 @@ export type Attrs = {
 const IGNORED_KEYS = new Set(['width', 'value', 'score']);
 
 const FLAG_WORDS: Record<string, keyof Attrs> = {
+	animated: 'flow',
+	flow: 'flow',
 	hidden: 'invisible',
 	invisible: 'invisible',
 	shadow: 'shadow',
@@ -64,7 +67,7 @@ export function parseAttrs(
 	if (!raw || raw.trim() === '') {
 		return out;
 	}
-	for (const { item, offset } of splitItems(raw)) {
+	for (const { item, offset } of splitListOffsets(raw)) {
 		const colon = findColon(item);
 		if (!colon) {
 			applyPositionalAttr(item, lineNo, column + offset, out, diagnostics);
@@ -248,25 +251,6 @@ function applyPositionalAttr(
 		severity: 'warning',
 		span,
 	});
-}
-
-/**
- * Split a block's inner text into `{ item, offset }` pairs, keeping each
- * item's raw offset so spans stay token-precise after trimming.
- */
-function splitItems(source: string): { item: string; offset: number }[] {
-	const parts = splitOn(source, ',');
-	const out: { item: string; offset: number }[] = [];
-	let cursor = 0;
-	for (const part of parts) {
-		const offset = source.indexOf(part, cursor);
-		if (offset === -1) {
-			break;
-		}
-		out.push({ item: part, offset });
-		cursor = offset + part.length;
-	}
-	return out;
 }
 
 /** Split a `key: value` item on the first `:` outside quotes/brackets. */

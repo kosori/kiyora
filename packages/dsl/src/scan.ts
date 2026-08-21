@@ -107,3 +107,161 @@ export function splitTrailingAttrs(line: string): {
 	}
 	return { attrs: null, rest: line };
 }
+
+/**
+ * Split a comma list into `{ item, offset }` pairs, keeping each item's raw
+ * offset so spans stay token-precise after trimming.
+ */
+export function splitListOffsets(
+	source: string
+): { item: string; offset: number }[] {
+	const out: { item: string; offset: number }[] = [];
+	let cursor = 0;
+	for (const part of splitOn(source, ',')) {
+		const offset = source.indexOf(part, cursor);
+		if (offset === -1) {
+			break;
+		}
+		out.push({ item: part, offset });
+		cursor = offset + part.length;
+	}
+	return out;
+}
+
+/**
+ * The bare `>` token needs surrounding whitespace so `A>B` is not an edge;
+ * every other connector token already starts with a non-word character.
+ */
+function padTokens(tokens: readonly string[]): string[] {
+	return tokens.map((t) => (t === '>' ? ` ${t} ` : t));
+}
+
+/**
+ * Find the first connector token in `source` at or after `from`, ignoring
+ * text inside quotes and `[ … ]` blocks. Longer tokens win (so `<-.-` beats
+ * `<-`); the bare `>` token additionally requires surrounding whitespace so
+ * `A>B` is not an edge. Returns `null` when nothing matches.
+ */
+export function findConnector(
+	source: string,
+	tokens: readonly string[],
+	from = 0
+): { index: number; token: string } | null {
+	const padded = padTokens(tokens);
+	let inQuote = false;
+	let depth = 0;
+	for (let i = 0; i < source.length; i += 1) {
+		const ch = source[i];
+		if (ch === '"') {
+			inQuote = !inQuote;
+			continue;
+		}
+		if (inQuote) {
+			continue;
+		}
+		if (ch === '[') {
+			depth += 1;
+			continue;
+		}
+		if (ch === ']') {
+			depth = Math.max(0, depth - 1);
+			continue;
+		}
+		if (depth > 0 || i < from) {
+			continue;
+		}
+		for (let k = 0; k < padded.length; k += 1) {
+			const pad = padded[k] ?? '';
+			if (source.startsWith(pad, i)) {
+				// Report the unpadded token position: for the bare `>`
+				// (padded to ` > `) the match starts at the leading space.
+				return {
+					index: i + pad.indexOf(tokens[k] ?? ''),
+					token: tokens[k] ?? '',
+				};
+			}
+		}
+	}
+	return null;
+}
+
+/**
+ * Split edge source text into its leading segment and one hop per connector:
+ * `A -> B -> C` becomes first `A ` and hops `->` → ` B`, `->` → ` C`. Each
+ * hop carries the raw `start` offset of its segment so attribute diagnostics
+ * inside edge segments stay token-precise. Connectors inside quotes or
+ * `[ … ]` blocks are not treated as hops. Returns `null` when the source
+ * has no connector.
+ */
+export function scanHops(
+	source: string,
+	tokens: readonly string[]
+): {
+	first: string;
+	hops: { segment: string; start: number; token: string }[];
+} | null {
+	const padded = padTokens(tokens);
+	const hops: { segment: string; start: number; token: string }[] = [];
+	let cursor = 0;
+	let firstText: string | undefined;
+	for (;;) {
+		let found: { index: number; token: string } | null = null;
+		let inQuote = false;
+		let depth = 0;
+		for (let o = cursor; o < source.length; o += 1) {
+			const ch = source[o];
+			if (ch === '"') {
+				inQuote = !inQuote;
+				continue;
+			}
+			if (inQuote) {
+				continue;
+			}
+			if (ch === '[') {
+				depth += 1;
+				continue;
+			}
+			if (ch === ']') {
+				depth = Math.max(0, depth - 1);
+				continue;
+			}
+			if (depth > 0) {
+				continue;
+			}
+			for (let k = 0; k < padded.length; k += 1) {
+				if (source.startsWith(padded[k] ?? '', o)) {
+					found = { index: o, token: tokens[k] ?? '' };
+					break;
+				}
+			}
+			if (found) {
+				break;
+			}
+		}
+		if (!found) {
+			break;
+		}
+		const segment = source.slice(cursor, found.index);
+		if (firstText === undefined) {
+			firstText = segment;
+		} else {
+			const last = hops.at(-1);
+			if (last) {
+				last.segment = segment;
+				last.start = cursor;
+			}
+		}
+		const width = (padded[tokens.indexOf(found.token)] ?? '').length;
+		hops.push({ segment: '', start: found.index + width, token: found.token });
+		cursor = found.index + width;
+	}
+	if (firstText === undefined) {
+		return null;
+	}
+	const last = hops.at(-1);
+	if (last) {
+		last.segment = source.slice(cursor);
+		last.start = cursor;
+	}
+	return { first: firstText, hops };
+}

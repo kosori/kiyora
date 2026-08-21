@@ -1,6 +1,6 @@
 /**
- * Graph-family statement parser: nodes, comma-separated node lists,
- * quoted names, and groups (including nesting).
+ * Graph-family statement parser: nodes, comma-separated node lists, quoted
+ * names, groups (including nesting), and edges.
  *
  * Line-oriented: a statement ends at a newline; blank lines and `//`
  * comments are ignored. Nodes are declared by name (`Cache`) or with an
@@ -10,6 +10,17 @@
  * new ones fill gaps, and the later label wins. An attribute block at the
  * end of a comma-separated list applies to every node in the list.
  *
+ * Edge statements connect nodes: solid (`->`), dashed (`-->`, `<--`), dotted
+ * (`-.->`, `..>`, `<-.-`, `<..`), bidirectional (`<->`, `<-->`, `<..>`,
+ * `<-.->`), and reverse (`<-`, `<--`, `<..`) arrows, plus the bare `>`/`<`
+ * shorthand and `<>`. Chains (`A -> B -> C`) produce one edge per hop, and
+ * comma sources/targets fan out and in (`A, B -> C, D`). An optional
+ * `: label` after the first connector labels every edge of the statement;
+ * a trailing attribute block applies to the edges. Nodes first seen inside
+ * an edge are auto-declared; self-edges are reported with a `self-edge`
+ * diagnostic and dropped. Edges inside a group carry that group on the
+ * nodes they declare.
+ *
  * Groups (`group Name { A, B }`) may nest; a node opened inside a group
  * carries that group's id as its `group`, and nested groups record their
  * parent. Every produced item carries a full `Span`; unknown
@@ -18,13 +29,23 @@
  */
 
 import { type Attrs, parseAttrs } from './attributes';
-import { splitTrailingAttrs, stripComment, unquote } from './scan';
-import type { Diagnostic, Group, Node, ParseResult, Span } from './types';
-import { slugify, uniqueId } from './vocab';
+import {
+	findConnector,
+	findToken,
+	scanHops,
+	splitListOffsets,
+	splitTrailingAttrs,
+	stripComment,
+	unquote,
+} from './scan';
+import type { Diagnostic, Edge, Group, Node, ParseResult, Span } from './types';
+import { ARROWS, slugify, uniqueId } from './vocab';
 
 type GraphState = {
 	diagnostics: Diagnostic[];
+	edges: Edge[];
 	groups: Group[];
+	groupByKey: Map<string, string>;
 	nodes: Node[];
 	nodeByKey: Map<string, string>;
 	usedIds: Set<string>;
@@ -34,6 +55,8 @@ type GraphState = {
 export function parseGraph(source: string): ParseResult {
 	const state: GraphState = {
 		diagnostics: [],
+		edges: [],
+		groupByKey: new Map(),
 		groups: [],
 		nodeByKey: new Map(),
 		nodes: [],
@@ -65,6 +88,13 @@ export function parseGraph(source: string): ParseResult {
 		}
 		if (/^\}\s*$/.test(line)) {
 			groupStack.pop();
+			continue;
+		}
+		// An edge statement if any arrow token appears outside quotes and
+		// brackets. Nodes first seen here are auto-declared; self-edges are
+		// reported and dropped.
+		if (findConnector(line, ARROWS) !== null) {
+			parseEdgeLine(state, groupStack.at(-1), line, lineNo);
 			continue;
 		}
 		// A node statement or comma-separated node list; a trailing
@@ -101,7 +131,7 @@ export function parseGraph(source: string): ParseResult {
 	return {
 		diagnostics: state.diagnostics,
 		diagram: {
-			edges: [],
+			edges: state.edges,
 			groups: state.groups,
 			kind: 'graph',
 			nodes: state.nodes,
@@ -165,6 +195,170 @@ function parseInlineGroup(
 	}
 }
 
+/** Arrow token classifiers: dotted/dashed style, reverse, bidirectional. */
+const isDotted = (t: string) => t.includes('.') || t.includes('--');
+const isBack = (t: string) =>
+	t === '<-' || t === '<..' || t === '<--' || t === '<-.-' || t === '<';
+const isBidirectional = (t: string) =>
+	t === '<->' || t === '<..>' || t === '<-->' || t === '<-.->' || t === '<>';
+
+/**
+ * Parse an edge statement: `A -> B`, chains, fan-out/fan-in, labels, and a
+ * trailing attribute block applied to the edges. `:` splits the statement
+ * into head (nodes + connectors) and an optional label part whose own
+ * trailing `[ … ]` block holds the edge attributes.
+ */
+function parseEdgeLine(
+	state: GraphState,
+	inGroup: string | undefined,
+	line: string,
+	lineNo: number
+): void {
+	const anchor = findConnector(line, ARROWS);
+	if (!anchor) {
+		return;
+	}
+	const colonIdx = findToken(line, ':', anchor.index + 1);
+	const headText = colonIdx === -1 ? line : line.slice(0, colonIdx);
+	let labelPart: string | undefined;
+	let attrs: Attrs = {};
+	if (colonIdx !== -1) {
+		const after = line.slice(colonIdx + 1);
+		const trimmed = after.trim();
+		const leading = after.length - trimmed.length;
+		const { attrs: a, rest } = splitTrailingAttrs(trimmed);
+		labelPart = unquote(rest.trim()) || undefined;
+		if (a !== null) {
+			// The block's inner text starts at the value column after
+			// `:`, the label, and the leading `[` (1-based column =
+			// raw offset + 1).
+			const blockStart = colonIdx + 1 + leading + rest.length + 2;
+			attrs = parseAttrs(a, lineNo, blockStart, state.diagnostics);
+		}
+	}
+
+	const h = scanHops(headText, ARROWS);
+	if (!h) {
+		return;
+	}
+	const lineSpan = spanAt(lineNo, 1, line.length);
+	let sources = endpointNodes(state, h.first, 0, lineNo, inGroup, lineSpan);
+	for (const hop of h.hops) {
+		const targets = endpointNodes(
+			state,
+			hop.segment,
+			hop.start,
+			lineNo,
+			inGroup,
+			lineSpan
+		);
+		if (sources.length === 0 || targets.length === 0) {
+			state.diagnostics.push({
+				code: 'expected-node-name',
+				message: 'edge needs both ends',
+				severity: 'error',
+				span: lineSpan,
+			});
+			return;
+		}
+		const back = isBack(hop.token);
+		const dashed = isDotted(hop.token);
+		const bidirectional = isBidirectional(hop.token);
+		for (const a of sources) {
+			for (const b of targets) {
+				if (a === b) {
+					state.diagnostics.push({
+						code: 'self-edge',
+						message: 'self-edges are not drawn',
+						severity: 'warning',
+						span: lineSpan,
+					});
+					continue;
+				}
+				const edge: Edge = { from: back ? b : a, to: back ? a : b };
+				if (labelPart !== undefined) {
+					edge.label = labelPart;
+				}
+				if (dashed) {
+					edge.dashed = true;
+				}
+				if (bidirectional) {
+					edge.bidirectional = true;
+				}
+				if (attrs.color) {
+					edge.color = attrs.color;
+				}
+				if (attrs.flow) {
+					edge.flow = true;
+				}
+				if (attrs.head) {
+					edge.head = attrs.head;
+				}
+				if (attrs.invisible) {
+					edge.invisible = true;
+				}
+				if (back) {
+					edge.back = true;
+				}
+				state.edges.push(edge);
+			}
+		}
+		sources = targets;
+	}
+}
+
+/**
+ * Resolve the nodes named by one comma-separated edge segment, auto-declaring
+ * any node first seen here with a slugified id and the statement span.
+ */
+function endpointNodes(
+	state: GraphState,
+	segment: string,
+	offset: number,
+	lineNo: number,
+	inGroup: string | undefined,
+	span: Span
+): string[] {
+	const out: string[] = [];
+	for (const { item, offset: itemOffset } of splitListOffsets(segment)) {
+		const text = item.trim();
+		if (!text) {
+			continue;
+		}
+		// Use the raw item so `rest` keeps any leading whitespace,
+		// matching the node-statement convention of `rest.length + 2`
+		// for the first character after `[`.
+		const { attrs, rest } = splitTrailingAttrs(item);
+		if (attrs === null) {
+			const { id, name } = parseName(text);
+			if (!name) {
+				continue;
+			}
+			// A declared group name used as an edge endpoint resolves to
+			// the group id, matching node auto-declaration reserves.
+			const groupId = state.groupByKey.get(name.toLowerCase());
+			if (groupId !== undefined) {
+				out.push(groupId);
+				continue;
+			}
+			out.push(getOrCreateNode(state, name, {}, id, span, inGroup));
+		} else {
+			const a = parseAttrs(
+				attrs,
+				lineNo,
+				offset + itemOffset + rest.length + 2,
+				state.diagnostics
+			);
+			const { id, name } = parseName(rest.trim());
+			if (!name) {
+				continue;
+			}
+			out.push(getOrCreateNode(state, name, a, id, span, inGroup));
+		}
+	}
+	return out;
+}
+
 /** Get-or-create a group by label; nested groups record their parent. */
 function getOrCreateGroup(
 	state: GraphState,
@@ -190,6 +384,7 @@ function getOrCreateGroup(
 		group.parent = parent;
 	}
 	state.groups.push(group);
+	state.groupByKey.set(key, id);
 	return id;
 }
 

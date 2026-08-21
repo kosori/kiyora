@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+	ARROWS,
 	COLOR_ALIASES,
 	COLORS,
 	CORNERS,
@@ -104,6 +105,31 @@ describe('fills, corners, frames, heads', () => {
 		expect(resolveHead('o')).toBe('circle');
 		expect(resolveHead('dot')).toBe('circle');
 		expect(resolveHead('square')).toBeNull();
+	});
+});
+
+describe('arrows', () => {
+	test('the connector token list covers every arrow kind', () => {
+		const required = [
+			'->',
+			'-->',
+			'-.->',
+			'..>',
+			'<-.-',
+			'<..',
+			'<->',
+			'<-->',
+			'<..>',
+			'<-.->',
+			'<-',
+			'<--',
+			'<>',
+			'>',
+			'<',
+		] as const;
+		for (const token of required) {
+			expect(ARROWS).toContain(token);
+		}
 	});
 });
 

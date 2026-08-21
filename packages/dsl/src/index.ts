@@ -35,6 +35,7 @@ export type {
 export type { Direction, Frame, Head, Shape } from './vocab';
 /** Canonical shape names, aliases, palette colors, style tokens, and resolution helpers. */
 export {
+	ARROWS,
 	COLOR_ALIASES,
 	COLORS,
 	CORNERS,

@@ -1,12 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+	findConnector,
 	findToken,
+	scanHops,
 	splitOn,
 	splitTrailingAttrs,
 	stripComment,
 	unquote,
 } from './scan';
+
+import { ARROWS } from './vocab';
 
 describe('stripComment', () => {
 	test('strips a // comment from the end of a line', () => {
@@ -75,6 +79,93 @@ describe('splitOn', () => {
 
 	test('preserves trailing empty segments', () => {
 		expect(splitOn('a,', ',')).toEqual(['a', '']);
+	});
+});
+
+describe('findConnector', () => {
+	test('finds the first connector outside quotes and brackets', () => {
+		expect(findConnector('A -> B', ARROWS)).toEqual({ index: 2, token: '->' });
+	});
+
+	test('respects a from offset', () => {
+		expect(findConnector('A -> B -> C', ARROWS, 4)).toEqual({
+			index: 7,
+			token: '->',
+		});
+		expect(findConnector('A -> B', ARROWS, 3)).toBeNull();
+	});
+
+	test('ignores connectors inside quotes', () => {
+		expect(findConnector('A "->" B -> C', ARROWS)).toEqual({
+			index: 9,
+			token: '->',
+		});
+	});
+
+	test('ignores connectors inside attribute brackets', () => {
+		expect(findConnector('A [x -> y] -> C', ARROWS)).toEqual({
+			index: 11,
+			token: '->',
+		});
+		expect(findConnector('A [x -> y]', ARROWS)).toBeNull();
+	});
+
+	test('prefers the longest matching token', () => {
+		expect(findConnector('A <-.- B', ARROWS)).toEqual({
+			index: 2,
+			token: '<-.-',
+		});
+		expect(findConnector('A <-- B', ARROWS)).toEqual({
+			index: 2,
+			token: '<--',
+		});
+	});
+
+	test('requires surrounding spaces for the bare > token only', () => {
+		expect(findConnector('A > B', ARROWS)).toEqual({ index: 2, token: '>' });
+		expect(findConnector('A>B', ARROWS)).toBeNull();
+		expect(findConnector('A >B', ARROWS)).toBeNull();
+		expect(findConnector('A> B', ARROWS)).toBeNull();
+	});
+
+	test('arrow tokens match without surrounding spaces', () => {
+		expect(findConnector('A->B', ARROWS)).toEqual({ index: 1, token: '->' });
+		expect(findConnector('A-->B', ARROWS)).toEqual({ index: 1, token: '-->' });
+		expect(findConnector('A<B', ARROWS)).toEqual({ index: 1, token: '<' });
+	});
+
+	test('returns null when no connector exists', () => {
+		expect(findConnector('Cache [cylinder]', ARROWS)).toBeNull();
+	});
+});
+
+describe('scanHops', () => {
+	test('splits a simple edge into first segment and one hop', () => {
+		expect(scanHops('A -> B', ARROWS)).toEqual({
+			first: 'A ',
+			hops: [{ segment: ' B', start: 4, token: '->' }],
+		});
+	});
+
+	test('splits a chain into one hop per connector', () => {
+		expect(scanHops('A -> B -> C', ARROWS)).toEqual({
+			first: 'A ',
+			hops: [
+				{ segment: ' B ', start: 4, token: '->' },
+				{ segment: ' C', start: 9, token: '->' },
+			],
+		});
+	});
+
+	test('keeps connectors inside quotes intact', () => {
+		expect(scanHops('A "-> B" -> C', ARROWS)).toEqual({
+			first: 'A "-> B" ',
+			hops: [{ segment: ' C', start: 11, token: '->' }],
+		});
+	});
+
+	test('returns null when the source has no connector', () => {
+		expect(scanHops('Cache [cylinder]', ARROWS)).toBeNull();
 	});
 });
 
