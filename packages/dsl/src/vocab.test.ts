@@ -195,6 +195,8 @@ describe('families', () => {
 			'gitgraph',
 			'gantt',
 			'sankey',
+			'infographic',
+			'chart',
 		]);
 		expect(UNSUPPORTED_GRAPH_FAMILIES).toEqual([
 			'class',

@@ -683,12 +683,16 @@ function parseEdgeLine(
 					state.diagnostics.push({
 						code: 'self-edge',
 						message: 'self-edges are not drawn',
-						severity: 'warning',
+						severity: 'error',
 						span: lineSpan,
 					});
 					continue;
 				}
-				const edge: Edge = { from: back ? b : a, to: back ? a : b };
+				const edge: Edge = {
+					from: back ? b : a,
+					span: lineSpan,
+					to: back ? a : b,
+				};
 				if (labelPart !== undefined) {
 					edge.label = labelPart;
 				}
@@ -842,19 +846,31 @@ function getOrCreateNode(
 			}
 			// Merge: earlier attributes are preserved, new ones fill gaps,
 			// and the later label wins.
-			node.icon ??= attrs.icon;
-			node.shape ??= attrs.shape;
-			node.color ??= attrs.color;
-			node.fill ??= attrs.fill;
-			node.corner ??= attrs.corner;
-			node.labelColor ??= attrs.labelColor;
+			if (node.icon === undefined && attrs.icon !== undefined) {
+				node.icon = attrs.icon;
+			}
+			if (node.shape === undefined && attrs.shape !== undefined) {
+				node.shape = attrs.shape;
+			}
+			if (node.color === undefined && attrs.color !== undefined) {
+				node.color = attrs.color;
+			}
+			if (node.fill === undefined && attrs.fill !== undefined) {
+				node.fill = attrs.fill;
+			}
+			if (node.corner === undefined && attrs.corner !== undefined) {
+				node.corner = attrs.corner;
+			}
+			if (node.labelColor === undefined && attrs.labelColor !== undefined) {
+				node.labelColor = attrs.labelColor;
+			}
 			if (attrs.shadow) {
 				node.shadow = true;
 			}
-			node.link ??= attrs.link;
-			if (attrs.label) {
-				node.label = attrs.label;
+			if (node.link === undefined && attrs.link !== undefined) {
+				node.link = attrs.link;
 			}
+			node.label = attrs.label ?? name;
 		}
 		return existing;
 	}

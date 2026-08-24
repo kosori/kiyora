@@ -1,76 +1,195 @@
 {
   "diagnostics": [],
   "diagram": {
-    "kind": "graph",
-    "title": "",
     "direction": "right",
     "edges": [
       {
         "from": "a",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
         "to": "b"
       },
       {
         "from": "c",
+        "span": {
+          "end": {
+            "column": 7,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
         "to": "d",
         "dashed": true
       },
       {
         "from": "e",
+        "span": {
+          "end": {
+            "column": 8,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
         "to": "f",
         "dashed": true
       },
       {
         "from": "h",
+        "span": {
+          "end": {
+            "column": 8,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
         "to": "g",
         "dashed": true,
         "back": true
       },
       {
         "from": "i",
+        "span": {
+          "end": {
+            "column": 7,
+            "line": 5
+          },
+          "start": {
+            "column": 1,
+            "line": 5
+          }
+        },
         "to": "j",
         "dashed": true
       },
       {
         "from": "k",
+        "span": {
+          "end": {
+            "column": 7,
+            "line": 6
+          },
+          "start": {
+            "column": 1,
+            "line": 6
+          }
+        },
         "to": "l",
         "bidirectional": true
       },
       {
         "from": "n",
+        "span": {
+          "end": {
+            "column": 7,
+            "line": 7
+          },
+          "start": {
+            "column": 1,
+            "line": 7
+          }
+        },
         "to": "m",
         "dashed": true,
         "back": true
       },
       {
         "from": "p",
+        "span": {
+          "end": {
+            "column": 7,
+            "line": 8
+          },
+          "start": {
+            "column": 1,
+            "line": 8
+          }
+        },
         "to": "o",
         "dashed": true,
         "back": true
       },
       {
         "from": "q",
+        "span": {
+          "end": {
+            "column": 18,
+            "line": 9
+          },
+          "start": {
+            "column": 1,
+            "line": 9
+          }
+        },
         "to": "r",
         "label": "read",
         "color": "red"
       },
       {
         "from": "s",
+        "span": {
+          "end": {
+            "column": 9,
+            "line": 10
+          },
+          "start": {
+            "column": 1,
+            "line": 10
+          }
+        },
         "to": "t",
         "dashed": true,
         "bidirectional": true
       },
       {
         "from": "s",
+        "span": {
+          "end": {
+            "column": 16,
+            "line": 11
+          },
+          "start": {
+            "column": 1,
+            "line": 11
+          }
+        },
         "to": "t",
         "label": "hop"
       },
       {
         "from": "t",
+        "span": {
+          "end": {
+            "column": 16,
+            "line": 11
+          },
+          "start": {
+            "column": 1,
+            "line": 11
+          }
+        },
         "to": "u",
         "label": "hop"
       }
     ],
     "groups": [],
+    "kind": "graph",
     "nodes": [
       {
         "id": "a",
@@ -366,6 +485,7 @@
           }
         }
       }
-    ]
+    ],
+    "title": ""
   }
 }

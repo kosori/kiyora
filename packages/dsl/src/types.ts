@@ -95,6 +95,7 @@ export type Edge = {
 	head?: string;
 	invisible?: boolean;
 	label?: string;
+	span: Span;
 	to: string;
 };
 

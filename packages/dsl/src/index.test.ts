@@ -36,7 +36,16 @@ describe('parse', () => {
 			'c',
 			'd',
 		]);
-		expect(result.diagram.edges).toEqual([{ from: 'c', to: 'd' }]);
+		expect(result.diagram.edges).toEqual([
+			{
+				from: 'c',
+				span: {
+					end: { column: 6, line: 3 },
+					start: { column: 1, line: 3 },
+				},
+				to: 'd',
+			},
+		]);
 		expect(result.diagnostics).toMatchObject([
 			{
 				code: 'expected-node-name',
@@ -111,5 +120,55 @@ describe('parse', () => {
 			start: { column: 1, line: 1 },
 		});
 		expect(result.diagnostics).toEqual([]);
+	});
+
+	test('adds the edge statement span to every produced edge', () => {
+		const result = parse('A, B -> C\n');
+
+		expect(result.diagram.edges).toHaveLength(2);
+		expect(result.diagram.edges[0]?.span).toEqual({
+			end: { column: 9, line: 1 },
+			start: { column: 1, line: 1 },
+		});
+		expect(result.diagram.edges[1]?.span).toEqual({
+			end: { column: 9, line: 1 },
+			start: { column: 1, line: 1 },
+		});
+	});
+
+	test('uses a later explicit statement name as the redeclared node label', () => {
+		const result = parse('Cache [red]\ncache = Cache Server\n');
+		const [node] = result.diagram.nodes;
+
+		expect(node?.label).toBe('Cache Server');
+		expect(node?.color).toBe('red');
+	});
+
+	test('refuses infographic and chart family headers', () => {
+		for (const family of ['infographic', 'chart']) {
+			const result = parse(`${family}\nLater Node`);
+
+			expect(result).toEqual({
+				diagnostics: [
+					{
+						code: 'unsupported-family',
+						message: `unsupported family "${family}"`,
+						severity: 'error',
+						span: {
+							end: { column: family.length, line: 1 },
+							start: { column: 1, line: 1 },
+						},
+					},
+				],
+				diagram: {
+					direction: 'right',
+					edges: [],
+					groups: [],
+					kind: 'graph',
+					nodes: [],
+					title: '',
+				},
+			});
+		}
 	});
 });

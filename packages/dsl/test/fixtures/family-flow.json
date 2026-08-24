@@ -1,16 +1,25 @@
 {
   "diagnostics": [],
   "diagram": {
-    "kind": "graph",
-    "title": "",
     "direction": "down",
     "edges": [
       {
         "from": "a",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
         "to": "b"
       }
     ],
     "groups": [],
+    "kind": "graph",
     "nodes": [
       {
         "id": "a",
@@ -42,6 +51,7 @@
         },
         "shape": "rectangle"
       }
-    ]
+    ],
+    "title": ""
   }
 }

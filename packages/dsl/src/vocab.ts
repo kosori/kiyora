@@ -197,6 +197,8 @@ export const STANDALONE_FAMILIES = [
 	'gitgraph',
 	'gantt',
 	'sankey',
+	'infographic',
+	'chart',
 ] as const;
 
 /** Unsupported graph-family keywords → refused with `unsupported-family`. */

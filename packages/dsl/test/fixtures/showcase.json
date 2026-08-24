@@ -5,38 +5,108 @@
     "edges": [
       {
         "from": "browser",
+        "span": {
+          "end": {
+            "column": 23,
+            "line": 24
+          },
+          "start": {
+            "column": 1,
+            "line": 24
+          }
+        },
         "to": "cdn",
         "label": "request"
       },
       {
         "from": "mobile",
+        "span": {
+          "end": {
+            "column": 22,
+            "line": 25
+          },
+          "start": {
+            "column": 1,
+            "line": 25
+          }
+        },
         "to": "cdn",
         "label": "request"
       },
       {
         "from": "cdn",
+        "span": {
+          "end": {
+            "column": 33,
+            "line": 26
+          },
+          "start": {
+            "column": 1,
+            "line": 26
+          }
+        },
         "to": "load-balancer",
         "label": "cache miss",
         "dashed": true
       },
       {
         "from": "load-balancer",
+        "span": {
+          "end": {
+            "column": 35,
+            "line": 27
+          },
+          "start": {
+            "column": 1,
+            "line": 27
+          }
+        },
         "to": "api",
         "label": "read"
       },
       {
         "from": "api",
+        "span": {
+          "end": {
+            "column": 35,
+            "line": 27
+          },
+          "start": {
+            "column": 1,
+            "line": 27
+          }
+        },
         "to": "cache",
         "label": "read"
       },
       {
         "from": "cache",
+        "span": {
+          "end": {
+            "column": 25,
+            "line": 28
+          },
+          "start": {
+            "column": 1,
+            "line": 28
+          }
+        },
         "to": "database",
         "label": "miss",
         "dashed": true
       },
       {
         "from": "api",
+        "span": {
+          "end": {
+            "column": 21,
+            "line": 29
+          },
+          "start": {
+            "column": 1,
+            "line": 29
+          }
+        },
         "to": "queue",
         "label": "enqueue"
       }

@@ -1,12 +1,20 @@
 {
   "diagnostics": [],
   "diagram": {
-    "kind": "graph",
-    "title": "",
     "direction": "right",
     "edges": [
       {
         "from": "web",
+        "span": {
+          "end": {
+            "column": 8,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
         "to": "c"
       }
     ],
@@ -26,6 +34,7 @@
         }
       }
     ],
+    "kind": "graph",
     "nodes": [
       {
         "id": "a",
@@ -71,6 +80,7 @@
           }
         }
       }
-    ]
+    ],
+    "title": ""
   }
 }

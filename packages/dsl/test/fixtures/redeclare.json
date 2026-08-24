@@ -1,15 +1,14 @@
 {
   "diagnostics": [],
   "diagram": {
-    "kind": "graph",
-    "title": "",
     "direction": "right",
     "edges": [],
     "groups": [],
+    "kind": "graph",
     "nodes": [
       {
         "id": "cache",
-        "label": "Cache",
+        "label": "Cache Server",
         "span": {
           "end": {
             "column": 11,
@@ -22,6 +21,7 @@
         },
         "color": "red"
       }
-    ]
+    ],
+    "title": ""
   }
 }

@@ -1,21 +1,40 @@
 {
   "diagnostics": [],
   "diagram": {
-    "kind": "graph",
-    "title": "",
     "direction": "right",
     "edges": [
       {
         "from": "cache",
+        "span": {
+          "end": {
+            "column": 11,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
         "to": "db"
       },
       {
         "from": "db",
+        "span": {
+          "end": {
+            "column": 20,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
         "to": "queue",
         "label": "enqueue"
       }
     ],
     "groups": [],
+    "kind": "graph",
     "nodes": [
       {
         "id": "cache",
@@ -62,6 +81,7 @@
           }
         }
       }
-    ]
+    ],
+    "title": ""
   }
 }
