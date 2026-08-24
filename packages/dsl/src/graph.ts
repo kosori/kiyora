@@ -921,8 +921,7 @@ function findEquals(source: string): number {
 
 /** Split a comma list into trimmed non-empty items (quote/bracket aware). */
 function splitList(source: string): string[] {
-	return source
-		.split(',')
+	return splitOn(source, ',')
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
 }

@@ -176,16 +176,37 @@ function applyResolved(
 	diagnostics: Diagnostic[],
 	kind: 'color' | 'fill' | 'corner' | 'shape'
 ): void {
-	const resolved =
-		kind === 'color'
-			? resolveColor(lower)
-			: kind === 'fill'
-				? resolveFill(lower)
-				: kind === 'corner'
-					? resolveCorner(lower)
-					: resolveShape(lower);
-	if (resolved !== null) {
-		out[key] = resolved as never;
+	let resolved = false;
+	if (kind === 'color') {
+		const color = resolveColor(lower);
+		if (color !== null) {
+			if (key === 'color') {
+				out.color = color;
+			} else {
+				out.labelColor = color;
+			}
+			resolved = true;
+		}
+	} else if (kind === 'fill') {
+		const fill = resolveFill(lower);
+		if (fill !== null) {
+			out.fill = fill;
+			resolved = true;
+		}
+	} else if (kind === 'corner') {
+		const corner = resolveCorner(lower);
+		if (corner !== null) {
+			out.corner = corner;
+			resolved = true;
+		}
+	} else {
+		const shape = resolveShape(lower);
+		if (shape !== null) {
+			out.shape = shape;
+			resolved = true;
+		}
+	}
+	if (resolved) {
 		return;
 	}
 	const code =
@@ -216,8 +237,16 @@ function applyPositionalAttr(
 	const col = baseColumn + leading;
 	const span = tokenSpan(lineNo, col, item.trim().length);
 	const flag = FLAG_WORDS[t];
-	if (flag !== undefined) {
-		(out as Record<string, unknown>)[flag] = true;
+	if (flag === 'flow') {
+		out.flow = true;
+		return;
+	}
+	if (flag === 'invisible') {
+		out.invisible = true;
+		return;
+	}
+	if (flag === 'shadow') {
+		out.shadow = true;
 		return;
 	}
 	const color = resolveColor(t);
