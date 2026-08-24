@@ -103,7 +103,8 @@ export type GraphDiagram = {
 	nodes: Node[];
 	swimlanes?: boolean;
 	title: string;
-	variant?: 'flowchart' | 'bpmn' | 'orgchart' | 'statemachine';
+	/** Sub-variant of the graph family: `orgchart` and `statemachine` (reference semantics). */
+	variant?: 'orgchart' | 'statemachine';
 };
 
 /** Every Diagram is discriminated by `kind`; v1 ships the graph family. */

@@ -7,6 +7,7 @@ describe('parse', () => {
 		expect(parse('')).toEqual({
 			diagnostics: [],
 			diagram: {
+				direction: 'right',
 				edges: [],
 				groups: [],
 				kind: 'graph',
@@ -17,6 +18,7 @@ describe('parse', () => {
 		expect(parse('  \n\t\n  ')).toEqual({
 			diagnostics: [],
 			diagram: {
+				direction: 'right',
 				edges: [],
 				groups: [],
 				kind: 'graph',

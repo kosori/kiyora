@@ -32,7 +32,7 @@ export type {
 	Position,
 	Span,
 } from './types';
-export type { Direction, Frame, Head, Shape } from './vocab';
+export type { Direction, Family, Frame, Head, Shape } from './vocab';
 /** Canonical shape names, aliases, palette colors, style tokens, and resolution helpers. */
 export {
 	ARROWS,
@@ -40,6 +40,7 @@ export {
 	COLORS,
 	CORNERS,
 	DIRECTIONS,
+	FAMILIES,
 	FILLS,
 	FRAMES,
 	HEADS,
@@ -51,7 +52,9 @@ export {
 	resolveShape,
 	SHAPE_ALIASES,
 	SHAPES,
+	STANDALONE_FAMILIES,
 	slugify,
+	UNSUPPORTED_GRAPH_FAMILIES,
 	uniqueId,
 } from './vocab';
 

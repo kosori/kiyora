@@ -1,6 +1,9 @@
 {
   "diagnostics": [],
   "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
     "edges": [
       {
         "from": "web",
@@ -23,7 +26,6 @@
         }
       }
     ],
-    "kind": "graph",
     "nodes": [
       {
         "id": "a",
@@ -69,7 +71,6 @@
           }
         }
       }
-    ],
-    "title": ""
+    ]
   }
 }

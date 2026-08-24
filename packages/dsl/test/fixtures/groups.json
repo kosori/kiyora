@@ -1,6 +1,9 @@
 {
   "diagnostics": [],
   "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
     "edges": [],
     "groups": [
       {
@@ -47,7 +50,6 @@
         "parent": "web"
       }
     ],
-    "kind": "graph",
     "nodes": [
       {
         "id": "cache",
@@ -95,7 +97,6 @@
         },
         "group": "auth"
       }
-    ],
-    "title": ""
+    ]
   }
 }

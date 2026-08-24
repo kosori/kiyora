@@ -5,6 +5,7 @@ import {
 	COLOR_ALIASES,
 	COLORS,
 	CORNERS,
+	FAMILIES,
 	FILLS,
 	FRAMES,
 	HEADS,
@@ -16,7 +17,9 @@ import {
 	resolveShape,
 	SHAPE_ALIASES,
 	SHAPES,
+	STANDALONE_FAMILIES,
 	slugify,
+	UNSUPPORTED_GRAPH_FAMILIES,
 	uniqueId,
 } from './vocab';
 
@@ -169,5 +172,42 @@ describe('uniqueId', () => {
 		const used = new Set<string>();
 		uniqueId('node', used);
 		expect(used.has('node')).toBe(true);
+	});
+});
+
+describe('families', () => {
+	test('graph-family keywords map to their canonical family', () => {
+		expect(FAMILIES.architecture).toBe('architecture');
+		expect(FAMILIES.graph).toBe('architecture');
+		expect(FAMILIES.flowchart).toBe('flowchart');
+		expect(FAMILIES.flow).toBe('flowchart');
+		expect(FAMILIES.bpmn).toBe('bpmn');
+		expect(FAMILIES.orgchart).toBe('orgchart');
+		expect(FAMILIES.org).toBe('orgchart');
+		expect(FAMILIES.statemachine).toBe('statemachine');
+		expect(FAMILIES.state).toBe('statemachine');
+		expect(FAMILIES.fsm).toBe('statemachine');
+	});
+
+	test('unsupported family keywords are listed for refusal', () => {
+		expect(STANDALONE_FAMILIES).toEqual([
+			'mindmap',
+			'gitgraph',
+			'gantt',
+			'sankey',
+		]);
+		expect(UNSUPPORTED_GRAPH_FAMILIES).toEqual([
+			'class',
+			'erd',
+			'sequence',
+			'uml',
+			'wireframe',
+		]);
+	});
+
+	test('a whole-line family header must match exactly', () => {
+		// `flowchart Cache` is not a header; it stays a node statement.
+		expect(FAMILIES['flowchart cache']).toBeUndefined();
+		expect(FAMILIES.flowchart).toBe('flowchart');
 	});
 });

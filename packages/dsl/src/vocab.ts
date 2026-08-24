@@ -173,6 +173,50 @@ export const DIRECTIONS = ['right', 'down', 'left', 'up'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
 /**
+ * Graph-family header keywords → canonical family (reference `FAMILIES`
+ * map). The header must be the whole first non-empty line; a line like
+ * `flowchart Cache` stays a node statement (reference-faithful).
+ */
+export const FAMILIES: Record<string, string> = {
+	architecture: 'architecture',
+	bpmn: 'bpmn',
+	flow: 'flowchart',
+	flowchart: 'flowchart',
+	fsm: 'statemachine',
+	graph: 'architecture',
+	org: 'orgchart',
+	orgchart: 'orgchart',
+	state: 'statemachine',
+	statemachine: 'statemachine',
+};
+
+/** Non-graph family headers recognized so they can be refused with an
+ * `unsupported-family` error instead of being misparsed as a graph. */
+export const STANDALONE_FAMILIES = [
+	'mindmap',
+	'gitgraph',
+	'gantt',
+	'sankey',
+] as const;
+
+/** Unsupported graph-family keywords → refused with `unsupported-family`. */
+export const UNSUPPORTED_GRAPH_FAMILIES = [
+	'class',
+	'erd',
+	'sequence',
+	'uml',
+	'wireframe',
+] as const;
+
+/** The five v1 graph-family variants. */
+export type Family =
+	| 'architecture'
+	| 'bpmn'
+	| 'flowchart'
+	| 'orgchart'
+	| 'statemachine';
+
+/**
  * Resolve a shape token (canonical or alias) to a canonical shape, or `null`.
  */
 export function resolveShape(token: string): Shape | null {

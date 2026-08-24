@@ -34,20 +34,47 @@ import {
 	findToken,
 	scanHops,
 	splitListOffsets,
+	splitOn,
 	splitTrailingAttrs,
 	stripComment,
 	unquote,
 } from './scan';
-import type { Diagnostic, Edge, Group, Node, ParseResult, Span } from './types';
-import { ARROWS, slugify, uniqueId } from './vocab';
+import type {
+	Diagnostic,
+	Edge,
+	Group,
+	LegendEntry,
+	Node,
+	ParseResult,
+	Span,
+} from './types';
+import type { Family } from './vocab';
+import {
+	ARROWS,
+	FAMILIES,
+	resolveFill,
+	STANDALONE_FAMILIES,
+	slugify,
+	UNSUPPORTED_GRAPH_FAMILIES,
+	uniqueId,
+} from './vocab';
 
+/** Graph-family state accumulated while scanning lines. */
 type GraphState = {
+	defaultFill?: 'pastel' | 'bold' | 'outline';
 	diagnostics: Diagnostic[];
+	direction?: 'right' | 'down' | 'left' | 'up';
 	edges: Edge[];
-	groups: Group[];
+	family: Family | null;
 	groupByKey: Map<string, string>;
-	nodes: Node[];
+	groups: Group[];
+	icons?: 'badge' | 'inside';
+	inLegend: boolean;
+	kanban: boolean;
+	legend: LegendEntry[];
 	nodeByKey: Map<string, string>;
+	nodes: Node[];
+	title: string;
 	usedIds: Set<string>;
 };
 
@@ -56,10 +83,15 @@ export function parseGraph(source: string): ParseResult {
 	const state: GraphState = {
 		diagnostics: [],
 		edges: [],
+		family: null,
 		groupByKey: new Map(),
 		groups: [],
+		inLegend: false,
+		kanban: false,
+		legend: [],
 		nodeByKey: new Map(),
 		nodes: [],
+		title: '',
 		usedIds: new Set(),
 	};
 	const lines = source.split('\n');
@@ -71,6 +103,32 @@ export function parseGraph(source: string): ParseResult {
 			continue;
 		}
 		const span = spanAt(lineNo, 1, line.length);
+		// The first non-empty line picks the family. A recognized graph
+		// header (whole-line match) selects that family; a recognized but
+		// unsupported header is refused with `unsupported-family` and
+		// yields an empty graph; anything else falls through to the
+		// default architecture family.
+		if (state.family === null) {
+			const detect = detectFamily(line, span, state.diagnostics);
+			// A recognized-but-unsupported family (e.g. `sequence`) is
+			// refused here: one `unsupported-family` error and an empty
+			// graph, with no later lines misparsed as graph shapes.
+			if (detect.skipLine && detect.family === null) {
+				return {
+					diagnostics: state.diagnostics,
+					diagram: buildDiagram(state),
+				};
+			}
+			if (detect.skipLine) {
+				state.family = detect.family;
+				continue;
+			}
+			state.family = detect.family ?? 'architecture';
+		}
+		// Directives may appear anywhere, on their own lines.
+		if (consumeDirective(state, line, span)) {
+			continue;
+		}
 		if (/^group\b/.test(line)) {
 			if (/^group\b.*\{.*\}$/.test(line)) {
 				parseInlineGroup(state, groupStack, line, lineNo, span);
@@ -130,14 +188,268 @@ export function parseGraph(source: string): ParseResult {
 	}
 	return {
 		diagnostics: state.diagnostics,
-		diagram: {
-			edges: state.edges,
-			groups: state.groups,
-			kind: 'graph',
-			nodes: state.nodes,
-			title: '',
-		},
+		diagram: buildDiagram(state),
 	};
+}
+
+/** The family selected by the first non-empty line, if the line was a header. */
+type FamilyDetect = { family: Family | null; skipLine: boolean };
+
+/**
+ * Detect a family header on the first non-empty line. A recognized graph
+ * keyword selects that family (the line is consumed). A recognized but
+ * unsupported family keyword produces one `unsupported-family` error and
+ * the line is consumed (an empty graph results). Anything else is left for
+ * the regular statement parser with the default architecture family.
+ */
+function detectFamily(
+	line: string,
+	span: Span,
+	diagnostics: Diagnostic[]
+): FamilyDetect {
+	const word = line.toLowerCase();
+	const family = FAMILIES[word];
+	if (family !== undefined) {
+		return { family: family as Family, skipLine: true };
+	}
+	if (
+		(STANDALONE_FAMILIES as readonly string[]).includes(word) ||
+		(UNSUPPORTED_GRAPH_FAMILIES as readonly string[]).includes(word)
+	) {
+		diagnostics.push({
+			code: 'unsupported-family',
+			message: `unsupported family "${line}"`,
+			severity: 'error',
+			span,
+		});
+		return { family: null, skipLine: true };
+	}
+	return { family: null, skipLine: false };
+}
+
+/**
+ * Consume a directive line, returning true when the line was a directive.
+ * Directives follow the reference precedence: legend rows while inside a
+ * legend block, `}` closing a legend, `legend {` opening a block, then
+ * `direction`, `kanban`, `title`, `colorMode`, and the `key: value` forms.
+ * A `}` that is not inside a legend is left for group handling.
+ */
+function consumeDirective(
+	state: GraphState,
+	line: string,
+	span: Span
+): boolean {
+	if (state.inLegend && !line.startsWith('}')) {
+		const colon = findColon(line);
+		if (colon) {
+			state.legend.push({
+				label: unquote(colon.value),
+				swatch: unquote(colon.key),
+			});
+		} else {
+			state.diagnostics.push({
+				code: 'expected-colon',
+				message: 'legend rows are `swatch: meaning`',
+				severity: 'error',
+				span,
+			});
+		}
+		return true;
+	}
+	if (line.startsWith('}')) {
+		if (state.inLegend) {
+			state.inLegend = false;
+			return true;
+		}
+		return false;
+	}
+	// Inline legend: `legend { green: ready, red: blocked }`.
+	const inlineLegend = /^legend\s*\{([^}]*)\}\s*$/i.exec(line);
+	if (inlineLegend) {
+		for (const part of splitOn(inlineLegend[1] ?? '', ',')) {
+			const item = part.trim();
+			if (!item) {
+				continue;
+			}
+			const colon = findColon(item);
+			if (!colon) {
+				state.diagnostics.push({
+					code: 'expected-colon',
+					message: 'legend entries are `swatch: meaning`',
+					severity: 'error',
+					span,
+				});
+				continue;
+			}
+			state.legend.push({
+				label: unquote(colon.value),
+				swatch: unquote(colon.key),
+			});
+		}
+		return true;
+	}
+	if (/^legend\b.*\{$/i.test(line)) {
+		state.inLegend = true;
+		return true;
+	}
+	const directionWord = /^direction\s+(right|down|left|up)$/i.exec(line);
+	if (directionWord) {
+		state.direction = directionWord[1]?.toLowerCase() as
+			| 'right'
+			| 'down'
+			| 'left'
+			| 'up';
+		return true;
+	}
+	if (/^kanban$/i.test(line)) {
+		state.kanban = true;
+		return true;
+	}
+	const titleWord = /^title\s+(\S.*)$/i.exec(line);
+	if (titleWord && !state.title) {
+		state.title = unquote(titleWord[1]?.trim() ?? '');
+		return true;
+	}
+	const colorMode = /^colormode\b\s*:?\s*(.*)$/i.exec(line);
+	if (colorMode) {
+		const v = (colorMode[1] ?? '').trim().toLowerCase();
+		const fill = resolveFill(v);
+		if (fill === null) {
+			state.diagnostics.push({
+				code: 'unknown-attribute',
+				message: `colorMode "${v}" is not supported (pastel, bold, outline)`,
+				severity: 'warning',
+				span,
+			});
+		} else {
+			state.defaultFill = fill;
+		}
+		return true;
+	}
+	const keyed = /^(title|direction|icons)\s*:\s*(.+)$/i.exec(line);
+	if (keyed) {
+		const key = (keyed[1] ?? '').toLowerCase();
+		const val = (keyed[2] ?? '').trim();
+		if (key === 'title') {
+			state.title = unquote(val);
+		} else if (key === 'direction') {
+			const v = val.toLowerCase();
+			if (['down', 'right', 'up', 'left'].includes(v)) {
+				state.direction = v as 'right' | 'down' | 'left' | 'up';
+			} else {
+				state.diagnostics.push({
+					code: 'unknown-attribute',
+					message: `direction "${val}" is not supported (right, down, left, up)`,
+					severity: 'warning',
+					span,
+				});
+			}
+		} else {
+			const v = val.toLowerCase();
+			if (v === 'inside' || v === 'badge' || v === 'hanging') {
+				state.icons = v === 'inside' ? 'inside' : 'badge';
+			} else {
+				state.diagnostics.push({
+					code: 'unknown-attribute',
+					message: `icons "${val}" is not supported (badge, inside)`,
+					severity: 'warning',
+					span,
+				});
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Assemble the final `GraphDiagram` from accumulated state: per-family
+ * default shapes and direction, the `swimlanes` flag for bpmn, `variant`
+ * for orgchart/statemachine, the colorMode default fill, and the optional
+ * legend.
+ */
+function buildDiagram(state: GraphState): {
+	direction?: 'right' | 'down' | 'left' | 'up';
+	edges: Edge[];
+	groups: Group[];
+	icons?: 'badge' | 'inside';
+	kanban?: boolean;
+	kind: 'graph';
+	legend?: LegendEntry[];
+	nodes: Node[];
+	swimlanes?: boolean;
+	title: string;
+	variant?: 'orgchart' | 'statemachine';
+} {
+	const family = state.family ?? 'architecture';
+	const isBlock =
+		family === 'flowchart' || family === 'bpmn' || family === 'orgchart';
+	for (const node of state.nodes) {
+		if (family === 'statemachine') {
+			const id = node.id.toLowerCase();
+			const label = node.label.toLowerCase();
+			const isStart =
+				['[*]', 'start', 'begin', 'initial'].includes(id) ||
+				['[*]', 'start', 'begin', 'initial'].includes(label);
+			const isEnd =
+				['end', 'final', 'stop', 'done'].includes(id) ||
+				['end', 'final', 'stop', 'done'].includes(label);
+			if (isStart) {
+				node.shape ??= 'circle';
+				node.fill ??= 'bold';
+				node.color ??= 'gray';
+			} else if (isEnd) {
+				node.shape ??= 'double-circle';
+			} else {
+				node.shape ??= 'ellipse';
+			}
+		} else if (isBlock) {
+			node.shape ??= 'rectangle';
+		}
+	}
+	if (state.defaultFill) {
+		for (const node of state.nodes) {
+			node.fill ??= state.defaultFill;
+		}
+	}
+	const diagram: {
+		direction?: 'right' | 'down' | 'left' | 'up';
+		edges: Edge[];
+		groups: Group[];
+		icons?: 'badge' | 'inside';
+		kanban?: boolean;
+		kind: 'graph';
+		legend?: LegendEntry[];
+		nodes: Node[];
+		swimlanes?: boolean;
+		title: string;
+		variant?: 'orgchart' | 'statemachine';
+	} = {
+		direction: state.direction ?? (isBlock ? 'down' : 'right'),
+		edges: state.edges,
+		groups: state.groups,
+		kind: 'graph',
+		nodes: state.nodes,
+		title: state.title,
+	};
+	if (state.icons) {
+		diagram.icons = state.icons;
+	}
+	if (family === 'bpmn') {
+		diagram.swimlanes = true;
+	}
+	if (state.kanban) {
+		diagram.kanban = true;
+	}
+	if (family === 'orgchart') {
+		diagram.variant = 'orgchart';
+	} else if (family === 'statemachine') {
+		diagram.variant = 'statemachine';
+	}
+	if (state.legend.length > 0) {
+		diagram.legend = state.legend;
+	}
+	return diagram;
 }
 
 /** Open a multi-line group: `group Name [attrs] {`. */
@@ -504,6 +816,15 @@ function splitList(source: string): string[] {
 		.split(',')
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+}
+
+/** Split a `key: value` item on the first `:` outside quotes/brackets. */
+function findColon(source: string): { key: string; value: string } | null {
+	const i = findToken(source, ':');
+	if (i === -1) {
+		return null;
+	}
+	return { key: source.slice(0, i).trim(), value: source.slice(i + 1).trim() };
 }
 
 /** A 1-based span covering `width` columns starting at `column`. */

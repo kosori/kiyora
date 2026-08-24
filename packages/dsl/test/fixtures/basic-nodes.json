@@ -3,18 +3,21 @@
   "diagram": {
     "kind": "graph",
     "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [],
     "nodes": [
       {
         "id": "cache",
         "label": "Cache",
         "span": {
-          "start": {
-            "line": 1,
-            "column": 1
-          },
           "end": {
-            "line": 1,
-            "column": 5
+            "column": 5,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
           }
         }
       },
@@ -22,18 +25,16 @@
         "id": "cache-1",
         "label": "Cache Server",
         "span": {
-          "start": {
-            "line": 2,
-            "column": 1
-          },
           "end": {
-            "line": 2,
-            "column": 22
+            "column": 22,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
           }
         }
       }
-    ],
-    "groups": [],
-    "edges": []
+    ]
   }
 }

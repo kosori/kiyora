@@ -1,6 +1,9 @@
 {
   "diagnostics": [],
   "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
     "edges": [],
     "groups": [
       {
@@ -18,7 +21,6 @@
         }
       }
     ],
-    "kind": "graph",
     "nodes": [
       {
         "id": "cache",
@@ -36,7 +38,6 @@
         "group": "storage",
         "shape": "cylinder"
       }
-    ],
-    "title": ""
+    ]
   }
 }

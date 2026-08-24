@@ -32,6 +32,9 @@
     }
   ],
   "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
     "edges": [
       {
         "from": "a",
@@ -39,7 +42,6 @@
       }
     ],
     "groups": [],
-    "kind": "graph",
     "nodes": [
       {
         "id": "a",
@@ -69,7 +71,6 @@
           }
         }
       }
-    ],
-    "title": ""
+    ]
   }
 }

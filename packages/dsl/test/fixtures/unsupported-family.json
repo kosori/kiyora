@@ -1,0 +1,27 @@
+{
+  "diagnostics": [
+    {
+      "code": "unsupported-family",
+      "message": "unsupported family \"sequence\"",
+      "severity": "error",
+      "span": {
+        "end": {
+          "column": 8,
+          "line": 1
+        },
+        "start": {
+          "column": 1,
+          "line": 1
+        }
+      }
+    }
+  ],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [],
+    "nodes": []
+  }
+}

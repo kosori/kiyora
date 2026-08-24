@@ -1,0 +1,47 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "down",
+    "edges": [
+      {
+        "from": "a",
+        "to": "b"
+      }
+    ],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "a",
+        "label": "A",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "shape": "rectangle"
+      },
+      {
+        "id": "b",
+        "label": "B",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "shape": "rectangle"
+      }
+    ]
+  }
+}

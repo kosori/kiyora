@@ -1,9 +1,11 @@
 {
   "diagnostics": [],
   "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
     "edges": [],
     "groups": [],
-    "kind": "graph",
     "nodes": [
       {
         "id": "cache",
@@ -20,7 +22,6 @@
         },
         "color": "red"
       }
-    ],
-    "title": ""
+    ]
   }
 }
