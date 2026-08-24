@@ -18,9 +18,22 @@ export type Span = {
 	start: Position;
 };
 
+/** Machine-readable diagnostic codes emitted by the v1 parser. */
+export type DiagnosticCode =
+	| 'attribute-ignored'
+	| 'expected-colon'
+	| 'expected-node-name'
+	| 'unclosed-block'
+	| 'unknown-attribute'
+	| 'unknown-color'
+	| 'unknown-shape'
+	| 'unmatched-block'
+	| 'unsupported-family'
+	| 'self-edge';
+
 /** A reported problem with Kiyora DSL source. */
 export type Diagnostic = {
-	code: string;
+	code: DiagnosticCode;
 	message: string;
 	severity: 'error' | 'warning';
 	span: Span;

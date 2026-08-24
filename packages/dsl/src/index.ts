@@ -21,6 +21,7 @@ export type {
 	Color,
 	Corner,
 	Diagnostic,
+	DiagnosticCode,
 	Diagram,
 	Edge,
 	Fill,

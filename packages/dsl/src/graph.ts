@@ -103,6 +103,20 @@ export function parseGraph(source: string): ParseResult {
 			continue;
 		}
 		const span = spanAt(lineNo, 1, line.length);
+		// A statement cannot be recovered when its attribute block or quote is
+		// unfinished. Drop it rather than turning the malformed source into a
+		// surprising node label, then continue with the next line.
+		if (hasUnclosedQuote(line) || hasUnclosedBracket(line)) {
+			state.diagnostics.push({
+				code: 'unclosed-block',
+				message: hasUnclosedBracket(line)
+					? 'unclosed attribute block'
+					: 'unclosed quoted name',
+				severity: 'error',
+				span,
+			});
+			continue;
+		}
 		// The first non-empty line picks the family. A recognized graph
 		// header (whole-line match) selects that family; a recognized but
 		// unsupported header is refused with `unsupported-family` and
@@ -145,7 +159,16 @@ export function parseGraph(source: string): ParseResult {
 			continue;
 		}
 		if (/^\}\s*$/.test(line)) {
-			groupStack.pop();
+			if (groupStack.length === 0) {
+				state.diagnostics.push({
+					code: 'unmatched-block',
+					message: 'unmatched closing block',
+					severity: 'error',
+					span,
+				});
+			} else {
+				groupStack.pop();
+			}
 			continue;
 		}
 		// An edge statement if any arrow token appears outside quotes and
@@ -186,10 +209,58 @@ export function parseGraph(source: string): ParseResult {
 			getOrCreateNode(state, name, a, id, span, inGroup);
 		}
 	}
+	if (state.inLegend) {
+		state.diagnostics.push({
+			code: 'unclosed-block',
+			message: 'unclosed legend block',
+			severity: 'error',
+			span: endSpan(lines.length, lines.at(-1) ?? ''),
+		});
+	}
+	for (const _group of groupStack) {
+		state.diagnostics.push({
+			code: 'unclosed-block',
+			message: 'unclosed group block',
+			severity: 'error',
+			span: endSpan(lines.length, lines.at(-1) ?? ''),
+		});
+	}
 	return {
 		diagnostics: state.diagnostics,
 		diagram: buildDiagram(state),
 	};
+}
+
+/** Count unescaped quote delimiters in a line. */
+function hasUnclosedQuote(line: string): boolean {
+	let quoted = false;
+	for (const character of line) {
+		if (character === '"') {
+			quoted = !quoted;
+		}
+	}
+	return quoted;
+}
+
+/** Report an unmatched opening attribute bracket as malformed input. */
+function hasUnclosedBracket(line: string): boolean {
+	let depth = 0;
+	let quoted = false;
+	for (const character of line) {
+		if (character === '"') {
+			quoted = !quoted;
+		} else if (!quoted && character === '[') {
+			depth += 1;
+		} else if (!quoted && character === ']') {
+			depth -= 1;
+		}
+	}
+	return depth > 0;
+}
+
+/** Span at the final non-empty line, used for end-of-input diagnostics. */
+function endSpan(line: number, text: string): Span {
+	return spanAt(Math.max(1, line), 1, text.trim().length);
 }
 
 /** The family selected by the first non-empty line, if the line was a header. */
@@ -554,8 +625,37 @@ function parseEdgeLine(
 		return;
 	}
 	const lineSpan = spanAt(lineNo, 1, line.length);
+	const nodeSnapshot = state.nodes.map((node) => ({ ...node }));
+	const edgeSnapshot = state.edges.slice();
+	const keySnapshot = new Map(state.nodeByKey);
+	const usedIdSnapshot = new Set(state.usedIds);
+	const restoreStatement = (): void => {
+		state.nodes = nodeSnapshot.map((node) => ({ ...node }));
+		state.edges = edgeSnapshot.slice();
+		state.nodeByKey = keySnapshot;
+		state.usedIds = usedIdSnapshot;
+	};
+	if (hasEmptyListItem(h.first)) {
+		state.diagnostics.push({
+			code: 'expected-node-name',
+			message: 'edge needs both ends',
+			severity: 'error',
+			span: lineSpan,
+		});
+		return;
+	}
 	let sources = endpointNodes(state, h.first, 0, lineNo, inGroup, lineSpan);
 	for (const hop of h.hops) {
+		if (hasEmptyListItem(hop.segment)) {
+			state.diagnostics.push({
+				code: 'expected-node-name',
+				message: 'edge needs both ends',
+				severity: 'error',
+				span: lineSpan,
+			});
+			restoreStatement();
+			return;
+		}
 		const targets = endpointNodes(
 			state,
 			hop.segment,
@@ -571,6 +671,7 @@ function parseEdgeLine(
 				severity: 'error',
 				span: lineSpan,
 			});
+			restoreStatement();
 			return;
 		}
 		const back = isBack(hop.token);
@@ -617,6 +718,11 @@ function parseEdgeLine(
 		}
 		sources = targets;
 	}
+}
+
+/** Return true when a comma-separated endpoint contains an empty item. */
+function hasEmptyListItem(source: string): boolean {
+	return splitListOffsets(source).some(({ item }) => item.trim().length === 0);
 }
 
 /**
@@ -796,9 +902,12 @@ function parseName(text: string): { id?: string; name: string } {
 	}
 	const key = text.slice(0, i).trim();
 	const value = unquote(text.slice(i + 1));
+	if (key.length === 0 || value.length === 0) {
+		return { name: '' };
+	}
 	return /^[A-Za-z0-9_-]+$/.test(key)
 		? { id: key.toLowerCase(), name: value }
-		: { name: unquote(text) };
+		: { name: '' };
 }
 
 function findEquals(source: string): number {
