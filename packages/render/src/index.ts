@@ -1,11 +1,10 @@
-import type { Diagram } from '@kiyora/dsl';
+import { COLORS, type Color, type Diagram } from '@kiyora/dsl';
 import { compile } from './compile';
 import { type Box, edgePathD, intersectRect } from './geometry';
 import { measureLabel, measureLabelWidth } from './label';
 import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 import { renderShape } from './shapes';
 import {
-	COLORS,
 	cornerRadius,
 	dashAttrs,
 	EDGE_FONT_SIZE,
@@ -272,10 +271,9 @@ function edgeMarkup(
 	const color = edgeColor(edge.color);
 	const head = edge.head ?? 'arrow';
 	const dash = dashAttrs(edge.dashed ? 'dashed' : 'solid', EDGE_STROKE);
-	const markerStart =
-		edge.bidirectional || edge.back
-			? ` marker-start="url(#kiyora-${head}-reverse)"`
-			: '';
+	const markerStart = edge.bidirectional
+		? ` marker-start="url(#kiyora-${head}-reverse)"`
+		: '';
 	const markerEnd = ` marker-end="url(#kiyora-${head})"`;
 	const label =
 		edge.label === undefined
@@ -316,10 +314,12 @@ function nodeMarkup(node: SceneNode, fontSize: number): string {
 	return `<g data-node="${escapeText(node.id)}"${filter}>${shape}${labels}</g>`;
 }
 
+function isPaletteColor(value: string): value is Color {
+	return COLORS.some((color) => color === value);
+}
+
 function safeLegendColor(swatch: string): string {
-	return COLORS.includes(swatch as (typeof COLORS)[number])
-		? edgeColor(swatch)
-		: INK;
+	return isPaletteColor(swatch) ? edgeColor(swatch) : INK;
 }
 
 function legendWidth(scene: Scene): number {

@@ -118,6 +118,47 @@ describe('render scaffold', () => {
 		expect(result.svg.match(/data-edge="a-b"/g)?.length).toBe(1);
 	});
 
+	test('draws a back edge with only its reverse-direction marker', () => {
+		const result = renderToSvg({
+			edges: [
+				{
+					back: true,
+					from: 'target',
+					head: 'arrow',
+					span,
+					to: 'source',
+				},
+			],
+			groups: [],
+			nodes: [
+				{
+					height: 44,
+					id: 'source',
+					label: 'Source',
+					span,
+					width: 72,
+					x: 24,
+					y: 24,
+				},
+				{
+					height: 44,
+					id: 'target',
+					label: 'Target',
+					span,
+					width: 72,
+					x: 168,
+					y: 24,
+				},
+			],
+			title: '',
+		});
+
+		expect(result.svg).toContain(
+			'<path d="M 168 46 C 139.2 46, 124.8 46, 96 46" fill="none" stroke="#1e1e1e" stroke-width="2.5" stroke-linecap="round" marker-end="url(#kiyora-arrow)"/>'
+		);
+		expect(result.svg).not.toContain('marker-start=');
+	});
+
 	test('draws padded nested groups behind nodes and includes them in bounds', () => {
 		const scene: Scene = {
 			edges: [],
@@ -197,6 +238,15 @@ describe('render scaffold', () => {
 			title: 'Golden',
 		});
 		expect(result.svg).toMatchSnapshot();
+	});
+
+	test('projects statemachine start and end shapes', () => {
+		const result = render(parse('statemachine\nStart\nEnd').diagram);
+
+		expect(result.svg).toContain('data-node="start"><circle');
+		expect(result.svg).toContain('data-node="end"><circle');
+		const endNode = result.svg.match(/<g data-node="end">([\s\S]*?)<\/g>/)?.[1];
+		expect(endNode?.match(/<circle/g)?.length).toBe(2);
 	});
 
 	test('sizes automatic bounds for chrome and sanitizes legend swatches', () => {

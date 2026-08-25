@@ -26,7 +26,7 @@ const oneCall = render(diagram);
   and `padding`.
 - `render(diagram, options?)` combines compilation and SVG projection.
 
-### Scene model
+### Scene contract
 
 `Scene` is the canonical, framework-agnostic output of the renderer. It is
 JSON-serializable: `nodes`, `edges`, and `groups` are plain arrays, and every
