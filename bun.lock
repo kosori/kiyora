@@ -55,6 +55,17 @@
         "typescript": "catalog:",
       },
     },
+    "packages/render": {
+      "name": "@kiyora/render",
+      "version": "0.1.0",
+      "dependencies": {
+        "@kiyora/dsl": "*",
+      },
+      "devDependencies": {
+        "@kiyora/typescript": "*",
+        "typescript": "catalog:",
+      },
+    },
     "packages/ui": {
       "name": "@kiyora/ui",
       "version": "0.0.0",
@@ -211,6 +222,8 @@
     "@kiyora/dsl": ["@kiyora/dsl@workspace:packages/dsl"],
 
     "@kiyora/github": ["@kiyora/github@workspace:tooling/github"],
+
+    "@kiyora/render": ["@kiyora/render@workspace:packages/render"],
 
     "@kiyora/tailwind": ["@kiyora/tailwind@workspace:tooling/tailwind"],
 

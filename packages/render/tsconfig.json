@@ -1,0 +1,14 @@
+{
+  "extends": "@kiyora/typescript/base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["bun"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
