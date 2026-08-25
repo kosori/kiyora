@@ -8,11 +8,11 @@ Kiyora is an open-source diagram-as-code project for creating hand-drawn diagram
 - **Shared UI system**: Reusable shadcn-style components built on Base UI primitives
 - **Hand-drawn visual foundation**: Shared Tailwind CSS v4 theme tokens, rounded surfaces, pastel colors, and semantic design variables
 - **Type-safe development**: Strict TypeScript configuration shared across workspaces
-- **Monorepo workflow**: Turborepo tasks for development, builds, type checking, and shared tooling
+- **Monorepo workflow**: Turborepo tasks for development, builds, type checking, tests, and shared tooling
 - **Code quality checks**: Biome and Ultracite for formatting, linting, and import organization
 - **Continuous integration**: GitHub Actions checks the repository with Bun
 
-The project currently does not include a database, API, authentication system, or test suite.
+The project currently does not include a database, API, or authentication system. The DSL and render packages include Bun test suites.
 
 ## Tech Stack
 
@@ -86,7 +86,7 @@ Web application commands:
 - `bun --cwd apps/web run build` — Build only the web application
 - `bun --cwd apps/web run preview` — Preview the web application's production build
 
-There is currently no test command configured. When tests are added, they should be exposed through workspace scripts and included in CI.
+Run the monorepo test suite with `bunx turbo run test`. Package-level tests are available with `bun test packages/dsl` and `bun test packages/render`.
 
 ### Verification
 
@@ -96,6 +96,7 @@ Before opening a pull request or committing a significant change, run:
 bun run check
 bun run typecheck
 bun run build
+bunx turbo run test
 ```
 
 GitHub Actions runs the same checks using the repository's Bun setup action.

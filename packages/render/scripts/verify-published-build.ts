@@ -1,26 +1,33 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const packageDirectory = import.meta.dir.replace(/\/scripts$/, '');
+const packageDirectory = dirname(dirname(fileURLToPath(import.meta.url)));
 const workspaceRoot = join(packageDirectory, '..', '..');
 const temporaryDirectory = mkdtempSync(
 	join(tmpdir(), 'kiyora-render-consumer-')
 );
 const packageDirectoryForTarballs = join(temporaryDirectory, 'packages');
+const command = (name: string): string =>
+	process.platform === 'win32' ? `${name}.cmd` : name;
 
-function run(command: string[], cwd: string): string {
-	const result = spawnSync(command[0] ?? '', command.slice(1), {
-		cwd,
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'pipe'],
-	});
+function run(commandAndArguments: string[], cwd: string): string {
+	const result = spawnSync(
+		commandAndArguments[0] ?? '',
+		commandAndArguments.slice(1),
+		{
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe'],
+		}
+	);
 	const stderr = result.stderr.trim();
 	const stdout = result.stdout.trim();
 	if (result.status !== 0) {
 		throw new Error(
-			`${command.join(' ')} failed in ${cwd}${stderr ? `:\n${stderr}` : ''}`
+			`${commandAndArguments.join(' ')} failed in ${cwd}${stderr ? `:\n${stderr}` : ''}`
 		);
 	}
 	return stdout;
@@ -39,7 +46,7 @@ function stagePackage(sourceDirectory: string, packageName: string): string {
 	});
 	const output = run(
 		[
-			'npm',
+			command('npm'),
 			'pack',
 			'--ignore-scripts',
 			'--pack-destination',
@@ -50,26 +57,32 @@ function stagePackage(sourceDirectory: string, packageName: string): string {
 	return join(packageDirectoryForTarballs, output.split('\n').at(-1) ?? '');
 }
 
-mkdirSync(packageDirectoryForTarballs, { recursive: true });
-const dslTarball = stagePackage(join(workspaceRoot, 'packages', 'dsl'), 'dsl');
-const renderTarball = stagePackage(packageDirectory, 'render');
+try {
+	mkdirSync(packageDirectoryForTarballs, { recursive: true });
+	run([command('bun'), 'run', 'build'], join(workspaceRoot, 'packages', 'dsl'));
+	run([command('bun'), 'run', 'build'], packageDirectory);
+	const dslTarball = stagePackage(
+		join(workspaceRoot, 'packages', 'dsl'),
+		'dsl'
+	);
+	const renderTarball = stagePackage(packageDirectory, 'render');
 
-writeFileSync(
-	join(temporaryDirectory, 'package.json'),
-	JSON.stringify(
-		{
-			devDependencies: { typescript: '7.0.2' },
-			name: 'kiyora-render-consumer',
-			private: true,
-			type: 'module',
-		},
-		null,
-		2
-	)
-);
-writeFileSync(
-	join(temporaryDirectory, 'index.ts'),
-	`import { compile, render, renderToSvg, type Scene } from '@kiyora/render';
+	writeFileSync(
+		join(temporaryDirectory, 'package.json'),
+		JSON.stringify(
+			{
+				devDependencies: { typescript: '7.0.2' },
+				name: 'kiyora-render-consumer',
+				private: true,
+				type: 'module',
+			},
+			null,
+			2
+		)
+	);
+	writeFileSync(
+		join(temporaryDirectory, 'index.ts'),
+		`import { compile, render, renderToSvg, type Scene } from '@kiyora/render';
 import { parse } from '@kiyora/dsl';
 
 const scene: Scene = compile(parse('flowchart\\nA -> B').diagram);
@@ -77,43 +90,56 @@ const output = renderToSvg(scene);
 render(parse('flowchart').diagram);
 output.width satisfies number;
 `
-);
-writeFileSync(
-	join(temporaryDirectory, 'tsconfig.json'),
-	JSON.stringify(
-		{
-			compilerOptions: {
-				lib: ['ES2022'],
-				module: 'preserve',
-				moduleResolution: 'bundler',
-				noEmit: true,
-				strict: true,
-				target: 'ES2022',
+	);
+	writeFileSync(
+		join(temporaryDirectory, 'tsconfig.json'),
+		JSON.stringify(
+			{
+				compilerOptions: {
+					lib: ['ES2022'],
+					module: 'preserve',
+					moduleResolution: 'bundler',
+					noEmit: true,
+					strict: true,
+					target: 'ES2022',
+				},
+				include: ['index.ts'],
 			},
-			include: ['index.ts'],
-		},
-		null,
-		2
-	)
-);
+			null,
+			2
+		)
+	);
 
-run(
-	['npm', 'install', '--ignore-scripts', '--no-audit', '--no-fund', dslTarball],
-	temporaryDirectory
-);
-run(
-	[
-		'npm',
-		'install',
-		'--ignore-scripts',
-		'--no-audit',
-		'--no-fund',
-		renderTarball,
-	],
-	temporaryDirectory
-);
-run(
-	[join(temporaryDirectory, 'node_modules', '.bin', 'tsc'), '--noEmit'],
-	temporaryDirectory
-);
-console.log('Published package consumer verification passed.');
+	run(
+		[
+			command('npm'),
+			'install',
+			'--ignore-scripts',
+			'--no-audit',
+			'--no-fund',
+			dslTarball,
+		],
+		temporaryDirectory
+	);
+	run(
+		[
+			command('npm'),
+			'install',
+			'--ignore-scripts',
+			'--no-audit',
+			'--no-fund',
+			renderTarball,
+		],
+		temporaryDirectory
+	);
+	run(
+		[
+			join(temporaryDirectory, 'node_modules', '.bin', command('tsc')),
+			'--noEmit',
+		],
+		temporaryDirectory
+	);
+	console.log('Published package consumer verification passed.');
+} finally {
+	rmSync(temporaryDirectory, { force: true, recursive: true });
+}

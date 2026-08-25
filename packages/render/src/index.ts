@@ -21,13 +21,17 @@ import {
 
 export { compile } from './compile';
 export type { Box, Point } from './geometry';
+export * as geometry from './geometry';
 export { edgePathD, intersectRect } from './geometry';
 export type { LabelMeasureOptions, LabelMetrics } from './label';
+export * as label from './label';
 export { measureLabel, measureLabelWidth, wrapLabel } from './label';
 export type { Box as LayoutBox, Layout, LayoutOptions } from './layout';
-export { layout, layoutGraph, measureNode } from './layout';
+export * as layout from './layout';
+export { layoutGraph, measureNode } from './layout';
 export type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 export type { ShapeKind } from './shapes';
+export * as shapes from './shapes';
 export { FALLBACK_SHAPES, renderShape, roundedRectPath } from './shapes';
 export type {
 	FillStyle,
@@ -35,6 +39,7 @@ export type {
 	ResolvedFill,
 	Style,
 } from './style';
+export * as style from './style';
 export {
 	COLORS,
 	cornerRadius,
