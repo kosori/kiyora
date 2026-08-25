@@ -1,71 +1,39 @@
-import type {
-	Color,
-	Corner,
-	Diagram,
-	Direction,
-	Fill,
-	Frame,
-	Head,
-	LegendEntry,
-	Span,
-} from '@kiyora/dsl';
+import type { Diagram } from '@kiyora/dsl';
+import type { Scene } from './scene';
 
-/** A positioned, renderable node in a compiled scene. */
-export type SceneNode = {
-	color?: Color;
-	corner?: Corner;
-	fill?: Fill;
-	group?: string;
-	height: number;
-	icon?: string;
-	id: string;
-	label: string;
-	labelColor?: Color;
-	link?: string;
-	shadow?: boolean;
-	shape?: string;
-	span: Span;
-	width: number;
-	x: number;
-	y: number;
-};
-
-/** A renderable edge that refers to nodes by id. */
-export type SceneEdge = {
-	back?: boolean;
-	bidirectional?: boolean;
-	color?: Color;
-	dashed?: boolean;
-	flow?: boolean;
-	from: string;
-	head?: Head;
-	invisible?: boolean;
-	label?: string;
-	span: Span;
-	to: string;
-};
-
-/** A renderable group in a compiled scene. */
-export type SceneGroup = {
-	color?: Color;
-	frame?: Frame;
-	icon?: string;
-	id: string;
-	label: string;
-	parent?: string;
-	span: Span;
-};
-
-/** The plain, serializable output of {@link compile}. */
-export type Scene = {
-	direction?: Direction;
-	edges: SceneEdge[];
-	groups: SceneGroup[];
-	legend?: LegendEntry[];
-	nodes: SceneNode[];
-	title: string;
-};
-
+export type { Box, Point } from './geometry';
+// The package entrypoint intentionally re-exports pure modules for consumers.
+// biome-ignore lint/performance/noBarrelFile: this is the public package entrypoint.
+export { edgePathD, intersectRect } from './geometry';
+export type { LabelMeasureOptions, LabelMetrics } from './label';
+export { measureLabel, measureLabelWidth, wrapLabel } from './label';
+export type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
+export type { ShapeKind } from './shapes';
+export { FALLBACK_SHAPES, renderShape, roundedRectPath } from './shapes';
+export type {
+	FillStyle,
+	PaletteColor,
+	ResolvedFill,
+	Style,
+} from './style';
+export {
+	COLORS,
+	cornerRadius,
+	dashAttrs,
+	EDGE_FONT_SIZE,
+	EDGE_STROKE,
+	edgeColor,
+	FONT_CODE,
+	FONT_HAND,
+	INK,
+	NODE_FONT_SIZE,
+	NODE_STROKE,
+	PALETTE,
+	resolveStyle,
+	TEXT_PADDING,
+	textColorFor,
+	WHITE,
+} from './style';
 /** Options for the static SVG projection. */
 export type RenderOptions = {
 	edgeFontSize?: number;

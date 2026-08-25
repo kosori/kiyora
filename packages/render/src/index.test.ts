@@ -20,6 +20,23 @@ describe('render scaffold', () => {
 		});
 	});
 
+	test('preserves scene metadata', () => {
+		const metadataDiagram: Diagram = {
+			...diagram,
+			direction: 'up',
+			legend: [{ label: 'Ready', swatch: 'green' }],
+		};
+
+		expect(compile(metadataDiagram)).toEqual({
+			direction: 'up',
+			edges: [],
+			groups: [],
+			legend: [{ label: 'Ready', swatch: 'green' }],
+			nodes: [],
+			title: '',
+		});
+	});
+
 	test('projects an empty scene to a valid SVG with default bounds', () => {
 		expect(renderToSvg(compile(diagram))).toEqual({
 			height: 48,
