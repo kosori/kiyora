@@ -1,0 +1,6 @@
+architecture
+ title Architecture
+ direction down
+ api
+ db
+ api -> db

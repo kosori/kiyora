@@ -1,12 +1,15 @@
 import type { Diagram } from '@kiyora/dsl';
+import { compile } from './compile';
 import type { Scene } from './scene';
 
+export { compile } from './compile';
 export type { Box, Point } from './geometry';
 // The package entrypoint intentionally re-exports pure modules for consumers.
-// biome-ignore lint/performance/noBarrelFile: this is the public package entrypoint.
 export { edgePathD, intersectRect } from './geometry';
 export type { LabelMeasureOptions, LabelMetrics } from './label';
 export { measureLabel, measureLabelWidth, wrapLabel } from './label';
+export type { Box as LayoutBox, Layout, LayoutOptions } from './layout';
+export { layout, layoutGraph, measureNode } from './layout';
 export type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 export type { ShapeKind } from './shapes';
 export { FALLBACK_SHAPES, renderShape, roundedRectPath } from './shapes';
@@ -50,26 +53,6 @@ export type RenderResult = {
 	svg: string;
 	width: number;
 };
-
-/**
- * Compile a graph diagram into the empty scene scaffold.
- *
- * Layout and scene assembly are introduced by the subsequent render package
- * increments. Keeping the diagram chrome here makes the scaffold useful to
- * consumers without inventing positions for content it cannot yet render.
- */
-export function compile(diagram: Diagram): Scene {
-	return {
-		edges: [],
-		groups: [],
-		nodes: [],
-		title: diagram.title,
-		...(diagram.direction === undefined
-			? {}
-			: { direction: diagram.direction }),
-		...(diagram.legend === undefined ? {} : { legend: diagram.legend }),
-	};
-}
 
 const DEFAULT_PADDING = 24;
 const DEFAULT_FONT_FAMILY = 'Balsamiq Sans Neue, cursive';

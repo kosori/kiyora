@@ -11,7 +11,7 @@
   },
   "overrides": [
     {
-      "includes": ["packages/dsl/src/index.ts"],
+      "includes": ["packages/dsl/src/index.ts", "packages/render/src/index.ts"],
       "linter": {
         "rules": {
           "performance": {
