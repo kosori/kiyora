@@ -37,7 +37,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:published": "bun scripts/verify-published-build.ts"
   },
   "dependencies": {
     "@kiyora/dsl": "*"
