@@ -1,3 +1,4 @@
+import type { Corner } from '@kiyora/dsl';
 import { cornerRadius, INK, type Style } from './style';
 
 /** A rectangle used as the coordinate space for shape geometry. */
@@ -207,7 +208,8 @@ export function renderShape(
 	kind: ShapeKind,
 	box: Box,
 	style: Style,
-	strokeWidth: number
+	strokeWidth: number,
+	corner?: Corner
 ): string;
 export function renderShape(
 	kind: ShapeKind,
@@ -216,7 +218,8 @@ export function renderShape(
 	width: number,
 	height: number,
 	style: Style,
-	strokeWidth: number
+	strokeWidth: number,
+	corner?: Corner
 ): string;
 export function renderShape(
 	kind: ShapeKind,
@@ -225,7 +228,8 @@ export function renderShape(
 	widthOrStroke?: unknown,
 	heightOrStroke?: unknown,
 	style?: unknown,
-	strokeWidth?: unknown
+	strokeWidth?: unknown,
+	corner?: Corner
 ): string {
 	let box: Box;
 	let resolvedStyle: Style;
@@ -262,7 +266,7 @@ export function renderShape(
 	const { x, y, width, height } = box;
 	const cx = x + width / 2;
 	const cy = y + height / 2;
-	const radius = cornerRadius(width, height);
+	const radius = corner === 'sharp' ? 0 : cornerRadius(width, height);
 	switch (kind) {
 		case 'ellipse':
 			return ellipse(

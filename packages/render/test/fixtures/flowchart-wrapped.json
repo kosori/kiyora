@@ -1,0 +1,81 @@
+{
+  "edges": [],
+  "groups": [
+    {
+      "id": "services",
+      "label": "Services",
+      "span": {
+        "end": {
+          "column": 16,
+          "line": 4
+        },
+        "start": {
+          "column": 1,
+          "line": 4
+        }
+      }
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend",
+      "span": {
+        "end": {
+          "column": 16,
+          "line": 5
+        },
+        "start": {
+          "column": 1,
+          "line": 5
+        }
+      },
+      "parent": "services"
+    }
+  ],
+  "nodes": [
+    {
+      "height": 52,
+      "id": "frontend-2",
+      "label": "Frontend application with a deliberately long label",
+      "span": {
+        "end": {
+          "column": 80,
+          "line": 6
+        },
+        "start": {
+          "column": 1,
+          "line": 6
+        }
+      },
+      "width": 262.55999999999995,
+      "x": 24,
+      "y": 24,
+      "shape": "rectangle",
+      "color": "blue",
+      "corner": "rounded",
+      "group": "frontend"
+    },
+    {
+      "height": 44,
+      "id": "api",
+      "label": "api",
+      "span": {
+        "end": {
+          "column": 17,
+          "line": 8
+        },
+        "start": {
+          "column": 1,
+          "line": 8
+        }
+      },
+      "width": 72,
+      "x": 24,
+      "y": 124,
+      "shape": "rectangle",
+      "color": "green",
+      "group": "services"
+    }
+  ],
+  "title": "Flowchart",
+  "direction": "right"
+}

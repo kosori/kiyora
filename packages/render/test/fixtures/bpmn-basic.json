@@ -1,0 +1,61 @@
+{
+  "edges": [
+    {
+      "from": "start",
+      "span": {
+        "end": {
+          "column": 16,
+          "line": 4
+        },
+        "start": {
+          "column": 1,
+          "line": 4
+        }
+      },
+      "to": "process"
+    }
+  ],
+  "groups": [],
+  "nodes": [
+    {
+      "height": 44,
+      "id": "start",
+      "label": "Start",
+      "span": {
+        "end": {
+          "column": 5,
+          "line": 2
+        },
+        "start": {
+          "column": 1,
+          "line": 2
+        }
+      },
+      "width": 72,
+      "x": 24,
+      "y": 24,
+      "shape": "rectangle"
+    },
+    {
+      "height": 44,
+      "id": "process",
+      "label": "Process",
+      "span": {
+        "end": {
+          "column": 7,
+          "line": 3
+        },
+        "start": {
+          "column": 1,
+          "line": 3
+        }
+      },
+      "width": 76.96,
+      "x": 24,
+      "y": 116,
+      "shape": "rectangle"
+    }
+  ],
+  "title": "",
+  "direction": "down"
+}

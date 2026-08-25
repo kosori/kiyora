@@ -1,0 +1,11 @@
+flowchart
+ title Flowchart
+ direction right
+ group Services {
+  group Frontend {
+   frontend = "Frontend application with a deliberately long label" [blue, rounded]
+  }
+  api = API [green]
+  frontend -> api [color: red]
+ }
+ group Empty {}

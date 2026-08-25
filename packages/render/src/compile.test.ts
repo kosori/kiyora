@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type Diagram, parse, type Span } from '@kiyora/dsl';
 import { compile } from './compile';
+import type { Scene } from './scene';
 
 const span: Span = {
 	end: { column: 4, line: 1 },
@@ -57,6 +58,23 @@ describe('compile', () => {
 		expect(scene.groups.map((group) => group.id)).toEqual(['parent', 'child']);
 	});
 
+	test('covers each graph variant in contract fixtures', () => {
+		const fixtures = [
+			'architecture-basic',
+			'bpmn-basic',
+			'flowchart-wrapped',
+			'orgchart-basic',
+			'statemachine-basic',
+		] as const;
+		for (const fixture of fixtures) {
+			const source = readFileSync(join(FIXTURES, `${fixture}.kira`), 'utf8');
+			const expected = JSON.parse(
+				readFileSync(join(FIXTURES, `${fixture}.json`), 'utf8')
+			) as Scene;
+			expect(compile(parse(source).diagram)).toEqual(expected);
+		}
+	});
+
 	test('does not let groups affect node positions', () => {
 		const ungrouped = compile({
 			...diagram,
@@ -76,7 +94,7 @@ describe('compile', () => {
 		);
 		const expected = JSON.parse(
 			readFileSync(join(FIXTURES, 'architecture-basic.json'), 'utf8')
-		) as unknown;
+		) as Scene;
 		expect(compile(parse(source).diagram)).toEqual(expected);
 	});
 });

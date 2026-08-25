@@ -1,0 +1,61 @@
+{
+  "edges": [
+    {
+      "from": "ceo",
+      "span": {
+        "end": {
+          "column": 10,
+          "line": 4
+        },
+        "start": {
+          "column": 1,
+          "line": 4
+        }
+      },
+      "to": "cto"
+    }
+  ],
+  "groups": [],
+  "nodes": [
+    {
+      "height": 44,
+      "id": "ceo",
+      "label": "CEO",
+      "span": {
+        "end": {
+          "column": 3,
+          "line": 2
+        },
+        "start": {
+          "column": 1,
+          "line": 2
+        }
+      },
+      "width": 72,
+      "x": 24,
+      "y": 24,
+      "shape": "rectangle"
+    },
+    {
+      "height": 44,
+      "id": "cto",
+      "label": "CTO",
+      "span": {
+        "end": {
+          "column": 3,
+          "line": 3
+        },
+        "start": {
+          "column": 1,
+          "line": 3
+        }
+      },
+      "width": 72,
+      "x": 24,
+      "y": 116,
+      "shape": "rectangle"
+    }
+  ],
+  "title": "",
+  "direction": "down"
+}

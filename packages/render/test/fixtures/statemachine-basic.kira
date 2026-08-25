@@ -1,0 +1,6 @@
+statemachine
+Start
+Idle
+End
+Start -> Idle
+Idle -> End
