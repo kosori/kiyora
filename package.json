@@ -50,6 +50,7 @@
     "dev": "turbo run dev",
     "dev:web": "turbo run dev -F @kiyora/web --",
     "fix": "ultracite fix",
+    "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "ui-add": "turbo run ui-add"
   },

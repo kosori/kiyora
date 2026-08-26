@@ -1,0 +1,65 @@
+{
+  "name": "@kiyora/canvas",
+  "version": "0.1.0",
+  "description": "Interactive SVG canvas for editing Kiyora scenes.",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "svg",
+    "kiyora"
+  ],
+  "homepage": "https://github.com/kosori/kiyora",
+  "bugs": {
+    "url": "https://github.com/kosori/kiyora/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://www.codingcodax.dev"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kiyora/render": "*"
+  },
+  "devDependencies": {
+    "@kiyora/typescript": "*",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "happy-dom": "^18.0.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
