@@ -7,7 +7,7 @@ export type {
 export type { Editor, EditorSnapshot } from './editor';
 // Public package entry point intentionally re-exports the canvas API.
 // biome-ignore lint/performance/noBarrelFile: this is the package's public entry point.
-export { createEditor } from './editor';
+export { boxContains, createEditor, moveNodes } from './editor';
 export type { Engine } from './engine';
 export { createEngine } from './engine';
 export type { RenderSceneOptions } from './renderer';
