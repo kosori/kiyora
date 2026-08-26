@@ -22,6 +22,7 @@
     "dev": "portless kiyora vite dev",
     "generate-routes": "tsr generate",
     "preview": "vite preview",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

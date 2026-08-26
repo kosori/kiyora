@@ -8,8 +8,11 @@ export type CanvasHostProps = {
 /** Mount the interactive canvas for the app-owned Editor. */
 export function CanvasHost({ editor }: CanvasHostProps) {
 	return (
-		<div className='h-full min-h-0 min-w-0 bg-muted/20'>
+		<section
+			aria-label='Diagram canvas'
+			className='h-full min-h-0 min-w-0 bg-muted/20'
+		>
 			<Canvas className='h-full min-h-0 w-full' editor={editor} showGrid />
-		</div>
+		</section>
 	);
 }
