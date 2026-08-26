@@ -2,6 +2,11 @@ import type { Editor } from './editor';
 import { attachInput, type InputHandlers } from './input';
 import { contentOffsetForScene, renderScene } from './renderer';
 
+/** Options for the DOM binding of an Editor. */
+export type EngineOptions = {
+	showGrid?: boolean;
+};
+
 /** The DOM binding for an Editor. */
 export type Engine = {
 	destroy: () => void;
@@ -14,7 +19,11 @@ const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 600;
 
 /** Mount an interactive SVG view of an Editor into a container. */
-export function createEngine(container: HTMLElement, editor: Editor): Engine {
+export function createEngine(
+	container: HTMLElement,
+	editor: Editor,
+	options: EngineOptions = {}
+): Engine {
 	const document = container.ownerDocument;
 	const svg = document.createElementNS(SVG_NAMESPACE, 'svg');
 	svg.style.display = 'block';
@@ -52,7 +61,7 @@ export function createEngine(container: HTMLElement, editor: Editor): Engine {
 		const markup = renderScene(snapshot, {
 			contentOffset,
 			height: height > 0 ? height : DEFAULT_HEIGHT,
-			showGrid: true,
+			showGrid: options.showGrid ?? true,
 			width: width > 0 ? width : DEFAULT_WIDTH,
 		});
 		const openingEnd = markup.indexOf('>');

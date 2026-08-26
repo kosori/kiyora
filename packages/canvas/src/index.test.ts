@@ -15,7 +15,12 @@ import {
 	worldToScreen,
 	zoomAt,
 } from './index';
-import { canvasReactAdapter } from './react';
+import {
+	Canvas,
+	createEditor as createReactEditor,
+	useEditor,
+	useShape,
+} from './react';
 
 describe('canvas package scaffold', () => {
 	test('exposes the core and viewport entry points', () => {
@@ -35,7 +40,10 @@ describe('canvas package scaffold', () => {
 		expect(MAX_ZOOM).toBe(8);
 	});
 
-	test('keeps the React subpath resolvable without core React code', () => {
-		expect(canvasReactAdapter).toBe(true);
+	test('exposes the React adapter surface', () => {
+		expect(typeof Canvas).toBe('function');
+		expect(typeof createReactEditor).toBe('function');
+		expect(typeof useEditor).toBe('function');
+		expect(typeof useShape).toBe('function');
 	});
 });
