@@ -150,7 +150,7 @@ function isFullyVisible(
 	);
 }
 
-/** Reset the camera to the identity viewport. */
+/** Reset the camera to the identity viewport (zoom 1, zero translation). */
 export function resetView(_viewport: Viewport): Viewport {
 	return createViewport();
 }

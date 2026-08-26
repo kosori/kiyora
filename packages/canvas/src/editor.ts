@@ -1,7 +1,6 @@
-import type { Scene, SceneNode } from '@kiyora/render';
+import { type Scene, type SceneNode, scenePlacement } from '@kiyora/render';
 import type { Bounds, Point, Viewport } from './viewport';
 import {
-	createViewport,
 	fitToBounds as fitViewportToBounds,
 	panBy as panViewportBy,
 	resetView as resetViewport,
@@ -19,7 +18,7 @@ export type EditorSnapshot = {
 export type Editor = {
 	readonly canRedo: boolean;
 	readonly canUndo: boolean;
-	beginDrag: (id: string, point: Point) => void;
+	beginDrag: (id: string) => void;
 	drag: (dx: number, dy: number) => void;
 	endDrag: () => void;
 	fitToBounds: (
@@ -98,7 +97,7 @@ export function createEditor(initialScene?: Scene): Editor {
 		nodes: [],
 		title: '',
 	};
-	let viewport = createViewport();
+	let viewport = initialViewport(scene);
 	let selection: readonly string[] = [];
 	let nodeIndex = buildNodeIndex(scene);
 	let undoStack: Scene[] = [];
@@ -138,7 +137,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	}
 
 	const editor: Editor = {
-		beginDrag(id, _point) {
+		beginDrag(id) {
 			const node = nodeIndex.get(id);
 			if (!node) {
 				return;
@@ -267,6 +266,11 @@ export function createEditor(initialScene?: Scene): Editor {
 	}
 
 	return editor;
+}
+
+function initialViewport(scene: Scene): Viewport {
+	const placement = scenePlacement(scene);
+	return { tx: placement.x, ty: placement.y, zoom: 1 };
 }
 
 function buildNodeIndex(scene: Scene): Map<string, SceneNode> {

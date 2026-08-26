@@ -64,7 +64,7 @@ describe('renderScene', () => {
 		expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
 		expect(svg).toContain('width="360" height="240" viewBox="0 0 360 240"');
 		expect(svg).toContain(
-			'<g transform="translate(0 0) scale(1)" font-family="\'Balsamiq Sans Neue\', cursive">'
+			'<g transform="translate(4 24) scale(1)" font-family="\'Balsamiq Sans Neue\', cursive">'
 		);
 		expect(svg).toContain('data-group="group"');
 		expect(svg).toContain('data-edge="source-target"');
@@ -92,7 +92,7 @@ describe('renderScene', () => {
 		expect(svg).toContain(
 			'stroke="#4dabf7" stroke-width="1.5" stroke-dasharray="4 3"'
 		);
-		expect(svg).toContain('x="115" y="157" width="150" height="94"');
+		expect(svg).toContain('x="107" y="109" width="150" height="94"');
 	});
 
 	test('can omit the grid without omitting the background', () => {
@@ -101,7 +101,7 @@ describe('renderScene', () => {
 			showGrid: false,
 		});
 
-		expect(svg).toContain('<rect width="800" height="600" fill="#fbfcfe"/>');
+		expect(svg).toContain('<rect width="294" height="212" fill="#fbfcfe"/>');
 		expect(svg).not.toContain('fill="#c8cdd4"');
 		expect(svg).toMatchSnapshot();
 	});

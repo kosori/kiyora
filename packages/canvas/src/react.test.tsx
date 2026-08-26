@@ -112,7 +112,7 @@ describe('React canvas adapter', () => {
 			throw new Error('test scene did not include an unrelated node');
 		}
 		act(() => {
-			editor.beginDrag('two', { x: 120, y: 20 });
+			editor.beginDrag('two');
 			editor.drag(10, 0);
 			editor.endDrag();
 		});

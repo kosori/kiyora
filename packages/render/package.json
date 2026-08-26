@@ -47,6 +47,10 @@
     "./style": {
       "types": "./dist/style.d.ts",
       "default": "./dist/style.js"
+    },
+    "./projection": {
+      "types": "./dist/projection.d.ts",
+      "default": "./dist/projection.js"
     }
   },
   "main": "./dist/index.js",

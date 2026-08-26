@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene } from '@kiyora/render';
 import { boxContains, createEditor, moveNodes } from './editor';
+import { screenToWorld, worldToScreen } from './viewport';
 
 const span = {
 	end: { column: 2, line: 1 },
@@ -40,6 +41,19 @@ describe('editor', () => {
 		expect(scene.nodes[0]).toBe(first);
 	});
 
+	test('uses the initial scene placement for standalone coordinate transforms', () => {
+		const item = node('item', 100, 80);
+		const scene = { ...sceneWithNodes(item), title: 'Diagram' };
+		const editor = createEditor(scene);
+		const viewport = editor.getViewport();
+		const painted = worldToScreen(viewport, {
+			x: item.x + item.width / 2,
+			y: item.y + item.height / 2,
+		});
+
+		expect(editor.hitTest(screenToWorld(viewport, painted))).toBe(item);
+	});
+
 	test('keeps snapshot references stable for no-op changes', () => {
 		const editor = createEditor(sceneWithNodes(node('one', 0)));
 		const initial = editor.getSnapshot();
@@ -62,7 +76,7 @@ describe('editor', () => {
 			sceneWithNodes(node('one', 0), node('two', 40))
 		);
 		editor.select('one');
-		editor.beginDrag('one', { x: 10, y: 10 });
+		editor.beginDrag('one');
 		editor.drag(5, 3);
 		editor.drag(5, 3);
 		editor.endDrag();
@@ -83,7 +97,7 @@ describe('editor', () => {
 		);
 		editor.select('one');
 		editor.toggleSelect('two');
-		editor.beginDrag('two', { x: 45, y: 5 });
+		editor.beginDrag('two');
 		editor.drag(3, 4);
 		editor.endDrag();
 
@@ -96,7 +110,7 @@ describe('editor', () => {
 	test('clears redo after a new committed edit and caps history at 200 entries', () => {
 		const editor = createEditor(sceneWithNodes(node('one', 0)));
 		for (let index = 0; index < 201; index += 1) {
-			editor.beginDrag('one', { x: 0, y: 0 });
+			editor.beginDrag('one');
 			editor.drag(1, 0);
 			editor.endDrag();
 		}
@@ -110,7 +124,7 @@ describe('editor', () => {
 		expect(editor.getScene().nodes[0]?.x).toBe(1);
 		expect(editor.canRedo).toBe(true);
 
-		editor.beginDrag('one', { x: 0, y: 0 });
+		editor.beginDrag('one');
 		editor.drag(1, 0);
 		editor.endDrag();
 		expect(editor.canRedo).toBe(false);
@@ -135,7 +149,7 @@ describe('editor', () => {
 		const first = sceneWithNodes(node('one', 0));
 		const editor = createEditor(first);
 		editor.select('one');
-		editor.beginDrag('one', { x: 1, y: 1 });
+		editor.beginDrag('one');
 		editor.drag(2, 0);
 		editor.endDrag();
 		editor.panBy(20, 30);

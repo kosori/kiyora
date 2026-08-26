@@ -79,7 +79,7 @@ snapshot used by subscribers. The editor exposes:
 - `subscribe` / `getSnapshot`, `getScene`, `setScene`
 - `getViewport`, `setViewport`, `panBy`, `zoomAt`, `fitToBounds`, `resetView`
 - `hitTest`, `select`, `toggleSelect`, `getSelection`
-- `beginDrag`, `drag`, `endDrag`, `undo`, `redo`, `canUndo`, `canRedo`
+- `beginDrag(id)`, `drag`, `endDrag`, `undo`, `redo`, `canUndo`, `canRedo`
 
 Selection, viewport changes, and an in-progress drag are not history entries.
 A completed drag creates one entry, and a new edit clears the redo stack.
@@ -102,8 +102,9 @@ connect input to their own rendering loop.
 The viewport is `{ zoom, tx, ty }`. `worldToScreen` and `screenToWorld` convert
 coordinates; `panBy` and `panTo` move the camera; `zoomAt` preserves the world
 point below a screen-space anchor; `visibleWorld` reports the visible world
-rectangle; `fitToBounds` centers bounds in a screen size; and `resetView`
-returns the identity viewport. `MIN_ZOOM` is `0.05` and `MAX_ZOOM` is `8`.
+rectangle; `fitToBounds` centers bounds in a screen size; and `resetView` returns the identity viewport (zoom 1 with zero translation);
+it does not center content. Use `fitToBounds` when bounds and screen size are
+available. `MIN_ZOOM` is `0.05` and `MAX_ZOOM` is `8`.
 
 ## React adapter
 

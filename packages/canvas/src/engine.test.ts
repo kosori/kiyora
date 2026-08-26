@@ -103,8 +103,8 @@ describe('canvas engine', () => {
 		});
 		svg.dispatchEvent(wheel);
 		expect(editor.getViewport().zoom).toBe(1.2);
-		expect(editor.getViewport().tx).toBeCloseTo(-20);
-		expect(editor.getViewport().ty).toBeCloseTo(-20);
+		expect(editor.getViewport().tx).toBeCloseTo(8.8);
+		expect(editor.getViewport().ty).toBeCloseTo(8.8);
 
 		svg.dispatchEvent(
 			pointer(window, 'pointerdown', {
@@ -119,8 +119,8 @@ describe('canvas engine', () => {
 		svg.dispatchEvent(
 			pointer(window, 'pointerup', { clientX: 20, clientY: 25 })
 		);
-		expect(editor.getViewport().tx).toBeCloseTo(-10);
-		expect(editor.getViewport().ty).toBeCloseTo(-5);
+		expect(editor.getViewport().tx).toBeCloseTo(18.8);
+		expect(editor.getViewport().ty).toBeCloseTo(23.8);
 		engine.destroy();
 	});
 

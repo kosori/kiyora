@@ -1,5 +1,4 @@
 import type { Editor } from './editor';
-import type { Point } from './viewport';
 import { screenToWorld } from './viewport';
 
 const DRAG_THRESHOLD = 4;
@@ -22,8 +21,6 @@ export type InputHandlers = {
 	onChanged?: () => void;
 	/** Notify the host when a node drag starts or ends. */
 	onDragStateChange?: (dragging: boolean) => void;
-	/** World-space offset applied by the renderer before the viewport transform. */
-	worldOffset?: Point;
 };
 
 /** Attach pointer and wheel input to an SVG canvas. */
@@ -80,9 +77,7 @@ export function attachInput(
 
 		const point = localPoint(event);
 		const world = screenToWorld(editor.getViewport(), point);
-		const offset = handlers.worldOffset ?? { x: 0, y: 0 };
-		const scenePoint = { x: world.x - offset.x, y: world.y - offset.y };
-		const node = editor.hitTest(scenePoint);
+		const node = editor.hitTest(world);
 		if (node) {
 			if (event.shiftKey) {
 				editor.toggleSelect(node.id);
@@ -95,7 +90,7 @@ export function attachInput(
 				notify();
 			}
 			drag.mode = 'node';
-			editor.beginDrag(node.id, scenePoint);
+			editor.beginDrag(node.id);
 			handlers.onDragStateChange?.(true);
 			return;
 		}
