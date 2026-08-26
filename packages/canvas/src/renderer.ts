@@ -21,6 +21,7 @@ import { worldToScreen } from './viewport';
 
 /** Options for the canvas SVG projection. */
 export type RenderSceneOptions = {
+	contentOffset?: { x: number; y: number };
 	edgeFontSize?: number;
 	fontFamily?: string;
 	height?: number;
@@ -343,6 +344,22 @@ function selectionMarkup(
 		.join('');
 }
 
+/** Return the world-space offset used to keep scene content inside the SVG. */
+export function contentOffsetForScene(
+	snapshot: EditorSnapshot,
+	padding = DEFAULT_PADDING
+): { x: number; y: number } {
+	const groupBoxes = deriveGroupBoxes(snapshot.scene);
+	const bounds = contentBounds(snapshot.scene, groupBoxes);
+	return {
+		x: padding - bounds.minX,
+		y:
+			padding +
+			(snapshot.scene.title.length > 0 ? TITLE_HEIGHT : 0) -
+			bounds.minY,
+	};
+}
+
 /** Project an Editor snapshot into a complete, interactive-canvas SVG string. */
 export function renderScene(
 	snapshot: EditorSnapshot,
@@ -373,8 +390,10 @@ export function renderScene(
 	const width = options.width ?? computedWidth;
 	const height = options.height ?? computedHeight;
 	const fontFamily = escapeText(options.fontFamily ?? FONT_HAND);
-	const contentOffsetX = padding - bounds.minX;
-	const contentOffsetY = padding + (hasTitle ? TITLE_HEIGHT : 0) - bounds.minY;
+	const contentOffsetX = options.contentOffset?.x ?? padding - bounds.minX;
+	const contentOffsetY =
+		options.contentOffset?.y ??
+		padding + (hasTitle ? TITLE_HEIGHT : 0) - bounds.minY;
 	const nodeIndex = new Map(
 		snapshot.scene.nodes.map((node) => [node.id, node])
 	);

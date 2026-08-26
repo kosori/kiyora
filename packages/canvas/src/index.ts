@@ -10,6 +10,8 @@ export type { Editor, EditorSnapshot } from './editor';
 export { boxContains, createEditor, moveNodes } from './editor';
 export type { Engine } from './engine';
 export { createEngine } from './engine';
+export type { InputHandlers } from './input';
+export { attachInput } from './input';
 export type { RenderSceneOptions } from './renderer';
 export { renderScene } from './renderer';
 export type { Bounds, Point, Viewport, WorldRect } from './viewport';
