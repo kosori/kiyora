@@ -19,37 +19,59 @@ export function createViewport(): Viewport {
 	return { tx: 0, ty: 0, zoom: 1 };
 }
 
-/** Scaffold for the world-to-screen transform. */
-export function worldToScreen(_viewport: Viewport, _point: Point): Point {
-	throw new Error('worldToScreen is not implemented yet');
+/** Convert a world-space point to screen pixels. */
+export function worldToScreen(viewport: Viewport, point: Point): Point {
+	return {
+		x: point.x * viewport.zoom + viewport.tx,
+		y: point.y * viewport.zoom + viewport.ty,
+	};
 }
 
-/** Scaffold for the screen-to-world transform. */
-export function screenToWorld(_viewport: Viewport, _point: Point): Point {
-	throw new Error('screenToWorld is not implemented yet');
+/** Convert a screen-space point to world coordinates. */
+export function screenToWorld(viewport: Viewport, point: Point): Point {
+	return {
+		x: (point.x - viewport.tx) / viewport.zoom,
+		y: (point.y - viewport.ty) / viewport.zoom,
+	};
 }
 
-/** Scaffold for screen-space panning. */
-export function panBy(_viewport: Viewport, _dx: number, _dy: number): Viewport {
-	throw new Error('panBy is not implemented yet');
+/** Return a viewport panned by a screen-space delta in pixels. */
+export function panBy(viewport: Viewport, dx: number, dy: number): Viewport {
+	return { ...viewport, tx: viewport.tx + dx, ty: viewport.ty + dy };
 }
 
-/** Scaffold for positioning a world point at a screen point. */
+/** Set the camera so a world-space point sits at a screen-space point. */
 export function panTo(
-	_viewport: Viewport,
-	_world: Point,
-	_screen: Point
+	viewport: Viewport,
+	world: Point,
+	screen: Point
 ): Viewport {
-	throw new Error('panTo is not implemented yet');
+	return {
+		...viewport,
+		tx: screen.x - world.x * viewport.zoom,
+		ty: screen.y - world.y * viewport.zoom,
+	};
 }
 
-/** Scaffold for cursor-anchored zooming. */
+/**
+ * Zoom by a factor while keeping the world point under `anchor` fixed.
+ * The translation uses the effective factor after clamping the zoom.
+ */
 export function zoomAt(
-	_viewport: Viewport,
-	_anchor: Point,
-	_factor: number
+	viewport: Viewport,
+	anchor: Point,
+	factor: number
 ): Viewport {
-	throw new Error('zoomAt is not implemented yet');
+	const zoom = clamp(viewport.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+	if (zoom === viewport.zoom) {
+		return viewport;
+	}
+	const effectiveFactor = zoom / viewport.zoom;
+	return {
+		tx: anchor.x * (1 - effectiveFactor) + viewport.tx * effectiveFactor,
+		ty: anchor.y * (1 - effectiveFactor) + viewport.ty * effectiveFactor,
+		zoom,
+	};
 }
 
 /** A world-space rectangle visible through a viewport. */
@@ -60,28 +82,79 @@ export type WorldRect = {
 	y: number;
 };
 
-/** Scaffold for calculating visible world bounds. */
+/** Calculate the world-space rectangle visible through a screen viewport. */
 export function visibleWorld(
-	_viewport: Viewport,
-	_width: number,
-	_height: number
+	viewport: Viewport,
+	width: number,
+	height: number
 ): WorldRect {
-	throw new Error('visibleWorld is not implemented yet');
+	const topLeft = screenToWorld(viewport, { x: 0, y: 0 });
+	return {
+		height: height / viewport.zoom,
+		width: width / viewport.zoom,
+		x: topLeft.x,
+		y: topLeft.y,
+	};
 }
 
 /** A world-space content rectangle. */
 export type Bounds = WorldRect;
 
-/** Scaffold for fitting content to a screen size. */
+/**
+ * Fit world-space bounds into a screen size while preserving their aspect ratio.
+ * A fully visible bounds rectangle is left untouched.
+ */
 export function fitToBounds(
-	_viewport: Viewport,
-	_bounds: Bounds,
-	_size: { height: number; width: number }
+	viewport: Viewport,
+	bounds: Bounds,
+	size: { height: number; width: number }
 ): Viewport {
-	throw new Error('fitToBounds is not implemented yet');
+	if (isFullyVisible(viewport, bounds, size)) {
+		return viewport;
+	}
+
+	const boundsWidth = Math.max(0, bounds.width);
+	const boundsHeight = Math.max(0, bounds.height);
+	if (
+		boundsWidth === 0 ||
+		boundsHeight === 0 ||
+		size.width <= 0 ||
+		size.height <= 0
+	) {
+		return viewport;
+	}
+
+	const zoom = clamp(
+		Math.min(size.width / boundsWidth, size.height / boundsHeight),
+		MIN_ZOOM,
+		MAX_ZOOM
+	);
+	return {
+		tx: (size.width - bounds.width * zoom) / 2 - bounds.x * zoom,
+		ty: (size.height - bounds.height * zoom) / 2 - bounds.y * zoom,
+		zoom,
+	};
 }
 
-/** Scaffold for resetting the camera. */
+function isFullyVisible(
+	viewport: Viewport,
+	bounds: Bounds,
+	size: { height: number; width: number }
+): boolean {
+	const visible = visibleWorld(viewport, size.width, size.height);
+	return (
+		bounds.x >= visible.x &&
+		bounds.y >= visible.y &&
+		bounds.x + bounds.width <= visible.x + visible.width &&
+		bounds.y + bounds.height <= visible.y + visible.height
+	);
+}
+
+/** Reset the camera to the identity viewport. */
 export function resetView(_viewport: Viewport): Viewport {
-	throw new Error('resetView is not implemented yet');
+	return createViewport();
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+	return Math.min(maximum, Math.max(minimum, value));
 }
