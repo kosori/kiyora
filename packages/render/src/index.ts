@@ -101,7 +101,7 @@ export function renderToSvg(
 	const width = options.width ?? size.width;
 	const height = options.height ?? size.height;
 	const fontFamily = escapeText(options.fontFamily ?? FONT_HAND);
-	const contentOffsetY = padding + (hasTitle ? TITLE_HEIGHT : 0) - bounds.minY;
+	const contentOffsetY = padding + (hasTitle ? TITLE_HEIGHT : 0) - bounds.y;
 	const parts: string[] = [
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${fontFamily}"><defs>${renderDefs()}</defs>`,
 	];
@@ -109,7 +109,7 @@ export function renderToSvg(
 		parts.push(renderTitleMarkup(scene, padding, padding + 18));
 	}
 	parts.push(
-		`<g transform="translate(${padding - bounds.minX} ${contentOffsetY})">`,
+		`<g transform="translate(${padding - bounds.x} ${contentOffsetY})">`,
 		renderSceneElements(scene, groupBoxes, options),
 		'</g>'
 	);

@@ -104,17 +104,13 @@ export function renderSceneResult(
 	const hasTitle = snapshot.scene.title.length > 0;
 	const hasLegend = (snapshot.scene.legend?.length ?? 0) > 0;
 	const title = hasTitle
-		? renderTitleMarkup(
-				snapshot.scene,
-				bounds.minX,
-				bounds.minY - TITLE_HEIGHT + 18
-			)
+		? renderTitleMarkup(snapshot.scene, bounds.x, bounds.y - TITLE_HEIGHT + 18)
 		: '';
 	const legend = hasLegend
 		? renderLegendMarkup(
 				snapshot.scene,
 				height - padding - 6 - placement.y,
-				bounds.minX
+				bounds.x
 			)
 		: '';
 	const chrome =

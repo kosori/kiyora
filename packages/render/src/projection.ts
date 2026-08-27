@@ -16,7 +16,7 @@ import {
 	TEXT_PADDING,
 } from './style';
 
-export type SceneBounds = {
+type SceneBounds = {
 	maxX: number;
 	maxY: number;
 	minX: number;
@@ -53,6 +53,20 @@ function unionBounds(bounds: SceneBounds, box: Box): SceneBounds {
 		maxY: Math.max(bounds.maxY, box.y + box.height),
 		minX: Math.min(bounds.minX, box.x),
 		minY: Math.min(bounds.minY, box.y),
+	};
+}
+
+function toRect(bounds: SceneBounds): {
+	height: number;
+	width: number;
+	x: number;
+	y: number;
+} {
+	return {
+		height: bounds.maxY - bounds.minY,
+		width: bounds.maxX - bounds.minX,
+		x: bounds.minX,
+		y: bounds.minY,
 	};
 }
 
@@ -138,7 +152,7 @@ export function deriveGroupBoxes(scene: Scene): Map<string, Box> {
 export function contentBounds(
 	scene: Scene,
 	groupBoxes: Map<string, Box>
-): SceneBounds {
+): { height: number; width: number; x: number; y: number } {
 	let bounds: SceneBounds | undefined;
 	for (const node of scene.nodes) {
 		const box = boxForNode(node);
@@ -171,7 +185,7 @@ export function contentBounds(
 			y: box.y + 4,
 		});
 	}
-	return bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 };
+	return toRect(bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 });
 }
 
 function groupMarkup(group: SceneGroup, box: Box): string {
@@ -326,8 +340,8 @@ export function scenePlacement(
 	const groupBoxes = deriveGroupBoxes(scene);
 	const bounds = contentBounds(scene, groupBoxes);
 	return {
-		x: padding - bounds.minX,
-		y: padding + (scene.title.length > 0 ? TITLE_HEIGHT : 0) - bounds.minY,
+		x: padding - bounds.x,
+		y: padding + (scene.title.length > 0 ? TITLE_HEIGHT : 0) - bounds.y,
 	};
 }
 
@@ -337,8 +351,8 @@ export function sceneSize(
 ): { height: number; width: number } {
 	const groupBoxes = deriveGroupBoxes(scene);
 	const bounds = contentBounds(scene, groupBoxes);
-	const contentWidth = Math.max(0, bounds.maxX - bounds.minX);
-	const contentHeight = Math.max(0, bounds.maxY - bounds.minY);
+	const contentWidth = Math.max(0, bounds.width);
+	const contentHeight = Math.max(0, bounds.height);
 	const hasTitle = scene.title.length > 0;
 	const hasLegend = (scene.legend?.length ?? 0) > 0;
 	return {

@@ -4,11 +4,12 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from '@kiyora/ui/resizable';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CanvasHost } from './canvas-host';
 import { CodePanel } from './code-panel';
 import { parseAndCompile } from './parse-and-compile';
 import { STARTER_SOURCE } from './starter';
+import { useEditorKeyboardShortcuts } from './use-editor-keyboard-shortcuts';
 
 /** The split-pane Source editor and interactive canvas surface. */
 export function EditorPage() {
@@ -21,6 +22,14 @@ export function EditorPage() {
 		const { scene } = parseAndCompile(source);
 		editor.setScene(scene);
 	}, [editor, source]);
+
+	const isTextareaFocused = useCallback(
+		() =>
+			typeof document !== 'undefined' &&
+			document.activeElement?.tagName === 'TEXTAREA',
+		[]
+	);
+	useEditorKeyboardShortcuts(editor, { isTextareaFocused });
 
 	return (
 		<main className='h-svh min-h-0 overflow-hidden'>
