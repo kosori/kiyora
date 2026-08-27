@@ -1,27 +1,65 @@
-import { createEditor } from '@kiyora/canvas/react';
+import { createEditor, type Editor } from '@kiyora/canvas/react';
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from '@kiyora/ui/resizable';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CanvasHost } from './canvas-host';
 import { CodePanel } from './code-panel';
+import { DiagnosticsList } from './diagnostics-list';
 import { parseAndCompile } from './parse-and-compile';
+import { scrollTextareaToLine } from './scroll-textarea-to-line';
+import { selectionToLine } from './selection-to-line';
 import { STARTER_SOURCE } from './starter';
+import { useCompileShortcut } from './use-compile-shortcut';
+import { useDebouncedValue } from './use-debounced-value';
 import { useEditorKeyboardShortcuts } from './use-editor-keyboard-shortcuts';
+
+const COMPILE_DEBOUNCE_MS = 250;
 
 /** The split-pane Source editor and interactive canvas surface. */
 export function EditorPage() {
 	const [source, setSource] = useState(STARTER_SOURCE);
-	const [editor] = useState(() =>
+	const [editor] = useState<Editor>(() =>
 		createEditor(parseAndCompile(STARTER_SOURCE).scene)
 	);
+	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	// The source string the editor was last applied with. Used to skip the
+	// compile effect when neither the debounced value nor the immediate
+	// compile produced a new scene.
+	const lastCompiledSourceRef = useRef<string>(STARTER_SOURCE);
+	const debouncedSource = useDebouncedValue(source, COMPILE_DEBOUNCE_MS);
 
+	const diagnostics = useMemo(
+		() => parseAndCompile(debouncedSource).diagnostics,
+		[debouncedSource]
+	);
+
+	const applyCompile = useCallback(
+		(nextSource: string) => {
+			if (nextSource === lastCompiledSourceRef.current) {
+				return;
+			}
+			const compiled = parseAndCompile(nextSource);
+			editor.setScene(compiled.scene);
+			lastCompiledSourceRef.current = nextSource;
+		},
+		[editor]
+	);
+
+	// Live recompile on the debounced source.
 	useEffect(() => {
-		const { scene } = parseAndCompile(source);
-		editor.setScene(scene);
-	}, [editor, source]);
+		applyCompile(debouncedSource);
+	}, [applyCompile, debouncedSource]);
+
+	// Explicit compile on ⌘/Ctrl+Enter. Bypasses the debounce and applies the
+	// current source immediately, then suppresses the next debounce-driven
+	// effect by recording the source in the ref.
+	const handleExplicitCompile = useCallback(() => {
+		applyCompile(source);
+	}, [applyCompile, source]);
+	useCompileShortcut(false, handleExplicitCompile);
 
 	const isTextareaFocused = useCallback(
 		() =>
@@ -31,11 +69,33 @@ export function EditorPage() {
 	);
 	useEditorKeyboardShortcuts(editor, { isTextareaFocused });
 
+	// Selection → Source scroll: when the canvas selection changes, scroll
+	// the textarea to the originating line of the first selected node.
+	useEffect(() => {
+		let previousSelection: readonly string[] = [];
+		return editor.subscribe(() => {
+			const snapshot = editor.getSnapshot();
+			if (snapshot.selection === previousSelection) {
+				return;
+			}
+			previousSelection = snapshot.selection;
+			const line = selectionToLine(snapshot.scene, snapshot.selection);
+			scrollTextareaToLine(textareaRef.current, line);
+		});
+	}, [editor]);
+
 	return (
 		<main className='h-svh min-h-0 overflow-hidden'>
 			<ResizablePanelGroup orientation='horizontal'>
 				<ResizablePanel defaultSize='35%' minSize='20%'>
-					<CodePanel onSourceChange={setSource} source={source} />
+					<div className='flex h-full min-h-0 flex-col'>
+						<CodePanel
+							onSourceChange={setSource}
+							source={source}
+							textareaRef={textareaRef}
+						/>
+						<DiagnosticsList diagnostics={diagnostics} />
+					</div>
 				</ResizablePanel>
 				<ResizableHandle withHandle />
 				<ResizablePanel defaultSize='65%' minSize='30%'>

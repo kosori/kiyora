@@ -1,13 +1,22 @@
 import { Textarea } from '@kiyora/ui/textarea';
-import { type ChangeEvent, useCallback } from 'react';
+import { type ChangeEvent, type RefObject, useCallback } from 'react';
 
-type CodePanelProps = {
+export type CodePanelProps = {
+	/**
+	 * Optional ref pointing at the rendered `<textarea>`. The host uses this to
+	 * scroll the textarea to a line when the canvas selection changes.
+	 */
+	textareaRef?: RefObject<HTMLTextAreaElement | null>;
 	onSourceChange: (source: string) => void;
 	source: string;
 };
 
 /** The plain-text Kiyora Source editor for the editor shell. */
-export function CodePanel({ onSourceChange, source }: CodePanelProps) {
+export function CodePanel({
+	onSourceChange,
+	source,
+	textareaRef,
+}: CodePanelProps) {
 	const handleChange = useCallback(
 		(event: ChangeEvent<HTMLTextAreaElement>) =>
 			onSourceChange(event.currentTarget.value),
@@ -26,6 +35,7 @@ export function CodePanel({ onSourceChange, source }: CodePanelProps) {
 				aria-label='Kiyora Source'
 				className='min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent font-mono text-sm leading-6 shadow-none focus-visible:ring-0'
 				onChange={handleChange}
+				ref={textareaRef}
 				spellCheck={false}
 				value={source}
 			/>
