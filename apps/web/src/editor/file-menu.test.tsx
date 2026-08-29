@@ -50,12 +50,14 @@ async function flush(): Promise<void> {
 }
 
 const NOOP_DOWNLOADABLE: Downloadable = { save: () => undefined };
+const NOOP_OPENABLE = { pickFile: () => Promise.resolve(null) };
 
 describe('FileMenu', () => {
 	test('renders an accessible File trigger', async () => {
 		const handle = render(
 			createElement(FileMenu, {
 				downloadable: NOOP_DOWNLOADABLE,
+				openable: NOOP_OPENABLE,
 				source: 'architecture\ntitle A',
 				title: 'A',
 			})

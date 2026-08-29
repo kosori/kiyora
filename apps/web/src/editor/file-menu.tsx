@@ -8,36 +8,61 @@ import {
 } from '@kiyora/ui/dropdown-menu';
 import { IconChevronDown, IconFile } from '@tabler/icons-react';
 import { useCallback } from 'react';
-import { type Downloadable, downloadKira } from './io/io';
+import {
+	type Downloadable,
+	downloadKira,
+	type Openable,
+	openKira,
+} from './io/io';
 
 export type FileMenuProps = {
+	/** Where the Save Blob lands. Injected so tests can observe the download. */
+	downloadable: Downloadable;
+	/** Where the Open file picker is sourced from. Injected so tests can
+	 * observe the picker without opening a real file dialog. */
+	openable: Openable;
+	/** Optional notification fired after a successful Open. */
+	onOpen?: (source: string) => void;
+	/** Optional notification fired after a file-operation failure. */
+	onOpenError?: (message: string) => void;
 	/** Optional notification fired after a successful Save. */
 	onSave?: (source: string) => void;
 	/** The current Kiyora Source. Read at click time so the latest edit is saved. */
 	source: string;
 	/** The current Diagram title. Empty string becomes `diagram.kira` downstream. */
 	title: string;
-	/** Where the Save Blob lands. Injected so tests can observe the download. */
-	downloadable: Downloadable;
 };
 
 /**
  * The accessible top-left File dropdown for the canvas surface.
  *
- * Issue 02 only ships Save: Open and the two visual exports (SVG, PNG)
- * are reserved placeholders that exist as disabled items in the menu so
- * later increments can fill them in without re-shaping the control.
+ * Save downloads the current Source as a Kira file. Open replaces the
+ * current Source with the text read from a chosen Kira file via the
+ * injected `Openable`. The two visual exports (SVG, PNG) remain
+ * reserved placeholders that later increments will replace without
+ * changing the control's shape.
  */
 export function FileMenu({
+	downloadable,
+	onOpen,
+	onOpenError,
 	onSave,
+	openable,
 	source,
 	title,
-	downloadable,
 }: FileMenuProps) {
 	const handleSave = useCallback(() => {
 		downloadKira({ downloadable, source, title });
 		onSave?.(source);
 	}, [downloadable, onSave, source, title]);
+
+	const handleOpen = useCallback(() => {
+		openKira({
+			onError: (message) => onOpenError?.(message),
+			onSource: (next) => onOpen?.(next),
+			openable,
+		});
+	}, [onOpen, onOpenError, openable]);
 
 	return (
 		<DropdownMenu>
@@ -57,7 +82,10 @@ export function FileMenu({
 					<span>Save</span>
 					<DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
 				</DropdownMenuItem>
-				<ReservedFileMenuItem label='Open' reservedFor='open' shortcut='⌘O' />
+				<DropdownMenuItem data-file-action='open' onClick={handleOpen}>
+					<span>Open</span>
+					<DropdownMenuShortcut>⌘O</DropdownMenuShortcut>
+				</DropdownMenuItem>
 				<ReservedFileMenuItem label='Export SVG' reservedFor='export-svg' />
 				<ReservedFileMenuItem label='Export PNG' reservedFor='export-png' />
 			</DropdownMenuContent>
@@ -67,14 +95,14 @@ export function FileMenu({
 
 type ReservedFileMenuItemProps = {
 	label: string;
-	reservedFor: 'export-png' | 'export-svg' | 'open';
+	reservedFor: 'export-png' | 'export-svg';
 	shortcut?: string;
 };
 
 /**
  * A disabled menu item that names a future File action. Reserving the
  * slot now keeps the control's shape stable across increments: each
- * later issue (Open, Export SVG, Export PNG) replaces one of these
+ * later issue (Export SVG, Export PNG) replaces one of these
  * placeholders with a live item without changing the menu's structure.
  */
 function ReservedFileMenuItem({

@@ -8,7 +8,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CanvasHost } from './canvas-host';
 import { CodePanel } from './code-panel';
 import { DiagnosticsList } from './diagnostics-list';
-import { browserDownloadable, type Downloadable } from './io/io';
+import { FileStatus } from './file-status';
+import {
+	browserDownloadable,
+	browserOpenable,
+	type Downloadable,
+	downloadKira,
+	type Openable,
+	openKira,
+} from './io/io';
 import { parseAndCompile } from './parse-and-compile';
 import { scrollTextareaToLine } from './scroll-textarea-to-line';
 import { selectionToLine } from './selection-to-line';
@@ -17,8 +25,12 @@ import { STARTER_SOURCE } from './starter';
 import { useCompileShortcut } from './use-compile-shortcut';
 import { useDebouncedValue } from './use-debounced-value';
 import { useEditorKeyboardShortcuts } from './use-editor-keyboard-shortcuts';
+import { useFileShortcut } from './use-file-shortcut';
 
 const COMPILE_DEBOUNCE_MS = 250;
+
+/** Static shortcut hints shown in the code-panel footer. */
+const FILE_SHORTCUTS = ['⌘S Save', '⌘O Open'] as const;
 
 /**
  * The split-pane Source editor and interactive canvas surface.
@@ -32,6 +44,7 @@ export function EditorPage() {
 	return (
 		<EditorPageSurface
 			downloadable={useMemo(browserDownloadable, [])}
+			openable={useMemo(browserOpenable, [])}
 			storage={useMemo(browserSourceStorage, [])}
 		/>
 	);
@@ -40,6 +53,9 @@ export function EditorPage() {
 export type EditorPageSurfaceProps = {
 	/** Where the Save Blob lands. Injected so tests can observe the download. */
 	downloadable: Downloadable;
+	/** Where the Open file picker is sourced from. Injected so tests can
+	 * observe the picker without opening a real browser dialog. */
+	openable: Openable;
 	storage: SourceStorage;
 };
 
@@ -48,10 +64,13 @@ export type EditorPageSurfaceProps = {
  * storage so the editor-page tests can replace the browser boundary with
  * a controlled fake and observe initial fallback, restore, and immediate
  * persistence without touching `localStorage`. The injected `Downloadable`
- * is the only path that can hand a Blob to a real browser download.
+ * is the only path that can hand a Blob to a real browser download, and
+ * the injected `Openable` is the only path that can prompt the user for
+ * a Kira file.
  */
 export function EditorPageSurface({
 	downloadable,
+	openable,
 	storage,
 }: EditorPageSurfaceProps) {
 	const initialSource = storage.load() ?? STARTER_SOURCE;
@@ -59,6 +78,7 @@ export function EditorPageSurface({
 	const [editor] = useState<Editor>(() =>
 		createEditor(parseAndCompile(initialSource).scene)
 	);
+	const [fileError, setFileError] = useState<string | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	// The source string the editor was last applied with. Used to skip the
 	// compile effect when neither the debounced value nor the immediate
@@ -120,6 +140,44 @@ export function EditorPageSurface({
 	);
 	useEditorKeyboardShortcuts(editor, { isTextareaFocused });
 
+	// Save: download the current Source. Read at click time so the latest
+	// edit is what leaves the browser.
+	const handleSave = useCallback(() => {
+		downloadKira({ downloadable, source, title: currentTitle });
+	}, [downloadable, source, currentTitle]);
+
+	// Open: ask the injected Openable for a Kira file. The page replaces
+	// Source when readKiraText resolves and immediately compiles a new
+	// Scene — Open is a structural replacement, not a text edit, so it
+	// must not wait for the live-compile debounce. An admission failure
+	// surfaces as a footer error and leaves Source and Scene untouched.
+	const handleOpen = useCallback(
+		(nextSource: string) => {
+			setSource(nextSource);
+			applyCompile(nextSource);
+			setFileError(null);
+		},
+		[applyCompile]
+	);
+	const handleOpenError = useCallback((message: string) => {
+		setFileError(message);
+	}, []);
+	const handleDismissFileError = useCallback(() => {
+		setFileError(null);
+	}, []);
+
+	useFileShortcut({
+		isTextareaFocused,
+		onOpen: () => {
+			openKira({
+				onError: handleOpenError,
+				onSource: handleOpen,
+				openable,
+			});
+		},
+		onSave: handleSave,
+	});
+
 	// Selection → Source scroll: when the canvas selection changes, scroll
 	// the textarea to the originating line of the first selected node.
 	useEffect(() => {
@@ -146,6 +204,11 @@ export function EditorPageSurface({
 							textareaRef={textareaRef}
 						/>
 						<DiagnosticsList diagnostics={diagnostics} />
+						<FileStatus
+							errorMessage={fileError}
+							onDismiss={handleDismissFileError}
+							shortcuts={FILE_SHORTCUTS}
+						/>
 					</div>
 				</ResizablePanel>
 				<ResizableHandle withHandle />
@@ -153,6 +216,10 @@ export function EditorPageSurface({
 					<CanvasHost
 						downloadable={downloadable}
 						editor={editor}
+						onOpen={handleOpen}
+						onOpenError={handleOpenError}
+						onSave={handleSave}
+						openable={openable}
 						source={source}
 						title={currentTitle}
 					/>

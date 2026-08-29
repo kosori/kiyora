@@ -2,7 +2,7 @@ import { Canvas, type Editor } from '@kiyora/canvas/react';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { FileMenu } from './file-menu';
 import { type FitContainerSize, fitEditorToScene } from './fit-editor-to-scene';
-import type { Downloadable } from './io/io';
+import type { Downloadable, Openable } from './io/io';
 import { Toolbar, type ToolbarContainerSize } from './toolbar';
 
 export type CanvasHostProps = {
@@ -12,8 +12,16 @@ export type CanvasHostProps = {
 	editor: Editor;
 	/** Measure the canvas host container. Defaults to the section's rect. */
 	getContainerSize?: () => ToolbarContainerSize;
+	/** Fired after a successful Open replacement of the current Source. */
+	onOpen?: (source: string) => void;
+	/** Fired when an Open attempt fails (rejected extension, oversized,
+	 * unreadable, or any other admission error). */
+	onOpenError?: (message: string) => void;
 	/** Fired after a successful Save. */
 	onSave?: (source: string) => void;
+	/** Where the Open file picker is sourced from. The host owns the
+	 * I/O seam so the page never has to know about browser pickers. */
+	openable: Openable;
 	/** The current Kiyora Source. Read at Save click time so the latest
 	 * edit is what leaves the browser. */
 	source: string;
@@ -26,7 +34,10 @@ export function CanvasHost({
 	downloadable,
 	editor,
 	getContainerSize,
+	onOpen,
+	onOpenError,
 	onSave,
+	openable,
 	source,
 	title,
 }: CanvasHostProps) {
@@ -51,7 +62,10 @@ export function CanvasHost({
 			<div className='pointer-events-auto absolute top-3 left-3 z-10'>
 				<FileMenu
 					downloadable={downloadable}
+					onOpen={onOpen}
+					onOpenError={onOpenError}
 					onSave={onSave}
+					openable={openable}
 					source={source}
 					title={title}
 				/>

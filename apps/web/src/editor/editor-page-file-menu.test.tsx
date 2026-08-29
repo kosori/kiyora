@@ -52,13 +52,18 @@ type RenderHandle = {
 
 function renderEditor(
 	storage: SourceStorage,
-	downloadable: Downloadable
+	downloadable: Downloadable,
+	openable: {
+		pickFile: () => Promise<File | null>;
+	} = { pickFile: () => Promise.resolve(null) }
 ): RenderHandle {
 	const { d } = withHappyDom();
 	const container = d.createElement('div');
 	d.body.append(container);
 	const root = createRoot(container as unknown as Element);
-	root.render(createElement(EditorPageSurface, { downloadable, storage }));
+	root.render(
+		createElement(EditorPageSurface, { downloadable, openable, storage })
+	);
 	return {
 		container,
 		root,

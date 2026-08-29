@@ -1,11 +1,15 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import {
 	browserDownloadable,
+	browserOpenable,
 	downloadKira,
 	FILENAME_EXTENSION,
 	FILENAME_FALLBACK,
 	kiraFilename,
+	MAX_KIRA_BYTES,
+	openKira,
 	REQUIRED_MIME_TYPE,
+	readKiraText,
 } from './io';
 
 describe('kiraFilename', () => {
@@ -93,5 +97,166 @@ describe('browserDownloadable', () => {
 	test('returns an object whose save method is a function', () => {
 		const downloadable = browserDownloadable();
 		expect(typeof downloadable.save).toBe('function');
+	});
+});
+
+class FakeFile {
+	name: string;
+	size: number;
+	type: string;
+	private readonly contents: string;
+	constructor(contents: string, name: string, type = 'text/plain') {
+		this.contents = contents;
+		this.name = name;
+		this.size = contents.length;
+		this.type = type;
+	}
+	text(): Promise<string> {
+		return Promise.resolve(this.contents);
+	}
+}
+
+describe('readKiraText', () => {
+	test('returns the file text for a .kira file under the size limit', async () => {
+		const file = new FakeFile('architecture\ntitle X', 'pipeline.kira');
+
+		const text = await readKiraText(file as unknown as File);
+
+		expect(text).toBe('architecture\ntitle X');
+	});
+
+	test('treats the extension check as case-insensitive', async () => {
+		const file = new FakeFile('flowchart\nA -> B', 'pipeline.KIRA');
+
+		await expect(readKiraText(file as unknown as File)).resolves.toBe(
+			'flowchart\nA -> B'
+		);
+	});
+
+	test('rejects files whose extension is not .kira', async () => {
+		const file = new FakeFile('flowchart\nA -> B', 'diagram.txt');
+
+		await expect(readKiraText(file as unknown as File)).rejects.toThrow(
+			/not a \.kira file/i
+		);
+	});
+
+	test('rejects files larger than the 1 MiB limit', async () => {
+		const big = 'x'.repeat(MAX_KIRA_BYTES + 1);
+		const file = new FakeFile(big, 'huge.kira');
+
+		await expect(readKiraText(file as unknown as File)).rejects.toThrow(
+			/too large/i
+		);
+	});
+
+	test('accepts a file of exactly the size limit', async () => {
+		const exact = 'x'.repeat(MAX_KIRA_BYTES);
+		const file = new FakeFile(exact, 'exact.kira');
+
+		await expect(readKiraText(file as unknown as File)).resolves.toBe(exact);
+	});
+
+	test('propagates the underlying reader error when the file cannot be read', async () => {
+		class BrokenFile {
+			name = 'broken.kira';
+			size = 10;
+			type = 'text/plain';
+			text(): Promise<string> {
+				return Promise.reject(new Error('disk on fire'));
+			}
+		}
+
+		await expect(
+			readKiraText(new BrokenFile() as unknown as File)
+		).rejects.toThrow(/disk on fire/);
+	});
+});
+
+describe('openKira', () => {
+	test('reads the chosen file and forwards its text to onSource', async () => {
+		const file = new FakeFile('architecture\ntitle Opened', 'opened.kira');
+		const openable = {
+			pickFile: mock(() => Promise.resolve(file as unknown as File)),
+		};
+		const onSource = mock((_source: string) => undefined);
+		const onError = mock((_message: string) => undefined);
+
+		await openKira({ onError, onSource, openable });
+
+		expect(openable.pickFile).toHaveBeenCalledTimes(1);
+		expect(onSource).toHaveBeenCalledWith('architecture\ntitle Opened');
+		expect(onError).not.toHaveBeenCalled();
+	});
+
+	test('does nothing when the picker is cancelled (no file chosen)', async () => {
+		const openable = { pickFile: mock(() => Promise.resolve(null)) };
+		const onSource = mock((_source: string) => undefined);
+		const onError = mock((_message: string) => undefined);
+
+		await openKira({ onError, onSource, openable });
+
+		expect(onSource).not.toHaveBeenCalled();
+		expect(onError).not.toHaveBeenCalled();
+	});
+
+	test('routes wrong-extension failures through onError with a concise message', async () => {
+		const file = new FakeFile('flowchart\nA -> B', 'diagram.txt');
+		const openable = {
+			pickFile: mock(() => Promise.resolve(file as unknown as File)),
+		};
+		const onSource = mock((_source: string) => undefined);
+		const onError = mock((_message: string) => undefined);
+
+		await openKira({ onError, onSource, openable });
+
+		expect(onSource).not.toHaveBeenCalled();
+		expect(onError).toHaveBeenCalledTimes(1);
+		expect(onError.mock.calls[0]?.[0]).toMatch(/not a \.kira file/i);
+	});
+
+	test('routes oversized files through onError and leaves Source untouched', async () => {
+		const big = 'x'.repeat(MAX_KIRA_BYTES + 1);
+		const file = new FakeFile(big, 'huge.kira');
+		const openable = {
+			pickFile: mock(() => Promise.resolve(file as unknown as File)),
+		};
+		const onSource = mock((_source: string) => undefined);
+		const onError = mock((_message: string) => undefined);
+
+		await openKira({ onError, onSource, openable });
+
+		expect(onSource).not.toHaveBeenCalled();
+		expect(onError.mock.calls[0]?.[0]).toMatch(/too large/i);
+	});
+
+	test('routes read failures through onError', async () => {
+		class BrokenFile {
+			name = 'broken.kira';
+			size = 4;
+			type = 'text/plain';
+			text(): Promise<string> {
+				return Promise.reject(new Error('read fail'));
+			}
+		}
+		const openable = {
+			pickFile: mock(() =>
+				Promise.resolve(new BrokenFile() as unknown as File)
+			),
+		};
+		const onSource = mock((_source: string) => undefined);
+		const onError = mock((_message: string) => undefined);
+
+		await openKira({ onError, onSource, openable });
+
+		expect(onSource).not.toHaveBeenCalled();
+		expect(onError.mock.calls[0]?.[0]).toMatch(/read fail/);
+	});
+});
+
+describe('browserOpenable', () => {
+	test('returns an object whose pickFile method is a function', () => {
+		const openable = browserOpenable();
+		expect(typeof openable.pickFile).toBe('function');
 	});
 });
