@@ -47,6 +47,7 @@ describe('CanvasHost', () => {
 				createElement(CanvasHost, {
 					downloadable: { save: () => undefined },
 					editor,
+					fontsReady: true,
 					getContainerSize: () => ({ height: 480, width: 640 }),
 					openable: { pickFile: () => Promise.resolve(null) },
 					source: '',
@@ -83,6 +84,7 @@ describe('CanvasHost', () => {
 				createElement(CanvasHost, {
 					downloadable: { save: () => undefined },
 					editor,
+					fontsReady: true,
 					getContainerSize: () => ({ height: 480, width: 640 }),
 					openable: { pickFile: () => Promise.resolve(null) },
 					source: '',
@@ -134,6 +136,7 @@ describe('CanvasHost', () => {
 				createElement(CanvasHost, {
 					downloadable: { save: () => undefined },
 					editor,
+					fontsReady: true,
 					getContainerSize: () => ({ height: 480, width: 640 }),
 					openable: { pickFile: () => Promise.resolve(null) },
 					source: '',

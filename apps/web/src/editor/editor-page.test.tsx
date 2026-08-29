@@ -3,11 +3,14 @@ import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { EditorPageSurface } from './editor-page';
 import type { SourceStorage } from './source-storage';
+import { EXPORT_FONTS_FIXTURE } from './test-fixtures';
 import { withHappyDom } from './test-happy-dom';
 
 (
 	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
+
+const EXPORT_FONTS = EXPORT_FONTS_FIXTURE;
 
 function makeFakeStorage(seed: string | null = null): SourceStorage & {
 	saved: string[];
@@ -88,7 +91,12 @@ function renderEditor(
 	const root = createRoot(container as unknown as Element);
 	act(() => {
 		root.render(
-			createElement(EditorPageSurface, { downloadable, openable, storage })
+			createElement(EditorPageSurface, {
+				downloadable,
+				fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
+				openable,
+				storage,
+			})
 		);
 	});
 	return {

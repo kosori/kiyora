@@ -2,19 +2,25 @@
  * The web-only I/O boundary for the editor's File control.
  *
  * Save downloads the current Source as a Kira file. Open replaces the
- * current Source from a chosen Kira file. The boundary owns the filename
- * policy, the Kira MIME type, the file-admission rules, and the DOM
- * plumbing (anchor download, object URL lifecycle, hidden file input)
- * so the editor page never touches `Blob`/`URL`/`document`/`File`
- * directly. Tests inject fakes to observe what would have happened
- * without the browser acting on it.
+ * current Source from a chosen Kira file. Export SVG hands a
+ * self-contained copy of the current Scene to the browser as a portable
+ * `.svg` download, embedding the licensed Kiyora typography so the
+ * artifact renders consistently outside the app.
  *
- * SVG export, PNG export, font readiness, and SVG-to-PNG rasterization
- * belong to later increments; the seam here exists so they have a
- * single, well-defined place to plug into.
+ * The boundary owns the filename policy, the MIME types, the
+ * file-admission rules, font readiness, and the DOM plumbing (anchor
+ * download, object URL lifecycle, hidden file input) so the editor page
+ * never touches `Blob`/`URL`/`document`/`File` directly. Tests inject
+ * fakes to observe what would have happened without the browser acting
+ * on it.
+ *
+ * PNG export and SVG-to-PNG rasterization belong to a later increment;
+ * the seam here exists so they have a single, well-defined place to
+ * plug into.
  */
 
 import { slugify } from '@kiyora/dsl';
+import { renderToSvg, type Scene } from '@kiyora/render';
 
 /** The agreed fallback base name when the current Diagram has no usable title. */
 export const FILENAME_FALLBACK = 'diagram';
@@ -219,4 +225,197 @@ export function browserDownloadable(): Downloadable {
 			queueMicrotask(() => URL.revokeObjectURL(url));
 		},
 	};
+}
+
+/** The extension used by Kiyora SVG exports. */
+export const SVG_EXTENSION = 'svg';
+
+/** The MIME type advertised for downloaded Kiyora SVG exports. */
+export const SVG_MIME_TYPE = 'image/svg+xml;charset=utf-8';
+
+/**
+ * Turn a Diagram title into a stable SVG download filename.
+ *
+ * Mirrors `kiraFilename`'s policy: the DSL's existing slug behavior
+ * derives the base name; an unusable title falls back to `diagram.svg`
+ * so SVG export always works.
+ */
+export function svgFilename(title: string): string {
+	const trimmed = title.trim();
+	if (trimmed.length === 0) {
+		return `${FILENAME_FALLBACK}.${SVG_EXTENSION}`;
+	}
+	return `${slugify(trimmed)}.${SVG_EXTENSION}`;
+}
+
+/** A font face the SVG export embeds as a base64 data-URI @font-face rule. */
+export type FontBytes = {
+	/** Raw bytes the SVG embeds as `data:<mimeType>;base64,…`. */
+	bytes: Uint8Array;
+	/** MIME type recorded in the data URI (e.g. `font/woff2`). */
+	mimeType: string;
+};
+
+/** The two faces the renderer currently uses: regular and bold. */
+export type ExportFonts = {
+	bold: FontBytes;
+	regular: FontBytes;
+};
+
+/**
+ * The family registered in the embedded `<style>` block. Must match
+ * the family the renderer, the live editor canvas, and the
+ * application CSS register so the export renders with the same shapes
+ * as the editor.
+ */
+export const SVG_EXPORT_FONT_FAMILY = 'Balsamiq Sans Neue';
+
+/**
+ * Inject the Kiyora typography into a rendered SVG so it remains
+ * self-contained when opened outside the app.
+ *
+ * The result embeds one `<style>` element right after the opening
+ * `<svg>` tag declaring the family with `data:` URIs for each provided
+ * face. The renderer already references the family name on the root
+ * `<svg>` element, so the rest of the SVG picks up the embedded faces
+ * without further rewriting.
+ */
+export function embedFontsInSvg(svg: string, fonts: ExportFonts): string {
+	const regularUri = fontDataUri(fonts.regular);
+	const boldUri = fontDataUri(fonts.bold);
+	const regularFormat = fontFormat(fonts.regular);
+	const boldFormat = fontFormat(fonts.bold);
+	const styleBlock =
+		`<style>@font-face{font-family:'${SVG_EXPORT_FONT_FAMILY}';font-style:normal;font-weight:400;src:url(${regularUri}) format('${regularFormat}');}` +
+		`@font-face{font-family:'${SVG_EXPORT_FONT_FAMILY}';font-style:normal;font-weight:700;src:url(${boldUri}) format('${boldFormat}');}</style>`;
+	return svg.replace(/(<svg\b[^>]*>)/, `$1${styleBlock}`);
+}
+
+/** Render a FontBytes payload as a CSS `data:` URL. */
+function fontDataUri(font: FontBytes): string {
+	return `data:${font.mimeType};base64,${bytesToBase64(font.bytes)}`;
+}
+
+/** Map a font MIME type to the matching `format('…')` token. */
+function fontFormat(font: FontBytes): string {
+	if (font.mimeType === 'font/woff2') {
+		return 'woff2';
+	}
+	if (font.mimeType === 'font/woff') {
+		return 'woff';
+	}
+	if (
+		font.mimeType === 'font/ttf' ||
+		font.mimeType === 'application/x-font-ttf'
+	) {
+		return 'truetype';
+	}
+	if (
+		font.mimeType === 'font/otf' ||
+		font.mimeType === 'application/x-font-otf'
+	) {
+		return 'opentype';
+	}
+	return 'woff2';
+}
+
+/** Base64-encode a byte array without depending on Node-only helpers. */
+function bytesToBase64(bytes: Uint8Array): string {
+	// `btoa` exists on every modern browser; the byte view is encoded
+	// via `String.fromCharCode` so non-ASCII bytes survive the trip.
+	let binary = '';
+	for (const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+	return btoa(binary);
+}
+
+/**
+ * Project the current Scene into a self-contained SVG and hand it to
+ * the Downloadable.
+ *
+ * The export passes the Scene through the renderer's canonical static
+ * projection so it matches the geometry, title, legend, escaping, and
+ * bounds the renderer tests already lock down. The result then gets the
+ * Kiyora typography embedded as `data:` URI `@font-face` rules so the
+ * artifact looks correct outside the app, and is handed to the browser
+ * download boundary with the agreed title-derived filename and MIME
+ * type.
+ */
+export function downloadSvg(options: {
+	downloadable: Downloadable;
+	/** The current Scene to project. Caller is responsible for flushing
+	 * any pending Source compile before taking this snapshot so the
+	 * export reflects edits the user has just typed. */
+	scene: Scene;
+	/** The current Diagram title, used for the filename. */
+	title: string;
+	/** The two faces the renderer needs so the export is self-contained. */
+	fonts: ExportFonts;
+}): void {
+	const { downloadable, scene, title, fonts } = options;
+	const { svg } = renderToSvg(scene);
+	const selfContained = embedFontsInSvg(svg, fonts);
+	const filename = svgFilename(title);
+	const blob = new Blob([selfContained], { type: SVG_MIME_TYPE });
+	downloadable.save({ blob, filename });
+}
+
+/**
+ * A promise that resolves once the Kiyora font faces are ready to use,
+ * carrying the bytes the SVG export embeds.
+ *
+ * The editor disables Export SVG and Export PNG while this promise is
+ * pending, so a disabled action is observable as "preparing fonts". A
+ * rejection is treated as a permanent failure: the actions re-enable
+ * and a file-operation error surfaces on attempted export.
+ */
+export type FontReadiness = {
+	/** Resolves with the loaded faces; rejects when one cannot load. */
+	ready: Promise<ExportFonts>;
+};
+
+/**
+ * Browser-side font readiness: load the public `*.woff2` files in
+ * parallel and resolve once they, and the `FontFaceSet`, are ready.
+ *
+ * The CSS `@font-face` rules in the application stylesheet point at
+ * the same URLs, so the browser only fetches each face once: the same
+ * HTTP request that primes the FontFaceSet also feeds the bytes the
+ * export embeds.
+ */
+export function browserFontReadiness(): FontReadiness {
+	return {
+		ready: (async () => {
+			if (typeof document === 'undefined') {
+				throw new Error('Font readiness requires a browser.');
+			}
+			const [regular, bold] = await Promise.all([
+				fetchBytes('/fonts/balsamiq-sans-neue-regular.woff2'),
+				fetchBytes('/fonts/balsamiq-sans-neue-bold.woff2'),
+			]);
+			// Nudge the browser to load the faces synchronously with the
+			// fetch above so the live canvas and any first paint using
+			// the family do not stall behind the bytes-arriving event.
+			await Promise.all([
+				document.fonts.load(`400 16px "${SVG_EXPORT_FONT_FAMILY}"`),
+				document.fonts.load(`700 16px "${SVG_EXPORT_FONT_FAMILY}"`),
+			]);
+			await document.fonts.ready;
+			return {
+				bold: { bytes: bold, mimeType: 'font/woff2' },
+				regular: { bytes: regular, mimeType: 'font/woff2' },
+			};
+		})(),
+	};
+}
+
+/** Fetch a binary URL as a `Uint8Array`. */
+async function fetchBytes(url: string): Promise<Uint8Array> {
+	const response = await fetch(url);
+	if (!response.ok) {
+		throw new Error(`Failed to load ${url} (${response.status}).`);
+	}
+	const buffer = await response.arrayBuffer();
+	return new Uint8Array(buffer);
 }

@@ -11,9 +11,12 @@ import { DiagnosticsList } from './diagnostics-list';
 import { FileStatus } from './file-status';
 import {
 	browserDownloadable,
+	browserFontReadiness,
 	browserOpenable,
 	type Downloadable,
 	downloadKira,
+	downloadSvg,
+	type FontReadiness,
 	type Openable,
 	openKira,
 } from './io/io';
@@ -26,6 +29,7 @@ import { useCompileShortcut } from './use-compile-shortcut';
 import { useDebouncedValue } from './use-debounced-value';
 import { useEditorKeyboardShortcuts } from './use-editor-keyboard-shortcuts';
 import { useFileShortcut } from './use-file-shortcut';
+import { useFontReadiness } from './use-font-readiness';
 
 const COMPILE_DEBOUNCE_MS = 250;
 
@@ -44,6 +48,7 @@ export function EditorPage() {
 	return (
 		<EditorPageSurface
 			downloadable={useMemo(browserDownloadable, [])}
+			fontReadiness={useMemo(browserFontReadiness, [])}
 			openable={useMemo(browserOpenable, [])}
 			storage={useMemo(browserSourceStorage, [])}
 		/>
@@ -53,6 +58,9 @@ export function EditorPage() {
 export type EditorPageSurfaceProps = {
 	/** Where the Save Blob lands. Injected so tests can observe the download. */
 	downloadable: Downloadable;
+	/** A font-readiness observable whose `ready` Promise resolves once
+	 * the SVG export has the bytes it needs to embed the Kiyora family. */
+	fontReadiness: FontReadiness;
 	/** Where the Open file picker is sourced from. Injected so tests can
 	 * observe the picker without opening a real browser dialog. */
 	openable: Openable;
@@ -66,10 +74,12 @@ export type EditorPageSurfaceProps = {
  * persistence without touching `localStorage`. The injected `Downloadable`
  * is the only path that can hand a Blob to a real browser download, and
  * the injected `Openable` is the only path that can prompt the user for
- * a Kira file.
+ * a Kira file. The injected `FontReadiness` controls when the Export
+ * SVG menu item becomes available.
  */
 export function EditorPageSurface({
 	downloadable,
+	fontReadiness,
 	openable,
 	storage,
 }: EditorPageSurfaceProps) {
@@ -116,6 +126,27 @@ export function EditorPageSurface({
 		applyCompile(debouncedSource);
 	}, [applyCompile, debouncedSource]);
 
+	// Subscribe to the injected font readiness observable. The Export
+	// SVG item stays disabled until the promise resolves and exposes
+	// the bytes the boundary embeds. A rejection re-enables the action
+	// and surfaces a failure message that the editor routes through
+	// the file-status footer.
+	const {
+		failure: fontFailure,
+		fonts: exportFonts,
+		ready: fontsReady,
+	} = useFontReadiness(fontReadiness);
+
+	// A persistent font-preparation failure becomes a file-operation
+	// error so the user sees the actionable cause. We surface it once
+	// per failure via an effect; subsequent renders with the same
+	// failure message do not re-publish the error.
+	useEffect(() => {
+		if (fontFailure) {
+			setFileError(fontFailure);
+		}
+	}, [fontFailure]);
+
 	// Persist every Source edit immediately, ahead of the compile debounce
 	// and any file download. This is the single Source of truth: a later
 	// visit or a refresh restores the latest edit, including edits that
@@ -145,6 +176,46 @@ export function EditorPageSurface({
 	const handleSave = useCallback(() => {
 		downloadKira({ downloadable, source, title: currentTitle });
 	}, [downloadable, source, currentTitle]);
+
+	// Export SVG: flush the latest Source through the parse-and-compile
+	// boundary before snapshotting, then project the current Scene
+	// (including canvas-only placement edits when Source has not
+	// changed). The handler is a no-op while fonts are preparing; the
+	// menu disables the action and an accessible label explains why.
+	// When the font readiness rejected, the action is re-enabled and
+	// a click surfaces the rejection message through the file-status
+	// footer instead of silently failing.
+	const handleExportSvg = useCallback(() => {
+		if (!exportFonts) {
+			if (fontFailure) {
+				setFileError(fontFailure);
+			}
+			return;
+		}
+		applyCompile(source);
+		try {
+			downloadSvg({
+				downloadable,
+				fonts: exportFonts,
+				scene: editor.getScene(),
+				title: currentTitle,
+			});
+		} catch (cause) {
+			const message =
+				cause instanceof Error
+					? cause.message
+					: 'Failed to export the diagram as SVG.';
+			setFileError(message);
+		}
+	}, [
+		applyCompile,
+		currentTitle,
+		downloadable,
+		editor,
+		exportFonts,
+		fontFailure,
+		source,
+	]);
 
 	// Open: ask the injected Openable for a Kira file. The page replaces
 	// Source when readKiraText resolves and immediately compiles a new
@@ -216,6 +287,8 @@ export function EditorPageSurface({
 					<CanvasHost
 						downloadable={downloadable}
 						editor={editor}
+						fontsReady={fontsReady}
+						onExportSvg={handleExportSvg}
 						onOpen={handleOpen}
 						onOpenError={handleOpenError}
 						onSave={handleSave}

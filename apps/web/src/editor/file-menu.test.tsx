@@ -57,6 +57,7 @@ describe('FileMenu', () => {
 		const handle = render(
 			createElement(FileMenu, {
 				downloadable: NOOP_DOWNLOADABLE,
+				fontsReady: true,
 				openable: NOOP_OPENABLE,
 				source: 'architecture\ntitle A',
 				title: 'A',
