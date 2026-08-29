@@ -71,7 +71,10 @@ function editTextarea(textarea: HTMLTextAreaElement, value: string): void {
 	}
 }
 
-function renderEditor(storage: SourceStorage): {
+function renderEditor(
+	storage: SourceStorage,
+	downloadable: { save: (entry: unknown) => void } = { save: () => undefined }
+): {
 	container: Element;
 	root: ReturnType<typeof createRoot>;
 	unmount: () => void;
@@ -81,7 +84,7 @@ function renderEditor(storage: SourceStorage): {
 	d.body.append(container);
 	const root = createRoot(container as unknown as Element);
 	act(() => {
-		root.render(createElement(EditorPageSurface, { storage }));
+		root.render(createElement(EditorPageSurface, { downloadable, storage }));
 	});
 	return {
 		container,

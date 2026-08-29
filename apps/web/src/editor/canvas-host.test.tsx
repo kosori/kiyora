@@ -45,8 +45,11 @@ describe('CanvasHost', () => {
 		act(() => {
 			root.render(
 				createElement(CanvasHost, {
+					downloadable: { save: () => undefined },
 					editor,
 					getContainerSize: () => ({ height: 480, width: 640 }),
+					source: '',
+					title: '',
 				})
 			);
 		});
@@ -77,8 +80,11 @@ describe('CanvasHost', () => {
 		act(() => {
 			root.render(
 				createElement(CanvasHost, {
+					downloadable: { save: () => undefined },
 					editor,
 					getContainerSize: () => ({ height: 480, width: 640 }),
+					source: '',
+					title: '',
 				})
 			);
 		});
@@ -124,8 +130,11 @@ describe('CanvasHost', () => {
 		act(() => {
 			root.render(
 				createElement(CanvasHost, {
+					downloadable: { save: () => undefined },
 					editor,
 					getContainerSize: () => ({ height: 480, width: 640 }),
+					source: '',
+					title: '',
 				})
 			);
 		});

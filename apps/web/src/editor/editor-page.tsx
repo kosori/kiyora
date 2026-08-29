@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CanvasHost } from './canvas-host';
 import { CodePanel } from './code-panel';
 import { DiagnosticsList } from './diagnostics-list';
+import { browserDownloadable, type Downloadable } from './io/io';
 import { parseAndCompile } from './parse-and-compile';
 import { scrollTextareaToLine } from './scroll-textarea-to-line';
 import { selectionToLine } from './selection-to-line';
@@ -28,10 +29,17 @@ const COMPILE_DEBOUNCE_MS = 250;
  * Scene, and the canvas host's one-shot fit-to-view frames it on mount.
  */
 export function EditorPage() {
-	return <EditorPageSurface storage={useMemo(browserSourceStorage, [])} />;
+	return (
+		<EditorPageSurface
+			downloadable={useMemo(browserDownloadable, [])}
+			storage={useMemo(browserSourceStorage, [])}
+		/>
+	);
 }
 
 export type EditorPageSurfaceProps = {
+	/** Where the Save Blob lands. Injected so tests can observe the download. */
+	downloadable: Downloadable;
 	storage: SourceStorage;
 };
 
@@ -39,9 +47,13 @@ export type EditorPageSurfaceProps = {
  * The testable surface behind `EditorPage`. Accepts an injected Source
  * storage so the editor-page tests can replace the browser boundary with
  * a controlled fake and observe initial fallback, restore, and immediate
- * persistence without touching `localStorage`.
+ * persistence without touching `localStorage`. The injected `Downloadable`
+ * is the only path that can hand a Blob to a real browser download.
  */
-export function EditorPageSurface({ storage }: EditorPageSurfaceProps) {
+export function EditorPageSurface({
+	downloadable,
+	storage,
+}: EditorPageSurfaceProps) {
 	const initialSource = storage.load() ?? STARTER_SOURCE;
 	const [source, setSource] = useState(initialSource);
 	const [editor] = useState<Editor>(() =>
@@ -57,6 +69,14 @@ export function EditorPageSurface({ storage }: EditorPageSurfaceProps) {
 	const diagnostics = useMemo(
 		() => parseAndCompile(debouncedSource).diagnostics,
 		[debouncedSource]
+	);
+
+	// The Diagram title for the current Source. Computed from the live
+	// (non-debounced) Source so a Save click uses the title the user is
+	// looking at, not a stale value from the last debounce.
+	const currentTitle = useMemo(
+		() => parseAndCompile(source).scene.title,
+		[source]
 	);
 
 	const applyCompile = useCallback(
@@ -130,7 +150,12 @@ export function EditorPageSurface({ storage }: EditorPageSurfaceProps) {
 				</ResizablePanel>
 				<ResizableHandle withHandle />
 				<ResizablePanel defaultSize='65%' minSize='30%'>
-					<CanvasHost editor={editor} />
+					<CanvasHost
+						downloadable={downloadable}
+						editor={editor}
+						source={source}
+						title={currentTitle}
+					/>
 				</ResizablePanel>
 			</ResizablePanelGroup>
 		</main>
