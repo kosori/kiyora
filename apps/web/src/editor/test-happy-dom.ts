@@ -10,16 +10,19 @@ afterEach(() => {
 });
 
 const GLOBAL_KEYS = [
+	'DOMRect',
 	'document',
 	'window',
 	'HTMLElement',
 	'HTMLButtonElement',
+	'HTMLTextAreaElement',
 	'HTMLDivElement',
 	'Element',
 	'Node',
 	'Event',
 	'KeyboardEvent',
 	'ResizeObserver',
+	'InputEvent',
 ] as const;
 
 type GlobalKey = (typeof GLOBAL_KEYS)[number];

@@ -11,6 +11,7 @@ import { DiagnosticsList } from './diagnostics-list';
 import { parseAndCompile } from './parse-and-compile';
 import { scrollTextareaToLine } from './scroll-textarea-to-line';
 import { selectionToLine } from './selection-to-line';
+import { browserSourceStorage, type SourceStorage } from './source-storage';
 import { STARTER_SOURCE } from './starter';
 import { useCompileShortcut } from './use-compile-shortcut';
 import { useDebouncedValue } from './use-debounced-value';
@@ -18,17 +19,39 @@ import { useEditorKeyboardShortcuts } from './use-editor-keyboard-shortcuts';
 
 const COMPILE_DEBOUNCE_MS = 250;
 
-/** The split-pane Source editor and interactive canvas surface. */
+/**
+ * The split-pane Source editor and interactive canvas surface.
+ *
+ * Source is the textual interchange format and the only thing this page
+ * persists. Canvas-only Scene placement, selection, and the Viewport are
+ * transient: a fresh compile from the restored Source produces a new
+ * Scene, and the canvas host's one-shot fit-to-view frames it on mount.
+ */
 export function EditorPage() {
-	const [source, setSource] = useState(STARTER_SOURCE);
+	return <EditorPageSurface storage={useMemo(browserSourceStorage, [])} />;
+}
+
+export type EditorPageSurfaceProps = {
+	storage: SourceStorage;
+};
+
+/**
+ * The testable surface behind `EditorPage`. Accepts an injected Source
+ * storage so the editor-page tests can replace the browser boundary with
+ * a controlled fake and observe initial fallback, restore, and immediate
+ * persistence without touching `localStorage`.
+ */
+export function EditorPageSurface({ storage }: EditorPageSurfaceProps) {
+	const initialSource = storage.load() ?? STARTER_SOURCE;
+	const [source, setSource] = useState(initialSource);
 	const [editor] = useState<Editor>(() =>
-		createEditor(parseAndCompile(STARTER_SOURCE).scene)
+		createEditor(parseAndCompile(initialSource).scene)
 	);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	// The source string the editor was last applied with. Used to skip the
 	// compile effect when neither the debounced value nor the immediate
 	// compile produced a new scene.
-	const lastCompiledSourceRef = useRef<string>(STARTER_SOURCE);
+	const lastCompiledSourceRef = useRef<string>(initialSource);
 	const debouncedSource = useDebouncedValue(source, COMPILE_DEBOUNCE_MS);
 
 	const diagnostics = useMemo(
@@ -52,6 +75,14 @@ export function EditorPage() {
 	useEffect(() => {
 		applyCompile(debouncedSource);
 	}, [applyCompile, debouncedSource]);
+
+	// Persist every Source edit immediately, ahead of the compile debounce
+	// and any file download. This is the single Source of truth: a later
+	// visit or a refresh restores the latest edit, including edits that
+	// came from a future Open action.
+	useEffect(() => {
+		storage.save(source);
+	}, [source, storage]);
 
 	// Explicit compile on ⌘/Ctrl+Enter. Bypasses the debounce and applies the
 	// current source immediately, then suppresses the next debounce-driven
