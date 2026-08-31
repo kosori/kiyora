@@ -19,11 +19,15 @@ export type FileMenuProps = {
 	/** Where Save Blob lands. Injected so tests can observe the download. */
 	downloadable: Downloadable;
 	/** True once the required font faces are loaded; while false, the
-	 * Export SVG item is disabled with an accessible preparing label. */
+	 * Export SVG and Export PNG items are disabled with an accessible
+	 * preparing label. */
 	fontsReady: boolean;
 	/** Where the Open file picker is sourced from. Injected so tests can
 	 * observe the picker without opening a real file dialog. */
 	openable: Openable;
+	/** Fired after a successful Export PNG. The host owns the I/O seam
+	 * so the menu only signals intent. */
+	onExportPng?: () => void;
 	/** Fired after a successful Export SVG. The host owns the I/O seam
 	 * so the menu only signals intent. */
 	onExportSvg?: () => void;
@@ -44,17 +48,16 @@ export type FileMenuProps = {
  *
  * Save downloads the current Source as a Kira file. Open replaces the
  * current Source with the text read from a chosen Kira file via the
- * injected `Openable`. Export SVG hands the host's current Scene to the
- * I/O boundary and is disabled until the required font resources have
- * finished loading; the disabled state is communicated with an
- * accessible "preparing fonts" label so a disabled action is not
- * surprising.
- *
- * Export PNG remains reserved for a later increment.
+ * injected `Openable`. Export SVG and Export PNG hand the host's
+ * current Scene to the I/O boundary; both stay disabled until the
+ * required font resources have finished loading. The disabled state is
+ * communicated with an accessible "preparing fonts" label so a
+ * disabled action is not surprising.
  */
 export function FileMenu({
 	downloadable,
 	fontsReady,
+	onExportPng,
 	onExportSvg,
 	onOpen,
 	onOpenError,
@@ -83,6 +86,15 @@ export function FileMenu({
 		onExportSvg?.();
 	}, [fontsReady, onExportSvg]);
 
+	const handleExportPng = useCallback(() => {
+		if (!fontsReady) {
+			return;
+		}
+		onExportPng?.();
+	}, [fontsReady, onExportPng]);
+
+	const preparingLabel = fontsReady ? undefined : 'Preparing fonts…';
+
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
@@ -110,43 +122,20 @@ export function FileMenu({
 					data-file-action='export-svg'
 					disabled={!fontsReady}
 					onClick={handleExportSvg}
-					title={fontsReady ? undefined : 'Preparing fonts…'}
+					title={preparingLabel}
 				>
 					<span>{fontsReady ? 'Export SVG' : 'Preparing fonts…'}</span>
 				</DropdownMenuItem>
-				<ReservedFileMenuItem label='Export PNG' reservedFor='export-png' />
+				<DropdownMenuItem
+					aria-disabled={!fontsReady}
+					data-file-action='export-png'
+					disabled={!fontsReady}
+					onClick={handleExportPng}
+					title={preparingLabel}
+				>
+					<span>{fontsReady ? 'Export PNG' : 'Preparing fonts…'}</span>
+				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
-	);
-}
-
-type ReservedFileMenuItemProps = {
-	label: string;
-	reservedFor: 'export-png';
-	shortcut?: string;
-};
-
-/**
- * A disabled menu item that names a future File action. Reserving the
- * slot now keeps the control's shape stable across increments: each
- * later issue (Export PNG) replaces one of these placeholders with a
- * live item without changing the menu's structure.
- */
-function ReservedFileMenuItem({
-	label,
-	reservedFor,
-	shortcut,
-}: ReservedFileMenuItemProps) {
-	return (
-		<DropdownMenuItem
-			aria-disabled='true'
-			data-file-action={reservedFor}
-			disabled
-		>
-			<span>{label}</span>
-			{shortcut ? (
-				<DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut>
-			) : null}
-		</DropdownMenuItem>
 	);
 }

@@ -95,6 +95,7 @@ function renderEditor(
 				downloadable,
 				fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
 				openable,
+				rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
 				storage,
 			})
 		);

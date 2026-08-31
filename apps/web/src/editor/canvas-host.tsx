@@ -11,10 +11,14 @@ export type CanvasHostProps = {
 	downloadable: Downloadable;
 	editor: Editor;
 	/** True once the required font faces are loaded; controls the
-	 * disabled state of the Export SVG menu item. */
+	 * disabled state of the Export SVG and Export PNG menu items. */
 	fontsReady: boolean;
 	/** Measure the canvas host container. Defaults to the section's rect. */
 	getContainerSize?: () => ToolbarContainerSize;
+	/** Fired when the user picks Export PNG. The host does not own the
+	 * scene snapshot — the page flushes Source, reads the editor's
+	 * current Scene, and hands it to the I/O boundary. */
+	onExportPng?: () => void;
 	/** Fired when the user picks Export SVG. The host does not own the
 	 * scene snapshot — the page flushes Source, reads the editor's
 	 * current Scene, and hands it to the I/O boundary. */
@@ -42,6 +46,7 @@ export function CanvasHost({
 	editor,
 	fontsReady,
 	getContainerSize,
+	onExportPng,
 	onExportSvg,
 	onOpen,
 	onOpenError,
@@ -72,6 +77,7 @@ export function CanvasHost({
 				<FileMenu
 					downloadable={downloadable}
 					fontsReady={fontsReady}
+					onExportPng={onExportPng}
 					onExportSvg={onExportSvg}
 					onOpen={onOpen}
 					onOpenError={onOpenError}

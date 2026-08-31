@@ -99,6 +99,7 @@ function renderEditor(recording: Recording): RenderHandle {
 			downloadable: recording.downloadable,
 			fontReadiness: recording.fontReadiness,
 			openable: { pickFile: () => Promise.resolve(null) },
+			rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
 			storage: recording.storage,
 		})
 	);

@@ -13,12 +13,15 @@ import {
 	browserDownloadable,
 	browserFontReadiness,
 	browserOpenable,
+	browserPngRasterizer,
 	type Downloadable,
 	downloadKira,
+	downloadPng,
 	downloadSvg,
 	type FontReadiness,
 	type Openable,
 	openKira,
+	type PngRasterizer,
 } from './io/io';
 import { parseAndCompile } from './parse-and-compile';
 import { scrollTextareaToLine } from './scroll-textarea-to-line';
@@ -50,6 +53,7 @@ export function EditorPage() {
 			downloadable={useMemo(browserDownloadable, [])}
 			fontReadiness={useMemo(browserFontReadiness, [])}
 			openable={useMemo(browserOpenable, [])}
+			rasterizer={useMemo(browserPngRasterizer, [])}
 			storage={useMemo(browserSourceStorage, [])}
 		/>
 	);
@@ -64,6 +68,10 @@ export type EditorPageSurfaceProps = {
 	/** Where the Open file picker is sourced from. Injected so tests can
 	 * observe the picker without opening a real browser dialog. */
 	openable: Openable;
+	/** Browser-side SVG-to-PNG rasterizer. Injected so tests can observe
+	 * the call and so the editor page never touches `Image`/`Canvas`
+	 * directly. */
+	rasterizer: PngRasterizer;
 	storage: SourceStorage;
 };
 
@@ -72,15 +80,17 @@ export type EditorPageSurfaceProps = {
  * storage so the editor-page tests can replace the browser boundary with
  * a controlled fake and observe initial fallback, restore, and immediate
  * persistence without touching `localStorage`. The injected `Downloadable`
- * is the only path that can hand a Blob to a real browser download, and
- * the injected `Openable` is the only path that can prompt the user for
- * a Kira file. The injected `FontReadiness` controls when the Export
- * SVG menu item becomes available.
+ * is the only path that can hand a Blob to a real browser download, the
+ * injected `Openable` is the only path that can prompt the user for a
+ * Kira file, and the injected `PngRasterizer` is the only path that can
+ * rasterize an SVG to a PNG Blob. The injected `FontReadiness` controls
+ * when the Export SVG and Export PNG menu items become available.
  */
 export function EditorPageSurface({
 	downloadable,
 	fontReadiness,
 	openable,
+	rasterizer,
 	storage,
 }: EditorPageSurfaceProps) {
 	const initialSource = storage.load() ?? STARTER_SOURCE;
@@ -217,6 +227,44 @@ export function EditorPageSurface({
 		source,
 	]);
 
+	// Export PNG: same flush-and-snapshot policy as Export SVG, then
+	// rasterize the portable SVG to a transparent PNG via the injected
+	// rasterizer. The I/O boundary owns the size check so an
+	// over-budget diagram fails fast with an actionable error pointing
+	// the user to SVG; rasterizer or encoding failures propagate as a
+	// file-status message so the workspace is preserved.
+	const handleExportPng = useCallback(() => {
+		if (!exportFonts) {
+			if (fontFailure) {
+				setFileError(fontFailure);
+			}
+			return;
+		}
+		applyCompile(source);
+		downloadPng({
+			downloadable,
+			fonts: exportFonts,
+			rasterizer,
+			scene: editor.getScene(),
+			title: currentTitle,
+		}).catch((cause: unknown) => {
+			const message =
+				cause instanceof Error
+					? cause.message
+					: 'Failed to export the diagram as PNG.';
+			setFileError(message);
+		});
+	}, [
+		applyCompile,
+		currentTitle,
+		downloadable,
+		editor,
+		exportFonts,
+		fontFailure,
+		rasterizer,
+		source,
+	]);
+
 	// Open: ask the injected Openable for a Kira file. The page replaces
 	// Source when readKiraText resolves and immediately compiles a new
 	// Scene — Open is a structural replacement, not a text edit, so it
@@ -288,6 +336,7 @@ export function EditorPageSurface({
 						downloadable={downloadable}
 						editor={editor}
 						fontsReady={fontsReady}
+						onExportPng={handleExportPng}
 						onExportSvg={handleExportSvg}
 						onOpen={handleOpen}
 						onOpenError={handleOpenError}

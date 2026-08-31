@@ -5,18 +5,17 @@
  * current Source from a chosen Kira file. Export SVG hands a
  * self-contained copy of the current Scene to the browser as a portable
  * `.svg` download, embedding the licensed Kiyora typography so the
- * artifact renders consistently outside the app.
+ * artifact renders consistently outside the app. Export PNG rasterizes
+ * that same portable SVG at twice its natural resolution into a
+ * transparent `.png` download, with a safety limit that rejects output
+ * the browser cannot reliably rasterize.
  *
  * The boundary owns the filename policy, the MIME types, the
  * file-admission rules, font readiness, and the DOM plumbing (anchor
- * download, object URL lifecycle, hidden file input) so the editor page
- * never touches `Blob`/`URL`/`document`/`File` directly. Tests inject
- * fakes to observe what would have happened without the browser acting
- * on it.
- *
- * PNG export and SVG-to-PNG rasterization belong to a later increment;
- * the seam here exists so they have a single, well-defined place to
- * plug into.
+ * download, object URL lifecycle, hidden file input, Image/Canvas
+ * rasterization) so the editor page never touches `Blob`/`URL`/`document`/
+ * `File`/`Image`/`Canvas` directly. Tests inject fakes to observe what
+ * would have happened without the browser acting on it.
  */
 
 import { slugify } from '@kiyora/dsl';
@@ -418,4 +417,175 @@ async function fetchBytes(url: string): Promise<Uint8Array> {
 	}
 	const buffer = await response.arrayBuffer();
 	return new Uint8Array(buffer);
+}
+
+/** The extension used by Kiyora PNG exports. */
+export const PNG_EXTENSION = 'png';
+
+/** The MIME type advertised for downloaded Kiyora PNG exports. */
+export const PNG_MIME_TYPE = 'image/png';
+
+/** The natural-resolution multiplier applied before rasterization. */
+export const PNG_DENSITY = 2;
+
+/**
+ * Maximum pixels allowed in either dimension of the 2x PNG output.
+ * Browsers refuse to allocate textures above this ceiling, so we reject
+ * the export early and direct the user to SVG instead of producing a
+ * broken image.
+ */
+export const MAX_PNG_PIXELS_PER_DIM = 8192;
+
+/**
+ * Maximum total pixels allowed in the 2x PNG output. Even when each
+ * dimension is within its ceiling, very large diagrams can still
+ * exceed the canvas backing-store the browser allocates, so this is a
+ * belt-and-braces second guard.
+ */
+export const MAX_PNG_PIXELS_TOTAL = 32_000_000;
+
+/**
+ * Turn a Diagram title into a stable PNG download filename.
+ *
+ * Mirrors `svgFilename`'s policy: the DSL's existing slug behavior
+ * derives the base name; an unusable title falls back to `diagram.png`
+ * so PNG export always works.
+ */
+export function pngFilename(title: string): string {
+	const trimmed = title.trim();
+	if (trimmed.length === 0) {
+		return `${FILENAME_FALLBACK}.${PNG_EXTENSION}`;
+	}
+	return `${slugify(trimmed)}.${PNG_EXTENSION}`;
+}
+
+/** A browser-agnostic sink for "rasterize this SVG into a PNG Blob". */
+export type PngRasterizer = {
+	/**
+	 * Render `svg` (an XML document at the requested pixel dimensions)
+	 * into a PNG `Blob`. The rasterizer is responsible for keeping the
+	 * PNG's background transparent so the export works on any slide or
+	 * document background.
+	 *
+	 * Width and height are in pixels and reflect the 2x natural size the
+	 * caller wants. The promise rejects when the rasterizer cannot
+	 * honor the request (e.g. image failed to load, canvas was tainted,
+	 * allocation refused).
+	 */
+	rasterize: (options: {
+		height: number;
+		svg: string;
+		width: number;
+	}) => Promise<Blob>;
+};
+
+/**
+ * The real browser PNG rasterizer: paint the SVG into an off-screen
+ * `<canvas>` via an `Image`, then `toBlob('image/png')`.
+ *
+ * The canvas is created on demand and discarded once the blob is
+ * produced so no allocation outlives a single export. The PNG is
+ * emitted without a fill style on the canvas, so its background stays
+ * transparent and the export works on light or dark slide backgrounds.
+ */
+export function browserPngRasterizer(): PngRasterizer {
+	return {
+		rasterize({ height, svg, width }): Promise<Blob> {
+			return new Promise<Blob>((resolve, reject) => {
+				if (
+					typeof document === 'undefined' ||
+					typeof Image === 'undefined' ||
+					typeof document.createElement !== 'function'
+				) {
+					reject(new Error('PNG rasterization requires a browser.'));
+					return;
+				}
+				const canvas = document.createElement('canvas');
+				canvas.width = width;
+				canvas.height = height;
+				const context = canvas.getContext('2d');
+				if (context === null) {
+					reject(new Error('PNG rasterization requires a 2D canvas context.'));
+					return;
+				}
+				const blob = new Blob([svg], { type: SVG_MIME_TYPE });
+				const url = URL.createObjectURL(blob);
+				const image = new Image();
+				image.onload = (): void => {
+					context.clearRect(0, 0, width, height);
+					context.drawImage(image, 0, 0, width, height);
+					URL.revokeObjectURL(url);
+					canvas.toBlob((png) => {
+						if (png === null) {
+							reject(
+								new Error(
+									'PNG encoding failed: the browser refused to encode the canvas.'
+								)
+							);
+							return;
+						}
+						resolve(png);
+					}, PNG_MIME_TYPE);
+				};
+				image.onerror = (): void => {
+					URL.revokeObjectURL(url);
+					reject(
+						new Error('PNG rasterization failed: the SVG could not be decoded.')
+					);
+				};
+				image.src = url;
+			});
+		},
+	};
+}
+
+/**
+ * Rasterize the current Scene into a transparent PNG and hand it to
+ * the Downloadable.
+ *
+ * The PNG derives from the same portable static SVG as SVG export, so
+ * it preserves the diagram rather than the canvas camera and embeds
+ * the Kiyora typography. It is rasterized at 2x the renderer's natural
+ * width and height for ordinary-use sharpness.
+ *
+ * The safety limit rejects output that exceeds `MAX_PNG_PIXELS_PER_DIM`
+ * in either dimension or `MAX_PNG_PIXELS_TOTAL` overall, with an
+ * actionable error that points the user at SVG instead. A rasterizer
+ * failure rejects with its underlying message so the editor can route
+ * it through the file-status footer.
+ */
+export async function downloadPng(options: {
+	downloadable: Downloadable;
+	/** The two faces the renderer needs so the export is self-contained. */
+	fonts: ExportFonts;
+	/** Browser-side rasterizer. Injected so tests can observe the call. */
+	rasterizer: PngRasterizer;
+	/** The current Scene to project. Caller is responsible for flushing
+	 * any pending Source compile before taking this snapshot so the
+	 * export reflects edits the user has just typed. */
+	scene: Scene;
+	/** The current Diagram title, used for the filename. */
+	title: string;
+}): Promise<void> {
+	const { downloadable, fonts, rasterizer, scene, title } = options;
+	const { height, svg, width } = renderToSvg(scene);
+	const targetWidth = width * PNG_DENSITY;
+	const targetHeight = height * PNG_DENSITY;
+	if (
+		targetWidth > MAX_PNG_PIXELS_PER_DIM ||
+		targetHeight > MAX_PNG_PIXELS_PER_DIM ||
+		targetWidth * targetHeight > MAX_PNG_PIXELS_TOTAL
+	) {
+		throw new Error(
+			`PNG export is too large to rasterize safely (${targetWidth}×${targetHeight} px). Export SVG instead.`
+		);
+	}
+	const selfContained = embedFontsInSvg(svg, fonts);
+	const blob = await rasterizer.rasterize({
+		height: targetHeight,
+		svg: selfContained,
+		width: targetWidth,
+	});
+	const filename = pngFilename(title);
+	downloadable.save({ blob, filename });
 }

@@ -89,6 +89,7 @@ function renderEditor(recording: Recording): RenderHandle {
 			downloadable: recording.downloadable,
 			fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
 			openable: recording.openable,
+			rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
 			storage: recording.storage,
 		})
 	);
