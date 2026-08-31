@@ -1,5 +1,6 @@
 import type { Editor } from '@kiyora/canvas/react';
 import { useEffect } from 'react';
+import { isTextareaFocused as defaultIsTextareaFocused } from './is-textarea-focused';
 
 export type EditorKeyboardShortcutsOptions = {
 	/** Override the textarea-focused check. Defaults to reading
@@ -44,15 +45,4 @@ export function useEditorKeyboardShortcuts(
 		window.addEventListener('keydown', handleKeyDown);
 		return () => window.removeEventListener('keydown', handleKeyDown);
 	}, [editor, isTextareaFocused]);
-}
-
-/** Default textarea-focused check: true when the active element is a TEXTAREA.
- *
- * Only invoked from inside the keydown listener, so SSR never touches
- * `document`. */
-function defaultIsTextareaFocused(): boolean {
-	return (
-		typeof document !== 'undefined' &&
-		document.activeElement?.tagName === 'TEXTAREA'
-	);
 }
