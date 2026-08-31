@@ -161,7 +161,7 @@ describe('EditorPage Export SVG wiring', () => {
 		handle.unmount();
 	});
 
-	test('a font-readiness rejection re-enables the editor and surfaces the failure as a file-status error', async () => {
+	test('a font-readiness rejection does not surface a footer error until the user attempts an export', async () => {
 		const recording = makeFailingRecording();
 		const handle = renderEditor(recording);
 		await flush();
@@ -173,22 +173,16 @@ describe('EditorPage Export SVG wiring', () => {
 		recording.rejectReady(new Error('woff2 fetch failed'));
 		await flush();
 
-		// After the readiness settles (in failure), the editor surfaces
-		// the rejection through the file-status footer so the user sees
-		// why exports are not happening.
-		const errorRegion = handle.container.querySelector(
-			'[data-file-status-error]'
-		);
-		expect(errorRegion).not.toBeNull();
-		expect(errorRegion?.getAttribute('role')).toBe('alert');
-		expect(errorRegion?.textContent).toContain('woff2 fetch failed');
-
-		// No download is produced — the failure stays at the
-		// file-operation layer, not the DSL diagnostic layer.
-		expect(recording.downloadable.recorded).toHaveLength(0);
+		// Spec line 92–93: the failure surfaces on attempted export,
+		// not as an unsolicited footer notice at mount. The menu
+		// re-enables Export SVG so the user has a path to attempt it.
+		expect(
+			handle.container.querySelector('[data-file-status-error]')
+		).toBeNull();
 		expect(
 			handle.container.querySelector('[data-diagnostics-list]')
 		).toBeNull();
+		expect(recording.downloadable.recorded).toHaveLength(0);
 
 		handle.unmount();
 	});

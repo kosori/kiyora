@@ -8,76 +8,52 @@ import {
 } from '@kiyora/ui/dropdown-menu';
 import { IconChevronDown, IconFile } from '@tabler/icons-react';
 import { useCallback } from 'react';
-import {
-	type Downloadable,
-	downloadKira,
-	type Openable,
-	openKira,
-} from './io/io';
 
 export type FileMenuProps = {
-	/** Where Save Blob lands. Injected so tests can observe the download. */
-	downloadable: Downloadable;
+	/** Fired after the user picks Save. The host owns the I/O seam so
+	 * the menu only signals intent; the host calls `downloadKira` with
+	 * the latest Source and the title derived from it. */
+	onSave?: () => void;
+	/** Fired after the user picks Open. The host owns the I/O seam so
+	 * the menu only signals intent; the host drives `openKira` with the
+	 * injected `Openable`. */
+	onOpen?: () => void;
+	/** Fired after the user picks Export SVG. The host owns the I/O seam
+	 * so the menu only signals intent. */
+	onExportSvg?: () => void;
+	/** Fired after the user picks Export PNG. The host owns the I/O seam
+	 * so the menu only signals intent. */
+	onExportPng?: () => void;
 	/** True once the required font faces are loaded; while false, the
 	 * Export SVG and Export PNG items are disabled with an accessible
 	 * preparing label. */
 	fontsReady: boolean;
-	/** Where the Open file picker is sourced from. Injected so tests can
-	 * observe the picker without opening a real file dialog. */
-	openable: Openable;
-	/** Fired after a successful Export PNG. The host owns the I/O seam
-	 * so the menu only signals intent. */
-	onExportPng?: () => void;
-	/** Fired after a successful Export SVG. The host owns the I/O seam
-	 * so the menu only signals intent. */
-	onExportSvg?: () => void;
-	/** Optional notification fired after a successful Open. */
-	onOpen?: (source: string) => void;
-	/** Optional notification fired after a file-operation failure. */
-	onOpenError?: (message: string) => void;
-	/** Optional notification fired after a successful Save. */
-	onSave?: (source: string) => void;
-	/** The current Kiyora Source. Read at click time so the latest edit is saved. */
-	source: string;
-	/** The current Diagram title. Empty string becomes `diagram.kira` downstream. */
-	title: string;
 };
 
 /**
  * The accessible top-left File dropdown for the canvas surface.
  *
- * Save downloads the current Source as a Kira file. Open replaces the
- * current Source with the text read from a chosen Kira file via the
- * injected `Openable`. Export SVG and Export PNG hand the host's
- * current Scene to the I/O boundary; both stay disabled until the
- * required font resources have finished loading. The disabled state is
- * communicated with an accessible "preparing fonts" label so a
- * disabled action is not surprising.
+ * Save, Open, Export SVG, and Export PNG are intent-only callbacks: the
+ * host owns the I/O seam and the menu never reaches into `downloadKira`,
+ * `openKira`, or any browser primitive directly. Export SVG and Export
+ * PNG stay disabled until the required font resources have finished
+ * loading; the disabled state is communicated with an accessible
+ * "preparing fonts" label so a disabled action is not surprising.
  */
 export function FileMenu({
-	downloadable,
 	fontsReady,
 	onExportPng,
 	onExportSvg,
 	onOpen,
-	onOpenError,
 	onSave,
-	openable,
-	source,
-	title,
 }: FileMenuProps) {
 	const handleSave = useCallback(() => {
-		downloadKira({ downloadable, source, title });
-		onSave?.(source);
-	}, [downloadable, onSave, source, title]);
+		onSave?.();
+	}, [onSave]);
 
 	const handleOpen = useCallback(() => {
-		openKira({
-			onError: (message) => onOpenError?.(message),
-			onSource: (next) => onOpen?.(next),
-			openable,
-		});
-	}, [onOpen, onOpenError, openable]);
+		onOpen?.();
+	}, [onOpen]);
 
 	const handleExportSvg = useCallback(() => {
 		if (!fontsReady) {
@@ -111,11 +87,11 @@ export function FileMenu({
 			<DropdownMenuContent align='start' sideOffset={6}>
 				<DropdownMenuItem data-file-action='save' onClick={handleSave}>
 					<span>Save</span>
-					<DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+					<DropdownMenuShortcut>⌘/Ctrl+S</DropdownMenuShortcut>
 				</DropdownMenuItem>
 				<DropdownMenuItem data-file-action='open' onClick={handleOpen}>
 					<span>Open</span>
-					<DropdownMenuShortcut>⌘O</DropdownMenuShortcut>
+					<DropdownMenuShortcut>⌘/Ctrl+O</DropdownMenuShortcut>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					aria-disabled={!fontsReady}

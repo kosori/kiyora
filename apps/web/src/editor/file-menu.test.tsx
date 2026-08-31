@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { FileMenu } from './file-menu';
-import type { Downloadable } from './io/io';
 import { withHappyDom } from './test-happy-dom';
 
 (
@@ -49,18 +48,11 @@ async function flush(): Promise<void> {
 	await chain;
 }
 
-const NOOP_DOWNLOADABLE: Downloadable = { save: () => undefined };
-const NOOP_OPENABLE = { pickFile: () => Promise.resolve(null) };
-
 describe('FileMenu', () => {
 	test('renders an accessible File trigger', async () => {
 		const handle = render(
 			createElement(FileMenu, {
-				downloadable: NOOP_DOWNLOADABLE,
 				fontsReady: true,
-				openable: NOOP_OPENABLE,
-				source: 'architecture\ntitle A',
-				title: 'A',
 			})
 		);
 		await flush();

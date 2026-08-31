@@ -20,6 +20,7 @@
 
 import { slugify } from '@kiyora/dsl';
 import { renderToSvg, type Scene } from '@kiyora/render';
+import { errorMessageOf } from '../error-message';
 
 /** The agreed fallback base name when the current Diagram has no usable title. */
 export const FILENAME_FALLBACK = 'diagram';
@@ -157,9 +158,7 @@ export function openKira(options: {
 			const source = await readKiraText(file);
 			onSource(source);
 		} catch (cause) {
-			const message =
-				cause instanceof Error ? cause.message : 'Failed to open Kira file.';
-			onError(message);
+			onError(errorMessageOf(cause, 'Failed to open Kira file.'));
 		}
 	});
 }

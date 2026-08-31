@@ -2,20 +2,26 @@ import type { Editor } from '@kiyora/canvas/react';
 import { useEffect } from 'react';
 
 export type EditorKeyboardShortcutsOptions = {
-	/** Return true when a text input is focused and should keep native undo. */
-	isTextareaFocused: () => boolean;
+	/** Override the textarea-focused check. Defaults to reading
+	 * `document.activeElement` inside the keydown listener so SSR never
+	 * observes `document`. */
+	isTextareaFocused?: () => boolean;
 };
 
 /**
  * Bind ⌘/Ctrl+Z and ⌘/Ctrl+Shift+Z on the window to the editor's undo/redo.
  *
- * The handler is a no-op while `isTextareaFocused()` is true, so the code
- * panel's native text undo keeps working. The listener is detached when the
- * host component unmounts.
+ * The handler is a no-op while a textarea is focused, so the code
+ * panel's native text undo keeps working. The default check reads
+ * `document.activeElement` from inside the keydown listener — never at
+ * render scope — so the hook is safe to mount in an SSR tree. The
+ * listener is detached when the host component unmounts.
  */
 export function useEditorKeyboardShortcuts(
 	editor: Editor,
-	{ isTextareaFocused }: EditorKeyboardShortcutsOptions
+	{
+		isTextareaFocused = defaultIsTextareaFocused,
+	}: EditorKeyboardShortcutsOptions = {}
 ): void {
 	useEffect(() => {
 		function handleKeyDown(event: KeyboardEvent): void {
@@ -38,4 +44,15 @@ export function useEditorKeyboardShortcuts(
 		window.addEventListener('keydown', handleKeyDown);
 		return () => window.removeEventListener('keydown', handleKeyDown);
 	}, [editor, isTextareaFocused]);
+}
+
+/** Default textarea-focused check: true when the active element is a TEXTAREA.
+ *
+ * Only invoked from inside the keydown listener, so SSR never touches
+ * `document`. */
+function defaultIsTextareaFocused(): boolean {
+	return (
+		typeof document !== 'undefined' &&
+		document.activeElement?.tagName === 'TEXTAREA'
+	);
 }

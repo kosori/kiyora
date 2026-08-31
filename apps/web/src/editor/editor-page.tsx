@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CanvasHost } from './canvas-host';
 import { CodePanel } from './code-panel';
 import { DiagnosticsList } from './diagnostics-list';
+import { errorMessageOf } from './error-message';
 import { FileStatus } from './file-status';
 import {
 	browserDownloadable,
@@ -36,8 +37,10 @@ import { useFontReadiness } from './use-font-readiness';
 
 const COMPILE_DEBOUNCE_MS = 250;
 
-/** Static shortcut hints shown in the code-panel footer. */
-const FILE_SHORTCUTS = ['⌘S Save', '⌘O Open'] as const;
+/** Static shortcut hints shown in the code-panel footer. Both ⌘ (macOS)
+ * and Ctrl are listed so non-macOS users see the modifier the spec
+ * pairs in `⌘/Ctrl+S` and `⌘/Ctrl+O`. */
+const FILE_SHORTCUTS = ['⌘/Ctrl+S', '⌘/Ctrl+O'] as const;
 
 /**
  * The split-pane Source editor and interactive canvas surface.
@@ -147,16 +150,6 @@ export function EditorPageSurface({
 		ready: fontsReady,
 	} = useFontReadiness(fontReadiness);
 
-	// A persistent font-preparation failure becomes a file-operation
-	// error so the user sees the actionable cause. We surface it once
-	// per failure via an effect; subsequent renders with the same
-	// failure message do not re-publish the error.
-	useEffect(() => {
-		if (fontFailure) {
-			setFileError(fontFailure);
-		}
-	}, [fontFailure]);
-
 	// Persist every Source edit immediately, ahead of the compile debounce
 	// and any file download. This is the single Source of truth: a later
 	// visit or a refresh restores the latest edit, including edits that
@@ -173,13 +166,7 @@ export function EditorPageSurface({
 	}, [applyCompile, source]);
 	useCompileShortcut(false, handleExplicitCompile);
 
-	const isTextareaFocused = useCallback(
-		() =>
-			typeof document !== 'undefined' &&
-			document.activeElement?.tagName === 'TEXTAREA',
-		[]
-	);
-	useEditorKeyboardShortcuts(editor, { isTextareaFocused });
+	useEditorKeyboardShortcuts(editor);
 
 	// Save: download the current Source. Read at click time so the latest
 	// edit is what leaves the browser.
@@ -203,20 +190,12 @@ export function EditorPageSurface({
 			return;
 		}
 		applyCompile(source);
-		try {
-			downloadSvg({
-				downloadable,
-				fonts: exportFonts,
-				scene: editor.getScene(),
-				title: currentTitle,
-			});
-		} catch (cause) {
-			const message =
-				cause instanceof Error
-					? cause.message
-					: 'Failed to export the diagram as SVG.';
-			setFileError(message);
-		}
+		downloadSvg({
+			downloadable,
+			fonts: exportFonts,
+			scene: editor.getScene(),
+			title: currentTitle,
+		});
 	}, [
 		applyCompile,
 		currentTitle,
@@ -248,11 +227,9 @@ export function EditorPageSurface({
 			scene: editor.getScene(),
 			title: currentTitle,
 		}).catch((cause: unknown) => {
-			const message =
-				cause instanceof Error
-					? cause.message
-					: 'Failed to export the diagram as PNG.';
-			setFileError(message);
+			setFileError(
+				errorMessageOf(cause, 'Failed to export the diagram as PNG.')
+			);
 		});
 	}, [
 		applyCompile,
@@ -285,17 +262,18 @@ export function EditorPageSurface({
 		setFileError(null);
 	}, []);
 
-	useFileShortcut({
-		isTextareaFocused,
-		onOpen: () => {
-			openKira({
-				onError: handleOpenError,
-				onSource: handleOpen,
-				openable,
-			});
-		},
-		onSave: handleSave,
-	});
+	// Drive `openKira` from the same path the File menu and the keyboard
+	// shortcut share, so a single Open click resolves exactly one picker
+	// and replaces Source once.
+	const handleOpenKira = useCallback(() => {
+		openKira({
+			onError: handleOpenError,
+			onSource: handleOpen,
+			openable,
+		});
+	}, [handleOpen, handleOpenError, openable]);
+
+	useFileShortcut({ onOpen: handleOpenKira, onSave: handleSave });
 
 	// Selection → Source scroll: when the canvas selection changes, scroll
 	// the textarea to the originating line of the first selected node.
@@ -333,17 +311,12 @@ export function EditorPageSurface({
 				<ResizableHandle withHandle />
 				<ResizablePanel defaultSize='65%' minSize='30%'>
 					<CanvasHost
-						downloadable={downloadable}
 						editor={editor}
 						fontsReady={fontsReady}
 						onExportPng={handleExportPng}
 						onExportSvg={handleExportSvg}
-						onOpen={handleOpen}
-						onOpenError={handleOpenError}
+						onOpen={handleOpenKira}
 						onSave={handleSave}
-						openable={openable}
-						source={source}
-						title={currentTitle}
 					/>
 				</ResizablePanel>
 			</ResizablePanelGroup>

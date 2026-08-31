@@ -6,7 +6,9 @@ import { createRoot } from 'react-dom/client';
 import { withHappyDom } from './test-happy-dom';
 import { Toolbar } from './toolbar';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(
+	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 const span = {
 	end: { column: 2, line: 1 },

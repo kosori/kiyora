@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { errorMessageOf } from './error-message';
 import type { ExportFonts, FontReadiness } from './io/io';
 
 export type FontReadinessState = {
@@ -42,10 +43,10 @@ export function useFontReadiness(readiness: FontReadiness): FontReadinessState {
 				if (cancelled) {
 					return;
 				}
-				const message =
-					cause instanceof Error
-						? cause.message
-						: 'Font resources could not be prepared for export.';
+				const message = errorMessageOf(
+					cause,
+					'Font resources could not be prepared for export.'
+				);
 				setState({ failure: message, fonts: null, ready: true });
 			}
 		);

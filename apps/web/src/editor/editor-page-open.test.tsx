@@ -409,8 +409,8 @@ describe('EditorPage Open flow', () => {
 			'[data-file-status-shortcuts]'
 		);
 		expect(shortcuts).not.toBeNull();
-		expect(shortcuts?.textContent).toContain('⌘S Save');
-		expect(shortcuts?.textContent).toContain('⌘O Open');
+		expect(shortcuts?.textContent).toContain('⌘/Ctrl+S');
+		expect(shortcuts?.textContent).toContain('⌘/Ctrl+O');
 
 		handle.unmount();
 	});

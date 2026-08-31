@@ -6,7 +6,9 @@ import { createRoot } from 'react-dom/client';
 import { CanvasHost } from './canvas-host';
 import { withHappyDom } from './test-happy-dom';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(
+	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 const span = {
 	end: { column: 2, line: 1 },
@@ -45,13 +47,9 @@ describe('CanvasHost', () => {
 		act(() => {
 			root.render(
 				createElement(CanvasHost, {
-					downloadable: { save: () => undefined },
 					editor,
 					fontsReady: true,
 					getContainerSize: () => ({ height: 480, width: 640 }),
-					openable: { pickFile: () => Promise.resolve(null) },
-					source: '',
-					title: '',
 				})
 			);
 		});
@@ -82,13 +80,9 @@ describe('CanvasHost', () => {
 		act(() => {
 			root.render(
 				createElement(CanvasHost, {
-					downloadable: { save: () => undefined },
 					editor,
 					fontsReady: true,
 					getContainerSize: () => ({ height: 480, width: 640 }),
-					openable: { pickFile: () => Promise.resolve(null) },
-					source: '',
-					title: '',
 				})
 			);
 		});
@@ -134,13 +128,9 @@ describe('CanvasHost', () => {
 		act(() => {
 			root.render(
 				createElement(CanvasHost, {
-					downloadable: { save: () => undefined },
 					editor,
 					fontsReady: true,
 					getContainerSize: () => ({ height: 480, width: 640 }),
-					openable: { pickFile: () => Promise.resolve(null) },
-					source: '',
-					title: '',
 				})
 			);
 		});
