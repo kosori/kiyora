@@ -153,6 +153,40 @@ describe('renderScene', () => {
 		expect(selectedOutline).not.toContain('transform');
 	});
 
+	test('draws an active marquee rectangle in screen space above the scene', () => {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginMarquee({ x: 10, y: 20 });
+		editor.marqueeTo({ x: 60, y: 40 });
+
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 240,
+			showGrid: false,
+			width: 360,
+		});
+
+		expect(svg).toContain(
+			'<rect x="10" y="20" width="50" height="20" fill="rgba(77,171,247,0.12)" stroke="#4dabf7" stroke-width="1"/>'
+		);
+	});
+
+	test('renders no marquee rectangle when none is active', () => {
+		const editor = createEditor(makeScene());
+		const before = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+		});
+
+		editor.beginMarquee({ x: 10, y: 20 });
+		editor.marqueeTo({ x: 60, y: 40 });
+		editor.endMarquee(false);
+		const after = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+		});
+
+		expect(before).not.toContain('rgba(77,171,247,0.12)');
+		expect(after).not.toContain('rgba(77,171,247,0.12)');
+	});
+
 	test('renders rotation 0 with no transform, identical to an absent rotation', () => {
 		const scene = makeScene();
 		const [source] = scene.nodes;

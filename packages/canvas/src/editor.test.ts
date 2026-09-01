@@ -355,6 +355,119 @@ describe('editor', () => {
 		expect(nodeIds(editor.getScene())).toEqual(['replacement', 'one-copy']);
 	});
 
+	test('selectMany replaces the selection, filtering unknown and duplicate ids', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40))
+		);
+		editor.select('one');
+
+		editor.selectMany(['two', 'two', 'ghost', 'one']);
+		expect(editor.getSelection()).toEqual(['two', 'one']);
+
+		editor.selectMany(['ghost']);
+		expect(editor.getSelection()).toEqual([]);
+		expect(editor.canUndo).toBe(false);
+	});
+
+	test('a plain marquee selects every intersecting node in draw order and clears the rectangle', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40), node('three', 80))
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('three');
+
+		editor.beginMarquee({ x: 5, y: 5 });
+		editor.marqueeTo({ x: 50, y: 50 });
+		expect(editor.getSnapshot().marquee).toEqual({
+			x1: 5,
+			x2: 50,
+			y1: 5,
+			y2: 50,
+		});
+		editor.endMarquee(false);
+
+		expect(editor.getSelection()).toEqual(['one', 'two']);
+		expect(editor.getSnapshot().marquee).toBeNull();
+		expect(editor.canUndo).toBe(false);
+	});
+
+	test('a shift-marquee adds to the selection and a marquee over nothing clears it', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40), node('three', 80))
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.selectMany(['one']);
+
+		editor.beginMarquee({ x: 85, y: 5 });
+		editor.marqueeTo({ x: 95, y: 15 });
+		editor.endMarquee(true);
+		expect(editor.getSelection()).toEqual(['one', 'three']);
+
+		editor.beginMarquee({ x: 200, y: 200 });
+		editor.marqueeTo({ x: 240, y: 240 });
+		editor.endMarquee(false);
+		expect(editor.getSelection()).toEqual([]);
+	});
+
+	test('marquee coordinates are screen-space and respect zoom and pan', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40))
+		);
+		editor.setViewport({ tx: -20, ty: -20, zoom: 2 });
+
+		editor.beginMarquee({ x: 0, y: 0 });
+		editor.marqueeTo({ x: 20, y: 20 });
+		editor.endMarquee(false);
+
+		expect(editor.getSelection()).toEqual(['one']);
+	});
+
+	test('marquee selection touches edges and endMarquee without a marquee is a no-op', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		let notifications = 0;
+		const unsubscribe = editor.subscribe(() => {
+			notifications += 1;
+		});
+
+		editor.endMarquee(false);
+		expect(notifications).toBe(0);
+
+		editor.select('one');
+		notifications = 0;
+		editor.beginMarquee({ x: 20, y: 0 });
+		editor.marqueeTo({ x: 30, y: 10 });
+		editor.endMarquee(false);
+
+		expect(editor.getSelection()).toEqual(['one']);
+		unsubscribe();
+	});
+
+	test('cancelMarquee discards the rectangle without touching the selection', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.beginMarquee({ x: 200, y: 200 });
+		editor.marqueeTo({ x: 300, y: 300 });
+
+		editor.cancelMarquee();
+
+		expect(editor.getSnapshot().marquee).toBeNull();
+		expect(editor.getSelection()).toEqual(['one']);
+	});
+
+	test('setScene clears an in-flight marquee', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginMarquee({ x: 0, y: 0 });
+		editor.marqueeTo({ x: 10, y: 10 });
+
+		editor.setScene(sceneWithNodes(node('replacement', 0)));
+
+		expect(editor.getSnapshot().marquee).toBeNull();
+		expect(editor.getSelection()).toEqual([]);
+	});
+
 	test('setScene clears selection and history without recording viewport changes', () => {
 		const first = sceneWithNodes(node('one', 0));
 		const editor = createEditor(first);

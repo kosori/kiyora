@@ -9,11 +9,21 @@ import {
 	fitToBounds as fitViewportToBounds,
 	panBy as panViewportBy,
 	resetView as resetViewport,
+	screenToWorld,
 	zoomAt as zoomViewportAt,
 } from './viewport';
 
+/** A marquee rectangle in screen-space pixels while it is being dragged. */
+export type MarqueeRect = {
+	x1: number;
+	x2: number;
+	y1: number;
+	y2: number;
+};
+
 /** The immutable state exposed by an Editor. */
 export type EditorSnapshot = {
+	marquee: MarqueeRect | null;
 	scene: Scene;
 	selection: readonly string[];
 	viewport: Viewport;
@@ -24,12 +34,19 @@ export type Editor = {
 	readonly canRedo: boolean;
 	readonly canUndo: boolean;
 	beginDrag: (id: string) => void;
+	/** Start a screen-space marquee rectangle anchored at `point`. */
+	beginMarquee: (point: Point) => void;
+	/** Discard the active marquee without changing the selection. */
+	cancelMarquee: () => void;
 	copy: () => void;
 	cut: () => void;
 	deleteSelection: () => void;
 	drag: (dx: number, dy: number) => void;
 	duplicate: () => void;
 	endDrag: () => void;
+	/** End the active marquee, selecting intersecting nodes; `addToSelection`
+	 * merges into the current selection instead of replacing it. */
+	endMarquee: (addToSelection: boolean) => void;
 	fitToBounds: (
 		bounds: Bounds,
 		size: { height: number; width: number }
@@ -39,11 +56,15 @@ export type Editor = {
 	getSnapshot: () => EditorSnapshot;
 	getViewport: () => Viewport;
 	hitTest: (point: Point) => SceneNode | null;
+	/** Move the free corner of the active marquee to `point`. */
+	marqueeTo: (point: Point) => void;
 	panBy: (dx: number, dy: number) => void;
 	paste: () => void;
 	resetView: () => void;
 	redo: () => void;
 	select: (id: string | null) => void;
+	/** Replace the selection with `ids`, dropping unknown and repeated ids. */
+	selectMany: (ids: readonly string[]) => void;
 	setScene: (scene: Scene) => void;
 	setViewport: (viewport: Viewport) => void;
 	subscribe: (listener: () => void) => () => void;
@@ -62,6 +83,19 @@ export function boxContains(
 		point.x <= box.x + box.width &&
 		point.y >= box.y &&
 		point.y <= box.y + box.height
+	);
+}
+
+/** Return whether a world-space rectangle overlaps a box, including edges. */
+function boxIntersectsRect(
+	box: Pick<SceneNode, 'height' | 'width' | 'x' | 'y'>,
+	rect: { x1: number; x2: number; y1: number; y2: number }
+): boolean {
+	return (
+		rect.x1 <= box.x + box.width &&
+		rect.x2 >= box.x &&
+		rect.y1 <= box.y + box.height &&
+		rect.y2 >= box.y
 	);
 }
 
@@ -196,6 +230,36 @@ function sameViewport(left: Viewport, right: Viewport): boolean {
 	);
 }
 
+function sameMarquee(
+	left: MarqueeRect | null,
+	right: MarqueeRect | null
+): boolean {
+	if (left === null || right === null) {
+		return left === right;
+	}
+	return (
+		left.x1 === right.x1 &&
+		left.x2 === right.x2 &&
+		left.y1 === right.y1 &&
+		left.y2 === right.y2
+	);
+}
+
+function mergeIds(
+	selection: readonly string[],
+	incoming: readonly string[]
+): string[] {
+	const merged = [...selection];
+	const seen = new Set(selection);
+	for (const id of incoming) {
+		if (!seen.has(id)) {
+			seen.add(id);
+			merged.push(id);
+		}
+	}
+	return merged;
+}
+
 /** Create an Editor over an immutable, renderable Scene. */
 export function createEditor(initialScene?: Scene): Editor {
 	let scene = initialScene ?? {
@@ -206,6 +270,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	};
 	let viewport = initialViewport(scene);
 	let selection: readonly string[] = [];
+	let marquee: MarqueeRect | null = null;
 	let nodeIndex = buildNodeIndex(scene);
 	let undoStack: Scene[] = [];
 	let redoStack: Scene[] = [];
@@ -213,10 +278,10 @@ export function createEditor(initialScene?: Scene): Editor {
 	let clipboard: ClipboardFragment | null = null;
 	const listeners = new Set<() => void>();
 
-	let snapshot: EditorSnapshot = { scene, selection, viewport };
+	let snapshot: EditorSnapshot = { marquee, scene, selection, viewport };
 
 	function notify(): void {
-		snapshot = { scene, selection, viewport };
+		snapshot = { marquee, scene, selection, viewport };
 		for (const listener of listeners) {
 			listener();
 		}
@@ -265,6 +330,33 @@ export function createEditor(initialScene?: Scene): Editor {
 		commitScene(pasteFragment(scene, fragment, PASTE_OFFSET, PASTE_OFFSET));
 	}
 
+	function setMarquee(nextMarquee: MarqueeRect | null): void {
+		if (sameMarquee(marquee, nextMarquee)) {
+			return;
+		}
+		marquee = nextMarquee;
+		notify();
+	}
+
+	function marqueeWorldRect(): {
+		x1: number;
+		x2: number;
+		y1: number;
+		y2: number;
+	} | null {
+		if (!marquee) {
+			return null;
+		}
+		const corner = screenToWorld(viewport, { x: marquee.x1, y: marquee.y1 });
+		const opposite = screenToWorld(viewport, { x: marquee.x2, y: marquee.y2 });
+		return {
+			x1: Math.min(corner.x, opposite.x),
+			x2: Math.max(corner.x, opposite.x),
+			y1: Math.min(corner.y, opposite.y),
+			y2: Math.max(corner.y, opposite.y),
+		};
+	}
+
 	const editor: Editor = {
 		beginDrag(id) {
 			const node = nodeIndex.get(id);
@@ -275,6 +367,14 @@ export function createEditor(initialScene?: Scene): Editor {
 				? selection.filter((selectedId) => nodeIndex.has(selectedId))
 				: [id];
 			dragState = { before: scene, ids };
+		},
+		beginMarquee(point) {
+			setMarquee({ x1: point.x, x2: point.x, y1: point.y, y2: point.y });
+		},
+		cancelMarquee() {
+			if (marquee) {
+				setMarquee(null);
+			}
 		},
 		get canRedo() {
 			return redoStack.length > 0;
@@ -320,6 +420,24 @@ export function createEditor(initialScene?: Scene): Editor {
 				redoStack = [];
 			}
 		},
+		endMarquee(addToSelection) {
+			const rect = marqueeWorldRect();
+			if (!rect) {
+				return;
+			}
+			const hitIds: string[] = [];
+			for (const node of scene.nodes) {
+				if (boxIntersectsRect(node, rect)) {
+					hitIds.push(node.id);
+				}
+			}
+			const nextSelection = addToSelection
+				? mergeIds(selection, hitIds)
+				: hitIds;
+			marquee = null;
+			selection = nextSelection;
+			notify();
+		},
 		fitToBounds(bounds, size) {
 			setViewport(fitViewportToBounds(viewport, bounds, size));
 		},
@@ -335,6 +453,12 @@ export function createEditor(initialScene?: Scene): Editor {
 				}
 			}
 			return null;
+		},
+		marqueeTo(point) {
+			if (!marquee) {
+				return;
+			}
+			setMarquee({ ...marquee, x2: point.x, y2: point.y });
 		},
 		panBy(dx, dy) {
 			setViewport(panViewportBy(viewport, dx, dy));
@@ -366,6 +490,17 @@ export function createEditor(initialScene?: Scene): Editor {
 			}
 			setSelection([id]);
 		},
+		selectMany(ids) {
+			const seen = new Set<string>();
+			const nextSelection: string[] = [];
+			for (const id of ids) {
+				if (nodeIndex.has(id) && !seen.has(id)) {
+					seen.add(id);
+					nextSelection.push(id);
+				}
+			}
+			setSelection(nextSelection);
+		},
 		setScene(nextScene) {
 			const sceneChanged = nextScene !== scene;
 			const historyChanged = undoStack.length > 0 || redoStack.length > 0;
@@ -375,7 +510,13 @@ export function createEditor(initialScene?: Scene): Editor {
 			undoStack = [];
 			redoStack = [];
 			dragState = null;
-			if (sceneChanged || historyChanged || snapshot.selection.length > 0) {
+			marquee = null;
+			if (
+				sceneChanged ||
+				historyChanged ||
+				snapshot.selection.length > 0 ||
+				snapshot.marquee !== null
+			) {
 				notify();
 			}
 		},

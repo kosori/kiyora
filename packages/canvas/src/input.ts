@@ -2,10 +2,14 @@ import type { Editor } from './editor';
 import { screenToWorld } from './viewport';
 
 const DRAG_THRESHOLD = 4;
+const LINE_HEIGHT_PX = 16;
+const PAGE_HEIGHT_PX = 400;
 
-type DragMode = 'node' | 'pan' | 'press';
+type DragMode = 'marquee' | 'node' | 'pan' | 'press';
 
 type DragState = {
+	additive: boolean;
+	marqueeStarted?: boolean;
 	mode: DragMode;
 	pointerId: number;
 	startX: number;
@@ -13,7 +17,6 @@ type DragState = {
 	lastX: number;
 	lastY: number;
 	moved: boolean;
-	clearOnClick: boolean;
 };
 
 /** Optional callbacks for consumers that render independently of Editor. */
@@ -60,7 +63,7 @@ export function attachInput(
 		}
 		capturePointer(event.pointerId);
 		drag = {
-			clearOnClick: false,
+			additive: event.shiftKey,
 			lastX: event.clientX,
 			lastY: event.clientY,
 			mode: 'press',
@@ -95,9 +98,7 @@ export function attachInput(
 			return;
 		}
 
-		// Selection is cleared on a background click, not when a pan begins.
-		drag.mode = 'pan';
-		drag.clearOnClick = !event.shiftKey;
+		drag.mode = 'marquee';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
@@ -124,11 +125,19 @@ export function attachInput(
 		} else if (drag.mode === 'node') {
 			const { zoom } = editor.getViewport();
 			editor.drag(dx / zoom, dy / zoom);
+		} else if (drag.mode === 'marquee') {
+			if (!drag.marqueeStarted) {
+				drag.marqueeStarted = true;
+				editor.beginMarquee(
+					localPoint({ clientX: drag.startX, clientY: drag.startY })
+				);
+			}
+			editor.marqueeTo(localPoint(event));
 		}
 		notify();
 	}
 
-	function endPointer(event: PointerEvent): void {
+	function endPointer(event: PointerEvent, cancelled: boolean): void {
 		if (!drag || drag.pointerId !== event.pointerId) {
 			return;
 		}
@@ -141,16 +150,50 @@ export function attachInput(
 			notify();
 			return;
 		}
-		if (state.mode === 'pan' && !state.moved && state.clearOnClick) {
-			editor.select(null);
-			notify();
+		if (state.mode !== 'marquee') {
+			return;
 		}
+		if (cancelled) {
+			editor.cancelMarquee();
+			notify();
+			return;
+		}
+		if (state.moved) {
+			editor.endMarquee(state.additive || event.shiftKey);
+		} else if (!(state.additive || event.shiftKey)) {
+			editor.select(null);
+		}
+		notify();
+	}
+
+	function onPointerUp(event: PointerEvent): void {
+		endPointer(event, false);
+	}
+
+	function onPointerCancel(event: PointerEvent): void {
+		endPointer(event, true);
+	}
+
+	function wheelDelta(event: WheelEvent): number {
+		if (event.deltaMode === 1) {
+			return event.deltaY * LINE_HEIGHT_PX;
+		}
+		if (event.deltaMode === 2) {
+			return event.deltaY * PAGE_HEIGHT_PX;
+		}
+		return event.deltaY;
 	}
 
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
-		const point = localPoint(event);
-		editor.zoomAt(point, event.deltaY < 0 ? 1.2 : 1 / 1.2);
+		if (event.ctrlKey || event.metaKey) {
+			const point = localPoint(event);
+			editor.zoomAt(point, event.deltaY < 0 ? 1.2 : 1 / 1.2);
+			notify();
+			return;
+		}
+		const vertical = wheelDelta(event);
+		editor.panBy(-event.deltaX, -vertical);
 		notify();
 	}
 
@@ -173,8 +216,8 @@ export function attachInput(
 
 	svg.addEventListener('pointerdown', onPointerDown);
 	svg.addEventListener('pointermove', onPointerMove);
-	svg.addEventListener('pointerup', endPointer);
-	svg.addEventListener('pointercancel', endPointer);
+	svg.addEventListener('pointerup', onPointerUp);
+	svg.addEventListener('pointercancel', onPointerCancel);
 	svg.addEventListener('wheel', onWheel, { passive: false });
 	ownerWindow?.addEventListener('keydown', onKeyDown);
 	ownerWindow?.addEventListener('keyup', onKeyUp);
@@ -189,10 +232,13 @@ export function attachInput(
 			editor.endDrag();
 			handlers.onDragStateChange?.(false);
 		}
+		if (activeDrag?.mode === 'marquee') {
+			editor.cancelMarquee();
+		}
 		svg.removeEventListener('pointerdown', onPointerDown);
 		svg.removeEventListener('pointermove', onPointerMove);
-		svg.removeEventListener('pointerup', endPointer);
-		svg.removeEventListener('pointercancel', endPointer);
+		svg.removeEventListener('pointerup', onPointerUp);
+		svg.removeEventListener('pointercancel', onPointerCancel);
 		svg.removeEventListener('wheel', onWheel);
 		ownerWindow?.removeEventListener('keydown', onKeyDown);
 		ownerWindow?.removeEventListener('keyup', onKeyUp);

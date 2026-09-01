@@ -13,7 +13,7 @@ import {
 	sceneSize,
 	TITLE_HEIGHT,
 } from '@kiyora/render';
-import type { EditorSnapshot } from './editor';
+import type { EditorSnapshot, MarqueeRect } from './editor';
 import { worldToScreen } from './viewport';
 
 /** Options for the canvas SVG projection. */
@@ -39,6 +39,8 @@ const GRID_SPACING = 24;
 const GRID_COLOR = '#c8cdd4';
 const BACKGROUND_COLOR = '#fbfcfe';
 const SELECTION_COLOR = '#4dabf7';
+// SELECTION_COLOR (#4dabf7) at 12% alpha for the marquee wash.
+const MARQUEE_FILL = 'rgba(77,171,247,0.12)';
 
 function renderGrid(
 	viewport: EditorSnapshot['viewport'],
@@ -85,6 +87,17 @@ function selectionMarkup(
 		.join('');
 }
 
+function marqueeMarkup(marquee: MarqueeRect | null): string {
+	if (!marquee) {
+		return '';
+	}
+	const x = Math.min(marquee.x1, marquee.x2);
+	const y = Math.min(marquee.y1, marquee.y2);
+	const width = Math.abs(marquee.x2 - marquee.x1);
+	const height = Math.abs(marquee.y2 - marquee.y1);
+	return `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${MARQUEE_FILL}" stroke="${SELECTION_COLOR}" stroke-width="1"/>`;
+}
+
 /** Build the structured projection consumed by the DOM engine. */
 export function renderSceneResult(
 	snapshot: EditorSnapshot,
@@ -126,6 +139,7 @@ export function renderSceneResult(
 		legend,
 		'</g>',
 		selectionMarkup(snapshot, nodeIndex),
+		marqueeMarkup(snapshot.marquee),
 	].join('');
 	return { body, height, viewBox: `0 0 ${width} ${height}`, width };
 }

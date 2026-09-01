@@ -81,7 +81,7 @@ describe('canvas engine', () => {
 		engine.destroy();
 	});
 
-	test('zooms to the wheel cursor and pans with the middle button', () => {
+	test('pans with the middle button and trackpad wheel, zooms with ctrl-wheel', () => {
 		const window = new Window();
 		const container = window.document.createElement('div');
 		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
@@ -100,11 +100,31 @@ describe('canvas engine', () => {
 		Object.defineProperties(wheel, {
 			clientX: { value: 100 },
 			clientY: { value: 100 },
+			ctrlKey: { value: true },
 		});
 		svg.dispatchEvent(wheel);
 		expect(editor.getViewport().zoom).toBe(1.2);
 		expect(editor.getViewport().tx).toBeCloseTo(8.8);
 		expect(editor.getViewport().ty).toBeCloseTo(8.8);
+
+		const trackpad = new window.WheelEvent('wheel', {
+			bubbles: true,
+			deltaX: -12,
+			deltaY: -8,
+		});
+		svg.dispatchEvent(trackpad);
+		expect(editor.getViewport().zoom).toBe(1.2);
+		expect(editor.getViewport().tx).toBeCloseTo(20.8);
+		expect(editor.getViewport().ty).toBeCloseTo(16.8);
+
+		const lineWheel = new window.WheelEvent('wheel', {
+			bubbles: true,
+			deltaY: 3,
+		});
+		Object.defineProperty(lineWheel, 'deltaMode', { value: 1 });
+		svg.dispatchEvent(lineWheel);
+		expect(editor.getViewport().tx).toBeCloseTo(20.8);
+		expect(editor.getViewport().ty).toBeCloseTo(16.8 - 48);
 
 		svg.dispatchEvent(
 			pointer(window, 'pointerdown', {
@@ -119,8 +139,8 @@ describe('canvas engine', () => {
 		svg.dispatchEvent(
 			pointer(window, 'pointerup', { clientX: 20, clientY: 25 })
 		);
-		expect(editor.getViewport().tx).toBeCloseTo(18.8);
-		expect(editor.getViewport().ty).toBeCloseTo(23.8);
+		expect(editor.getViewport().tx).toBeCloseTo(30.8);
+		expect(editor.getViewport().ty).toBeCloseTo(-16.2);
 		engine.destroy();
 	});
 
@@ -214,6 +234,174 @@ describe('canvas engine', () => {
 			tx: initialViewport.tx + 10,
 			ty: initialViewport.ty + 10,
 		});
+		engine.destroy();
+	});
+
+	test('a background drag draws a marquee and selects intersecting nodes instead of panning', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const scene = makeScene();
+		const [firstNode] = scene.nodes;
+		if (!firstNode) {
+			throw new Error('test scene did not include a node');
+		}
+		const editor = createEditor({
+			...scene,
+			nodes: [firstNode, { ...firstNode, id: 'second', x: 100 }],
+		});
+		const engine = createEngine(asElement(container), editor);
+		const svg = container.querySelector('svg');
+		if (!svg) {
+			throw new Error('engine did not mount an SVG');
+		}
+		editor.select('second');
+		const viewportBefore = editor.getViewport();
+
+		// Viewport starts at (24, 24): the marquee crosses 'node' only.
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 0, clientY: 0 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 5, clientY: 5 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 60, clientY: 60 })
+		);
+		expect(svg.innerHTML).toContain('fill="rgba(77,171,247,0.12)"');
+		expect(editor.getViewport()).toEqual(viewportBefore);
+
+		svg.dispatchEvent(
+			pointer(window, 'pointerup', { clientX: 60, clientY: 60 })
+		);
+		expect(editor.getSelection()).toEqual(['node']);
+		expect(svg.innerHTML).not.toContain('rgba(77,171,247,0.12)');
+
+		// Multi-drag: the whole selection moves together.
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 30, clientY: 30 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 35, clientY: 35 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 42, clientY: 44 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointerup', { clientX: 42, clientY: 44 })
+		);
+		expect(editor.getScene().nodes.map(({ x }) => x)).toEqual([12, 100]);
+		engine.destroy();
+	});
+
+	test('a shift-marquee adds to the selection and a background click replaces it with none', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const scene = makeScene();
+		const [firstNode] = scene.nodes;
+		if (!firstNode) {
+			throw new Error('test scene did not include a node');
+		}
+		const editor = createEditor({
+			...scene,
+			nodes: [firstNode, { ...firstNode, id: 'second', x: 100 }],
+		});
+		const engine = createEngine(asElement(container), editor);
+		const svg = container.querySelector('svg');
+		if (!svg) {
+			throw new Error('engine did not mount an SVG');
+		}
+		editor.select('node');
+
+		// Screen (150, 0) to (180, 50) crosses 'second' only.
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', {
+				clientX: 150,
+				clientY: 0,
+				shiftKey: true,
+			})
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', {
+				clientX: 155,
+				clientY: 5,
+				shiftKey: true,
+			})
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', {
+				clientX: 180,
+				clientY: 50,
+				shiftKey: true,
+			})
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointerup', { clientX: 180, clientY: 50 })
+		);
+		expect(editor.getSelection()).toEqual(['node', 'second']);
+
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 350, clientY: 250 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointerup', { clientX: 350, clientY: 250 })
+		);
+		expect(editor.getSelection()).toEqual([]);
+		engine.destroy();
+	});
+
+	test('a cancelled marquee is discarded and shift can be pressed mid-drag', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const scene = makeScene();
+		const [firstNode] = scene.nodes;
+		if (!firstNode) {
+			throw new Error('test scene did not include a node');
+		}
+		const editor = createEditor({
+			...scene,
+			nodes: [firstNode, { ...firstNode, id: 'second', x: 100 }],
+		});
+		const engine = createEngine(asElement(container), editor);
+		const svg = container.querySelector('svg');
+		if (!svg) {
+			throw new Error('engine did not mount an SVG');
+		}
+		editor.select('second');
+
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 0, clientY: 0 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 60, clientY: 60 })
+		);
+		expect(editor.getSnapshot().marquee).not.toBeNull();
+		svg.dispatchEvent(
+			pointer(window, 'pointercancel', { clientX: 60, clientY: 60 })
+		);
+		expect(editor.getSnapshot().marquee).toBeNull();
+		expect(editor.getSelection()).toEqual(['second']);
+
+		// Shift pressed only at release still adds to the selection.
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 0, clientY: 0 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 60, clientY: 60 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointerup', {
+				clientX: 60,
+				clientY: 60,
+				shiftKey: true,
+			})
+		);
+		expect(editor.getSelection()).toEqual(['second', 'node']);
 		engine.destroy();
 	});
 });
