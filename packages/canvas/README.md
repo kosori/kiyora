@@ -83,6 +83,9 @@ snapshot used by subscribers. The editor exposes:
 
 Selection, viewport changes, and an in-progress drag are not history entries.
 A completed drag creates one entry, and a new edit clears the redo stack.
+`beginDrag`/`drag`/`endDrag` move nodes by screen-space deltas with an
+always-on 8-px screen-grid snap (`SNAP_STEP`); a multi-drag snaps the
+selection's bounding-box top-left and applies one uniform delta.
 `moveNodes` and `boxContains` are exported pure helpers for lower-level
 integrations.
 

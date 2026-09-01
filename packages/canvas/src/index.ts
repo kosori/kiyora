@@ -20,6 +20,7 @@ export { attachInput } from './input';
 export type { RenderSceneOptions } from './renderer';
 export { renderScene } from './renderer';
 export type { ResizeHandle } from './resize';
+export { SNAP_STEP } from './snap';
 export type { Bounds, Point, Viewport, WorldRect } from './viewport';
 export {
 	createViewport,

@@ -88,30 +88,75 @@ describe('editor', () => {
 		unsubscribe();
 	});
 
-	test('keeps selection transient and coalesces a drag into one history entry', () => {
+	test('keeps selection transient and coalesces a snapped drag into one history entry', () => {
 		const editor = createEditor(
 			sceneWithNodes(node('one', 0), node('two', 40))
 		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
 		editor.select('one');
 		editor.beginDrag('one');
 		editor.drag(5, 3);
 		editor.drag(5, 3);
 		editor.endDrag();
 
-		expect(editor.getScene().nodes[0]).toMatchObject({ x: 10, y: 6 });
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 8, y: 8 });
 		expect(editor.canUndo).toBe(true);
 		editor.undo();
 		expect(editor.getScene().nodes[0]).toMatchObject({ x: 0, y: 0 });
 		expect(editor.getSelection()).toEqual(['one']);
 		expect(editor.canUndo).toBe(false);
 		editor.redo();
-		expect(editor.getScene().nodes[0]).toMatchObject({ x: 10, y: 6 });
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 8, y: 8 });
+	});
+
+	test('a single-node drag snaps to the 8-px screen-space grid', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginDrag('one');
+		editor.drag(3, 2);
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 0, y: 0 });
+		editor.drag(4, 1);
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 8, y: 0 });
+		editor.drag(0, 5);
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 8, y: 8 });
+		editor.drag(-1, 0);
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 8, y: 8 });
+		editor.endDrag();
+		expect(editor.canUndo).toBe(true);
+	});
+
+	test('a multi-drag snaps the selection bounding box with one uniform delta', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 10, 0), node('two', 40, 20))
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.toggleSelect('two');
+		editor.beginDrag('two');
+		editor.drag(5, 5);
+		editor.endDrag();
+
+		expect(editor.getScene().nodes.map(({ x, y }) => ({ x, y }))).toEqual([
+			{ x: 16, y: 8 },
+			{ x: 46, y: 28 },
+		]);
+	});
+
+	test('snap converts the screen-space grid into world units at any zoom', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 10)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 2 });
+		editor.beginDrag('one');
+		editor.drag(1, 0);
+		editor.endDrag();
+
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 12, y: 0 });
 	});
 
 	test('moves the complete selected set', () => {
 		const editor = createEditor(
 			sceneWithNodes(node('one', 0), node('two', 40))
 		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
 		editor.select('one');
 		editor.toggleSelect('two');
 		editor.beginDrag('two');
@@ -119,16 +164,17 @@ describe('editor', () => {
 		editor.endDrag();
 
 		expect(editor.getScene().nodes.map(({ x, y }) => ({ x, y }))).toEqual([
-			{ x: 3, y: 4 },
-			{ x: 43, y: 4 },
+			{ x: 0, y: 8 },
+			{ x: 40, y: 8 },
 		]);
 	});
 
 	test('clears redo after a new committed edit and caps history at 200 entries', () => {
 		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
 		for (let index = 0; index < 201; index += 1) {
 			editor.beginDrag('one');
-			editor.drag(1, 0);
+			editor.drag(8, 0);
 			editor.endDrag();
 		}
 
@@ -138,11 +184,11 @@ describe('editor', () => {
 			undoCount += 1;
 		}
 		expect(undoCount).toBe(200);
-		expect(editor.getScene().nodes[0]?.x).toBe(1);
+		expect(editor.getScene().nodes[0]?.x).toBe(8);
 		expect(editor.canRedo).toBe(true);
 
 		editor.beginDrag('one');
-		editor.drag(1, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 		expect(editor.canRedo).toBe(false);
 	});
@@ -317,6 +363,7 @@ describe('editor', () => {
 		const editor = createEditor(
 			sceneWithNodes(node('one', 0), node('two', 40))
 		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
 		editor.select('one');
 		editor.beginDrag('one');
 		editor.drag(4, 0);

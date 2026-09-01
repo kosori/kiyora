@@ -11,6 +11,7 @@ import {
 	resizeBox,
 	singleSelectedNode,
 } from './resize';
+import { selectionAnchor, snapDragDelta } from './snap';
 import type { Bounds, Point, Viewport } from './viewport';
 import {
 	fitToBounds as fitViewportToBounds,
@@ -56,6 +57,8 @@ export type Editor = {
 	copy: () => void;
 	cut: () => void;
 	deleteSelection: () => void;
+	/** Move the dragged selection by a screen-space delta in pixels, snapping
+	 * its anchor onto the always-on 8-px grid. */
 	drag: (dx: number, dy: number) => void;
 	duplicate: () => void;
 	endDrag: () => void;
@@ -245,6 +248,14 @@ type ClipboardFragment = {
 type DragState = {
 	ids: readonly string[];
 	before: Scene;
+	/** World-space snap anchor: the dragged selection's bounding-box top-left. */
+	anchor: Point;
+	/** Cumulative raw drag input in screen pixels. */
+	totalScreenDx: number;
+	totalScreenDy: number;
+	/** Cumulative snapped delta applied to the selection so far, in world units. */
+	appliedDx: number;
+	appliedDy: number;
 };
 
 type ResizeState = {
@@ -404,7 +415,22 @@ export function createEditor(initialScene?: Scene): Editor {
 			const ids = selection.includes(id)
 				? selection.filter((selectedId) => nodeIndex.has(selectedId))
 				: [id];
-			dragState = { before: scene, ids };
+			const dragged: Point[] = [];
+			for (const selectedId of ids) {
+				const selectedNode = nodeIndex.get(selectedId);
+				if (selectedNode) {
+					dragged.push({ x: selectedNode.x, y: selectedNode.y });
+				}
+			}
+			dragState = {
+				anchor: selectionAnchor(dragged) ?? { x: node.x, y: node.y },
+				appliedDx: 0,
+				appliedDy: 0,
+				before: scene,
+				ids,
+				totalScreenDx: 0,
+				totalScreenDy: 0,
+			};
 		},
 		beginMarquee(point) {
 			setMarquee({ x1: point.x, x2: point.x, y1: point.y, y2: point.y });
@@ -445,7 +471,27 @@ export function createEditor(initialScene?: Scene): Editor {
 			if (!dragState || (dx === 0 && dy === 0)) {
 				return;
 			}
-			setCurrentScene(moveNodes(scene, dragState.ids, dx, dy));
+			const totalScreenDx = dragState.totalScreenDx + dx;
+			const totalScreenDy = dragState.totalScreenDy + dy;
+			const snapped = snapDragDelta(
+				viewport,
+				dragState.anchor,
+				totalScreenDx,
+				totalScreenDy
+			);
+			const stepDx = snapped.x - dragState.appliedDx;
+			const stepDy = snapped.y - dragState.appliedDy;
+			dragState = {
+				...dragState,
+				appliedDx: snapped.x,
+				appliedDy: snapped.y,
+				totalScreenDx,
+				totalScreenDy,
+			};
+			if (stepDx === 0 && stepDy === 0) {
+				return;
+			}
+			setCurrentScene(moveNodes(scene, dragState.ids, stepDx, stepDy));
 		},
 		duplicate() {
 			const fragment = captureFragment(scene, selection);

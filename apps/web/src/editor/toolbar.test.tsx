@@ -70,7 +70,7 @@ describe('Toolbar', () => {
 		d.body.append(container);
 		const editor = createEditor(makeScene());
 		editor.beginDrag('one');
-		editor.drag(10, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 		expect(editor.canUndo).toBe(true);
 
@@ -104,7 +104,7 @@ describe('Toolbar', () => {
 		});
 		// After a redo, the original drag is back on the scene.
 		const [node] = editor.getScene().nodes;
-		expect(node?.x).toBe(10);
+		expect(node?.x).toBe(8);
 
 		act(() => {
 			root.unmount();

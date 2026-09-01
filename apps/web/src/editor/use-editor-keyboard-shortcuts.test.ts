@@ -81,7 +81,7 @@ describe('useEditorKeyboardShortcuts', () => {
 		withHappyDom();
 		const editor = createEditor(makeScene());
 		editor.beginDrag('one');
-		editor.drag(10, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 		expect(editor.canUndo).toBe(true);
 
@@ -100,7 +100,7 @@ describe('useEditorKeyboardShortcuts', () => {
 		withHappyDom();
 		const editor = createEditor(makeScene());
 		editor.beginDrag('one');
-		editor.drag(10, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 
 		const { unmount } = renderHook(
@@ -118,7 +118,7 @@ describe('useEditorKeyboardShortcuts', () => {
 		withHappyDom();
 		const editor = createEditor(makeScene());
 		editor.beginDrag('one');
-		editor.drag(10, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 		editor.undo();
 		expect(editor.canRedo).toBe(true);
@@ -130,7 +130,7 @@ describe('useEditorKeyboardShortcuts', () => {
 
 		dispatchKey({ key: 'z', metaKey: true, shiftKey: true });
 
-		expect(editor.getScene().nodes[0]?.x).toBe(10);
+		expect(editor.getScene().nodes[0]?.x).toBe(8);
 		unmount();
 	});
 
@@ -138,10 +138,10 @@ describe('useEditorKeyboardShortcuts', () => {
 		withHappyDom();
 		const editor = createEditor(makeScene());
 		editor.beginDrag('one');
-		editor.drag(10, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 		const before = editor.getScene().nodes[0]?.x;
-		expect(before).toBe(10);
+		expect(before).toBe(8);
 
 		const { unmount } = renderHook(
 			(props) => useEditorKeyboardShortcuts(editor, props),
@@ -159,7 +159,7 @@ describe('useEditorKeyboardShortcuts', () => {
 		withHappyDom();
 		const editor = createEditor(makeScene());
 		editor.beginDrag('one');
-		editor.drag(10, 0);
+		editor.drag(8, 0);
 		editor.endDrag();
 
 		const { unmount } = renderHook(
@@ -169,7 +169,7 @@ describe('useEditorKeyboardShortcuts', () => {
 		unmount();
 
 		dispatchKey({ key: 'z', metaKey: true });
-		expect(editor.getScene().nodes[0]?.x).toBe(10);
+		expect(editor.getScene().nodes[0]?.x).toBe(8);
 	});
 
 	test('ignores non-shortcut keys', () => {

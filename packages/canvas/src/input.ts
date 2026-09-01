@@ -130,8 +130,7 @@ export function attachInput(
 		if (drag.mode === 'pan') {
 			editor.panBy(dx, dy);
 		} else if (drag.mode === 'node') {
-			const { zoom } = editor.getViewport();
-			editor.drag(dx / zoom, dy / zoom);
+			editor.drag(dx, dy);
 		} else if (drag.mode === 'resize') {
 			const world = screenToWorld(editor.getViewport(), localPoint(event));
 			editor.resizeTo(world);

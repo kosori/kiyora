@@ -10,6 +10,7 @@ import {
 	panTo,
 	renderScene,
 	resetView,
+	SNAP_STEP,
 	screenToWorld,
 	visibleWorld,
 	worldToScreen,
@@ -38,6 +39,7 @@ describe('canvas package scaffold', () => {
 		expect(typeof zoomAt).toBe('function');
 		expect(MIN_ZOOM).toBe(0.05);
 		expect(MAX_ZOOM).toBe(8);
+		expect(SNAP_STEP).toBe(8);
 	});
 
 	test('exposes the React adapter surface', () => {

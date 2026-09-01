@@ -74,7 +74,7 @@ describe('canvas engine', () => {
 			pointer(window, 'pointerup', { clientX: 40, clientY: 45 })
 		);
 
-		expect(editor.getScene().nodes[0]).toMatchObject({ x: 10, y: 15 });
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 8, y: 16 });
 		expect(editor.canUndo).toBe(true);
 		editor.undo();
 		expect(editor.getScene().nodes[0]).toMatchObject({ x: 0, y: 0 });
@@ -291,7 +291,7 @@ describe('canvas engine', () => {
 		svg.dispatchEvent(
 			pointer(window, 'pointerup', { clientX: 42, clientY: 44 })
 		);
-		expect(editor.getScene().nodes.map(({ x }) => x)).toEqual([12, 100]);
+		expect(editor.getScene().nodes.map(({ x }) => x)).toEqual([16, 100]);
 		engine.destroy();
 	});
 
