@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene, SceneEdge, SceneNode } from '@kiyora/render';
 import { boxContains, createEditor, moveNodes } from './editor';
+import { MIN_NODE_HEIGHT, MIN_NODE_WIDTH } from './resize';
 import { screenToWorld, worldToScreen } from './viewport';
 
 const span = {
@@ -466,6 +467,133 @@ describe('editor', () => {
 
 		expect(editor.getSnapshot().marquee).toBeNull();
 		expect(editor.getSelection()).toEqual([]);
+	});
+
+	test('an east-handle resize mutates only width and anchors the west edge', () => {
+		const editor = createEditor(
+			sceneWithNodes(
+				{ ...node('one', 100, 100), height: 60, width: 80 },
+				node('two', 400, 100)
+			)
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginResize('one', 'e');
+		editor.resizeTo({ x: 220, y: 130 });
+		editor.endResize();
+
+		expect(editor.getScene().nodes[0]).toEqual({
+			...node('one', 100, 100),
+			height: 60,
+			width: 120,
+		});
+		expect(editor.getScene().nodes[1]).toEqual(node('two', 400, 100));
+	});
+
+	test('a corner resize drags its anchor corner with clamped minimum size', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginResize('one', 'nw');
+		editor.resizeTo({ x: 90, y: 95 });
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 65,
+			width: 90,
+			x: 90,
+			y: 95,
+		});
+		editor.resizeTo({ x: 999, y: 999 });
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: MIN_NODE_HEIGHT,
+			width: MIN_NODE_WIDTH,
+			x: 180 - MIN_NODE_WIDTH,
+			y: 160 - MIN_NODE_HEIGHT,
+		});
+		editor.endResize();
+	});
+
+	test('a resize gesture coalesces into one history entry', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginResize('one', 'se');
+		editor.resizeTo({ x: 190, y: 165 });
+		editor.resizeTo({ x: 200, y: 170 });
+		editor.endResize();
+
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 70,
+			width: 100,
+		});
+		expect(editor.canUndo).toBe(true);
+		expect(editor.canRedo).toBe(false);
+		editor.undo();
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 80,
+			x: 100,
+			y: 100,
+		});
+		expect(editor.canUndo).toBe(false);
+		editor.redo();
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 70,
+			width: 100,
+		});
+	});
+
+	test('an unchanged resize gesture commits no history entry', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginResize('one', 'se');
+		editor.resizeTo({ x: 180, y: 160 });
+		editor.endResize();
+
+		expect(editor.canUndo).toBe(false);
+	});
+
+	test('resize primitives without a live gesture are no-ops', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		const initial = editor.getSnapshot();
+		let notifications = 0;
+		const unsubscribe = editor.subscribe(() => {
+			notifications += 1;
+		});
+
+		editor.beginResize('ghost', 'se');
+		editor.resizeTo({ x: 10, y: 10 });
+		editor.endResize();
+
+		expect(editor.getSnapshot()).toBe(initial);
+		expect(editor.canUndo).toBe(false);
+		expect(notifications).toBe(0);
+		unsubscribe();
+	});
+
+	test('undo and setScene abandon an in-flight resize gesture', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.beginDrag('one');
+		editor.drag(10, 0);
+		editor.endDrag();
+
+		editor.beginResize('one', 'se');
+		editor.undo();
+		editor.resizeTo({ x: 200, y: 170 });
+		editor.endResize();
+		expect(editor.getScene().nodes[0]).toMatchObject({ width: 80, x: 100 });
+		expect(editor.canRedo).toBe(true);
+
+		editor.beginResize('one', 'se');
+		editor.setScene(sceneWithNodes(node('replacement', 0)));
+		editor.resizeTo({ x: 200, y: 170 });
+		editor.endResize();
+		expect(nodeIds(editor.getScene())).toEqual(['replacement']);
 	});
 
 	test('setScene clears selection and history without recording viewport changes', () => {

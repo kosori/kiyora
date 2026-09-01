@@ -4,7 +4,12 @@ export type {
 	SceneGroup,
 	SceneNode,
 } from '@kiyora/render';
-export type { Editor, EditorSnapshot, MarqueeRect } from './editor';
+export type {
+	Editor,
+	EditorSnapshot,
+	MarqueeRect,
+	ResizeTarget,
+} from './editor';
 // Public package entry point intentionally re-exports the canvas API.
 // biome-ignore lint/performance/noBarrelFile: this is the package's public entry point.
 export { boxContains, createEditor, moveNodes } from './editor';
@@ -14,6 +19,7 @@ export type { InputHandlers } from './input';
 export { attachInput } from './input';
 export type { RenderSceneOptions } from './renderer';
 export { renderScene } from './renderer';
+export type { ResizeHandle } from './resize';
 export type { Bounds, Point, Viewport, WorldRect } from './viewport';
 export {
 	createViewport,

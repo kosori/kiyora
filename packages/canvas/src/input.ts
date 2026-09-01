@@ -5,7 +5,7 @@ const DRAG_THRESHOLD = 4;
 const LINE_HEIGHT_PX = 16;
 const PAGE_HEIGHT_PX = 400;
 
-type DragMode = 'marquee' | 'node' | 'pan' | 'press';
+type DragMode = 'marquee' | 'node' | 'pan' | 'press' | 'resize';
 
 type DragState = {
 	additive: boolean;
@@ -79,6 +79,13 @@ export function attachInput(
 		}
 
 		const point = localPoint(event);
+		const target = editor.hitTestHandle(point);
+		if (target) {
+			editor.beginResize(target.id, target.handle);
+			drag.mode = 'resize';
+			handlers.onDragStateChange?.(true);
+			return;
+		}
 		const world = screenToWorld(editor.getViewport(), point);
 		const node = editor.hitTest(world);
 		if (node) {
@@ -125,6 +132,9 @@ export function attachInput(
 		} else if (drag.mode === 'node') {
 			const { zoom } = editor.getViewport();
 			editor.drag(dx / zoom, dy / zoom);
+		} else if (drag.mode === 'resize') {
+			const world = screenToWorld(editor.getViewport(), localPoint(event));
+			editor.resizeTo(world);
 		} else if (drag.mode === 'marquee') {
 			if (!drag.marqueeStarted) {
 				drag.marqueeStarted = true;
@@ -146,6 +156,12 @@ export function attachInput(
 		releasePointer(event.pointerId);
 		if (state.mode === 'node') {
 			editor.endDrag();
+			handlers.onDragStateChange?.(false);
+			notify();
+			return;
+		}
+		if (state.mode === 'resize') {
+			editor.endResize();
 			handlers.onDragStateChange?.(false);
 			notify();
 			return;
@@ -230,6 +246,10 @@ export function attachInput(
 		}
 		if (activeDrag?.mode === 'node') {
 			editor.endDrag();
+			handlers.onDragStateChange?.(false);
+		}
+		if (activeDrag?.mode === 'resize') {
+			editor.endResize();
 			handlers.onDragStateChange?.(false);
 		}
 		if (activeDrag?.mode === 'marquee') {

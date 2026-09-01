@@ -3,6 +3,7 @@ import type { Scene } from '@kiyora/render';
 import { sceneNode } from '@kiyora/render/testing';
 import { createEditor } from './editor';
 import { renderScene } from './renderer';
+import { RESIZE_HANDLES } from './resize';
 
 const span = {
 	end: { column: 1, line: 1 },
@@ -168,6 +169,92 @@ describe('renderScene', () => {
 		expect(svg).toContain(
 			'<rect x="10" y="20" width="50" height="20" fill="rgba(77,171,247,0.12)" stroke="#4dabf7" stroke-width="1"/>'
 		);
+	});
+
+	test('draws eight resize handles on a selected node and none otherwise', () => {
+		const scene: Scene = {
+			edges: [],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 40,
+					id: 'box',
+					label: 'Box',
+					span,
+					width: 80,
+					x: 100,
+					y: 100,
+				}),
+			],
+			title: '',
+		};
+		const editor = createEditor(scene);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+
+		const before = renderScene(editor.getSnapshot(), {
+			height: 300,
+			showGrid: false,
+			width: 400,
+		});
+		for (const handle of RESIZE_HANDLES) {
+			expect(before).not.toContain(`data-resize-handle="${handle}"`);
+		}
+
+		editor.select('box');
+		const after = renderScene(editor.getSnapshot(), {
+			height: 300,
+			showGrid: false,
+			width: 400,
+		});
+		for (const handle of RESIZE_HANDLES) {
+			expect(after).toContain(`data-resize-handle="${handle}"`);
+		}
+		expect(after.match(/data-resize-handle=/gu)).toHaveLength(8);
+		// Handles sit on the selection outline of the 80x40 box at (100,100):
+		// nw centered (97,97), se centered (183,143), each an 8px square.
+		expect(after).toContain(
+			'<rect data-resize-handle="nw" x="93" y="93" width="8" height="8"'
+		);
+		expect(after).toContain(
+			'<rect data-resize-handle="se" x="179" y="139" width="8" height="8"'
+		);
+	});
+
+	test('edges re-route to the resized bounds of an endpoint node', () => {
+		const source = sceneNode({
+			height: 40,
+			id: 'a',
+			label: 'A',
+			span,
+			width: 80,
+			x: 0,
+			y: 0,
+		});
+		const target = sceneNode({
+			height: 40,
+			id: 'b',
+			label: 'B',
+			span,
+			width: 80,
+			x: 200,
+			y: 0,
+		});
+		const editor = createEditor({
+			edges: [{ from: 'a', span, to: 'b' }],
+			groups: [],
+			nodes: [source, target],
+			title: '',
+		});
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		const before = renderScene(editor.getSnapshot(), { showGrid: false });
+		expect(before).toContain('d="M 80 20 C 128 20, 152 20, 200 20"');
+
+		editor.beginResize('a', 'e');
+		editor.resizeTo({ x: 120, y: 20 });
+		editor.endResize();
+		const after = renderScene(editor.getSnapshot(), { showGrid: false });
+
+		expect(after).toContain('d="M 120 20 C 152 20, 168 20, 200 20"');
 	});
 
 	test('renders no marquee rectangle when none is active', () => {

@@ -4,6 +4,13 @@ import {
 	type SceneNode,
 	scenePlacement,
 } from '@kiyora/render';
+import type { ResizeHandle } from './resize';
+import {
+	handleHit,
+	RESIZE_HANDLES,
+	resizeBox,
+	singleSelectedNode,
+} from './resize';
 import type { Bounds, Point, Viewport } from './viewport';
 import {
 	fitToBounds as fitViewportToBounds,
@@ -21,6 +28,12 @@ export type MarqueeRect = {
 	y2: number;
 };
 
+/** A screen-space resize target: the node and the handle under a point. */
+export type ResizeTarget = {
+	handle: ResizeHandle;
+	id: string;
+};
+
 /** The immutable state exposed by an Editor. */
 export type EditorSnapshot = {
 	marquee: MarqueeRect | null;
@@ -36,6 +49,8 @@ export type Editor = {
 	beginDrag: (id: string) => void;
 	/** Start a screen-space marquee rectangle anchored at `point`. */
 	beginMarquee: (point: Point) => void;
+	/** Start resizing node `id` by dragging its `handle` (world space). */
+	beginResize: (id: string, handle: ResizeHandle) => void;
 	/** Discard the active marquee without changing the selection. */
 	cancelMarquee: () => void;
 	copy: () => void;
@@ -47,6 +62,8 @@ export type Editor = {
 	/** End the active marquee, selecting intersecting nodes; `addToSelection`
 	 * merges into the current selection instead of replacing it. */
 	endMarquee: (addToSelection: boolean) => void;
+	/** End the active resize gesture, committing one History entry. */
+	endResize: () => void;
 	fitToBounds: (
 		bounds: Bounds,
 		size: { height: number; width: number }
@@ -56,12 +73,18 @@ export type Editor = {
 	getSnapshot: () => EditorSnapshot;
 	getViewport: () => Viewport;
 	hitTest: (point: Point) => SceneNode | null;
+	/** Return the single selected node and handle whose screen-space chrome
+	 * contains `point`, or null when no handle is under it. */
+	hitTestHandle: (point: Point) => ResizeTarget | null;
 	/** Move the free corner of the active marquee to `point`. */
 	marqueeTo: (point: Point) => void;
 	panBy: (dx: number, dy: number) => void;
 	paste: () => void;
 	resetView: () => void;
 	redo: () => void;
+	/** Move the active resize gesture so the dragged corner sits at `point`
+	 * (world space), clamped to the minimum node size. */
+	resizeTo: (point: Point) => void;
 	select: (id: string | null) => void;
 	/** Replace the selection with `ids`, dropping unknown and repeated ids. */
 	selectMany: (ids: readonly string[]) => void;
@@ -224,6 +247,12 @@ type DragState = {
 	before: Scene;
 };
 
+type ResizeState = {
+	id: string;
+	handle: ResizeHandle;
+	before: Scene;
+};
+
 function sameViewport(left: Viewport, right: Viewport): boolean {
 	return (
 		left.zoom === right.zoom && left.tx === right.tx && left.ty === right.ty
@@ -275,6 +304,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	let undoStack: Scene[] = [];
 	let redoStack: Scene[] = [];
 	let dragState: DragState | null = null;
+	let resizeState: ResizeState | null = null;
 	let clipboard: ClipboardFragment | null = null;
 	const listeners = new Set<() => void>();
 
@@ -306,6 +336,7 @@ export function createEditor(initialScene?: Scene): Editor {
 
 	function restoreScene(restored: Scene): void {
 		dragState = null;
+		resizeState = null;
 		setCurrentScene(restored);
 	}
 
@@ -316,6 +347,13 @@ export function createEditor(initialScene?: Scene): Editor {
 		pushCapped(undoStack, scene);
 		redoStack = [];
 		setCurrentScene(nextScene);
+	}
+
+	function commitGesture(before: Scene): void {
+		if (scene !== before) {
+			pushCapped(undoStack, before);
+			redoStack = [];
+		}
 	}
 
 	function deleteSelectedNodes(): void {
@@ -371,6 +409,13 @@ export function createEditor(initialScene?: Scene): Editor {
 		beginMarquee(point) {
 			setMarquee({ x1: point.x, x2: point.x, y1: point.y, y2: point.y });
 		},
+		beginResize(id, handle) {
+			const node = nodeIndex.get(id);
+			if (!(node && RESIZE_HANDLES.includes(handle))) {
+				return;
+			}
+			resizeState = { before: scene, handle, id };
+		},
 		cancelMarquee() {
 			if (marquee) {
 				setMarquee(null);
@@ -415,10 +460,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			}
 			const { before } = dragState;
 			dragState = null;
-			if (scene !== before) {
-				pushCapped(undoStack, before);
-				redoStack = [];
-			}
+			commitGesture(before);
 		},
 		endMarquee(addToSelection) {
 			const rect = marqueeWorldRect();
@@ -438,6 +480,14 @@ export function createEditor(initialScene?: Scene): Editor {
 			selection = nextSelection;
 			notify();
 		},
+		endResize() {
+			if (!resizeState) {
+				return;
+			}
+			const { before } = resizeState;
+			resizeState = null;
+			commitGesture(before);
+		},
 		fitToBounds(bounds, size) {
 			setViewport(fitViewportToBounds(viewport, bounds, size));
 		},
@@ -450,6 +500,18 @@ export function createEditor(initialScene?: Scene): Editor {
 				const node = scene.nodes[index];
 				if (node && boxContains(node, point)) {
 					return node;
+				}
+			}
+			return null;
+		},
+		hitTestHandle(point) {
+			const node = singleSelectedNode(nodeIndex, selection);
+			if (!node) {
+				return null;
+			}
+			for (const handle of RESIZE_HANDLES) {
+				if (handleHit(viewport, node, handle, point)) {
+					return { handle, id: node.id };
 				}
 			}
 			return null;
@@ -479,6 +541,30 @@ export function createEditor(initialScene?: Scene): Editor {
 		},
 		resetView() {
 			setViewport(resetViewport(viewport));
+		},
+		resizeTo(point) {
+			if (!resizeState) {
+				return;
+			}
+			const node = nodeIndex.get(resizeState.id);
+			if (!node) {
+				return;
+			}
+			const box = resizeBox(node, resizeState.handle, point);
+			if (
+				box.x === node.x &&
+				box.y === node.y &&
+				box.width === node.width &&
+				box.height === node.height
+			) {
+				return;
+			}
+			setCurrentScene({
+				...scene,
+				nodes: scene.nodes.map((candidate) =>
+					candidate.id === node.id ? { ...candidate, ...box } : candidate
+				),
+			});
 		},
 		select(id) {
 			if (id === null) {
@@ -510,6 +596,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			undoStack = [];
 			redoStack = [];
 			dragState = null;
+			resizeState = null;
 			marquee = null;
 			if (
 				sceneChanged ||

@@ -353,6 +353,79 @@ describe('canvas engine', () => {
 		engine.destroy();
 	});
 
+	test('a handle drag resizes the node and commits one history entry', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const editor = createEditor(makeScene());
+		const engine = createEngine(asElement(container), editor);
+		const svg = container.querySelector('svg');
+		if (!svg) {
+			throw new Error('engine did not mount an SVG');
+		}
+		editor.select('node');
+
+		// Viewport starts at (24, 24): the 80x40 node's 'se' handle sits on the
+		// selection outline at screen (107, 67).
+		expect(svg.innerHTML).toContain('data-resize-handle="se"');
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 107, clientY: 67 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 117, clientY: 77 })
+		);
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 53,
+			width: 93,
+		});
+		svg.dispatchEvent(
+			pointer(window, 'pointerup', { clientX: 117, clientY: 77 })
+		);
+		expect(editor.canUndo).toBe(true);
+		expect(editor.canRedo).toBe(false);
+		editor.undo();
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 40,
+			width: 80,
+		});
+		engine.destroy();
+	});
+
+	test('a cancelled resize drag still commits one history entry, like a node drag', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const editor = createEditor(makeScene());
+		const engine = createEngine(asElement(container), editor);
+		const svg = container.querySelector('svg');
+		if (!svg) {
+			throw new Error('engine did not mount an SVG');
+		}
+		editor.select('node');
+
+		// The 'nw' handle at screen (21, 21) sits over the node's corner, so
+		// handle detection must win against the plain node hit-test.
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 24, clientY: 24 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 4, clientY: 4 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointercancel', { clientX: 4, clientY: 4 })
+		);
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 100,
+			x: -20,
+			y: -20,
+		});
+		expect(editor.canUndo).toBe(true);
+		engine.destroy();
+	});
+
 	test('a cancelled marquee is discarded and shift can be pressed mid-drag', () => {
 		const window = new Window();
 		const container = window.document.createElement('div');

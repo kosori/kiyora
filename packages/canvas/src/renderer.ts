@@ -14,6 +14,13 @@ import {
 	TITLE_HEIGHT,
 } from '@kiyora/render';
 import type { EditorSnapshot, MarqueeRect } from './editor';
+import {
+	HANDLE_SIZE,
+	handleScreenCenter,
+	RESIZE_HANDLES,
+	SELECTION_OUTSET,
+	singleSelectedNode,
+} from './resize';
 import { worldToScreen } from './viewport';
 
 /** Options for the canvas SVG projection. */
@@ -39,6 +46,7 @@ const GRID_SPACING = 24;
 const GRID_COLOR = '#c8cdd4';
 const BACKGROUND_COLOR = '#fbfcfe';
 const SELECTION_COLOR = '#4dabf7';
+const HANDLE_COLOR = '#ffffff';
 // SELECTION_COLOR (#4dabf7) at 12% alpha for the marquee wash.
 const MARQUEE_FILL = 'rgba(77,171,247,0.12)';
 
@@ -82,9 +90,29 @@ function selectionMarkup(
 				4,
 				cornerRadius(node.width, node.height) * snapshot.viewport.zoom
 			);
-			return `<rect x="${topLeft.x - 3}" y="${topLeft.y - 3}" width="${bottomRight.x - topLeft.x + 6}" height="${bottomRight.y - topLeft.y + 6}" rx="${radius}" fill="none" stroke="${SELECTION_COLOR}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+			const outset = SELECTION_OUTSET;
+			return `<rect x="${topLeft.x - outset}" y="${topLeft.y - outset}" width="${bottomRight.x - topLeft.x + outset * 2}" height="${bottomRight.y - topLeft.y + outset * 2}" rx="${radius}" fill="none" stroke="${SELECTION_COLOR}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
 		})
 		.join('');
+}
+
+function resizeHandlesMarkup(
+	snapshot: EditorSnapshot,
+	nodeIndex: Map<string, SceneNode>
+): string {
+	const node = singleSelectedNode(nodeIndex, snapshot.selection);
+	if (!node) {
+		return '';
+	}
+	const handles: string[] = [];
+	for (const handle of RESIZE_HANDLES) {
+		const center = handleScreenCenter(snapshot.viewport, node, handle);
+		const half = HANDLE_SIZE / 2;
+		handles.push(
+			`<rect data-resize-handle="${handle}" x="${center.x - half}" y="${center.y - half}" width="${HANDLE_SIZE}" height="${HANDLE_SIZE}" fill="${HANDLE_COLOR}" stroke="${SELECTION_COLOR}" stroke-width="1"/>`
+		);
+	}
+	return handles.join('');
 }
 
 function marqueeMarkup(marquee: MarqueeRect | null): string {
@@ -139,6 +167,7 @@ export function renderSceneResult(
 		legend,
 		'</g>',
 		selectionMarkup(snapshot, nodeIndex),
+		resizeHandlesMarkup(snapshot, nodeIndex),
 		marqueeMarkup(snapshot.marquee),
 	].join('');
 	return { body, height, viewBox: `0 0 ${width} ${height}`, width };
