@@ -15,6 +15,10 @@ describe('sceneNode fixture builder', () => {
 		});
 	});
 
+	test('does not share the default span across calls', () => {
+		expect(sceneNode().span).not.toBe(sceneNode().span);
+	});
+
 	test('applies overrides on top of the defaults', () => {
 		expect(sceneNode({ id: 'cache', rotation: 90, x: 40 })).toMatchObject({
 			height: 20,
