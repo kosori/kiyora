@@ -24,7 +24,7 @@ import {
 	openKira,
 	type PngRasterizer,
 } from './io/io';
-import { parseAndCompile } from './parse-and-compile';
+import { parseAndCompile, parseTitle } from './parse-and-compile';
 import { scrollTextareaToLine } from './scroll-textarea-to-line';
 import { selectionToLine } from './selection-to-line';
 import { browserSourceStorage, type SourceStorage } from './source-storage';
@@ -109,18 +109,19 @@ export function EditorPageSurface({
 	const lastCompiledSourceRef = useRef<string>(initialSource);
 	const debouncedSource = useDebouncedValue(source, COMPILE_DEBOUNCE_MS);
 
-	const diagnostics = useMemo(
-		() => parseAndCompile(debouncedSource).diagnostics,
+	// Parse the debounced Source once; the diagnostics list and the applied
+	// Scene both derive from this single parse.
+	const debouncedResult = useMemo(
+		() => parseAndCompile(debouncedSource),
 		[debouncedSource]
 	);
+	const { diagnostics } = debouncedResult;
 
 	// The Diagram title for the current Source. Computed from the live
 	// (non-debounced) Source so a Save click uses the title the user is
-	// looking at, not a stale value from the last debounce.
-	const currentTitle = useMemo(
-		() => parseAndCompile(source).scene.title,
-		[source]
-	);
+	// looking at, not a stale value from the last debounce. Parse-only:
+	// the title never needs a Compile.
+	const currentTitle = useMemo(() => parseTitle(source), [source]);
 
 	const applyCompile = useCallback(
 		(nextSource: string) => {
@@ -134,10 +135,17 @@ export function EditorPageSurface({
 		[editor]
 	);
 
-	// Live recompile on the debounced source.
+	// Live recompile on the debounced Source. The Scene comes from the shared
+	// debounced parse, so no re-parse happens here; the ref guard still
+	// suppresses the apply when an explicit compile already applied this
+	// same Source.
 	useEffect(() => {
-		applyCompile(debouncedSource);
-	}, [applyCompile, debouncedSource]);
+		if (debouncedSource === lastCompiledSourceRef.current) {
+			return;
+		}
+		editor.setScene(debouncedResult.scene);
+		lastCompiledSourceRef.current = debouncedSource;
+	}, [debouncedResult, debouncedSource, editor]);
 
 	// Subscribe to the injected font readiness observable. The Export
 	// SVG item stays disabled until the promise resolves and exposes

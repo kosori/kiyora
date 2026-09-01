@@ -25,3 +25,11 @@ export function parseAndCompile(source: string): ParseAndCompileResult {
 		scene: compile(result.diagram),
 	};
 }
+
+/** Parse Source and return its Diagram title without compiling a Scene. */
+export function parseTitle(source: string): string {
+	if (source.trim().length === 0) {
+		return '';
+	}
+	return parse(source).diagram.title;
+}

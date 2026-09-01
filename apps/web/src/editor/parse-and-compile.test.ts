@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parseAndCompile } from './parse-and-compile';
+import { parseAndCompile, parseTitle } from './parse-and-compile';
 import { STARTER_SOURCE } from './starter';
 
 describe('parseAndCompile', () => {
@@ -25,5 +25,19 @@ describe('parseAndCompile', () => {
 
 		expect(result.diagnostics.length).toBeGreaterThan(0);
 		expect(result.scene.nodes).toHaveLength(1);
+	});
+});
+
+describe('parseTitle', () => {
+	test('returns an empty title for empty Source', () => {
+		expect(parseTitle('')).toBe('');
+	});
+
+	test('reads the starter Source title', () => {
+		expect(parseTitle(STARTER_SOURCE)).toBe('Request pipeline');
+	});
+
+	test('reads an explicit title directive', () => {
+		expect(parseTitle('architecture\ntitle T\nA -> B')).toBe('T');
 	});
 });
