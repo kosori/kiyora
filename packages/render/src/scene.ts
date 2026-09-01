@@ -21,6 +21,7 @@ export type SceneNode = {
 	label: string;
 	labelColor?: Color;
 	link?: string;
+	rotation?: number;
 	shadow?: boolean;
 	shape?: string;
 	span: Span;

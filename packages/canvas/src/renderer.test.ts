@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene } from '@kiyora/render';
+import { sceneNode } from '@kiyora/render/testing';
 import { createEditor } from './editor';
 import { renderScene } from './renderer';
 
@@ -117,5 +118,60 @@ describe('renderScene', () => {
 				width: 360,
 			})
 		).toMatchSnapshot();
+	});
+
+	test('renders a rotated node with a per-node transform while chrome stays axis-aligned', () => {
+		const editor = createEditor(makeScene());
+		const rotated = sceneNode({
+			height: 44,
+			id: 'tilted',
+			label: 'Tilted',
+			rotation: 45,
+			span,
+			width: 72,
+			x: 300,
+			y: 60,
+		});
+		editor.setScene({
+			...editor.getScene(),
+			nodes: [...editor.getScene().nodes, rotated],
+		});
+		editor.select('tilted');
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 240,
+			showGrid: false,
+			width: 480,
+		});
+
+		expect(svg).toContain(
+			'<g data-node="tilted" transform="rotate(45 336 82)">'
+		);
+		const selectedOutline = svg.match(
+			/<rect x="[^"]*" y="[^"]*" width="[^"]*" height="[^"]*" rx="[^"]*" fill="none" stroke="#4dabf7"[^>]*\/>/
+		)?.[0];
+		expect(selectedOutline).toBeDefined();
+		expect(selectedOutline).not.toContain('transform');
+	});
+
+	test('renders rotation 0 with no transform, identical to an absent rotation', () => {
+		const scene = makeScene();
+		const [source] = scene.nodes;
+		if (!source) {
+			throw new Error('test scene did not include a node');
+		}
+		const editor = createEditor(scene);
+		const before = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+		});
+
+		editor.setScene({
+			...scene,
+			nodes: [{ ...source, rotation: 0 }, ...scene.nodes.slice(1)],
+		});
+		const after = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+		});
+
+		expect(after).toBe(before);
 	});
 });

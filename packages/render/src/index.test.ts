@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type Diagram, parse, type Span } from '@kiyora/dsl';
 import { compile, render, renderToSvg, type Scene } from './index';
+import { sceneNode } from './testing';
 
 const span: Span = {
 	end: { column: 1, line: 1 },
@@ -247,6 +248,71 @@ describe('render scaffold', () => {
 		expect(result.svg).toContain('data-node="end"><circle');
 		const endNode = result.svg.match(/<g data-node="end">([\s\S]*?)<\/g>/)?.[1];
 		expect(endNode?.match(/<circle/g)?.length).toBe(2);
+	});
+
+	test('applies a per-node rotation transform around the node center', () => {
+		const scene: Scene = {
+			edges: [{ from: 'rotated', span, to: 'straight' }],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 60,
+					id: 'rotated',
+					label: 'A',
+					rotation: 45,
+					width: 100,
+					x: 24,
+					y: 24,
+				}),
+				sceneNode({
+					height: 60,
+					id: 'straight',
+					label: 'B',
+					width: 100,
+					x: 224,
+					y: 24,
+				}),
+			],
+			title: '',
+		};
+		const result = renderToSvg(scene);
+
+		expect(result.svg).toContain(
+			'<g data-node="rotated" transform="rotate(45 74 54)">'
+		);
+		expect(result.svg).toContain('<g data-node="straight">');
+		const rotatedGroup = result.svg.match(
+			/<g data-node="rotated"[\s\S]*?<\/g>/
+		)?.[0];
+		expect(rotatedGroup).toContain('>A</text>');
+		expect(result.svg).toContain('data-edge="rotated-straight"');
+	});
+
+	test('renders rotation 0 exactly like an absent rotation', () => {
+		const base = {
+			color: 'blue' as const,
+			height: 44,
+			label: 'Source',
+			span,
+			width: 72,
+			x: 24,
+			y: 24,
+		};
+		const withoutRotation = renderToSvg({
+			edges: [],
+			groups: [],
+			nodes: [{ ...base, id: 'source' }],
+			title: '',
+		});
+		const withZeroRotation = renderToSvg({
+			edges: [],
+			groups: [],
+			nodes: [sceneNode({ ...base, id: 'source', rotation: 0 })],
+			title: '',
+		});
+
+		expect(withZeroRotation.svg).toBe(withoutRotation.svg);
+		expect(withoutRotation.svg).not.toContain('rotate(');
 	});
 
 	test('sizes automatic bounds for chrome and sanitizes legend swatches', () => {

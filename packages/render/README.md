@@ -44,7 +44,7 @@ type SceneNode = {
   width: number; height: number; span: Span;
   shape?: string; color?: Color; fill?: Fill; corner?: Corner;
   shadow?: boolean; labelColor?: Color; icon?: string; link?: string;
-  group?: string;
+  group?: string; rotation?: number;
 };
 type SceneEdge = {
   from: string; to: string; span: Span; label?: string;
@@ -60,7 +60,22 @@ type SceneGroup = {
 Nodes contain their position and size plus semantic style tokens; edges refer to
 node IDs rather than storing coordinates; group bounds and edge geometry are
 derived by a projection. Selection is canvas-owned transient state and is not
-part of a `Scene`.
+part of a `Scene`. `rotation` is a render-only concern: the projection applies
+it as a per-node `rotate` transform around the node center, while layout,
+hit-testing, and selection chrome continue to treat the node as axis-aligned.
+
+### Test fixtures
+
+`@kiyora/render/testing` exports `sceneNode(overrides?)`, the shared Scene-node
+fixture builder. It emits a rotation-complete node (`rotation: 0`) with
+deterministic defaults — `label` defaults to `id` — and is the documented path
+for new tests that need Scene nodes.
+
+```ts
+import { sceneNode } from '@kiyora/render/testing';
+
+const node = sceneNode({ id: 'cache', rotation: 45 });
+```
 
 The public root entry point also exports the pure `layout`, `style`, `shapes`,
 `geometry`, and label measurement helpers for another renderer such as the

@@ -51,6 +51,10 @@
     "./projection": {
       "types": "./dist/projection.d.ts",
       "default": "./dist/projection.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     }
   },
   "main": "./dist/index.js",
