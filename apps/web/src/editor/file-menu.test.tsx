@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createElement } from 'react';
+import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { FileMenu } from './file-menu';
 import { withHappyDom } from './test-happy-dom';
@@ -19,12 +19,16 @@ function render(element: React.ReactNode): RenderHandle {
 	const container = d.createElement('div');
 	d.body.append(container);
 	const root = createRoot(container as unknown as Element);
-	root.render(element);
+	act(() => {
+		root.render(element);
+	});
 	return {
 		container,
 		root,
 		unmount() {
-			root.unmount();
+			act(() => {
+				root.unmount();
+			});
 			container.remove();
 		},
 	};

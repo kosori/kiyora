@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createElement } from 'react';
+import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { EditorPageSurface } from './editor-page';
 import type { Downloadable, ExportFonts } from './io/io';
@@ -94,20 +94,24 @@ function renderEditor(recording: Recording): RenderHandle {
 	const container = d.createElement('div');
 	d.body.append(container);
 	const root = createRoot(container as unknown as Element);
-	root.render(
-		createElement(EditorPageSurface, {
-			downloadable: recording.downloadable,
-			fontReadiness: recording.fontReadiness,
-			openable: { pickFile: () => Promise.resolve(null) },
-			rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
-			storage: recording.storage,
-		})
-	);
+	act(() => {
+		root.render(
+			createElement(EditorPageSurface, {
+				downloadable: recording.downloadable,
+				fontReadiness: recording.fontReadiness,
+				openable: { pickFile: () => Promise.resolve(null) },
+				rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
+				storage: recording.storage,
+			})
+		);
+	});
 	return {
 		container,
 		root,
 		unmount() {
-			root.unmount();
+			act(() => {
+				root.unmount();
+			});
 			container.remove();
 		},
 	};
