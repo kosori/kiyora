@@ -516,6 +516,144 @@ describe('editor', () => {
 		expect(editor.getSelection()).toEqual([]);
 	});
 
+	test('a nudge moves the selection by one world unit per press', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 10, 10), node('two', 40, 20))
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.selectMany(['one', 'two']);
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.nudge('right', false);
+		editor.nudge('up', false);
+		editor.endNudge();
+
+		expect(editor.getScene().nodes.map(({ x, y }) => ({ x, y }))).toEqual([
+			{ x: 12, y: 9 },
+			{ x: 42, y: 19 },
+		]);
+	});
+
+	test('a grid-step nudge converts the 8-px screen step at the current zoom', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 10)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 2 });
+		editor.select('one');
+		editor.beginNudge();
+		editor.nudge('right', true);
+		editor.endNudge();
+
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 14 });
+	});
+
+	test('a nudge run coalesces into one history entry', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.nudge('right', false);
+		editor.nudge('down', true);
+		editor.endNudge();
+
+		expect(editor.getScene().nodes[0]?.x).toBe(2);
+		expect(editor.canUndo).toBe(true);
+		expect(editor.canRedo).toBe(false);
+		editor.undo();
+		expect(editor.getScene().nodes[0]?.x).toBe(0);
+		expect(editor.canUndo).toBe(false);
+		editor.redo();
+		expect(editor.getScene().nodes[0]?.x).toBe(2);
+	});
+
+	test('a nudge with no live run or no selection is a no-op', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		const initial = editor.getSnapshot();
+		let notifications = 0;
+		const unsubscribe = editor.subscribe(() => {
+			notifications += 1;
+		});
+
+		editor.nudge('right', false);
+		editor.endNudge();
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.endNudge();
+
+		expect(editor.getSnapshot()).toBe(initial);
+		expect(editor.canUndo).toBe(false);
+		expect(notifications).toBe(0);
+		unsubscribe();
+	});
+
+	test('undo and setScene abandon an in-flight nudge run', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.endNudge();
+
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.undo();
+		editor.nudge('right', false);
+		editor.endNudge();
+		expect(editor.getScene().nodes[0]?.x).toBe(0);
+		expect(editor.canRedo).toBe(true);
+
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.setScene(sceneWithNodes(node('replacement', 0)));
+		editor.nudge('right', false);
+		editor.endNudge();
+		expect(nodeIds(editor.getScene())).toEqual(['replacement']);
+		expect(editor.canUndo).toBe(false);
+	});
+
+	test('a structural edit commits the open nudge run before its own entry', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40))
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.beginNudge();
+		editor.nudge('right', false);
+
+		editor.deleteSelection();
+
+		expect(nodeIds(editor.getScene())).toEqual(['two']);
+		editor.undo();
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'two']);
+		expect(editor.getScene().nodes[0]?.x).toBe(1);
+		editor.undo();
+		expect(editor.getScene().nodes[0]?.x).toBe(0);
+		expect(editor.canUndo).toBe(false);
+	});
+
+	test('beginDrag and beginResize commit the open nudge run', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.beginResize('one', 'e');
+
+		expect(editor.getScene().nodes[0]?.x).toBe(1);
+		editor.endResize();
+		editor.undo();
+		expect(editor.getScene().nodes[0]?.x).toBe(0);
+		expect(editor.canUndo).toBe(false);
+
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.beginDrag('one');
+		editor.endDrag();
+		expect(editor.getScene().nodes[0]?.x).toBe(1);
+		editor.undo();
+		expect(editor.getScene().nodes[0]?.x).toBe(0);
+		expect(editor.canUndo).toBe(false);
+	});
+
 	test('an east-handle resize mutates only width and anchors the west edge', () => {
 		const editor = createEditor(
 			sceneWithNodes(

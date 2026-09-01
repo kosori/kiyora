@@ -8,6 +8,7 @@ export type {
 	Editor,
 	EditorSnapshot,
 	MarqueeRect,
+	NudgeDirection,
 	ResizeTarget,
 } from './editor';
 // Public package entry point intentionally re-exports the canvas API.

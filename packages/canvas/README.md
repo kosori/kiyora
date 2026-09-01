@@ -79,13 +79,17 @@ snapshot used by subscribers. The editor exposes:
 - `subscribe` / `getSnapshot`, `getScene`, `setScene`
 - `getViewport`, `setViewport`, `panBy`, `zoomAt`, `fitToBounds`, `resetView`
 - `hitTest`, `select`, `toggleSelect`, `getSelection`
-- `beginDrag(id)`, `drag`, `endDrag`, `undo`, `redo`, `canUndo`, `canRedo`
+- `beginDrag(id)`, `drag`, `endDrag`, `beginNudge()`, `nudge`, `endNudge`,
+  `undo`, `redo`, `canUndo`, `canRedo`
 
 Selection, viewport changes, and an in-progress drag are not history entries.
 A completed drag creates one entry, and a new edit clears the redo stack.
 `beginDrag`/`drag`/`endDrag` move nodes by screen-space deltas with an
 always-on 8-px screen-grid snap (`SNAP_STEP`); a multi-drag snaps the
 selection's bounding-box top-left and applies one uniform delta.
+`beginNudge`/`nudge(direction, byGridStep)`/`endNudge` move the selection by
+one world unit per press, or a `SNAP_STEP`-pixel screen step (converted at the
+current zoom) when `byGridStep` is set; a run coalesces into one entry.
 `moveNodes` and `boxContains` are exported pure helpers for lower-level
 integrations.
 

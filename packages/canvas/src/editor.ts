@@ -11,7 +11,7 @@ import {
 	resizeBox,
 	singleSelectedNode,
 } from './resize';
-import { selectionAnchor, snapDragDelta } from './snap';
+import { SNAP_STEP, selectionAnchor, snapDragDelta } from './snap';
 import type { Bounds, Point, Viewport } from './viewport';
 import {
 	fitToBounds as fitViewportToBounds,
@@ -35,6 +35,9 @@ export type ResizeTarget = {
 	id: string;
 };
 
+/** An arrow-key nudge direction. */
+export type NudgeDirection = 'down' | 'left' | 'right' | 'up';
+
 /** The immutable state exposed by an Editor. */
 export type EditorSnapshot = {
 	marquee: MarqueeRect | null;
@@ -50,6 +53,8 @@ export type Editor = {
 	beginDrag: (id: string) => void;
 	/** Start a screen-space marquee rectangle anchored at `point`. */
 	beginMarquee: (point: Point) => void;
+	/** Start a keyboard nudge run for the current selection. */
+	beginNudge: () => void;
 	/** Start resizing node `id` by dragging its `handle` (world space). */
 	beginResize: (id: string, handle: ResizeHandle) => void;
 	/** Discard the active marquee without changing the selection. */
@@ -65,6 +70,8 @@ export type Editor = {
 	/** End the active marquee, selecting intersecting nodes; `addToSelection`
 	 * merges into the current selection instead of replacing it. */
 	endMarquee: (addToSelection: boolean) => void;
+	/** End the active nudge run, committing one History entry. */
+	endNudge: () => void;
 	/** End the active resize gesture, committing one History entry. */
 	endResize: () => void;
 	fitToBounds: (
@@ -81,6 +88,9 @@ export type Editor = {
 	hitTestHandle: (point: Point) => ResizeTarget | null;
 	/** Move the free corner of the active marquee to `point`. */
 	marqueeTo: (point: Point) => void;
+	/** Move the active nudge run's selection by one press: a single world unit,
+	 * or a grid step when `byGridStep` is set. */
+	nudge: (direction: NudgeDirection, byGridStep: boolean) => void;
 	panBy: (dx: number, dy: number) => void;
 	paste: () => void;
 	resetView: () => void;
@@ -240,6 +250,16 @@ const HISTORY_LIMIT = 200;
 
 const PASTE_OFFSET = 16;
 
+/** The world-unit distance a plain arrow-key nudge moves the selection. */
+const NUDGE_UNIT = 1;
+
+const NUDGE_VECTORS: Record<NudgeDirection, Point> = {
+	down: { x: 0, y: 1 },
+	left: { x: -1, y: 0 },
+	right: { x: 1, y: 0 },
+	up: { x: 0, y: -1 },
+};
+
 type ClipboardFragment = {
 	edges: readonly SceneEdge[];
 	nodes: readonly SceneNode[];
@@ -261,6 +281,11 @@ type DragState = {
 type ResizeState = {
 	id: string;
 	handle: ResizeHandle;
+	before: Scene;
+};
+
+type NudgeState = {
+	ids: readonly string[];
 	before: Scene;
 };
 
@@ -316,6 +341,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	let redoStack: Scene[] = [];
 	let dragState: DragState | null = null;
 	let resizeState: ResizeState | null = null;
+	let nudgeState: NudgeState | null = null;
 	let clipboard: ClipboardFragment | null = null;
 	const listeners = new Set<() => void>();
 
@@ -348,6 +374,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	function restoreScene(restored: Scene): void {
 		dragState = null;
 		resizeState = null;
+		nudgeState = null;
 		setCurrentScene(restored);
 	}
 
@@ -355,6 +382,7 @@ export function createEditor(initialScene?: Scene): Editor {
 		if (nextScene === scene) {
 			return;
 		}
+		commitNudgeRun();
 		pushCapped(undoStack, scene);
 		redoStack = [];
 		setCurrentScene(nextScene);
@@ -365,6 +393,15 @@ export function createEditor(initialScene?: Scene): Editor {
 			pushCapped(undoStack, before);
 			redoStack = [];
 		}
+	}
+
+	function commitNudgeRun(): void {
+		if (!nudgeState) {
+			return;
+		}
+		const { before } = nudgeState;
+		nudgeState = null;
+		commitGesture(before);
 	}
 
 	function deleteSelectedNodes(): void {
@@ -412,6 +449,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			if (!node) {
 				return;
 			}
+			commitNudgeRun();
 			const ids = selection.includes(id)
 				? selection.filter((selectedId) => nodeIndex.has(selectedId))
 				: [id];
@@ -435,11 +473,22 @@ export function createEditor(initialScene?: Scene): Editor {
 		beginMarquee(point) {
 			setMarquee({ x1: point.x, x2: point.x, y1: point.y, y2: point.y });
 		},
+		beginNudge() {
+			if (nudgeState) {
+				return;
+			}
+			const ids = selection.filter((selectedId) => nodeIndex.has(selectedId));
+			if (ids.length === 0) {
+				return;
+			}
+			nudgeState = { before: scene, ids };
+		},
 		beginResize(id, handle) {
 			const node = nodeIndex.get(id);
 			if (!(node && RESIZE_HANDLES.includes(handle))) {
 				return;
 			}
+			commitNudgeRun();
 			resizeState = { before: scene, handle, id };
 		},
 		cancelMarquee() {
@@ -526,6 +575,9 @@ export function createEditor(initialScene?: Scene): Editor {
 			selection = nextSelection;
 			notify();
 		},
+		endNudge() {
+			commitNudgeRun();
+		},
 		endResize() {
 			if (!resizeState) {
 				return;
@@ -567,6 +619,16 @@ export function createEditor(initialScene?: Scene): Editor {
 				return;
 			}
 			setMarquee({ ...marquee, x2: point.x, y2: point.y });
+		},
+		nudge(direction, byGridStep) {
+			if (!nudgeState) {
+				return;
+			}
+			const step = byGridStep ? SNAP_STEP / viewport.zoom : NUDGE_UNIT;
+			const vector = NUDGE_VECTORS[direction];
+			setCurrentScene(
+				moveNodes(scene, nudgeState.ids, vector.x * step, vector.y * step)
+			);
 		},
 		panBy(dx, dy) {
 			setViewport(panViewportBy(viewport, dx, dy));
@@ -643,6 +705,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			redoStack = [];
 			dragState = null;
 			resizeState = null;
+			nudgeState = null;
 			marquee = null;
 			if (
 				sceneChanged ||

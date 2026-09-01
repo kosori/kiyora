@@ -29,6 +29,7 @@ import { scrollTextareaToLine } from './scroll-textarea-to-line';
 import { selectionToLine } from './selection-to-line';
 import { browserSourceStorage, type SourceStorage } from './source-storage';
 import { STARTER_SOURCE } from './starter';
+import { useCanvasKeyboardShortcuts } from './use-canvas-keyboard-shortcuts';
 import { useCompileShortcut } from './use-compile-shortcut';
 import { useDebouncedValue } from './use-debounced-value';
 import { useEditorKeyboardShortcuts } from './use-editor-keyboard-shortcuts';
@@ -175,6 +176,7 @@ export function EditorPageSurface({
 	useCompileShortcut(false, handleExplicitCompile);
 
 	useEditorKeyboardShortcuts(editor);
+	useCanvasKeyboardShortcuts(editor);
 
 	// Save: download the current Source. Read at click time so the latest
 	// edit is what leaves the browser.
