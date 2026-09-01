@@ -1,4 +1,9 @@
-import { type Scene, type SceneNode, scenePlacement } from '@kiyora/render';
+import {
+	type Scene,
+	type SceneEdge,
+	type SceneNode,
+	scenePlacement,
+} from '@kiyora/render';
 import type { Bounds, Point, Viewport } from './viewport';
 import {
 	fitToBounds as fitViewportToBounds,
@@ -19,7 +24,11 @@ export type Editor = {
 	readonly canRedo: boolean;
 	readonly canUndo: boolean;
 	beginDrag: (id: string) => void;
+	copy: () => void;
+	cut: () => void;
+	deleteSelection: () => void;
 	drag: (dx: number, dy: number) => void;
+	duplicate: () => void;
 	endDrag: () => void;
 	fitToBounds: (
 		bounds: Bounds,
@@ -31,6 +40,7 @@ export type Editor = {
 	getViewport: () => Viewport;
 	hitTest: (point: Point) => SceneNode | null;
 	panBy: (dx: number, dy: number) => void;
+	paste: () => void;
 	resetView: () => void;
 	redo: () => void;
 	select: (id: string | null) => void;
@@ -76,7 +86,104 @@ export function moveNodes(
 	};
 }
 
+/**
+ * Delete nodes and their incident edges without mutating the input Scene.
+ *
+ * Nodes that are not deleted retain their original references.
+ */
+function deleteNodes(scene: Scene, ids: readonly string[]): Scene {
+	const deletedIds = new Set(ids);
+	return {
+		...scene,
+		edges: scene.edges.filter(
+			(edge) => !(deletedIds.has(edge.from) || deletedIds.has(edge.to))
+		),
+		nodes: scene.nodes.filter((node) => !deletedIds.has(node.id)),
+	};
+}
+
+/**
+ * Paste a clipboard fragment into a Scene: copies are offset by `dx`/`dy`,
+ * receive fresh collision-free ids, and drop group membership because groups
+ * are never part of a copy. Internal edges follow their remapped endpoints.
+ */
+function pasteFragment(
+	scene: Scene,
+	fragment: ClipboardFragment,
+	dx: number,
+	dy: number
+): Scene {
+	const usedIds = new Set(scene.nodes.map((node) => node.id));
+	const idMap = new Map<string, string>();
+	const added: SceneNode[] = [];
+	for (const node of fragment.nodes) {
+		const copyId = uniqueCopyId(node.id, usedIds);
+		idMap.set(node.id, copyId);
+		added.push({
+			...node,
+			group: undefined,
+			id: copyId,
+			x: node.x + dx,
+			y: node.y + dy,
+		});
+	}
+	const edges: SceneEdge[] = [];
+	for (const edge of fragment.edges) {
+		const from = idMap.get(edge.from);
+		const to = idMap.get(edge.to);
+		if (from && to) {
+			edges.push({ ...edge, from, to });
+		}
+	}
+	return {
+		...scene,
+		edges: [...scene.edges, ...edges],
+		nodes: [...scene.nodes, ...added],
+	};
+}
+
+/**
+ * Capture the copied nodes and the edges between them. Returns null when the
+ * selection matches no nodes so callers can keep the previous clipboard.
+ */
+function captureFragment(
+	scene: Scene,
+	ids: readonly string[]
+): ClipboardFragment | null {
+	const copiedIds = new Set(ids);
+	const nodes = scene.nodes.filter((node) => copiedIds.has(node.id));
+	if (nodes.length === 0) {
+		return null;
+	}
+	const edges = scene.edges.filter(
+		(edge) => copiedIds.has(edge.from) && copiedIds.has(edge.to)
+	);
+	return { edges, nodes };
+}
+
+/**
+ * Claim a collision-free copy id against `used`: `name-copy`, `name-copy-2`, …
+ * The winning id is added to `used` before it is returned.
+ */
+function uniqueCopyId(base: string, used: Set<string>): string {
+	let id = `${base}-copy`;
+	let suffix = 2;
+	while (used.has(id)) {
+		id = `${base}-copy-${suffix}`;
+		suffix += 1;
+	}
+	used.add(id);
+	return id;
+}
+
 const HISTORY_LIMIT = 200;
+
+const PASTE_OFFSET = 16;
+
+type ClipboardFragment = {
+	edges: readonly SceneEdge[];
+	nodes: readonly SceneNode[];
+};
 
 type DragState = {
 	ids: readonly string[];
@@ -103,6 +210,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	let undoStack: Scene[] = [];
 	let redoStack: Scene[] = [];
 	let dragState: DragState | null = null;
+	let clipboard: ClipboardFragment | null = null;
 	const listeners = new Set<() => void>();
 
 	let snapshot: EditorSnapshot = { scene, selection, viewport };
@@ -136,6 +244,27 @@ export function createEditor(initialScene?: Scene): Editor {
 		setCurrentScene(restored);
 	}
 
+	function commitScene(nextScene: Scene): void {
+		if (nextScene === scene) {
+			return;
+		}
+		pushCapped(undoStack, scene);
+		redoStack = [];
+		setCurrentScene(nextScene);
+	}
+
+	function deleteSelectedNodes(): void {
+		if (selection.length === 0) {
+			return;
+		}
+		commitScene(deleteNodes(scene, selection));
+		setSelection([]);
+	}
+
+	function commitPaste(fragment: ClipboardFragment): void {
+		commitScene(pasteFragment(scene, fragment, PASTE_OFFSET, PASTE_OFFSET));
+	}
+
 	const editor: Editor = {
 		beginDrag(id) {
 			const node = nodeIndex.get(id);
@@ -153,11 +282,32 @@ export function createEditor(initialScene?: Scene): Editor {
 		get canUndo() {
 			return undoStack.length > 0;
 		},
+		copy() {
+			clipboard = captureFragment(scene, selection) ?? clipboard;
+		},
+		cut() {
+			const fragment = captureFragment(scene, selection);
+			if (!fragment) {
+				return;
+			}
+			clipboard = fragment;
+			deleteSelectedNodes();
+		},
+		deleteSelection() {
+			deleteSelectedNodes();
+		},
 		drag(dx, dy) {
 			if (!dragState || (dx === 0 && dy === 0)) {
 				return;
 			}
 			setCurrentScene(moveNodes(scene, dragState.ids, dx, dy));
+		},
+		duplicate() {
+			const fragment = captureFragment(scene, selection);
+			if (!fragment) {
+				return;
+			}
+			commitPaste(fragment);
 		},
 		endDrag() {
 			if (!dragState) {
@@ -188,6 +338,12 @@ export function createEditor(initialScene?: Scene): Editor {
 		},
 		panBy(dx, dy) {
 			setViewport(panViewportBy(viewport, dx, dy));
+		},
+		paste() {
+			if (!clipboard) {
+				return;
+			}
+			commitPaste(clipboard);
 		},
 		redo() {
 			const next = redoStack.pop();

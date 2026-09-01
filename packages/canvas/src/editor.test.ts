@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Scene } from '@kiyora/render';
+import type { Scene, SceneEdge, SceneNode } from '@kiyora/render';
 import { boxContains, createEditor, moveNodes } from './editor';
 import { screenToWorld, worldToScreen } from './viewport';
 
@@ -12,8 +12,24 @@ function sceneWithNodes(...nodes: Scene['nodes']): Scene {
 	return { edges: [], groups: [], nodes, title: '' };
 }
 
+function sceneWith(edges: SceneEdge[], ...nodes: SceneNode[]): Scene {
+	return { ...sceneWithNodes(...nodes), edges };
+}
+
+function nodeIds(scene: Scene): string[] {
+	return scene.nodes.map(({ id }) => id);
+}
+
 function node(id: string, x: number, y = 0): Scene['nodes'][number] {
 	return { height: 20, id, label: id, span, width: 20, x, y };
+}
+
+function edge(from: string, to: string): SceneEdge {
+	return { from, span, to };
+}
+
+function nodeWithGroup(id: string, group: string, x = 0): SceneNode {
+	return { ...node(id, x), group };
 }
 
 describe('editor', () => {
@@ -143,6 +159,200 @@ describe('editor', () => {
 		expect(editor.hitTest({ x: 10, y: 10 })).toBe(bottom);
 		expect(editor.hitTest({ x: 60, y: 10 })).toBe(top);
 		expect(editor.hitTest({ x: 25, y: 10 })).toBeNull();
+	});
+
+	test('deleteSelection removes selected nodes and incident edges in one undoable entry', () => {
+		const survivor = edge('one', 'three');
+		const editor = createEditor(
+			sceneWith(
+				[edge('one', 'two'), edge('two', 'three'), survivor],
+				node('one', 0),
+				node('two', 40),
+				node('three', 80)
+			)
+		);
+		editor.select('two');
+
+		editor.deleteSelection();
+
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'three']);
+		expect(editor.getScene().edges).toEqual([survivor]);
+		expect(editor.getSelection()).toEqual([]);
+		expect(editor.canUndo).toBe(true);
+		expect(editor.canRedo).toBe(false);
+
+		editor.undo();
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'two', 'three']);
+		expect(editor.getScene().edges).toHaveLength(3);
+		expect(editor.canRedo).toBe(true);
+		editor.redo();
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'three']);
+	});
+
+	test('copy and paste stamp a fresh cluster with new ids, offset, internal edges, and no group membership', () => {
+		const editor = createEditor(
+			sceneWith(
+				[{ ...edge('one', 'two'), label: 'keeps style' }, edge('two', 'three')],
+				nodeWithGroup('one', 'team', 0),
+				nodeWithGroup('two', 'team', 40),
+				node('three', 80)
+			)
+		);
+		editor.select('one');
+		editor.toggleSelect('two');
+		editor.copy();
+		editor.select(null);
+
+		editor.paste();
+
+		const scene = editor.getScene();
+		expect(nodeIds(scene)).toEqual([
+			'one',
+			'two',
+			'three',
+			'one-copy',
+			'two-copy',
+		]);
+		expect(scene.nodes[3]).toMatchObject({ x: 16, y: 16 });
+		expect(scene.nodes[3]?.group).toBeUndefined();
+		expect(scene.nodes[4]).toMatchObject({ x: 56, y: 16 });
+		expect(scene.nodes[4]?.group).toBeUndefined();
+		expect(scene.edges).toHaveLength(3);
+		expect(scene.edges[2]).toMatchObject({
+			from: 'one-copy',
+			label: 'keeps style',
+			to: 'two-copy',
+		});
+		expect(scene.nodes[0]).toMatchObject({ group: 'team' });
+	});
+
+	test('paste after copy without moving the selection re-derives ids against the whole scene', () => {
+		const editor = createEditor(
+			sceneWithNodes(nodeWithGroup('one', 'team'), node('one-copy', 90))
+		);
+		editor.select('one');
+		editor.copy();
+		editor.paste();
+		editor.paste();
+
+		expect(nodeIds(editor.getScene())).toEqual([
+			'one',
+			'one-copy',
+			'one-copy-2',
+			'one-copy-3',
+		]);
+	});
+
+	test('cut is copy plus delete in one undoable entry and still pastes afterwards', () => {
+		const editor = createEditor(
+			sceneWith(
+				[edge('one', 'two')],
+				node('one', 0),
+				node('two', 40),
+				node('three', 80)
+			)
+		);
+		editor.select('one');
+		editor.toggleSelect('two');
+		editor.cut();
+
+		expect(nodeIds(editor.getScene())).toEqual(['three']);
+		expect(editor.getScene().edges).toEqual([]);
+		expect(editor.canUndo).toBe(true);
+
+		editor.undo();
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'two', 'three']);
+		expect(editor.getScene().edges).toEqual([edge('one', 'two')]);
+
+		editor.redo();
+		editor.paste();
+		expect(nodeIds(editor.getScene())).toEqual([
+			'three',
+			'one-copy',
+			'two-copy',
+		]);
+	});
+
+	test('duplicate stamps the selection without touching the clipboard', () => {
+		const editor = createEditor(
+			sceneWithNodes(nodeWithGroup('one', 'team', 0), node('two', 40))
+		);
+		editor.select('one');
+		editor.copy();
+		editor.select('two');
+		editor.duplicate();
+
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'two', 'two-copy']);
+		expect(editor.canUndo).toBe(true);
+		editor.undo();
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'two']);
+
+		editor.select('two');
+		editor.paste();
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'two', 'one-copy']);
+	});
+
+	test('structural edits with nothing to act on are no-ops that keep snapshot references stable', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		const initial = editor.getSnapshot();
+		let notifications = 0;
+		const unsubscribe = editor.subscribe(() => {
+			notifications += 1;
+		});
+
+		editor.deleteSelection();
+		editor.copy();
+		editor.cut();
+		editor.paste();
+		editor.duplicate();
+
+		expect(editor.getSnapshot()).toBe(initial);
+		expect(editor.canUndo).toBe(false);
+		expect(notifications).toBe(0);
+		unsubscribe();
+	});
+
+	test('each structural edit clears redo and commits one history entry', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40))
+		);
+		editor.select('one');
+		editor.beginDrag('one');
+		editor.drag(4, 0);
+		editor.endDrag();
+		editor.undo();
+		expect(editor.canRedo).toBe(true);
+
+		editor.select('two');
+		editor.deleteSelection();
+		expect(editor.canRedo).toBe(false);
+
+		editor.select('one');
+		editor.copy();
+		editor.paste();
+		expect(editor.canRedo).toBe(false);
+
+		editor.undo();
+		expect(editor.canRedo).toBe(true);
+		editor.duplicate();
+		expect(editor.canRedo).toBe(false);
+		expect(nodeIds(editor.getScene())).toEqual(['one', 'one-copy']);
+	});
+
+	test('the clipboard survives setScene while selection and history clear', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.select('one');
+		editor.copy();
+		editor.beginDrag('one');
+		editor.drag(4, 0);
+		editor.endDrag();
+
+		editor.setScene(sceneWithNodes(node('replacement', 100)));
+
+		expect(editor.getSelection()).toEqual([]);
+		expect(editor.canUndo).toBe(false);
+		editor.paste();
+		expect(nodeIds(editor.getScene())).toEqual(['replacement', 'one-copy']);
 	});
 
 	test('setScene clears selection and history without recording viewport changes', () => {
