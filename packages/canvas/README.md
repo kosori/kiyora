@@ -4,8 +4,10 @@ An interactive, framework-agnostic SVG canvas for arranging the immutable
 `Scene` produced by [`@kiyora/render`](../render).
 
 The package has a DOM-free editor state core, a small DOM engine, and an
-optional React adapter. Canvas edits move existing nodes only; the source
-program remains the source of truth for structural changes.
+optional React adapter. Canvas edits — node drags, keyboard nudges, resizes,
+and Scene-only structural edits (delete, copy, cut, paste, duplicate) —
+mutate the Scene and enter History, but never write back to the source
+program: the next compile resets structure to what the source declares.
 
 ## Installation
 
@@ -78,9 +80,11 @@ snapshot used by subscribers. The editor exposes:
 
 - `subscribe` / `getSnapshot`, `getScene`, `setScene`
 - `getViewport`, `setViewport`, `panBy`, `zoomAt`, `fitToBounds`, `resetView`
-- `hitTest`, `select`, `toggleSelect`, `getSelection`
+- `hitTest`, `select`, `selectMany`, `toggleSelect`, `getSelection`
 - `beginDrag(id)`, `drag`, `endDrag`, `beginNudge()`, `nudge`, `endNudge`,
-  `undo`, `redo`, `canUndo`, `canRedo`
+  `beginResize(id, handle)`, `resizeTo`, `resizeBy(direction)`, `endResize`,
+  `cancelResize`, `undo`, `redo`, `canUndo`, `canRedo`
+- `deleteSelection`, `copy`, `cut`, `paste`, `duplicate`
 
 Selection, viewport changes, and an in-progress drag are not history entries.
 A completed drag creates one entry, and a new edit clears the redo stack.
@@ -90,6 +94,14 @@ selection's bounding-box top-left and applies one uniform delta.
 `beginNudge`/`nudge(direction, byGridStep)`/`endNudge` move the selection by
 one world unit per press, or a `SNAP_STEP`-pixel screen step (converted at the
 current zoom) when `byGridStep` is set; a run coalesces into one entry.
+Resize works as a pointer gesture and a keyboard run:
+`beginResize(id, handle)`/`resizeTo(point)`/`endResize` drags one of the eight
+handles in world space, clamped to the 40×24 minimum, and
+`resizeBy(direction)` grows the single selected node by one snap-grid step per
+press, coalescing into one entry; `cancelResize` abandons the gesture and
+records no history. Delete, cut, copy, paste, and duplicate are Scene-only
+structural edits: they update the Scene and commit one entry, and the
+editor-transient clipboard survives `setScene`.
 `moveNodes` and `boxContains` are exported pure helpers for lower-level
 integrations.
 
@@ -142,9 +154,14 @@ function SelectedLabel() {
 ```
 
 `Canvas` renders an empty host during server rendering and mounts the DOM
-engine in an effect on the client. `useEditor()` reads the nearest canvas
-editor, while `useShape(id)` subscribes to one live, reference-stable
-`SceneNode` (or `undefined`).
+engine in an effect on the client. The host `div` carries
+`data-kiyora-canvas`, is focusable (`tabIndex={0}`), and should receive an
+`aria-label` plus a visible focus style so app-owned keyboard shortcuts can
+gate on canvas focus. The resize-handle chrome the renderer paints is
+decorative (`aria-hidden="true"`): keyboard users resize through
+`resizeBy` on the focused canvas rather than through the handles themselves.
+`useEditor()` reads the nearest canvas editor, while `useShape(id)` subscribes
+to one live, reference-stable `SceneNode` (or `undefined`).
 
 ## Development
 

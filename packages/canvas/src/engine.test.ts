@@ -393,7 +393,7 @@ describe('canvas engine', () => {
 		engine.destroy();
 	});
 
-	test('a cancelled resize drag still commits one history entry, like a node drag', () => {
+	test('a cancelled resize drag restores the scene and records no history entry', () => {
 		const window = new Window();
 		const container = window.document.createElement('div');
 		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
@@ -414,16 +414,21 @@ describe('canvas engine', () => {
 		svg.dispatchEvent(
 			pointer(window, 'pointermove', { clientX: 4, clientY: 4 })
 		);
+		expect(editor.getScene().nodes[0]).not.toMatchObject({
+			height: 40,
+			width: 80,
+		});
 		svg.dispatchEvent(
 			pointer(window, 'pointercancel', { clientX: 4, clientY: 4 })
 		);
 		expect(editor.getScene().nodes[0]).toMatchObject({
-			height: 60,
-			width: 100,
-			x: -20,
-			y: -20,
+			height: 40,
+			width: 80,
+			x: 0,
+			y: 0,
 		});
-		expect(editor.canUndo).toBe(true);
+		expect(editor.canUndo).toBe(false);
+		expect(editor.canRedo).toBe(false);
 		engine.destroy();
 	});
 

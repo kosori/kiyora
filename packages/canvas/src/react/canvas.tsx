@@ -10,7 +10,14 @@ export type CanvasProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
 	showGrid?: boolean;
 };
 
-/** Render an SSR-safe canvas host and mount its DOM Engine in the browser. */
+/**
+ * Render an SSR-safe canvas host and mount its DOM Engine in the browser.
+ *
+ * The host div carries `data-kiyora-canvas`, `role="application"`, and is
+ * focusable (`tabIndex={0}`) so app-owned keyboard shortcuts can gate on
+ * canvas focus. Consumers should add a visible focus style and an
+ * `aria-label` via the passed props.
+ */
 export function Canvas({
 	children,
 	className,
@@ -36,6 +43,9 @@ export function Canvas({
 				className={className}
 				data-kiyora-canvas
 				ref={containerRef}
+				role='application'
+				// biome-ignore lint/a11y/noNoninteractiveTabindex: role="application" makes this a keyboard-operable canvas host.
+				tabIndex={0}
 			/>
 			{children}
 		</EditorContext.Provider>

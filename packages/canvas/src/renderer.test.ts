@@ -210,13 +210,16 @@ describe('renderScene', () => {
 			expect(after).toContain(`data-resize-handle="${handle}"`);
 		}
 		expect(after.match(/data-resize-handle=/gu)).toHaveLength(8);
+		expect(
+			after.match(/data-resize-handle="[^"]*" aria-hidden="true"/gu)
+		).toHaveLength(8);
 		// Handles sit on the selection outline of the 80x40 box at (100,100):
 		// nw centered (97,97), se centered (183,143), each an 8px square.
 		expect(after).toContain(
-			'<rect data-resize-handle="nw" x="93" y="93" width="8" height="8"'
+			'<rect data-resize-handle="nw" aria-hidden="true" x="93" y="93" width="8" height="8"'
 		);
 		expect(after).toContain(
-			'<rect data-resize-handle="se" x="179" y="139" width="8" height="8"'
+			'<rect data-resize-handle="se" aria-hidden="true" x="179" y="139" width="8" height="8"'
 		);
 	});
 

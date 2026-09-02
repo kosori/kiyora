@@ -54,7 +54,12 @@ export function CanvasHost({
 			className='relative h-full min-h-0 min-w-0 bg-muted/20'
 			ref={containerRef}
 		>
-			<Canvas className='h-full min-h-0 w-full' editor={editor} showGrid />
+			<Canvas
+				aria-label='Diagram canvas'
+				className='h-full min-h-0 w-full outline-none focus-visible:ring-2 focus-visible:ring-ring'
+				editor={editor}
+				showGrid
+			/>
 			<div className='pointer-events-auto absolute top-3 left-3 z-10'>
 				<FileMenu
 					fontsReady={fontsReady}

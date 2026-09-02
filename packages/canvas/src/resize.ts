@@ -60,6 +60,31 @@ function handleOffset(handle: ResizeHandle): { dx: number; dy: number } {
 }
 
 /**
+ * The world-space point on a node box where `handle`'s free corner sits:
+ * the edge or corner the gesture drags, with the opposite edge held fixed.
+ */
+export function handleWorldPoint(
+	node: Pick<SceneNode, 'height' | 'width' | 'x' | 'y'>,
+	handle: ResizeHandle
+): Point {
+	const { dx, dy } = handleOffset(handle);
+	return {
+		x:
+			dx === 0
+				? node.x + node.width / 2
+				: dx < 0
+					? node.x
+					: node.x + node.width,
+		y:
+			dy === 0
+				? node.y + node.height / 2
+				: dy < 0
+					? node.y
+					: node.y + node.height,
+	};
+}
+
+/**
  * The screen-space center of `handle` for a node, sitting on the selection
  * outline so the chrome the renderer paints and the chrome input hit-tests
  * never drift apart.

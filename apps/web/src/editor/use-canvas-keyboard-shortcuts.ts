@@ -1,12 +1,12 @@
 import type { Editor, NudgeDirection } from '@kiyora/canvas/react';
 import { useEffect } from 'react';
-import { isTextareaFocused as defaultIsTextareaFocused } from './is-textarea-focused';
+import { isCanvasFocused as defaultIsCanvasFocused } from './is-canvas-focused';
 
 export type CanvasKeyboardShortcutsOptions = {
-	/** Override the textarea-focused check. Defaults to reading
+	/** Override the canvas-focused check. Defaults to reading
 	 * `document.activeElement` inside the keydown listener so SSR never
 	 * observes `document`. */
-	isTextareaFocused?: () => boolean;
+	isCanvasFocused?: () => boolean;
 };
 
 const ARROW_DIRECTIONS: Record<string, NudgeDirection> = {
@@ -16,29 +16,45 @@ const ARROW_DIRECTIONS: Record<string, NudgeDirection> = {
 	ArrowUp: 'up',
 };
 
+type OpenRun = 'nudge' | 'resize';
+
 /**
- * Bind canvas structural-edit and nudge shortcuts on the window to the
- * editor: Delete/Backspace deletes the selection, ⌘/Ctrl+C, ⌘/Ctrl+X,
- * ⌘/Ctrl+V, and ⌘/Ctrl+D copy, cut, paste, and duplicate, and the arrow
- * keys nudge the selection (Shift for a grid step).
+ * Bind canvas structural-edit, nudge, and keyboard-resize shortcuts on the
+ * window to the editor: Delete/Backspace deletes the selection, ⌘/Ctrl+C,
+ * ⌘/Ctrl+X, ⌘/Ctrl+V, and ⌘/Ctrl+D copy, cut, paste, and duplicate, the
+ * arrow keys nudge the selection (Shift for a grid step), and Alt+Arrow
+ * resizes the single selected node toward the arrow (Shift to shrink).
  *
- * The handler is a no-op while a textarea is focused, so the code panel
- * keeps its native text editing. The default check reads
- * `document.activeElement` from inside the keydown listener — never at
- * render scope — so the hook is safe to mount in an SSR tree. A nudge
- * coalesces into a single History entry per key run: `beginNudge` fires
- * on the first keydown and `endNudge` on the matching keyup. The
+ * The handler is a no-op unless the canvas host has focus, so the code
+ * panel and other controls keep their native keyboard behavior. The
+ * default check reads `document.activeElement` from inside the keydown
+ * listener — never at render scope — so the hook is safe to mount in an
+ * SSR tree. A nudge or keyboard resize coalesces into a single History
+ * entry per key run: the first keydown opens the gesture and the matching
+ * keyup closes it. The hook only closes gestures it opened itself, so a
+ * pointer resize in flight is never committed by an arrow release. The
  * listener is detached when the host component unmounts.
  */
 export function useCanvasKeyboardShortcuts(
 	editor: Editor,
 	{
-		isTextareaFocused = defaultIsTextareaFocused,
+		isCanvasFocused = defaultIsCanvasFocused,
 	}: CanvasKeyboardShortcutsOptions = {}
 ): void {
 	useEffect(() => {
+		let openRun: OpenRun | null = null;
+
+		function closeOpenRun(): void {
+			if (openRun === 'nudge') {
+				editor.endNudge();
+			} else if (openRun === 'resize') {
+				editor.endResize();
+			}
+			openRun = null;
+		}
+
 		function handleKeyDown(event: KeyboardEvent): void {
-			if (isTextareaFocused()) {
+			if (!isCanvasFocused()) {
 				return;
 			}
 			if (event.metaKey || event.ctrlKey) {
@@ -46,6 +62,7 @@ export function useCanvasKeyboardShortcuts(
 				return;
 			}
 			if (event.key === 'Delete' || event.key === 'Backspace') {
+				closeOpenRun();
 				event.preventDefault();
 				editor.deleteSelection();
 				return;
@@ -55,18 +72,35 @@ export function useCanvasKeyboardShortcuts(
 
 		function handleKeyUp(event: KeyboardEvent): void {
 			if (ARROW_DIRECTIONS[event.key]) {
-				editor.endNudge();
+				closeOpenRun();
 			}
 		}
 
 		function handleNudgeKey(event: KeyboardEvent): void {
 			const direction = ARROW_DIRECTIONS[event.key];
-			if (!direction || editor.getSelection().length === 0) {
+			if (!direction) {
 				return;
+			}
+			if (event.altKey) {
+				if (editor.resizeBy(direction, event.shiftKey)) {
+					if (openRun === 'nudge') {
+						closeOpenRun();
+					}
+					openRun = 'resize';
+					event.preventDefault();
+				}
+				return;
+			}
+			if (editor.getSelection().length === 0) {
+				return;
+			}
+			if (openRun === 'resize') {
+				closeOpenRun();
 			}
 			event.preventDefault();
 			editor.beginNudge();
 			editor.nudge(direction, event.shiftKey);
+			openRun = 'nudge';
 		}
 
 		function handleModifierKey(event: KeyboardEvent): void {
@@ -96,5 +130,5 @@ export function useCanvasKeyboardShortcuts(
 			window.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('keyup', handleKeyUp);
 		};
-	}, [editor, isTextareaFocused]);
+	}, [editor, isCanvasFocused]);
 }

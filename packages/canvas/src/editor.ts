@@ -7,6 +7,7 @@ import {
 import type { ResizeHandle } from './resize';
 import {
 	handleHit,
+	handleWorldPoint,
 	RESIZE_HANDLES,
 	resizeBox,
 	singleSelectedNode,
@@ -59,6 +60,9 @@ export type Editor = {
 	beginResize: (id: string, handle: ResizeHandle) => void;
 	/** Discard the active marquee without changing the selection. */
 	cancelMarquee: () => void;
+	/** Abandon the active resize gesture: restore the pre-gesture Scene and
+	 * record no History entry. */
+	cancelResize: () => void;
 	copy: () => void;
 	cut: () => void;
 	deleteSelection: () => void;
@@ -95,6 +99,13 @@ export type Editor = {
 	paste: () => void;
 	resetView: () => void;
 	redo: () => void;
+	/** Resize the single selected node by one snap-grid step (screen-space
+	 * `SNAP_STEP`, converted at the current zoom) toward `direction`, or away
+	 * from it when `shrink` is set, clamped to the minimum node size like the
+	 * pointer gesture. A run coalesces into one History entry like `nudge`:
+	 * the first press opens it and `endResize` closes it. Returns whether a
+	 * run is live, so keyboard hosts can decide whether to consume the event. */
+	resizeBy: (direction: NudgeDirection, shrink?: boolean) => boolean;
 	/** Move the active resize gesture so the dragged corner sits at `point`
 	 * (world space), clamped to the minimum node size. */
 	resizeTo: (point: Point) => void;
@@ -260,6 +271,13 @@ const NUDGE_VECTORS: Record<NudgeDirection, Point> = {
 	up: { x: 0, y: -1 },
 };
 
+const RESIZE_HANDLE_FOR_DIRECTION: Record<NudgeDirection, ResizeHandle> = {
+	down: 's',
+	left: 'w',
+	right: 'e',
+	up: 'n',
+};
+
 type ClipboardFragment = {
 	edges: readonly SceneEdge[];
 	nodes: readonly SceneNode[];
@@ -395,6 +413,44 @@ export function createEditor(initialScene?: Scene): Editor {
 		}
 	}
 
+	function applyResizeBox(
+		node: SceneNode,
+		handle: ResizeHandle,
+		point: Point
+	): void {
+		const box = resizeBox(node, handle, point);
+		if (
+			box.x === node.x &&
+			box.y === node.y &&
+			box.width === node.width &&
+			box.height === node.height
+		) {
+			return;
+		}
+		setCurrentScene({
+			...scene,
+			nodes: scene.nodes.map((candidate) =>
+				candidate.id === node.id ? { ...candidate, ...box } : candidate
+			),
+		});
+	}
+
+	function clearResizeState(): Scene | null {
+		if (!resizeState) {
+			return null;
+		}
+		const { before } = resizeState;
+		resizeState = null;
+		return before;
+	}
+
+	function endResizeGesture(): void {
+		const before = clearResizeState();
+		if (before) {
+			commitGesture(before);
+		}
+	}
+
 	function commitNudgeRun(): void {
 		if (!nudgeState) {
 			return;
@@ -450,6 +506,7 @@ export function createEditor(initialScene?: Scene): Editor {
 				return;
 			}
 			commitNudgeRun();
+			endResizeGesture();
 			const ids = selection.includes(id)
 				? selection.filter((selectedId) => nodeIndex.has(selectedId))
 				: [id];
@@ -488,12 +545,23 @@ export function createEditor(initialScene?: Scene): Editor {
 			if (!(node && RESIZE_HANDLES.includes(handle))) {
 				return;
 			}
+			if (resizeState && resizeState.id === id) {
+				resizeState.handle = handle;
+				return;
+			}
 			commitNudgeRun();
+			endResizeGesture();
 			resizeState = { before: scene, handle, id };
 		},
 		cancelMarquee() {
 			if (marquee) {
 				setMarquee(null);
+			}
+		},
+		cancelResize() {
+			const before = clearResizeState();
+			if (before) {
+				setCurrentScene(before);
 			}
 		},
 		get canRedo() {
@@ -579,12 +647,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			commitNudgeRun();
 		},
 		endResize() {
-			if (!resizeState) {
-				return;
-			}
-			const { before } = resizeState;
-			resizeState = null;
-			commitGesture(before);
+			endResizeGesture();
 		},
 		fitToBounds(bounds, size) {
 			setViewport(fitViewportToBounds(viewport, bounds, size));
@@ -650,6 +713,35 @@ export function createEditor(initialScene?: Scene): Editor {
 		resetView() {
 			setViewport(resetViewport(viewport));
 		},
+		resizeBy(direction, shrink = false) {
+			if (dragState) {
+				return false;
+			}
+			const handle = RESIZE_HANDLE_FOR_DIRECTION[direction];
+			if (resizeState) {
+				resizeState.handle = handle;
+			} else {
+				const node = singleSelectedNode(nodeIndex, selection);
+				if (!node) {
+					return false;
+				}
+				commitNudgeRun();
+				resizeState = { before: scene, handle, id: node.id };
+			}
+			const node = nodeIndex.get(resizeState.id);
+			if (!node) {
+				return false;
+			}
+			const corner = handleWorldPoint(node, handle);
+			const sign = shrink ? -1 : 1;
+			const vector = NUDGE_VECTORS[direction];
+			const step = (SNAP_STEP / viewport.zoom) * sign;
+			applyResizeBox(node, handle, {
+				x: corner.x + vector.x * step,
+				y: corner.y + vector.y * step,
+			});
+			return true;
+		},
 		resizeTo(point) {
 			if (!resizeState) {
 				return;
@@ -658,21 +750,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			if (!node) {
 				return;
 			}
-			const box = resizeBox(node, resizeState.handle, point);
-			if (
-				box.x === node.x &&
-				box.y === node.y &&
-				box.width === node.width &&
-				box.height === node.height
-			) {
-				return;
-			}
-			setCurrentScene({
-				...scene,
-				nodes: scene.nodes.map((candidate) =>
-					candidate.id === node.id ? { ...candidate, ...box } : candidate
-				),
-			});
+			applyResizeBox(node, resizeState.handle, point);
 		},
 		select(id) {
 			if (id === null) {

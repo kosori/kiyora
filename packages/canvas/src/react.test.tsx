@@ -99,6 +99,9 @@ describe('React canvas adapter', () => {
 
 		expect(container.querySelector('[data-kiyora-canvas] svg')).not.toBeNull();
 		expect(
+			container.querySelector('[data-kiyora-canvas]')?.getAttribute('tabindex')
+		).toBe('0');
+		expect(
 			container
 				.querySelector('[data-node-label]')
 				?.getAttribute('data-node-label')

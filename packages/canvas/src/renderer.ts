@@ -109,7 +109,7 @@ function resizeHandlesMarkup(
 		const center = handleScreenCenter(snapshot.viewport, node, handle);
 		const half = HANDLE_SIZE / 2;
 		handles.push(
-			`<rect data-resize-handle="${handle}" x="${center.x - half}" y="${center.y - half}" width="${HANDLE_SIZE}" height="${HANDLE_SIZE}" fill="${HANDLE_COLOR}" stroke="${SELECTION_COLOR}" stroke-width="1"/>`
+			`<rect data-resize-handle="${handle}" aria-hidden="true" x="${center.x - half}" y="${center.y - half}" width="${HANDLE_SIZE}" height="${HANDLE_SIZE}" fill="${HANDLE_COLOR}" stroke="${SELECTION_COLOR}" stroke-width="1"/>`
 		);
 	}
 	return handles.join('');

@@ -741,6 +741,167 @@ describe('editor', () => {
 		expect(editor.canUndo).toBe(false);
 	});
 
+	test('cancelResize restores the pre-gesture scene and records no history', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		const before = editor.getScene();
+		editor.beginResize('one', 'se');
+		editor.resizeTo({ x: 200, y: 170 });
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 70,
+			width: 100,
+		});
+
+		editor.cancelResize();
+
+		expect(editor.getScene()).toBe(before);
+		expect(editor.canUndo).toBe(false);
+		expect(editor.canRedo).toBe(false);
+		editor.resizeTo({ x: 300, y: 300 });
+		editor.endResize();
+		expect(editor.getScene()).toBe(before);
+		expect(editor.canUndo).toBe(false);
+	});
+
+	test('resizeBy opens a keyboard resize run on the single selected node', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+
+		expect(editor.resizeBy('right')).toBe(true);
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 88,
+			x: 100,
+			y: 100,
+		});
+		expect(editor.canUndo).toBe(false);
+
+		editor.endResize();
+		expect(editor.canUndo).toBe(true);
+		editor.undo();
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 80,
+		});
+	});
+
+	test('a resizeBy run coalesces into one history entry across directions', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+
+		editor.resizeBy('right');
+		editor.resizeBy('down');
+		editor.resizeBy('right');
+		editor.endResize();
+
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 68,
+			width: 96,
+		});
+		expect(editor.canUndo).toBe(true);
+		editor.undo();
+		expect(editor.canUndo).toBe(false);
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 80,
+		});
+	});
+
+	test('resizeBy shrinks away from the direction and clamps to the minimum size', () => {
+		const editor = createEditor(
+			sceneWithNodes({ ...node('one', 100, 100), height: 60, width: 80 })
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+
+		editor.resizeBy('right', true);
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 72,
+			x: 100,
+		});
+		for (let press = 0; press < 8; press += 1) {
+			editor.resizeBy('right', true);
+		}
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: MIN_NODE_WIDTH,
+			x: 100,
+		});
+		editor.endResize();
+
+		expect(editor.canUndo).toBe(true);
+		editor.undo();
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 60,
+			width: 80,
+			x: 100,
+		});
+	});
+
+	test('resizeBy ignores multi-selections, empty selections, and live drags', () => {
+		const editor = createEditor(
+			sceneWithNodes(node('one', 0), node('two', 40))
+		);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		const before = editor.getScene();
+
+		expect(editor.resizeBy('right')).toBe(false);
+		editor.selectMany(['one', 'two']);
+		expect(editor.resizeBy('right')).toBe(false);
+		editor.select('one');
+		editor.beginDrag('one');
+		expect(editor.resizeBy('right')).toBe(false);
+		editor.endDrag();
+
+		expect(editor.getScene()).toBe(before);
+	});
+
+	test('a resizeBy press commits an open nudge run first', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('one');
+		editor.beginNudge();
+		editor.nudge('right', false);
+
+		expect(editor.resizeBy('down')).toBe(true);
+		editor.endResize();
+
+		expect(editor.getScene().nodes[0]).toMatchObject({ height: 28, y: 0 });
+		editor.undo();
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 20,
+			x: 1,
+			y: 0,
+		});
+		editor.undo();
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 0, y: 0 });
+	});
+
+	test('cancelResize without a live gesture is a no-op', () => {
+		const editor = createEditor(sceneWithNodes(node('one', 0)));
+		const initial = editor.getSnapshot();
+		let notifications = 0;
+		const unsubscribe = editor.subscribe(() => {
+			notifications += 1;
+		});
+
+		editor.cancelResize();
+
+		expect(editor.getSnapshot()).toBe(initial);
+		expect(editor.canUndo).toBe(false);
+		expect(notifications).toBe(0);
+		unsubscribe();
+	});
+
 	test('resize primitives without a live gesture are no-ops', () => {
 		const editor = createEditor(sceneWithNodes(node('one', 0)));
 		const initial = editor.getSnapshot();

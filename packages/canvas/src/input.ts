@@ -160,7 +160,11 @@ export function attachInput(
 			return;
 		}
 		if (state.mode === 'resize') {
-			editor.endResize();
+			if (cancelled) {
+				editor.cancelResize();
+			} else {
+				editor.endResize();
+			}
 			handlers.onDragStateChange?.(false);
 			notify();
 			return;
