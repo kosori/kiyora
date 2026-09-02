@@ -80,6 +80,7 @@ function dispatchKey(options: {
 	return event;
 }
 
+/** Append a focusable canvas host to the document and focus it. */
 function focusCanvas(): HTMLElement {
 	const canvas = document.createElement('div');
 	canvas.setAttribute('data-kiyora-canvas', '');

@@ -252,7 +252,7 @@ export function attachInput(
 			handlers.onDragStateChange?.(false);
 		}
 		if (activeDrag?.mode === 'resize') {
-			editor.endResize();
+			editor.cancelResize();
 			handlers.onDragStateChange?.(false);
 		}
 		if (activeDrag?.mode === 'marquee') {

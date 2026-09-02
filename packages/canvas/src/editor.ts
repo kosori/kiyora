@@ -413,6 +413,7 @@ export function createEditor(initialScene?: Scene): Editor {
 		}
 	}
 
+	/** Apply a resized bounding box to a node, skipping no-op geometry. */
 	function applyResizeBox(
 		node: SceneNode,
 		handle: ResizeHandle,
@@ -435,6 +436,7 @@ export function createEditor(initialScene?: Scene): Editor {
 		});
 	}
 
+	/** Drop the active resize state and return its pre-gesture Scene, if any. */
 	function clearResizeState(): Scene | null {
 		if (!resizeState) {
 			return null;
@@ -444,6 +446,7 @@ export function createEditor(initialScene?: Scene): Editor {
 		return before;
 	}
 
+	/** End a resize gesture, committing one history entry when the Scene changed. */
 	function endResizeGesture(): void {
 		const before = clearResizeState();
 		if (before) {

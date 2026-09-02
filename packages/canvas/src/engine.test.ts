@@ -432,6 +432,41 @@ describe('canvas engine', () => {
 		engine.destroy();
 	});
 
+	test('destroying mid-resize cancels the gesture and leaves history untouched', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const editor = createEditor(makeScene());
+		const engine = createEngine(asElement(container), editor);
+		const svg = container.querySelector('svg');
+		if (!svg) {
+			throw new Error('engine did not mount an SVG');
+		}
+		editor.select('node');
+
+		svg.dispatchEvent(
+			pointer(window, 'pointerdown', { clientX: 107, clientY: 67 })
+		);
+		svg.dispatchEvent(
+			pointer(window, 'pointermove', { clientX: 117, clientY: 77 })
+		);
+		expect(editor.getScene().nodes[0]).not.toMatchObject({
+			height: 40,
+			width: 80,
+		});
+		engine.destroy();
+
+		expect(editor.getScene().nodes[0]).toMatchObject({
+			height: 40,
+			width: 80,
+			x: 0,
+			y: 0,
+		});
+		expect(editor.canUndo).toBe(false);
+		expect(editor.canRedo).toBe(false);
+	});
+
 	test('a cancelled marquee is discarded and shift can be pressed mid-drag', () => {
 		const window = new Window();
 		const container = window.document.createElement('div');
