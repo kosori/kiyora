@@ -12,6 +12,7 @@ const SCENE: Scene = {
 			height: 44,
 			id: 'a',
 			label: 'A',
+			rotation: 0,
 			span,
 			width: 72,
 			x: 24,

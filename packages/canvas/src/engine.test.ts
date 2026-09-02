@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene } from '@kiyora/render';
+import { sceneNode } from '@kiyora/render/testing';
 import type { Event as HappyEvent } from 'happy-dom';
 import { Window } from 'happy-dom';
 import { createEditor } from './editor';
@@ -15,7 +16,7 @@ function makeScene(): Scene {
 		edges: [],
 		groups: [],
 		nodes: [
-			{
+			sceneNode({
 				height: 40,
 				id: 'node',
 				label: 'Node',
@@ -23,7 +24,7 @@ function makeScene(): Scene {
 				width: 80,
 				x: 0,
 				y: 0,
-			},
+			}),
 		],
 		title: '',
 	};

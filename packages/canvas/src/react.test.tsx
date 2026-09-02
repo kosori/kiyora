@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene, SceneNode } from '@kiyora/render';
+import { sceneNode } from '@kiyora/render/testing';
 import { Window } from 'happy-dom';
 import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -22,7 +23,7 @@ function makeScene(): Scene {
 		edges: [],
 		groups: [],
 		nodes: [
-			{
+			sceneNode({
 				height: 40,
 				id: 'one',
 				label: 'One',
@@ -30,8 +31,8 @@ function makeScene(): Scene {
 				width: 80,
 				x: 0,
 				y: 0,
-			},
-			{
+			}),
+			sceneNode({
 				height: 40,
 				id: 'two',
 				label: 'Two',
@@ -39,7 +40,7 @@ function makeScene(): Scene {
 				width: 80,
 				x: 100,
 				y: 0,
-			},
+			}),
 		],
 		title: '',
 	};

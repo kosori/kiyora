@@ -21,6 +21,7 @@
       "height": 44,
       "id": "ceo",
       "label": "CEO",
+      "rotation": 0,
       "span": {
         "end": {
           "column": 3,
@@ -40,6 +41,7 @@
       "height": 44,
       "id": "cto",
       "label": "CTO",
+      "rotation": 0,
       "span": {
         "end": {
           "column": 3,

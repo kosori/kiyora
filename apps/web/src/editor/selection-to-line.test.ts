@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene, SceneNode } from '@kiyora/render';
+import { sceneNode } from '@kiyora/render/testing';
 import { selectionToLine } from './selection-to-line';
 
 const span = (line: number) => ({
@@ -12,16 +13,14 @@ function node(
 	line: number,
 	extras: Partial<SceneNode> = {}
 ): SceneNode {
-	return {
+	return sceneNode({
 		height: 40,
 		id,
 		label: id,
 		span: span(line),
 		width: 80,
-		x: 0,
-		y: 0,
 		...extras,
-	};
+	});
 }
 
 function scene(nodes: SceneNode[]): Scene {

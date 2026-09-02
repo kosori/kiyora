@@ -4,6 +4,7 @@
       "height": 44,
       "id": "api",
       "label": "api",
+      "rotation": 0,
       "span": {
         "end": { "column": 3, "line": 4 },
         "start": { "column": 1, "line": 4 }
@@ -16,6 +17,7 @@
       "height": 44,
       "id": "db",
       "label": "db",
+      "rotation": 0,
       "span": {
         "end": { "column": 2, "line": 5 },
         "start": { "column": 1, "line": 5 }

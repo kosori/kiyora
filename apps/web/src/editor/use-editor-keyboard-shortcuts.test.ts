@@ -17,7 +17,16 @@ function makeScene(): Scene {
 		edges: [],
 		groups: [],
 		nodes: [
-			{ height: 40, id: 'one', label: 'One', span, width: 80, x: 0, y: 0 },
+			{
+				height: 40,
+				id: 'one',
+				label: 'One',
+				rotation: 0,
+				span,
+				width: 80,
+				x: 0,
+				y: 0,
+			},
 		],
 		title: '',
 	};

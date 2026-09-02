@@ -26,7 +26,7 @@ function makeScene(): Scene {
 		groups: [{ id: 'group', label: 'Group', span }],
 		legend: [{ label: 'Ready', swatch: 'green' }],
 		nodes: [
-			{
+			sceneNode({
 				color: 'blue',
 				fill: 'pastel',
 				group: 'group',
@@ -37,8 +37,8 @@ function makeScene(): Scene {
 				width: 72,
 				x: 50,
 				y: 60,
-			},
-			{
+			}),
+			sceneNode({
 				color: 'green',
 				fill: 'bold',
 				height: 44,
@@ -48,7 +48,7 @@ function makeScene(): Scene {
 				width: 72,
 				x: 194,
 				y: 60,
-			},
+			}),
 		],
 		title: 'Canvas',
 	};
@@ -274,25 +274,13 @@ describe('renderScene', () => {
 		expect(after).not.toContain('rgba(77,171,247,0.12)');
 	});
 
-	test('renders rotation 0 with no transform, identical to an absent rotation', () => {
-		const scene = makeScene();
-		const [source] = scene.nodes;
-		if (!source) {
-			throw new Error('test scene did not include a node');
-		}
-		const editor = createEditor(scene);
-		const before = renderScene(editor.getSnapshot(), {
+	test('renders an explicit rotation of 0 without any transform', () => {
+		const editor = createEditor(makeScene());
+		const svg = renderScene(editor.getSnapshot(), {
 			showGrid: false,
 		});
 
-		editor.setScene({
-			...scene,
-			nodes: [{ ...source, rotation: 0 }, ...scene.nodes.slice(1)],
-		});
-		const after = renderScene(editor.getSnapshot(), {
-			showGrid: false,
-		});
-
-		expect(after).toBe(before);
+		expect(svg).toContain('<g data-node="source">');
+		expect(svg).not.toContain('rotate(');
 	});
 });

@@ -20,6 +20,7 @@ function sceneWithNodes(...ids: string[]): Scene {
 			height: 20,
 			id,
 			label: id,
+			rotation: 0,
 			span,
 			width: 20,
 			x: 0,

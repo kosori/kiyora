@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Scene, SceneEdge, SceneNode } from '@kiyora/render';
+import { sceneNode } from '@kiyora/render/testing';
 import { boxContains, createEditor, moveNodes } from './editor';
 import { MIN_NODE_HEIGHT, MIN_NODE_WIDTH } from './resize';
 import { screenToWorld, worldToScreen } from './viewport';
@@ -22,7 +23,7 @@ function nodeIds(scene: Scene): string[] {
 }
 
 function node(id: string, x: number, y = 0): Scene['nodes'][number] {
-	return { height: 20, id, label: id, span, width: 20, x, y };
+	return sceneNode({ height: 20, id, label: id, span, width: 20, x, y });
 }
 
 function edge(from: string, to: string): SceneEdge {

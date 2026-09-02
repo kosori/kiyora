@@ -24,6 +24,7 @@ function compileNode(node: Node, box: Box): SceneNode {
 		height: box.height,
 		id: node.id,
 		label: node.label,
+		rotation: 0,
 		span: node.span,
 		width: box.width,
 		x: box.x,

@@ -24,6 +24,7 @@ function makeScene(): Scene {
 				height: 40,
 				id: 'one',
 				label: 'One',
+				rotation: 0,
 				span,
 				width: 80,
 				x: 0,

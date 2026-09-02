@@ -257,7 +257,7 @@ function nodeMarkup(node: SceneNode, fontSize: number): string {
 		.join('');
 	const filter = node.shadow ? ' filter="url(#kiyora-shadow)"' : '';
 	const rotation =
-		node.rotation === undefined || node.rotation === 0
+		node.rotation === 0
 			? ''
 			: ` transform="rotate(${node.rotation} ${box.x + box.width / 2} ${box.y + box.height / 2})"`;
 	return `<g data-node="${escapeText(node.id)}"${filter}${rotation}>${shape}${labels}</g>`;

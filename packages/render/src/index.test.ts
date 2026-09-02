@@ -80,7 +80,7 @@ describe('render scaffold', () => {
 			groups: [],
 			legend: [{ label: 'Ready & safe', swatch: 'green' }],
 			nodes: [
-				{
+				sceneNode({
 					color: 'blue',
 					corner: 'sharp',
 					fill: 'bold',
@@ -93,8 +93,8 @@ describe('render scaffold', () => {
 					width: 100,
 					x: 24,
 					y: 24,
-				},
-				{
+				}),
+				sceneNode({
 					height: 60,
 					id: 'b',
 					label: 'B',
@@ -102,7 +102,7 @@ describe('render scaffold', () => {
 					width: 100,
 					x: 224,
 					y: 24,
-				},
+				}),
 			],
 			title: 'Title & details',
 		};
@@ -132,7 +132,7 @@ describe('render scaffold', () => {
 			],
 			groups: [],
 			nodes: [
-				{
+				sceneNode({
 					height: 44,
 					id: 'source',
 					label: 'Source',
@@ -140,8 +140,8 @@ describe('render scaffold', () => {
 					width: 72,
 					x: 24,
 					y: 24,
-				},
-				{
+				}),
+				sceneNode({
 					height: 44,
 					id: 'target',
 					label: 'Target',
@@ -149,7 +149,7 @@ describe('render scaffold', () => {
 					width: 72,
 					x: 168,
 					y: 24,
-				},
+				}),
 			],
 			title: '',
 		});
@@ -169,7 +169,7 @@ describe('render scaffold', () => {
 				{ id: 'empty', label: 'Empty', span },
 			],
 			nodes: [
-				{
+				sceneNode({
 					group: 'child',
 					height: 40,
 					id: 'a',
@@ -178,7 +178,7 @@ describe('render scaffold', () => {
 					width: 80,
 					x: 50,
 					y: 50,
-				},
+				}),
 			],
 			title: '',
 		};
@@ -213,7 +213,7 @@ describe('render scaffold', () => {
 			],
 			groups: [],
 			nodes: [
-				{
+				sceneNode({
 					color: 'blue',
 					fill: 'pastel',
 					height: 44,
@@ -223,8 +223,8 @@ describe('render scaffold', () => {
 					width: 72,
 					x: 24,
 					y: 24,
-				},
-				{
+				}),
+				sceneNode({
 					color: 'green',
 					fill: 'bold',
 					height: 44,
@@ -234,7 +234,7 @@ describe('render scaffold', () => {
 					width: 72,
 					x: 168,
 					y: 24,
-				},
+				}),
 			],
 			title: 'Golden',
 		});
@@ -288,31 +288,28 @@ describe('render scaffold', () => {
 		expect(result.svg).toContain('data-edge="rotated-straight"');
 	});
 
-	test('renders rotation 0 exactly like an absent rotation', () => {
-		const base = {
-			color: 'blue' as const,
-			height: 44,
-			label: 'Source',
-			span,
-			width: 72,
-			x: 24,
-			y: 24,
-		};
-		const withoutRotation = renderToSvg({
+	test('renders an explicit rotation of 0 without any transform', () => {
+		const result = renderToSvg({
 			edges: [],
 			groups: [],
-			nodes: [{ ...base, id: 'source' }],
-			title: '',
-		});
-		const withZeroRotation = renderToSvg({
-			edges: [],
-			groups: [],
-			nodes: [sceneNode({ ...base, id: 'source', rotation: 0 })],
+			nodes: [
+				sceneNode({
+					color: 'blue',
+					height: 44,
+					id: 'source',
+					label: 'Source',
+					rotation: 0,
+					span,
+					width: 72,
+					x: 24,
+					y: 24,
+				}),
+			],
 			title: '',
 		});
 
-		expect(withZeroRotation.svg).toBe(withoutRotation.svg);
-		expect(withoutRotation.svg).not.toContain('rotate(');
+		expect(result.svg).toContain('<g data-node="source">');
+		expect(result.svg).not.toContain('rotate(');
 	});
 
 	test('sizes automatic bounds for chrome and sanitizes legend swatches', () => {

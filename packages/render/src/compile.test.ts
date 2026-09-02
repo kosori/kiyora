@@ -58,6 +58,14 @@ describe('compile', () => {
 		expect(scene.groups.map((group) => group.id)).toEqual(['parent', 'child']);
 	});
 
+	test('emits an explicit rotation of 0 for every compiled node', () => {
+		const scene = compile(diagram);
+		expect(scene.nodes.length).toBeGreaterThan(0);
+		for (const node of scene.nodes) {
+			expect(node.rotation).toBe(0);
+		}
+	});
+
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',

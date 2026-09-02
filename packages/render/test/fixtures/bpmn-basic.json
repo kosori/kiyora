@@ -21,6 +21,7 @@
       "height": 44,
       "id": "start",
       "label": "Start",
+      "rotation": 0,
       "span": {
         "end": {
           "column": 5,
@@ -40,6 +41,7 @@
       "height": 44,
       "id": "process",
       "label": "Process",
+      "rotation": 0,
       "span": {
         "end": {
           "column": 7,
