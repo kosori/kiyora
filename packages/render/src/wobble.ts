@@ -143,7 +143,199 @@ export function sampleEllipse(
 	return points;
 }
 
-/** Open polyline approximating a cubic Bézier curve. */
+/** Open polyline through the given vertices. */
+export function samplePolyline(
+	vertices: readonly WobblePoint[]
+): WobblePoint[] {
+	return densify(vertices, false);
+}
+
+function sampleLine(from: WobblePoint, to: WobblePoint): WobblePoint[] {
+	const steps = Math.max(
+		1,
+		Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / SAMPLE_SPACING)
+	);
+	const points: WobblePoint[] = [];
+	for (let index = 0; index <= steps; index += 1) {
+		const t = index / steps;
+		points.push([
+			from[0] + (to[0] - from[0]) * t,
+			from[1] + (to[1] - from[1]) * t,
+		]);
+	}
+	points[0] = [from[0], from[1]];
+	points[points.length - 1] = [to[0], to[1]];
+	return points;
+}
+
+const TAU = Math.PI * 2;
+
+function normalizeAngle(value: number): number {
+	const angle = value % TAU;
+	return angle < 0 ? angle + TAU : angle;
+}
+
+function angleBetween(ux: number, uy: number, vx: number, vy: number): number {
+	const dot = ux * vx + uy * vy;
+	const length = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+	let value = Math.acos(Math.max(-1, Math.min(1, dot / length)));
+	if (ux * vy - uy * vx < 0) {
+		value = -value;
+	}
+	return value;
+}
+
+/* Endpoint-to-center conversion for an unrotated elliptical arc (SVG spec F.6),
+ * reused to sample the same arc the clean path draws. */
+function sampleArc(
+	from: WobblePoint,
+	to: WobblePoint,
+	rx: number,
+	ry: number,
+	largeArc: boolean,
+	sweep: boolean
+): WobblePoint[] {
+	if (rx === 0 || ry === 0) {
+		return sampleLine(from, to);
+	}
+	const [x1, y1] = from;
+	const [x2, y2] = to;
+	const halfX = (x1 - x2) / 2;
+	const halfY = (y1 - y2) / 2;
+	const lambda = (halfX * halfX) / (rx * rx) + (halfY * halfY) / (ry * ry);
+	let radiusX = rx;
+	let radiusY = ry;
+	if (lambda > 1) {
+		const scale = Math.sqrt(lambda);
+		radiusX *= scale;
+		radiusY *= scale;
+	}
+	const sign = largeArc === sweep ? -1 : 1;
+	const numerator =
+		radiusX * radiusX * radiusY * radiusY -
+		radiusX * radiusX * halfY * halfY -
+		radiusY * radiusY * halfX * halfX;
+	const denominator =
+		radiusX * radiusX * halfY * halfY + radiusY * radiusY * halfX * halfX;
+	const factor = sign * Math.sqrt(Math.max(0, numerator) / (denominator || 1));
+	const centerPrimeX = (factor * radiusX * halfY) / radiusY;
+	const centerPrimeY = (-factor * radiusY * halfX) / radiusX;
+	const centerX = centerPrimeX + (x1 + x2) / 2;
+	const centerY = centerPrimeY + (y1 + y2) / 2;
+	const startAngle = normalizeAngle(
+		Math.atan2(
+			(halfY - centerPrimeY) / radiusY,
+			(halfX - centerPrimeX) / radiusX
+		)
+	);
+	let delta = angleBetween(
+		(halfX - centerPrimeX) / radiusX,
+		(halfY - centerPrimeY) / radiusY,
+		(-halfX - centerPrimeX) / radiusX,
+		(-halfY - centerPrimeY) / radiusY
+	);
+	if (delta === 0) {
+		return sampleLine([x1, y1], [x2, y2]);
+	}
+	if (!sweep && delta > 0) {
+		delta -= TAU;
+	} else if (sweep && delta < 0) {
+		delta += TAU;
+	}
+	const steps = Math.max(
+		4,
+		Math.ceil((Math.abs(delta) * Math.max(radiusX, radiusY)) / SAMPLE_SPACING)
+	);
+	const points: WobblePoint[] = [];
+	for (let index = 0; index <= steps; index += 1) {
+		const angle = startAngle + (delta * index) / steps;
+		points.push([
+			centerX + radiusX * Math.cos(angle),
+			centerY + radiusY * Math.sin(angle),
+		]);
+	}
+	points[0] = [x1, y1];
+	points[points.length - 1] = [x2, y2];
+	return points;
+}
+
+/** One drawable contour segment expressed in absolute coordinates, mirroring
+ * the `L`, `C`, and `A` commands used by the clean shape paths. */
+export type WobbleSegment =
+	| { from: WobblePoint; to: WobblePoint; type: 'line' }
+	| {
+			c1: WobblePoint;
+			c2: WobblePoint;
+			from: WobblePoint;
+			to: WobblePoint;
+			type: 'cubic';
+	  }
+	| {
+			from: WobblePoint;
+			largeArc?: boolean;
+			rx: number;
+			ry: number;
+			sweep: boolean;
+			to: WobblePoint;
+			type: 'arc';
+	  };
+
+function sampleSegment(segment: WobbleSegment): WobblePoint[] {
+	switch (segment.type) {
+		case 'line':
+			return sampleLine(segment.from, segment.to);
+		case 'cubic':
+			return sampleCubic(segment.from, segment.c1, segment.c2, segment.to);
+		default:
+			return sampleArc(
+				segment.from,
+				segment.to,
+				segment.rx,
+				segment.ry,
+				segment.largeArc ?? false,
+				segment.sweep
+			);
+	}
+}
+
+/** Stitches absolute segments into one dense contour without duplicating the
+ * shared anchor points between consecutive segments. */
+export function sampleSegments(
+	segments: readonly WobbleSegment[],
+	closed: boolean
+): WobblePoint[] {
+	const points: WobblePoint[] = [];
+	for (const segment of segments) {
+		const sampled = sampleSegment(segment);
+		const offset = points.length === 0 ? 0 : 1;
+		for (let index = offset; index < sampled.length; index += 1) {
+			const current = sampled[index];
+			if (current) {
+				points.push([current[0], current[1]]);
+			}
+		}
+		if (points.length === 0) {
+			const [firstX = 0, firstY = 0] = segment.from;
+			points.push([firstX, firstY]);
+		}
+	}
+	if (closed) {
+		const [firstX = 0, firstY = 0] = points[0] ?? [];
+		const last = points.at(-1);
+		if (last && (last[0] !== firstX || last[1] !== firstY)) {
+			const closing = sampleLine(last, [firstX, firstY]);
+			for (let index = 1; index < closing.length; index += 1) {
+				const current = closing[index];
+				if (current) {
+					points.push([current[0], current[1]]);
+				}
+			}
+		}
+	}
+	return points;
+}
+
+/** Open cubic sample; the same curve as an SVG `C` command. */
 export function sampleCubic(
 	p0: WobblePoint,
 	p1: WobblePoint,
@@ -240,11 +432,15 @@ export function wobbleOverlayMarkup(
 	return `<path data-wobble="true" pointer-events="none" d="${d}" fill="${contour.stroke}" fill-opacity="${WOBBLE_OPACITY}"/>`;
 }
 
-/** Overlay markup for every contour of an element that shares one seed;
- * contours that cannot produce an outline are skipped individually. */
+/** Overlay markup for every contour of an element that shares one seed base;
+ * each contour gets its own seed variation so similar sub-contours within one
+ * component never look stamped. Contours that cannot produce an outline are
+ * skipped individually. */
 export function wobbleOverlayGroup(
 	seed: number,
 	contours: readonly DrawableContour[]
 ): string {
-	return contours.map((contour) => wobbleOverlayMarkup(seed, contour)).join('');
+	return contours
+		.map((contour, index) => wobbleOverlayMarkup(seed + index * 7919, contour))
+		.join('');
 }

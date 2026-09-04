@@ -5,7 +5,9 @@ import {
 	sampleCubic,
 	sampleEllipse,
 	samplePolygon,
+	samplePolyline,
 	sampleRoundedRect,
+	sampleSegments,
 	wobbleOverlayGroup,
 	wobbleOverlayMarkup,
 } from './wobble';
@@ -120,6 +122,104 @@ describe('wobble sampling', () => {
 		expect(points[0]).toEqual([0, 0]);
 		expect(points.at(-1)).toEqual([100, 60]);
 		expect(points.length).toBeGreaterThanOrEqual(8);
+	});
+
+	test('polyline sampling is open and keeps its endpoints', () => {
+		const points = samplePolyline([
+			[0, 0],
+			[10, 5],
+			[20, 0],
+		]);
+		expect(points[0]).toEqual([0, 0]);
+		expect(points.at(-1)).toEqual([20, 0]);
+		expect(points.length).toBeGreaterThan(3);
+	});
+
+	test('arc sampling honors the sweep direction', () => {
+		const clockwise = sampleSegments(
+			[
+				{
+					from: [0, 0],
+					rx: 5,
+					ry: 5,
+					sweep: true,
+					to: [10, 0],
+					type: 'arc',
+				},
+			],
+			false
+		);
+		for (const [, y] of clockwise) {
+			expect(y).toBeLessThanOrEqual(0.001);
+		}
+		const counterClockwise = sampleSegments(
+			[
+				{
+					from: [0, 0],
+					rx: 5,
+					ry: 5,
+					sweep: false,
+					to: [10, 0],
+					type: 'arc',
+				},
+			],
+			false
+		);
+		for (const [, y] of counterClockwise) {
+			expect(y).toBeGreaterThanOrEqual(-0.001);
+		}
+	});
+
+	test('arc sampling endpoints match the anchors and too-small radii scale up', () => {
+		const points = sampleSegments(
+			[
+				{
+					from: [0, 0],
+					rx: 5,
+					ry: 5,
+					sweep: true,
+					to: [40, 0],
+					type: 'arc',
+				},
+			],
+			false
+		);
+		expect(points[0]).toEqual([0, 0]);
+		expect(points.at(-1)).toEqual([40, 0]);
+		expect(points.length).toBeGreaterThan(8);
+	});
+
+	test('segment sampling chains lines, cubics, and arcs without duplicates', () => {
+		const points = sampleSegments(
+			[
+				{ from: [0, 0], to: [20, 0], type: 'line' },
+				{
+					c1: [30, 0],
+					c2: [40, 10],
+					from: [20, 0],
+					to: [40, 20],
+					type: 'cubic',
+				},
+			],
+			true
+		);
+		expect(points[0]).toEqual([0, 0]);
+		expect(points.at(-1)).toEqual([0, 0]);
+		const joins = points.filter(([x, y]) => x === 20 && y === 0);
+		expect(joins.length).toBe(1);
+		let maxGap = 0;
+		for (let i = 1; i < points.length; i += 1) {
+			const previous = points[i - 1];
+			const current = points[i];
+			if (!(previous && current)) {
+				continue;
+			}
+			maxGap = Math.max(
+				maxGap,
+				Math.hypot(current[0] - previous[0], current[1] - previous[1])
+			);
+		}
+		expect(maxGap).toBeLessThanOrEqual(6);
 	});
 
 	test('sampling is stable for identical input', () => {

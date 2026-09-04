@@ -264,9 +264,9 @@ function nodeMarkup(
 	let shape = '';
 	for (const [index, component] of components.entries()) {
 		shape += component.clean;
-		if (wobble && component.contour) {
+		if (wobble && component.contours) {
 			const seed = deriveWobbleSeed(identity, [...geometryParts, index]);
-			shape += wobbleOverlayGroup(seed, [component.contour]);
+			shape += wobbleOverlayGroup(seed, component.contours);
 		}
 	}
 	let labels = '';

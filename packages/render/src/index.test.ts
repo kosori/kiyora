@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { type Diagram, parse, type Span } from '@kiyora/dsl';
+import { type Diagram, parse, SHAPES, type Span } from '@kiyora/dsl';
 import {
 	compile,
 	deriveGroupBoxes,
@@ -525,6 +525,114 @@ describe('render scaffold', () => {
 			});
 			expect(without).not.toContain('data-wobble');
 			expect(withWobble).toContain('data-wobble');
+		});
+
+		const overlayCount = (svg: string, nodeId: string): number => {
+			const nodeGroup = svg.match(
+				new RegExp(`<g data-node="${nodeId}"[^>]*>([\\s\\S]*?)</g>`)
+			)?.[1];
+			return (nodeGroup?.match(/data-wobble="true"/g) ?? []).length;
+		};
+
+		test('every supported, fallback, and unknown shape gets at least one overlay', () => {
+			const missing = [...SHAPES, 'future-shape'].filter((kind) => {
+				const { svg } = renderToSvg(wobbleScene({ shape: kind }), {
+					wobble: true,
+				});
+				return overlayCount(svg, 'a') < 1;
+			});
+			expect(missing).toEqual([]);
+		});
+
+		test('compound shapes wobble each component independently', () => {
+			const expected: Record<string, number> = {
+				actor: 5,
+				card: 2,
+				checkbox: 2,
+				crossbox: 3,
+				delay: 3,
+				'double-circle': 2,
+				plus: 2,
+				'predefined-process': 3,
+			};
+			const actual: Record<string, number> = {};
+			for (const kind of Object.keys(expected)) {
+				const { svg } = renderToSvg(wobbleScene({ shape: kind }), {
+					wobble: true,
+				});
+				const count = overlayCount(svg, 'a');
+				if (count !== expected[kind]) {
+					actual[kind] = count;
+				}
+			}
+			expect(actual).toEqual({});
+		});
+
+		test('curve-based closed shapes produce dense wobble outlines', () => {
+			const sparse: string[] = [];
+			for (const kind of ['cloud', 'document', 'heart', 'note'] as const) {
+				const { svg } = renderToSvg(wobbleScene({ shape: kind }), {
+					wobble: true,
+				});
+				const nodeGroup = svg.match(/<g data-node="a">([\s\S]*?)<\/g>/)?.[1];
+				const d = nodeGroup?.match(/data-wobble="true"[^/]*d="([^"]+)"/)?.[1];
+				const tokens = d?.trim().split(/\s+/).length ?? 0;
+				if (tokens < 64) {
+					sparse.push(`${kind}:${tokens}`);
+				}
+			}
+			expect(sparse).toEqual([]);
+		});
+
+		test('compound shapes keep clean fills and labels intact under overlays', () => {
+			const { svg } = renderToSvg(wobbleScene({ shape: 'cylinder' }), {
+				wobble: true,
+			});
+			const nodeGroup = svg.match(/<g data-node="a">([\s\S]*?)<\/g>/)?.[1];
+			expect(nodeGroup).toContain('fill="#e9ecef"');
+			expect(nodeGroup).toContain('<ellipse');
+			expect(nodeGroup).toContain('>Node A</text>');
+			const cleanIndex = nodeGroup?.indexOf('<ellipse') ?? -1;
+			const overlayIndex = nodeGroup?.indexOf('data-wobble') ?? -1;
+			expect(overlayIndex).toBeGreaterThan(-1);
+			expect(cleanIndex).toBeGreaterThanOrEqual(0);
+		});
+
+		test('overlays follow rotation and identity like single-component shapes', () => {
+			const { svg: rotated } = renderToSvg(
+				wobbleScene({ rotation: 45, shape: 'actor' }),
+				{ wobble: true }
+			);
+			const nodeGroup = rotated.match(
+				/<g data-node="a" transform="rotate\(45 70 52\)">([\s\S]*?)<\/g>/
+			)?.[1];
+			expect(nodeGroup).toContain('data-wobble="true"');
+			expect(overlayCount(rotated, 'a')).toBe(5);
+
+			const overlayDs = (svg: string): string[] =>
+				[...svg.matchAll(/data-wobble="true"[^/]*d="([^"]+)"/g)]
+					.map((match) => match[1])
+					.filter((value): value is string => value !== undefined);
+			const { svg: base } = renderToSvg(wobbleScene({ shape: 'cylinder' }), {
+				wobble: true,
+			});
+			const { svg: other } = renderToSvg(
+				wobbleScene({ id: 'b', shape: 'cylinder' }),
+				{ wobble: true }
+			);
+			const baseDs = overlayDs(base);
+			expect(baseDs).toHaveLength(2);
+			expect(overlayDs(other)).toHaveLength(2);
+			expect(overlayDs(other)).not.toEqual(baseDs);
+		});
+
+		test('degenerate compound shapes degrade to clean geometry only', () => {
+			const { svg } = renderToSvg(
+				wobbleScene({ height: 0, shape: 'plus', width: 0 }),
+				{ wobble: true }
+			);
+			expect(svg).toContain('data-node="a"');
+			expect(svg).not.toContain('data-wobble');
 		});
 	});
 
