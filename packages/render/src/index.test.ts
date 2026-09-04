@@ -346,6 +346,64 @@ describe('render scaffold', () => {
 		expect(result.width).toBeGreaterThan(72);
 	});
 
+	test('keeps node label markup in the default export projection', () => {
+		const scene: Scene = {
+			edges: [],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 44,
+					id: 'a',
+					label: 'Node A',
+					span,
+					width: 72,
+					x: 24,
+					y: 24,
+				}),
+			],
+			title: '',
+		};
+		expect(renderToSvg(scene).svg).toContain('>Node A</text>');
+	});
+
+	test('omits node label markup when showNodeLabels is false', () => {
+		const scene: Scene = {
+			edges: [{ from: 'a', label: 'edge label', span, to: 'b' }],
+			groups: [{ id: 'g', label: 'Group label', span }],
+			legend: [{ label: 'Legend label', swatch: 'green' }],
+			nodes: [
+				sceneNode({
+					group: 'g',
+					height: 60,
+					id: 'a',
+					label: 'Node A',
+					span,
+					width: 100,
+					x: 24,
+					y: 24,
+				}),
+				sceneNode({
+					height: 60,
+					id: 'b',
+					label: 'Node B',
+					span,
+					width: 100,
+					x: 224,
+					y: 24,
+				}),
+			],
+			title: 'Diagram title',
+		};
+		const hidden = renderToSvg(scene, { showNodeLabels: false });
+		expect(hidden.svg).not.toContain('>Node A</text>');
+		expect(hidden.svg).not.toContain('>Node B</text>');
+		expect(hidden.svg).toContain('edge label');
+		expect(hidden.svg).toContain('Group label');
+		expect(hidden.svg).toContain('Legend label');
+		expect(hidden.svg).toContain('Diagram title');
+		expect(hidden.svg).toContain('data-node="a"');
+	});
+
 	test('honors explicit dimensions, padding, fonts, and the render convenience', () => {
 		const options = {
 			edgeFontSize: 11,

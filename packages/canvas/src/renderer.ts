@@ -31,6 +31,9 @@ export type RenderSceneOptions = {
 	nodeFontSize?: number;
 	padding?: number;
 	showGrid?: boolean;
+	/** Overrides the zoom-derived default. Omitted node labels keep node
+	 * geometry and layout untouched. */
+	showNodeLabels?: boolean;
 	width?: number;
 };
 
@@ -47,8 +50,33 @@ const GRID_COLOR = '#c8cdd4';
 const BACKGROUND_COLOR = '#fbfcfe';
 const SELECTION_COLOR = '#4dabf7';
 const HANDLE_COLOR = '#ffffff';
+// Node labels are the most repeated text on the canvas; hide them below this
+// zoom so far-out views stop paying per-glyph cost.
+const NODE_LABELS_VISIBLE_ABOVE_ZOOM = 0.2;
 // SELECTION_COLOR (#4dabf7) at 12% alpha for the marquee wash.
 const MARQUEE_FILL = 'rgba(77,171,247,0.12)';
+
+/** Dot-density tiers: below each threshold, render every nth dot instead. */
+const DOT_DENSITY_TIERS = [
+	{ minZoom: 0.65, step: 1 },
+	{ minZoom: 0.35, step: 2 },
+	{ minZoom: 0.15, step: 4 },
+] as const;
+const DOT_DENSITY_FALLBACK_STEP = 8;
+
+function dotStepForZoom(zoom: number): number {
+	for (const tier of DOT_DENSITY_TIERS) {
+		if (zoom >= tier.minZoom) {
+			return tier.step;
+		}
+	}
+	return DOT_DENSITY_FALLBACK_STEP;
+}
+
+/** True when a grid index lands on a kept dot for the active density step. */
+function dotIsKept(index: number, step: number): boolean {
+	return ((index % step) + step) % step === 0;
+}
 
 function renderGrid(
 	viewport: EditorSnapshot['viewport'],
@@ -56,14 +84,26 @@ function renderGrid(
 	height: number
 ): string {
 	const gap = GRID_SPACING * viewport.zoom;
-	const dx = viewport.tx % gap;
-	const dy = viewport.ty % gap;
 	const dots: string[] = [];
 	if (gap > 0 && Number.isFinite(gap)) {
-		for (let x = dx; x < width; x += gap) {
-			for (let y = dy; y < height; y += gap) {
+		const step = dotStepForZoom(viewport.zoom);
+		const radius = Math.max(0.5, viewport.zoom * 0.6);
+		const firstI = Math.ceil(-viewport.tx / gap);
+		const lastI = Math.floor((width - viewport.tx) / gap);
+		const firstJ = Math.ceil(-viewport.ty / gap);
+		const lastJ = Math.floor((height - viewport.ty) / gap);
+		for (let i = firstI; i <= lastI; i += 1) {
+			if (!dotIsKept(i, step)) {
+				continue;
+			}
+			const x = viewport.tx + i * gap;
+			for (let j = firstJ; j <= lastJ; j += 1) {
+				if (!dotIsKept(j, step)) {
+					continue;
+				}
+				const y = viewport.ty + j * gap;
 				dots.push(
-					`<circle cx="${x}" cy="${y}" r="${Math.max(0.5, viewport.zoom * 0.6)}" fill="${GRID_COLOR}"/>`
+					`<circle cx="${x}" cy="${y}" r="${radius}" fill="${GRID_COLOR}"/>`
 				);
 			}
 		}
@@ -158,12 +198,18 @@ export function renderSceneResult(
 		options.showGrid === false
 			? `<rect width="${width}" height="${height}" fill="${BACKGROUND_COLOR}"/>`
 			: renderGrid(snapshot.viewport, width, height);
+	const showNodeLabels =
+		options.showNodeLabels ??
+		snapshot.viewport.zoom >= NODE_LABELS_VISIBLE_ABOVE_ZOOM;
 	const body = [
 		`<defs>${renderDefs()}</defs>`,
 		chrome,
 		`<g transform="translate(${snapshot.viewport.tx} ${snapshot.viewport.ty}) scale(${snapshot.viewport.zoom})" font-family="${fontFamily}">`,
 		title,
-		renderSceneElements(snapshot.scene, groupBoxes, options),
+		renderSceneElements(snapshot.scene, groupBoxes, {
+			...options,
+			showNodeLabels,
+		}),
 		legend,
 		'</g>',
 		selectionMarkup(snapshot, nodeIndex),

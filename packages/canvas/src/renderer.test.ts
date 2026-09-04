@@ -89,7 +89,9 @@ describe('renderScene', () => {
 		});
 
 		expect(svg).toContain('<rect width="160" height="100" fill="#fbfcfe"/>');
-		expect(svg).toContain('cx="10" cy="-8" r="1.2" fill="#c8cdd4"');
+		// Grid anchor is the world origin (10, -8); dots below y=0 are clipped,
+		// so the first visible column starts at cy=40 (-8 + 48).
+		expect(svg).toContain('cx="10" cy="40" r="1.2" fill="#c8cdd4"');
 		expect(svg).toContain('transform="translate(10 -8) scale(2)"');
 		expect(svg).toContain(
 			'stroke="#4dabf7" stroke-width="1.5" stroke-dasharray="4 3"'
@@ -285,5 +287,137 @@ describe('renderScene', () => {
 
 		expect(svg).toContain('<g data-node="source">');
 		expect(svg).not.toContain('rotate(');
+	});
+
+	function gridDots(zoom: number): [number, number][] {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom });
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 120,
+			width: 120,
+		});
+		return [
+			...svg.matchAll(/<circle cx="([-\d.]+)" cy="([-\d.]+)"[^/]*#c8cdd4/g),
+		].map((match) => [Number(match[1]), Number(match[2])]);
+	}
+	function hasDot(dots: [number, number][], x: number, y: number): boolean {
+		return dots.some(
+			([cx, cy]) => Math.abs(cx - x) < 0.01 && Math.abs(cy - y) < 0.01
+		);
+	}
+
+	function evenGridIndex(value: number): number {
+		return (Math.round(value) % 2) + 0;
+	}
+
+	test('renders every grid dot at or above 65% zoom', () => {
+		expect(gridDots(1)).toEqual(
+			expect.arrayContaining([
+				[0, 0],
+				[24, 0],
+				[48, 0],
+			])
+		);
+		expect(gridDots(0.65)).toEqual(expect.arrayContaining([[0, 0]]));
+	});
+
+	test('renders every second dot below 65% down to 35%', () => {
+		const dots = gridDots(0.5);
+		expect(hasDot(dots, 0, 0)).toBe(true);
+		expect(hasDot(dots, 24, 0)).toBe(true);
+		expect(hasDot(dots, 12, 0)).toBe(false);
+		// Just below the 65% boundary the 2nd-dot tier is active: gap 15.36,
+		// so the odd-index position is skipped while i=2 stays.
+		const justBelow = gridDots(0.64);
+		expect(hasDot(justBelow, 15.36, 0)).toBe(false);
+		expect(hasDot(justBelow, 30.72, 0)).toBe(true);
+		// At exactly 35% the 2nd-dot tier still applies.
+		const atBoundary = gridDots(0.35);
+		expect(hasDot(atBoundary, 0, 0)).toBe(true);
+		expect(hasDot(atBoundary, 16.8, 0)).toBe(true);
+		expect(hasDot(atBoundary, 8.4, 0)).toBe(false);
+	});
+
+	test('renders every fourth dot below 35% down to 15%', () => {
+		const dots = gridDots(0.2);
+		expect(hasDot(dots, 0, 0)).toBe(true);
+		expect(hasDot(dots, 19.2, 0)).toBe(true);
+		expect(hasDot(dots, 4.8, 0)).toBe(false);
+		expect(hasDot(dots, 9.6, 0)).toBe(false);
+		// At exactly 15% the 4th-dot tier still applies: gap 3.6, kept every
+		// 4th index, so 3.6 (i=1) is skipped and 14.4 (i=4) stays.
+		const atBoundary = gridDots(0.15);
+		expect(hasDot(atBoundary, 3.6, 0)).toBe(false);
+		expect(hasDot(atBoundary, 14.4, 0)).toBe(true);
+	});
+
+	test('renders every eighth dot below 15%', () => {
+		const dots = gridDots(0.125);
+		expect(hasDot(dots, 0, 0)).toBe(true);
+		expect(hasDot(dots, 24, 0)).toBe(true);
+		expect(hasDot(dots, 3, 0)).toBe(false);
+		// Just below 15%: gap 3.36, so i=1 (3.36) is skipped and i=8 (26.88)
+		// is the first kept neighbor.
+		const justBelow = gridDots(0.14);
+		expect(hasDot(justBelow, 3.36, 0)).toBe(false);
+		expect(hasDot(justBelow, 26.88, 0)).toBe(true);
+	});
+
+	test('keeps the thinned grid anchored to the world origin under arbitrary pan', () => {
+		const editor = createEditor(makeScene());
+		// gap = 12, step 2: kept dots sit every 24 screen px from the panned
+		// world-origin position, not from the viewport's top-left.
+		editor.setViewport({ tx: 7, ty: -3, zoom: 0.5 });
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 120,
+			width: 120,
+		});
+		const dots: [number, number][] = [
+			...svg.matchAll(/<circle cx="([-\d.]+)" cy="([-\d.]+)"[^/]*#c8cdd4/g),
+		].map((match) => [Number(match[1]), Number(match[2])]);
+
+		expect(dots.length).toBeGreaterThan(0);
+		for (const [x, y] of dots) {
+			expect(evenGridIndex((x - 7) / 12)).toBe(0);
+			expect(evenGridIndex((y + 3) / 12)).toBe(0);
+		}
+		expect(hasDot(dots, 19, 9)).toBe(false);
+		expect(hasDot(dots, 7, 21)).toBe(true);
+	});
+
+	test('bounds the dot count when zoomed far out', () => {
+		// Unthinned, a 120px canvas at 10% zoom (2.4px gap) would emit ~2500
+		// circles. The eighth-dot tier keeps the count low so zoom-out stays
+		// performant.
+		expect(gridDots(0.1).length).toBeLessThan(100);
+	});
+
+	test('omits node labels below 20% zoom while other text stays', () => {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom: 0.15 });
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 400,
+			width: 600,
+		});
+
+		expect(svg).not.toContain('>Source</text>');
+		expect(svg).not.toContain('>Target</text>');
+		expect(svg).toContain('data-node="source"');
+		expect(svg).toContain('data-edge="source-target"');
+		expect(svg).toContain('>go</text>');
+		expect(svg).toContain('Canvas');
+		expect(svg).toContain('Ready');
+	});
+
+	test('keeps node labels visible at exactly 20% zoom', () => {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom: 0.2 });
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 400,
+			width: 600,
+		});
+
+		expect(svg).toContain('>Source</text>');
+		expect(svg).toContain('>Target</text>');
 	});
 });

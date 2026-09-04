@@ -26,6 +26,10 @@ type SceneBounds = {
 export type SceneProjectionOptions = {
 	edgeFontSize?: number;
 	nodeFontSize?: number;
+	/** When false, node label text markup is omitted while node geometry and
+	 * layout are untouched. Used by the interactive canvas to drop the most
+	 * repeated text elements when zoomed far out. */
+	showNodeLabels?: boolean;
 };
 
 const MARKERS = `<marker id="kiyora-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-arrow-reverse" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker>`;
@@ -229,7 +233,11 @@ function edgeMarkup(
 	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${label}</g>`;
 }
 
-function nodeMarkup(node: SceneNode, fontSize: number): string {
+function nodeMarkup(
+	node: SceneNode,
+	fontSize: number,
+	showLabels: boolean
+): string {
 	const style = resolveStyle(node.color ?? 'gray', node.fill ?? 'pastel');
 	const box = boxForNode(node);
 	const shape = renderShape(
@@ -239,22 +247,25 @@ function nodeMarkup(node: SceneNode, fontSize: number): string {
 		NODE_STROKE,
 		node.corner
 	);
-	const textColor = node.labelColor ? edgeColor(node.labelColor) : style.text;
-	const metrics = measureLabel(node.label, {
-		fontSize,
-		maxWidth: Math.max(1, box.width - TEXT_PADDING * 2),
-		verticalPadding: TEXT_PADDING * 2,
-	});
-	const firstY =
-		box.y +
-		box.height / 2 -
-		((metrics.lines.length - 1) * metrics.lineHeight) / 2;
-	const labels = metrics.lines
-		.map(
-			(line, index) =>
-				`<text x="${box.x + box.width / 2}" y="${firstY + index * metrics.lineHeight}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize}" fill="${textColor}">${escapeText(line)}</text>`
-		)
-		.join('');
+	let labels = '';
+	if (showLabels) {
+		const textColor = node.labelColor ? edgeColor(node.labelColor) : style.text;
+		const metrics = measureLabel(node.label, {
+			fontSize,
+			maxWidth: Math.max(1, box.width - TEXT_PADDING * 2),
+			verticalPadding: TEXT_PADDING * 2,
+		});
+		const firstY =
+			box.y +
+			box.height / 2 -
+			((metrics.lines.length - 1) * metrics.lineHeight) / 2;
+		labels = metrics.lines
+			.map(
+				(line, index) =>
+					`<text x="${box.x + box.width / 2}" y="${firstY + index * metrics.lineHeight}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize}" fill="${textColor}">${escapeText(line)}</text>`
+			)
+			.join('');
+	}
 	const filter = node.shadow ? ' filter="url(#kiyora-shadow)"' : '';
 	const rotation =
 		node.rotation === 0
@@ -270,6 +281,7 @@ export function renderSceneElements(
 ): string {
 	const edgeFontSize = options.edgeFontSize ?? EDGE_FONT_SIZE;
 	const nodeFontSize = options.nodeFontSize ?? NODE_FONT_SIZE;
+	const showNodeLabels = options.showNodeLabels ?? true;
 	const parts: string[] = [];
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
@@ -282,7 +294,7 @@ export function renderSceneElements(
 		parts.push(edgeMarkup(edge, nodes, edgeFontSize));
 	}
 	for (const node of scene.nodes) {
-		parts.push(nodeMarkup(node, nodeFontSize));
+		parts.push(nodeMarkup(node, nodeFontSize, showNodeLabels));
 	}
 	return parts.join('');
 }
