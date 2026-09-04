@@ -69,7 +69,8 @@
     "verify:published": "bun scripts/verify-published-build.ts"
   },
   "dependencies": {
-    "@kiyora/dsl": "*"
+    "@kiyora/dsl": "*",
+    "perfect-freehand": "1.2.3"
   },
   "devDependencies": {
     "@kiyora/typescript": "*",

@@ -2,7 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type Diagram, parse, type Span } from '@kiyora/dsl';
-import { compile, render, renderToSvg, type Scene } from './index';
+import {
+	compile,
+	deriveGroupBoxes,
+	render,
+	renderSceneElements,
+	renderToSvg,
+	type Scene,
+} from './index';
 import { sceneNode } from './testing';
 
 const span: Span = {
@@ -402,6 +409,123 @@ describe('render scaffold', () => {
 		expect(hidden.svg).toContain('Legend label');
 		expect(hidden.svg).toContain('Diagram title');
 		expect(hidden.svg).toContain('data-node="a"');
+	});
+
+	describe('wobble projection', () => {
+		const wobbleScene = (
+			nodeOverrides: Partial<Parameters<typeof sceneNode>[0]> = {}
+		): Scene => ({
+			edges: [],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 44,
+					id: 'a',
+					label: 'Node A',
+					shape: 'rectangle',
+					width: 100,
+					x: 20,
+					y: 30,
+					...nodeOverrides,
+				}),
+			],
+			title: '',
+		});
+
+		test('omits wobble overlays by default', () => {
+			expect(renderToSvg(wobbleScene()).svg).not.toContain('data-wobble');
+		});
+
+		test('renders overlays only when explicitly enabled', () => {
+			const { svg: clean } = renderToSvg(wobbleScene());
+			const { svg: wobbled } = renderToSvg(wobbleScene(), { wobble: true });
+			expect(wobbled).toContain('data-wobble="true"');
+			expect(wobbled).toContain('pointer-events="none"');
+			expect(wobbled).toContain('fill="#1e1e1e"');
+			expect(clean).not.toContain('data-wobble');
+		});
+
+		test('keeps clean geometry and labels intact beneath overlays', () => {
+			const { svg } = renderToSvg(wobbleScene(), { wobble: true });
+			expect(svg).toContain('fill="#e9ecef"');
+			expect(svg).toContain('stroke-width="2"');
+			expect(svg).toContain('>Node A</text>');
+			const [nodeGroup = ''] =
+				svg.match(/<g data-node="a">([\s\S]*?)<\/g>/) ?? [];
+			expect(nodeGroup).not.toBe('');
+			const cleanIndex = nodeGroup.indexOf('fill-opacity="1"');
+			const overlayIndex = nodeGroup.indexOf('data-wobble');
+			expect(cleanIndex).toBeGreaterThanOrEqual(0);
+			expect(overlayIndex).toBeGreaterThan(cleanIndex);
+		});
+
+		test('overlays text stays clean', () => {
+			const { svg } = renderToSvg(wobbleScene(), { wobble: true });
+			expect(svg.match(/<text/g)?.length).toBe(1);
+		});
+
+		test('places overlays inside the rotated node group', () => {
+			const { svg } = renderToSvg(wobbleScene({ rotation: 45 }), {
+				wobble: true,
+			});
+			const nodeGroup = svg.match(
+				/<g data-node="a" transform="rotate\(45 70 52\)">([\s\S]*?)<\/g>/
+			)?.[1];
+			expect(nodeGroup).toContain('data-wobble="true"');
+		});
+
+		test('renders identical overlays for identical scenes', () => {
+			const { svg: first } = renderToSvg(wobbleScene(), { wobble: true });
+			const { svg: second } = renderToSvg(wobbleScene(), { wobble: true });
+			expect(first).toBe(second);
+		});
+
+		test('distinct identities with identical geometry get distinct overlays', () => {
+			const { svg: one } = renderToSvg(wobbleScene({ id: 'a' }), {
+				wobble: true,
+			});
+			const { svg: other } = renderToSvg(wobbleScene({ id: 'b' }), {
+				wobble: true,
+			});
+			const oneD = one.match(/data-wobble="true"[^/]*d="([^"]+)"/)?.[1];
+			const otherD = other.match(/data-wobble="true"[^/]*d="([^"]+)"/)?.[1];
+			expect(oneD).toBeDefined();
+			expect(otherD).toBeDefined();
+			expect(oneD).not.toBe(otherD);
+		});
+
+		test('moving and resizing regenerate the overlay deterministically', () => {
+			const { svg: base } = renderToSvg(wobbleScene(), { wobble: true });
+			const moved = renderToSvg(wobbleScene({ x: 24 }), {
+				wobble: true,
+			}).svg;
+			const resized = renderToSvg(wobbleScene({ width: 140 }), {
+				wobble: true,
+			}).svg;
+			expect(moved).not.toBe(base);
+			expect(resized).not.toBe(base);
+			expect(moved).toBe(
+				renderToSvg(wobbleScene({ x: 24 }), { wobble: true }).svg
+			);
+		});
+
+		test('gracefully omits overlays for degenerate geometry', () => {
+			const { svg } = renderToSvg(wobbleScene({ height: 0, width: 0 }), {
+				wobble: true,
+			});
+			expect(svg).toContain('data-node="a"');
+			expect(svg).not.toContain('data-wobble');
+		});
+
+		test('interactive renderSceneElements options match the static seam', () => {
+			const scene = wobbleScene();
+			const without = renderSceneElements(scene, deriveGroupBoxes(scene), {});
+			const withWobble = renderSceneElements(scene, deriveGroupBoxes(scene), {
+				wobble: true,
+			});
+			expect(without).not.toContain('data-wobble');
+			expect(withWobble).toContain('data-wobble');
+		});
 	});
 
 	test('honors explicit dimensions, padding, fonts, and the render convenience', () => {

@@ -2,7 +2,7 @@ import { COLORS, type Color } from '@kiyora/dsl';
 import { type Box, edgePathD, intersectRect } from './geometry';
 import { measureLabel, measureLabelWidth } from './label';
 import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
-import { renderShape } from './shapes';
+import { shapeComponents } from './shapes';
 import {
 	cornerRadius,
 	dashAttrs,
@@ -15,6 +15,7 @@ import {
 	resolveStyle,
 	TEXT_PADDING,
 } from './style';
+import { deriveWobbleSeed, wobbleOverlayGroup } from './wobble';
 
 type SceneBounds = {
 	maxX: number;
@@ -30,6 +31,9 @@ export type SceneProjectionOptions = {
 	 * layout are untouched. Used by the interactive canvas to drop the most
 	 * repeated text elements when zoomed far out. */
 	showNodeLabels?: boolean;
+	/** When true, render deterministic hand-drawn wobble overlays above the
+	 * clean geometry. Defaults to false so static SVG/PNG export stays clean. */
+	wobble?: boolean;
 };
 
 const MARKERS = `<marker id="kiyora-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-arrow-reverse" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker>`;
@@ -236,17 +240,35 @@ function edgeMarkup(
 function nodeMarkup(
 	node: SceneNode,
 	fontSize: number,
-	showLabels: boolean
+	showLabels: boolean,
+	wobble: boolean
 ): string {
 	const style = resolveStyle(node.color ?? 'gray', node.fill ?? 'pastel');
 	const box = boxForNode(node);
-	const shape = renderShape(
+	const components = shapeComponents(
 		node.shape ?? 'rectangle',
 		box,
 		style,
 		NODE_STROKE,
 		node.corner
 	);
+	const identity = `node:${node.id}`;
+	const geometryParts = [
+		node.shape ?? 'rectangle',
+		node.corner ?? 'round',
+		box.x,
+		box.y,
+		box.width,
+		box.height,
+	];
+	let shape = '';
+	for (const [index, component] of components.entries()) {
+		shape += component.clean;
+		if (wobble && component.contour) {
+			const seed = deriveWobbleSeed(identity, [...geometryParts, index]);
+			shape += wobbleOverlayGroup(seed, [component.contour]);
+		}
+	}
 	let labels = '';
 	if (showLabels) {
 		const textColor = node.labelColor ? edgeColor(node.labelColor) : style.text;
@@ -282,6 +304,7 @@ export function renderSceneElements(
 	const edgeFontSize = options.edgeFontSize ?? EDGE_FONT_SIZE;
 	const nodeFontSize = options.nodeFontSize ?? NODE_FONT_SIZE;
 	const showNodeLabels = options.showNodeLabels ?? true;
+	const wobble = options.wobble ?? false;
 	const parts: string[] = [];
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
@@ -294,7 +317,7 @@ export function renderSceneElements(
 		parts.push(edgeMarkup(edge, nodes, edgeFontSize));
 	}
 	for (const node of scene.nodes) {
-		parts.push(nodeMarkup(node, nodeFontSize, showNodeLabels));
+		parts.push(nodeMarkup(node, nodeFontSize, showNodeLabels, wobble));
 	}
 	return parts.join('');
 }

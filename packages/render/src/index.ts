@@ -79,6 +79,9 @@ export type RenderOptions = {
 	nodeFontSize?: number;
 	padding?: number;
 	showNodeLabels?: boolean;
+	/** When true, include display-only wobble overlays. Defaults to false so
+	 * static SVG/PNG export stays clean. */
+	wobble?: boolean;
 	width?: number;
 };
 
