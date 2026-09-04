@@ -71,6 +71,27 @@ function polygonPath(points: readonly [number, number][]): string {
 	return `M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`;
 }
 
+/** `M … L …` markup for one or more independent open strokes. */
+function openPath(strokes: readonly WobblePoint[][]): string {
+	return strokes
+		.map((stroke) =>
+			stroke
+				.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`)
+				.join(' ')
+		)
+		.join(' ');
+}
+
+function openContours(
+	strokes: readonly WobblePoint[][],
+	stroke: string,
+	strokeWidth: number
+): DrawableContour[] {
+	return strokes.map((points) =>
+		contour(false, samplePolyline(points), stroke, strokeWidth)
+	);
+}
+
 function attrs(style: Style, width: number): string {
 	return `fill="${style.fill}" fill-opacity="${style.fillOpacity}" stroke="${style.stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`;
 }
@@ -374,6 +395,35 @@ function contour(
 	return { closed, points, stroke, strokeWidth };
 }
 
+/** Shared inset frame contour used by the boxed check shapes. */
+function insetFrame(box: Box): WobblePoint[] {
+	const { height, width, x, y } = box;
+	return [
+		[x + 2, y + 2],
+		[x + width - 2, y + 2],
+		[x + width - 2, y + height - 2],
+		[x + 2, y + height - 2],
+	];
+}
+
+function roundedRectContour(
+	box: Box,
+	radius: number,
+	stroke: string,
+	strokeWidth: number
+): DrawableContour {
+	return contour(true, sampleRoundedRect(box, radius), stroke, strokeWidth);
+}
+
+/** Closed contour stitched from absolute path segments. */
+function segmentsContour(
+	segments: readonly WobbleSegment[],
+	stroke: string,
+	strokeWidth: number
+): DrawableContour {
+	return contour(true, sampleSegments(segments, true), stroke, strokeWidth);
+}
+
 /**
  * Structured drawable components for a canonical shape. Each component keeps
  * its clean markup and its sampled contours together so projections can render
@@ -547,9 +597,7 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(body, style, strokeWidth),
-					contours: [
-						contour(true, sampleSegments(segments, true), stroke, strokeWidth),
-					],
+					contours: [segmentsContour(segments, stroke, strokeWidth)],
 				},
 				{
 					clean: ellipse(cx, y + ry, width / 2, ry, style, strokeWidth),
@@ -569,14 +617,7 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(geometry.d, style, strokeWidth),
-					contours: [
-						contour(
-							true,
-							sampleSegments(geometry.segments, true),
-							stroke,
-							strokeWidth
-						),
-					],
+					contours: [segmentsContour(geometry.segments, stroke, strokeWidth)],
 				},
 			];
 		}
@@ -585,14 +626,7 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(geometry.d, style, strokeWidth),
-					contours: [
-						contour(
-							true,
-							sampleSegments(geometry.segments, true),
-							stroke,
-							strokeWidth
-						),
-					],
+					contours: [segmentsContour(geometry.segments, stroke, strokeWidth)],
 				},
 			];
 		}
@@ -638,14 +672,7 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(geometry.d, style, strokeWidth),
-					contours: [
-						contour(
-							true,
-							sampleSegments(geometry.segments, true),
-							stroke,
-							strokeWidth
-						),
-					],
+					contours: [segmentsContour(geometry.segments, stroke, strokeWidth)],
 				},
 			];
 		}
@@ -654,14 +681,7 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(geometry.d, style, strokeWidth),
-					contours: [
-						contour(
-							true,
-							sampleSegments(geometry.segments, true),
-							stroke,
-							strokeWidth
-						),
-					],
+					contours: [segmentsContour(geometry.segments, stroke, strokeWidth)],
 				},
 			];
 		}
@@ -679,12 +699,6 @@ export function shapeComponents(
 				[hip, [x + width * 0.15, y + height]],
 				[hip, [x + width * 0.85, y + height]],
 			];
-			const body = strokes
-				.map(
-					(strokePoints) =>
-						`M ${strokePoints[0]?.[0]} ${strokePoints[0]?.[1]} L ${strokePoints[1]?.[0]} ${strokePoints[1]?.[1]}`
-				)
-				.join(' ');
 			return [
 				{
 					clean: circle(
@@ -707,24 +721,19 @@ export function shapeComponents(
 							: undefined,
 				},
 				{
-					clean: `<path d="${body}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
-					contours: strokes.map((strokePoints) =>
-						contour(false, samplePolyline(strokePoints), stroke, strokeWidth)
-					),
+					clean: `<path d="${openPath(strokes)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
+					contours: openContours(strokes, stroke, strokeWidth),
 				},
 			];
 		}
 		case 'checkbox': {
-			const frame: WobblePoint[] = [
-				[x + 2, y + 2],
-				[x + width - 2, y + 2],
-				[x + width - 2, y + height - 2],
-				[x + 2, y + height - 2],
-			];
-			const mark: WobblePoint[] = [
-				[x + width * 0.22, cy],
-				[x + width * 0.42, y + height * 0.66],
-				[x + width * 0.8, y + height * 0.34],
+			const frame = insetFrame(box);
+			const mark: WobblePoint[][] = [
+				[
+					[x + width * 0.22, cy],
+					[x + width * 0.42, y + height * 0.66],
+					[x + width * 0.8, y + height * 0.34],
+				],
 			];
 			return [
 				{
@@ -732,18 +741,13 @@ export function shapeComponents(
 					contours: [contour(true, samplePolygon(frame), stroke, strokeWidth)],
 				},
 				{
-					clean: `<path d="M ${mark[0]?.[0]} ${mark[0]?.[1]} L ${mark[1]?.[0]} ${mark[1]?.[1]} L ${mark[2]?.[0]} ${mark[2]?.[1]}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
-					contours: [contour(false, samplePolyline(mark), stroke, strokeWidth)],
+					clean: `<path d="${openPath(mark)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
+					contours: openContours(mark, stroke, strokeWidth),
 				},
 			];
 		}
 		case 'crossbox': {
-			const frame: WobblePoint[] = [
-				[x + 2, y + 2],
-				[x + width - 2, y + 2],
-				[x + width - 2, y + height - 2],
-				[x + 2, y + height - 2],
-			];
+			const frame = insetFrame(box);
 			const diagonals: WobblePoint[][] = [
 				[
 					[x + width * 0.28, y + height * 0.28],
@@ -754,22 +758,14 @@ export function shapeComponents(
 					[x + width * 0.28, y + height * 0.72],
 				],
 			];
-			const cross = diagonals
-				.map(
-					(diagonal) =>
-						`M ${diagonal[0]?.[0]} ${diagonal[0]?.[1]} L ${diagonal[1]?.[0]} ${diagonal[1]?.[1]}`
-				)
-				.join(' ');
 			return [
 				{
 					clean: path(polygonPath(frame), style, strokeWidth),
 					contours: [contour(true, samplePolygon(frame), stroke, strokeWidth)],
 				},
 				{
-					clean: `<path d="${cross}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`,
-					contours: diagonals.map((diagonal) =>
-						contour(false, samplePolyline(diagonal), stroke, strokeWidth)
-					),
+					clean: `<path d="${openPath(diagonals)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`,
+					contours: openContours(diagonals, stroke, strokeWidth),
 				},
 			];
 		}
@@ -784,18 +780,10 @@ export function shapeComponents(
 					[x + width * 0.8, cy],
 				],
 			];
-			const d = bars
-				.map(
-					(bar) =>
-						`M ${bar[0]?.[0]} ${bar[0]?.[1]} L ${bar[1]?.[0]} ${bar[1]?.[1]}`
-				)
-				.join(' ');
 			return [
 				{
-					clean: path(d, { ...style, fill: 'none' }, strokeWidth),
-					contours: bars.map((bar) =>
-						contour(false, samplePolyline(bar), stroke, strokeWidth)
-					),
+					clean: path(openPath(bars), { ...style, fill: 'none' }, strokeWidth),
+					contours: openContours(bars, stroke, strokeWidth),
 				},
 			];
 		}
@@ -819,24 +807,22 @@ export function shapeComponents(
 						style,
 						strokeWidth
 					),
-					contours: [
-						contour(true, sampleRoundedRect(box, radius), stroke, strokeWidth),
-					],
+					contours: [roundedRectContour(box, radius, stroke, strokeWidth)],
 				},
 				{
-					clean: `<path d="M ${rules[0]?.[0]?.[0]} ${y} V ${y + height} M ${rules[1]?.[0]?.[0]} ${y} V ${y + height}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"/>`,
-					contours: rules.map((rule) =>
-						contour(false, samplePolyline(rule), stroke, strokeWidth)
-					),
+					clean: `<path d="M ${x + inset} ${y} V ${y + height} M ${x + width - inset} ${y} V ${y + height}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"/>`,
+					contours: openContours(rules, stroke, strokeWidth),
 				},
 			];
 		}
 		case 'card': {
 			const notch = 14;
-			const fold: WobblePoint[] = [
-				[x + width - notch, y],
-				[x + width - notch, y + notch],
-				[x + width, y + notch],
+			const fold: WobblePoint[][] = [
+				[
+					[x + width - notch, y],
+					[x + width - notch, y + notch],
+					[x + width, y + notch],
+				],
 			];
 			return [
 				{
@@ -845,13 +831,11 @@ export function shapeComponents(
 						style,
 						strokeWidth
 					),
-					contours: [
-						contour(true, sampleRoundedRect(box, radius), stroke, strokeWidth),
-					],
+					contours: [roundedRectContour(box, radius, stroke, strokeWidth)],
 				},
 				{
-					clean: `<path d="M ${fold[0]?.[0]} ${fold[0]?.[1]} L ${fold[1]?.[0]} ${fold[1]?.[1]} L ${fold[2]?.[0]} ${fold[2]?.[1]}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>`,
-					contours: [contour(false, samplePolyline(fold), stroke, strokeWidth)],
+					clean: `<path d="${openPath(fold)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>`,
+					contours: openContours(fold, stroke, strokeWidth),
 				},
 			];
 		}
@@ -863,9 +847,7 @@ export function shapeComponents(
 						style,
 						strokeWidth
 					),
-					contours: [
-						contour(true, sampleRoundedRect(box, radius), stroke, strokeWidth),
-					],
+					contours: [roundedRectContour(box, radius, stroke, strokeWidth)],
 				},
 			];
 	}

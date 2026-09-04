@@ -570,7 +570,16 @@ describe('render scaffold', () => {
 
 		test('curve-based closed shapes produce dense wobble outlines', () => {
 			const sparse: string[] = [];
-			for (const kind of ['cloud', 'document', 'heart', 'note'] as const) {
+			for (const kind of [
+				'cloud',
+				'document',
+				'heart',
+				'note',
+				'cylinder',
+				'ellipse',
+				'circle',
+				'star',
+			] as const) {
 				const { svg } = renderToSvg(wobbleScene({ shape: kind }), {
 					wobble: true,
 				});
@@ -592,10 +601,12 @@ describe('render scaffold', () => {
 			expect(nodeGroup).toContain('fill="#e9ecef"');
 			expect(nodeGroup).toContain('<ellipse');
 			expect(nodeGroup).toContain('>Node A</text>');
-			const cleanIndex = nodeGroup?.indexOf('<ellipse') ?? -1;
-			const overlayIndex = nodeGroup?.indexOf('data-wobble') ?? -1;
-			expect(overlayIndex).toBeGreaterThan(-1);
-			expect(cleanIndex).toBeGreaterThanOrEqual(0);
+			const bodyOverlay = nodeGroup?.indexOf('data-wobble') ?? -1;
+			const rimClean = nodeGroup?.indexOf('<ellipse', bodyOverlay) ?? -1;
+			const rimOverlay = nodeGroup?.indexOf('data-wobble', rimClean) ?? -1;
+			expect(bodyOverlay).toBeGreaterThan(-1);
+			expect(rimClean).toBeGreaterThan(bodyOverlay);
+			expect(rimOverlay).toBeGreaterThan(rimClean);
 		});
 
 		test('overlays follow rotation and identity like single-component shapes', () => {

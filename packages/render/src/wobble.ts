@@ -25,6 +25,9 @@ export const WOBBLE_OPACITY = 0.66;
 
 const LEHMER_MODULUS = 2_147_483_647;
 const LEHMER_MULTIPLIER = 16_807;
+/** Prime stride between sibling contours sharing one component seed, so
+ * mirrored sub-contours within a compound shape never look stamped. */
+const CONTOUR_SEED_STRIDE = 7919;
 
 /** Rolling Lehmer hash over stable identity and current local geometry.
  * Viewport state is intentionally excluded so pan and zoom never change the
@@ -150,6 +153,7 @@ export function samplePolyline(
 	return densify(vertices, false);
 }
 
+/** Dense open sample of a single straight segment, anchored on both endpoints. */
 function sampleLine(from: WobblePoint, to: WobblePoint): WobblePoint[] {
 	const steps = Math.max(
 		1,
@@ -170,11 +174,13 @@ function sampleLine(from: WobblePoint, to: WobblePoint): WobblePoint[] {
 
 const TAU = Math.PI * 2;
 
+/** Wrap any angle into `[0, TAU)`. */
 function normalizeAngle(value: number): number {
 	const angle = value % TAU;
 	return angle < 0 ? angle + TAU : angle;
 }
 
+/** Signed angle from vector u to vector v, shortest way around. */
 function angleBetween(ux: number, uy: number, vx: number, vy: number): number {
 	const dot = ux * vx + uy * vy;
 	const length = Math.hypot(ux, uy) * Math.hypot(vx, vy);
@@ -185,8 +191,8 @@ function angleBetween(ux: number, uy: number, vx: number, vy: number): number {
 	return value;
 }
 
-/* Endpoint-to-center conversion for an unrotated elliptical arc (SVG spec F.6),
- * reused to sample the same arc the clean path draws. */
+/** Endpoint-to-center conversion for an unrotated elliptical arc (SVG spec
+ * F.6), reused to sample the same arc the clean path draws. */
 function sampleArc(
 	from: WobblePoint,
 	to: WobblePoint,
@@ -441,6 +447,8 @@ export function wobbleOverlayGroup(
 	contours: readonly DrawableContour[]
 ): string {
 	return contours
-		.map((contour, index) => wobbleOverlayMarkup(seed + index * 7919, contour))
+		.map((contour, index) =>
+			wobbleOverlayMarkup(seed + index * CONTOUR_SEED_STRIDE, contour)
+		)
 		.join('');
 }
