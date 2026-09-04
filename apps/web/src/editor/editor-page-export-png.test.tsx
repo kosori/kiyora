@@ -4,14 +4,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { EditorPageSurface } from './editor-page';
 import type { Downloadable, PngRasterizer } from './io/io';
 import type { SourceStorage } from './source-storage';
-import { EXPORT_FONTS_FIXTURE } from './test-fixtures';
+import { resolvedFontReadiness } from './test-fixtures';
 import { withHappyDom } from './test-happy-dom';
 
 (
 	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-const EXPORT_FONTS = EXPORT_FONTS_FIXTURE;
 
 type Recording = {
 	downloadable: Downloadable & { recorded: { blob: Blob; filename: string }[] };
@@ -71,7 +69,7 @@ function renderEditor(recording: Recording): RenderHandle {
 		root.render(
 			createElement(EditorPageSurface, {
 				downloadable: recording.downloadable,
-				fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
+				fontReadiness: resolvedFontReadiness(),
 				openable: { pickFile: () => Promise.resolve(null) },
 				rasterizer: recording.rasterizer,
 				storage: recording.storage,

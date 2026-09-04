@@ -16,8 +16,10 @@ export type FontReadinessState = {
  * are loaded.
  *
  * The hook starts in the "preparing" state (`ready: false`,
- * `fonts: null`, `failure: null`) while the promise is pending. A
- * successful resolution populates `fonts` and flips `ready` to `true`.
+ * `fonts: null`, `failure: null`) while the promise is pending. Browser
+ * font loading begins inside the effect via `readiness.start()`, never
+ * during render, so SSR can mount the editor while fonts stay pending.
+ * A successful resolution populates `fonts` and flips `ready` to `true`.
  * A rejection also flips `ready` to `true` so the editor can re-enable
  * the export actions; the rejection message becomes `failure` so an
  * attempted export surfaces it as a file-operation error in the
@@ -33,6 +35,7 @@ export function useFontReadiness(readiness: FontReadiness): FontReadinessState {
 	useEffect(() => {
 		let cancelled = false;
 		setState({ failure: null, fonts: null, ready: false });
+		readiness.start();
 		readiness.ready.then(
 			(fonts) => {
 				if (!cancelled) {

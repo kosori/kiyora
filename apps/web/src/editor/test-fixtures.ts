@@ -1,4 +1,4 @@
-import type { ExportFonts } from './io/io';
+import type { ExportFonts, FontReadiness } from './io/io';
 
 /**
  * A deterministic `ExportFonts` fixture used by tests that need to
@@ -12,3 +12,15 @@ export const EXPORT_FONTS_FIXTURE: ExportFonts = {
 	bold: { bytes: new Uint8Array([4, 5, 6]), mimeType: 'font/woff2' },
 	regular: { bytes: new Uint8Array([1, 2, 3]), mimeType: 'font/woff2' },
 };
+
+/**
+ * A `FontReadiness` that reports the fixture faces as already loaded and
+ * performs no browser work on `start`. For editor-page and component
+ * tests that only need export to be reachable.
+ */
+export function resolvedFontReadiness(): FontReadiness {
+	return {
+		ready: Promise.resolve(EXPORT_FONTS_FIXTURE),
+		start: () => undefined,
+	};
+}

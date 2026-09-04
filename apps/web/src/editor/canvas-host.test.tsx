@@ -120,6 +120,86 @@ describe('CanvasHost', () => {
 		});
 	});
 
+	test('refits once when the fit signal is bumped and keeps later recompiles unfitted', () => {
+		const { d } = withHappyDom();
+		const container = d.createElement('div');
+		d.body.append(container);
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 5000, ty: 5000, zoom: 4 });
+
+		const root = createRoot(container as unknown as Element);
+		act(() => {
+			root.render(
+				createElement(CanvasHost, {
+					editor,
+					fitSignal: 0,
+					fontsReady: true,
+					getContainerSize: () => ({ height: 480, width: 640 }),
+				})
+			);
+		});
+
+		// Mount fit frames the 200x200 node at zoom 2.4.
+		expect(editor.getViewport().zoom).toBeCloseTo(2.4, 2);
+
+		// The user moves the content off-screen.
+		editor.setViewport({ tx: 5000, ty: 5000, zoom: 1 });
+
+		// A replacement scene (the restored Source compiling) must not refit
+		// by itself — fit is one-shot plus explicit signals only.
+		act(() => {
+			editor.setScene({
+				edges: [],
+				groups: [],
+				nodes: [
+					{
+						height: 200,
+						id: 'restored',
+						label: 'Restored',
+						rotation: 0,
+						span,
+						width: 200,
+						x: 0,
+						y: 0,
+					},
+				],
+				title: '',
+			});
+		});
+		expect(editor.getViewport()).toEqual({ tx: 5000, ty: 5000, zoom: 1 });
+
+		// The explicit fit signal refits exactly once.
+		act(() => {
+			root.render(
+				createElement(CanvasHost, {
+					editor,
+					fitSignal: 1,
+					fontsReady: true,
+					getContainerSize: () => ({ height: 480, width: 640 }),
+				})
+			);
+		});
+		expect(editor.getViewport().zoom).toBeCloseTo(2.4, 2);
+
+		// A re-render with an unchanged signal does not refit again.
+		act(() => {
+			editor.setViewport({ tx: 5000, ty: 5000, zoom: 1 });
+			root.render(
+				createElement(CanvasHost, {
+					editor,
+					fitSignal: 1,
+					fontsReady: true,
+					getContainerSize: () => ({ height: 480, width: 640 }),
+				})
+			);
+		});
+		expect(editor.getViewport()).toEqual({ tx: 5000, ty: 5000, zoom: 1 });
+
+		act(() => {
+			root.unmount();
+		});
+	});
+
 	test('renders the canvas and the toolbar', () => {
 		const { d } = withHappyDom();
 		const container = d.createElement('div');

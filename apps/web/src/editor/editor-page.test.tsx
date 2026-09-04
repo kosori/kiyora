@@ -3,14 +3,13 @@ import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { EditorPageSurface } from './editor-page';
 import type { SourceStorage } from './source-storage';
-import { EXPORT_FONTS_FIXTURE } from './test-fixtures';
+import { STARTER_SOURCE } from './starter';
+import { resolvedFontReadiness } from './test-fixtures';
 import { withHappyDom } from './test-happy-dom';
 
 (
 	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-const EXPORT_FONTS = EXPORT_FONTS_FIXTURE;
 
 function makeFakeStorage(seed: string | null = null): SourceStorage & {
 	saved: string[];
@@ -93,7 +92,7 @@ function renderEditor(
 		root.render(
 			createElement(EditorPageSurface, {
 				downloadable,
-				fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
+				fontReadiness: resolvedFontReadiness(),
 				openable,
 				rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
 				storage,
@@ -132,6 +131,109 @@ describe('EditorPage durable Source workspace', () => {
 		expect(textarea.value).toBe(persisted);
 
 		unmount();
+	});
+
+	test('never persists the starter Source over a saved one during restoration', () => {
+		const persisted = 'architecture\ntitle Restored diagram';
+		const storage = makeFakeStorage(persisted);
+		const { unmount } = renderEditor(storage);
+
+		// The persistence effect must not write the transient starter Source
+		// before the restore pass has settled; otherwise a refresh would
+		// clobber the saved workspace.
+		for (const saved of storage.saved) {
+			expect(saved).not.toBe(STARTER_SOURCE);
+		}
+		expect(storage.saved.at(-1)).toBe(persisted);
+
+		unmount();
+	});
+
+	test('treats a saved source equal to the starter as no restoration', () => {
+		const storage = makeFakeStorage(STARTER_SOURCE);
+		const { container, unmount } = renderEditor(storage);
+
+		const textarea = findTextarea(container);
+		expect(textarea.value).toBe(STARTER_SOURCE);
+		// Exactly one write after the restore settles: the starter itself.
+		// No extra persistence churn and no second compile pass.
+		expect(storage.saved).toEqual([STARTER_SOURCE]);
+
+		unmount();
+	});
+
+	test('keeps invalid saved Source visible with its compile diagnostics', async () => {
+		const broken = 'architecture\ntitle T\nA -> B ->';
+		const { container, unmount } = renderEditor(makeFakeStorage(broken));
+
+		const textarea = findTextarea(container);
+		expect(textarea.value).toBe(broken);
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 300));
+		});
+		const list = container.querySelector('[data-diagnostics]');
+		expect(list?.getAttribute('data-state')).toBe('error');
+
+		unmount();
+	});
+
+	test('survives a storage read that throws', () => {
+		const storage: SourceStorage = {
+			load() {
+				throw new Error('quota');
+			},
+			save: () => undefined,
+		};
+		const { container, unmount } = renderEditor(storage);
+
+		const textarea = findTextarea(container);
+		expect(textarea.value.startsWith('architecture')).toBe(true);
+
+		unmount();
+	});
+
+	test('renders the starter Source on the server and restores after hydration', async () => {
+		const { renderToString } = await import('react-dom/server');
+		const { hydrateRoot } = await import('react-dom/client');
+		const persisted = 'architecture\ntitle Restored diagram';
+		const props = {
+			downloadable: { save: () => undefined },
+			fontReadiness: resolvedFontReadiness(),
+			openable: { pickFile: () => Promise.resolve(null) },
+			rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
+			storage: makeFakeStorage(persisted),
+		};
+		// No happy-dom globals installed: this render is the server pass.
+		const serverHtml = renderToString(createElement(EditorPageSurface, props));
+		expect(serverHtml).toContain('Request pipeline');
+		expect(serverHtml).not.toContain('Restored diagram');
+
+		const { d } = withHappyDom();
+		const host = d.createElement('div');
+		host.innerHTML = serverHtml;
+		d.body.append(host);
+
+		let recoverable: unknown = null;
+		await new Promise<void>((resolve) => {
+			const root = hydrateRoot(
+				host as unknown as Element,
+				createElement(EditorPageSurface, props),
+				{
+					onRecoverableError: (error) => {
+						recoverable = error;
+					},
+				}
+			);
+			setTimeout(() => {
+				act(() => {
+					root.unmount();
+				});
+				resolve();
+			}, 50);
+		});
+
+		expect(recoverable).toBeNull();
+		host.remove();
 	});
 
 	test('persists the current Source on every edit, ahead of any debounce', () => {

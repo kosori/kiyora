@@ -49,7 +49,13 @@ const FILE_SHORTCUTS = ['⌘/Ctrl+S', '⌘/Ctrl+O'] as const;
  * Source is the textual interchange format and the only thing this page
  * persists. Canvas-only Scene placement, selection, and the Viewport are
  * transient: a fresh compile from the restored Source produces a new
- * Scene, and the canvas host's one-shot fit-to-view frames it on mount.
+ * Scene, and the canvas host fits it — once on mount, and once again when
+ * a persisted Source replaces the starter after hydration.
+ *
+ * The first render — server and client — always shows the starter Source.
+ * Persisted Source lives only in the browser, so restoring it in an
+ * effect keeps SSR markup and hydration in lockstep instead of reading
+ * localStorage during render.
  */
 export function EditorPage() {
 	return (
@@ -97,17 +103,21 @@ export function EditorPageSurface({
 	rasterizer,
 	storage,
 }: EditorPageSurfaceProps) {
-	const initialSource = storage.load() ?? STARTER_SOURCE;
-	const [source, setSource] = useState(initialSource);
+	const [source, setSource] = useState(STARTER_SOURCE);
 	const [editor] = useState<Editor>(() =>
-		createEditor(parseAndCompile(initialSource).scene)
+		createEditor(parseAndCompile(STARTER_SOURCE).scene)
 	);
 	const [fileError, setFileError] = useState<string | null>(null);
+	const [fitSignal, setFitSignal] = useState(0);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	// The source string the editor was last applied with. Used to skip the
 	// compile effect when neither the debounced value nor the immediate
 	// compile produced a new scene.
-	const lastCompiledSourceRef = useRef<string>(initialSource);
+	const lastCompiledSourceRef = useRef<string>(STARTER_SOURCE);
+	// True once the mount-time restore attempt has settled. Source
+	// persistence is suppressed until then so the transient starter
+	// Source can never overwrite a saved workspace.
+	const [restored, setRestored] = useState(false);
 	const debouncedSource = useDebouncedValue(source, COMPILE_DEBOUNCE_MS);
 
 	// Parse the debounced Source once; the diagnostics list and the applied
@@ -159,13 +169,44 @@ export function EditorPageSurface({
 		ready: fontsReady,
 	} = useFontReadiness(fontReadiness);
 
+	// Restore the persisted Source once the first client render has
+	// committed. The server and the initial client render always show
+	// the starter Source so hydration matches; the saved workspace then
+	// replaces it before the persistence effect is allowed to write,
+	// guaranteeing the starter can never clobber a saved Source.
+	useEffect(() => {
+		let stored: string | null;
+		try {
+			stored = storage.load();
+		} catch {
+			stored = null;
+		}
+		if (stored !== null && stored !== STARTER_SOURCE) {
+			const compiled = parseAndCompile(stored);
+			setSource(stored);
+			editor.setScene(compiled.scene);
+			lastCompiledSourceRef.current = stored;
+			const hasError = compiled.diagnostics.some(
+				(diagnostic) => diagnostic.severity === 'error'
+			);
+			if (!hasError) {
+				setFitSignal((signal) => signal + 1);
+			}
+		}
+		setRestored(true);
+	}, [storage, editor]);
+
 	// Persist every Source edit immediately, ahead of the compile debounce
 	// and any file download. This is the single Source of truth: a later
 	// visit or a refresh restores the latest edit, including edits that
-	// came from a future Open action.
+	// came from a future Open action. The effect stays closed until the
+	// restore attempt has settled.
 	useEffect(() => {
+		if (!restored) {
+			return;
+		}
 		storage.save(source);
-	}, [source, storage]);
+	}, [source, storage, restored]);
 
 	// Explicit compile on ⌘/Ctrl+Enter. Bypasses the debounce and applies the
 	// current source immediately, then suppresses the next debounce-driven
@@ -322,6 +363,7 @@ export function EditorPageSurface({
 				<ResizablePanel defaultSize='65%' minSize='30%'>
 					<CanvasHost
 						editor={editor}
+						fitSignal={fitSignal}
 						fontsReady={fontsReady}
 						onExportPng={handleExportPng}
 						onExportSvg={handleExportSvg}

@@ -4,14 +4,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { EditorPageSurface } from './editor-page';
 import type { Downloadable } from './io/io';
 import type { SourceStorage } from './source-storage';
-import { EXPORT_FONTS_FIXTURE } from './test-fixtures';
+import { resolvedFontReadiness } from './test-fixtures';
 import { withHappyDom } from './test-happy-dom';
 
 (
 	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-const EXPORT_FONTS = EXPORT_FONTS_FIXTURE;
 
 class FakeFile {
 	name: string;
@@ -88,7 +86,7 @@ function renderEditor(recording: Recording): RenderHandle {
 		root.render(
 			createElement(EditorPageSurface, {
 				downloadable: recording.downloadable,
-				fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
+				fontReadiness: resolvedFontReadiness(),
 				openable: recording.openable,
 				rasterizer: { rasterize: () => Promise.resolve(new Blob()) },
 				storage: recording.storage,

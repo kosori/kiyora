@@ -371,6 +371,10 @@ export function downloadSvg(options: {
 export type FontReadiness = {
 	/** Resolves with the loaded faces; rejects when one cannot load. */
 	ready: Promise<ExportFonts>;
+	/** Begin browser-side font loading. Idempotent. Construction must
+	 * never touch browser APIs so SSR can render while fonts stay
+	 * pending; the client calls `start` after mount. */
+	start: () => void;
 };
 
 /**
@@ -381,30 +385,50 @@ export type FontReadiness = {
  * the same URLs, so the browser only fetches each face once: the same
  * HTTP request that primes the FontFaceSet also feeds the bytes the
  * export embeds.
+ *
+ * The work is deferred until `start()` so the same constructor can run
+ * during SSR without throwing or producing an unhandled rejection.
  */
 export function browserFontReadiness(): FontReadiness {
+	let resolveReady: (fonts: ExportFonts) => void = () => undefined;
+	let rejectReady: (reason: unknown) => void = () => undefined;
+	const ready = new Promise<ExportFonts>((resolve, reject) => {
+		resolveReady = resolve;
+		rejectReady = reject;
+	});
+	// `start()` can run before anyone subscribes; keep the deferred promise
+	// settled-but-unobserved on the server-safe path.
+	ready.catch(() => undefined);
+	let started = false;
 	return {
-		ready: (async () => {
-			if (typeof document === 'undefined') {
-				throw new Error('Font readiness requires a browser.');
+		ready,
+		start() {
+			if (started) {
+				return;
 			}
-			const [regular, bold] = await Promise.all([
-				fetchBytes('/fonts/balsamiq-sans-neue-regular.woff2'),
-				fetchBytes('/fonts/balsamiq-sans-neue-bold.woff2'),
-			]);
-			// Nudge the browser to load the faces synchronously with the
-			// fetch above so the live canvas and any first paint using
-			// the family do not stall behind the bytes-arriving event.
-			await Promise.all([
-				document.fonts.load(`400 16px "${SVG_EXPORT_FONT_FAMILY}"`),
-				document.fonts.load(`700 16px "${SVG_EXPORT_FONT_FAMILY}"`),
-			]);
-			await document.fonts.ready;
-			return {
-				bold: { bytes: bold, mimeType: 'font/woff2' },
-				regular: { bytes: regular, mimeType: 'font/woff2' },
-			};
-		})(),
+			started = true;
+			loadBrowserExportFonts().then(resolveReady, rejectReady);
+		},
+	};
+}
+
+/** Fetch the two faces and prime the live FontFaceSet with them. */
+async function loadBrowserExportFonts(): Promise<ExportFonts> {
+	const [regular, bold] = await Promise.all([
+		fetchBytes('/fonts/balsamiq-sans-neue-regular.woff2'),
+		fetchBytes('/fonts/balsamiq-sans-neue-bold.woff2'),
+	]);
+	// Nudge the browser to load the faces synchronously with the fetch
+	// above so the live canvas and any first paint using the family do
+	// not stall behind the bytes-arriving event.
+	await Promise.all([
+		document.fonts.load(`400 16px "${SVG_EXPORT_FONT_FAMILY}"`),
+		document.fonts.load(`700 16px "${SVG_EXPORT_FONT_FAMILY}"`),
+	]);
+	await document.fonts.ready;
+	return {
+		bold: { bytes: bold, mimeType: 'font/woff2' },
+		regular: { bytes: regular, mimeType: 'font/woff2' },
 	};
 }
 

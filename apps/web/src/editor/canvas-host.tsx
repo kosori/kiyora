@@ -6,6 +6,9 @@ import { Toolbar, type ToolbarContainerSize } from './toolbar';
 
 export type CanvasHostProps = {
 	editor: Editor;
+	/** Bumped when the page wants the canvas to refit its viewport to the
+	 * current scene, e.g. after a persisted Source is restored. */
+	fitSignal?: number;
 	/** True once the required font faces are loaded; controls the
 	 * disabled state of the Export SVG and Export PNG menu items. */
 	fontsReady: boolean;
@@ -30,6 +33,7 @@ export type CanvasHostProps = {
 /** Mount the interactive canvas and the toolbar overlay for an app-owned Editor. */
 export function CanvasHost({
 	editor,
+	fitSignal = 0,
 	fontsReady,
 	getContainerSize,
 	onExportPng,
@@ -42,11 +46,12 @@ export function CanvasHost({
 	const getSize = getContainerSize ?? measure;
 
 	// Fit-to-view is a one-shot policy: it runs once when the canvas is first
-	// framed and is never re-run on scene recompiles.
+	// framed, once again when the page bumps `fitSignal` (a persisted Source
+	// replaced the starter scene), and is never re-run on scene recompiles.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: one-shot policy
 	useLayoutEffect(() => {
 		fitEditorToScene(editor, getSize());
-	}, []);
+	}, [fitSignal]);
 
 	return (
 		<section

@@ -15,7 +15,7 @@ const EXPORT_FONTS = EXPORT_FONTS_FIXTURE;
 
 type Recording = {
 	downloadable: Downloadable & { recorded: { blob: Blob; filename: string }[] };
-	fontReadiness: { ready: Promise<ExportFonts> };
+	fontReadiness: { ready: Promise<ExportFonts>; start: () => void };
 	storage: SourceStorage & { saved: string[] };
 };
 
@@ -49,7 +49,10 @@ function makeRecording(): Recording {
 	};
 	return {
 		downloadable,
-		fontReadiness: { ready: Promise.resolve(EXPORT_FONTS) },
+		fontReadiness: {
+			ready: Promise.resolve(EXPORT_FONTS),
+			start: () => undefined,
+		},
 		storage,
 	};
 }
@@ -59,6 +62,7 @@ function makePendingRecording(): Recording {
 		...makeRecording(),
 		fontReadiness: {
 			ready: new Promise<ExportFonts>(noop),
+			start: () => undefined,
 		},
 	};
 }
@@ -71,7 +75,7 @@ function makeFailingRecording(): FailingRecording {
 	});
 	const recording: FailingRecording = {
 		...recorded,
-		fontReadiness: { ready: inner },
+		fontReadiness: { ready: inner, start: () => undefined },
 		rejectReady: (reason) => innerReject(reason),
 	};
 	return recording;

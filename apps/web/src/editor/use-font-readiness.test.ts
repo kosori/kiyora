@@ -72,12 +72,32 @@ function flush(): Promise<void> {
 }
 
 describe('useFontReadiness', () => {
+	test('defers readiness.start to the mount effect, not render', async () => {
+		let started = 0;
+		const readiness: FontReadiness = {
+			ready: new Promise<ExportFonts>(noop),
+			start() {
+				started += 1;
+			},
+		};
+		const { result, unmount } = renderWithReadiness(readiness);
+
+		// renderWithReadiness renders synchronously before the effect runs.
+		expect(result.current.ready).toBe(false);
+		expect(started).toBe(0);
+
+		await flush();
+		expect(started).toBe(1);
+		unmount();
+	});
+
 	test('starts preparing (not ready) when the readiness promise is pending', () => {
 		let resolveFn: (fonts: ExportFonts) => void = noop;
 		const readiness: FontReadiness = {
 			ready: new Promise<ExportFonts>((resolve) => {
 				resolveFn = resolve;
 			}),
+			start: () => undefined,
 		};
 		const { result, unmount } = renderWithReadiness(readiness);
 		expect(result.current.ready).toBe(false);
@@ -93,6 +113,7 @@ describe('useFontReadiness', () => {
 			ready: new Promise<ExportFonts>((resolve) => {
 				resolveFn = resolve;
 			}),
+			start: () => undefined,
 		};
 		const { result, unmount } = renderWithReadiness(readiness);
 		expect(result.current.ready).toBe(false);
@@ -111,7 +132,7 @@ describe('useFontReadiness', () => {
 		const inner = new Promise<ExportFonts>((_, reject) => {
 			innerReject = reject;
 		});
-		const readiness: FontReadiness = { ready: inner };
+		const readiness: FontReadiness = { ready: inner, start: () => undefined };
 		const { result, unmount } = renderWithReadiness(readiness);
 
 		// Yield to React so the effect's `.then(_, _)` is registered.
@@ -131,12 +152,14 @@ describe('useFontReadiness', () => {
 	test('re-subscribes to a new readiness when the prop changes', async () => {
 		const first: FontReadiness = {
 			ready: Promise.resolve(FONTS),
+			start: () => undefined,
 		};
 		let resolveSecond: (fonts: ExportFonts) => void = noop;
 		const second: FontReadiness = {
 			ready: new Promise<ExportFonts>((resolve) => {
 				resolveSecond = resolve;
 			}),
+			start: () => undefined,
 		};
 
 		const { result, rerender, unmount } = renderWithReadiness(first);
