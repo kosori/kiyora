@@ -392,6 +392,27 @@ describe('renderScene', () => {
 		expect(gridDots(0.1).length).toBeLessThan(100);
 	});
 
+	test('renders no dots below 10% zoom but keeps the background', () => {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom: 0.05 });
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 120,
+			width: 120,
+		});
+
+		expect(gridDots(0.09)).toHaveLength(0);
+		expect(gridDots(0.05)).toHaveLength(0);
+		expect(svg).toContain('<rect width="120" height="120" fill="#fbfcfe"/>');
+		expect(svg).not.toContain('fill="#c8cdd4"');
+	});
+
+	test('keeps the eighth-dot tier at exactly 10% zoom', () => {
+		const dots = gridDots(0.1);
+		expect(hasDot(dots, 0, 0)).toBe(true);
+		expect(hasDot(dots, 2.4, 0)).toBe(false);
+		expect(hasDot(dots, 19.2, 0)).toBe(true);
+	});
+
 	test('omits node labels below 20% zoom while other text stays', () => {
 		const editor = createEditor(makeScene());
 		editor.setViewport({ tx: 0, ty: 0, zoom: 0.15 });

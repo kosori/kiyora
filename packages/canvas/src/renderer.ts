@@ -63,8 +63,15 @@ const DOT_DENSITY_TIERS = [
 	{ minZoom: 0.15, step: 4 },
 ] as const;
 const DOT_DENSITY_FALLBACK_STEP = 8;
+// Even every eighth dot is hundreds of circles at extreme zoom-out, where the
+// grid is an unreadable wash; below this zoom the background stays dot-free.
+const DOT_MIN_ZOOM = 0.1;
 
+/** The index step for rendered dots, or 0 when the grid has no dots. */
 function dotStepForZoom(zoom: number): number {
+	if (zoom < DOT_MIN_ZOOM) {
+		return 0;
+	}
 	for (const tier of DOT_DENSITY_TIERS) {
 		if (zoom >= tier.minZoom) {
 			return tier.step;
@@ -85,8 +92,8 @@ function renderGrid(
 ): string {
 	const gap = GRID_SPACING * viewport.zoom;
 	const dots: string[] = [];
-	if (gap > 0 && Number.isFinite(gap)) {
-		const step = dotStepForZoom(viewport.zoom);
+	const step = dotStepForZoom(viewport.zoom);
+	if (gap > 0 && Number.isFinite(gap) && step > 0) {
 		const radius = Math.max(0.5, viewport.zoom * 0.6);
 		const firstI = Math.ceil(-viewport.tx / gap);
 		const lastI = Math.floor((width - viewport.tx) / gap);
