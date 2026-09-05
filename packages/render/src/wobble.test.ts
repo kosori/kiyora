@@ -322,5 +322,53 @@ describe('wobble overlay generation', () => {
 			const ds = [...markup.matchAll(/d="([^"]+)"/g)].map((match) => match[1]);
 			expect(new Set(ds).size).toBe(ds.length);
 		});
+
+		const squareRing = (side: number): DrawableContour => ({
+			closed: true,
+			points: samplePolygon([
+				[0, 0],
+				[side, 0],
+				[side, side],
+				[0, side],
+			]),
+			stroke: '#868e96',
+			strokeWidth: 1.5,
+		});
+
+		test('a closed ring tiles its dashes so the seam keeps a gap', () => {
+			// Perimeter 400 with a 12-unit cycle leaves a 4-unit truncated dash
+			// flush against the ring start; cyclic tiling must keep 33 evenly
+			// spaced runs instead of 34 with a seam blob.
+			const ring = squareRing(100);
+			const markup = wobbleOverlayDashedMarkup(4, ring, 6, 6);
+			expect(markup.match(/data-wobble="true"/g)?.length).toBe(33);
+		});
+
+		test('a closed ring with a cycle that divides the perimeter tiles exactly', () => {
+			const ring = squareRing(100);
+			const markup = wobbleOverlayDashedMarkup(4, ring, 6, 4);
+			expect(markup.match(/data-wobble="true"/g)?.length).toBe(40);
+		});
+
+		test('closed ring dashed output is deterministic and seed-sensitive', () => {
+			expect(wobbleOverlayDashedMarkup(7, squareRing(80), 6, 6)).toBe(
+				wobbleOverlayDashedMarkup(7, squareRing(80), 6, 6)
+			);
+			expect(wobbleOverlayDashedMarkup(7, squareRing(80), 6, 6)).not.toBe(
+				wobbleOverlayDashedMarkup(8, squareRing(80), 6, 6)
+			);
+		});
+
+		test('closed rings keep every band open with rounded freehand ends', () => {
+			const markup = wobbleOverlayDashedMarkup(2, squareRing(60), 6, 6);
+			const ds = [...markup.matchAll(/d="([^"]+)"/g)]
+				.map((match) => match[1])
+				.filter((d) => d !== undefined);
+			expect(ds.length).toBeGreaterThan(5);
+			for (const d of ds) {
+				expect(d).toStartWith('M');
+				expect(d).toEndWith(' Z');
+			}
+		});
 	});
 });

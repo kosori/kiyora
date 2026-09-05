@@ -205,15 +205,17 @@ export function contentBounds(
 	return toRect(bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 });
 }
 
+/** Group frame markup: a dashed clean rect, an optional dashed wobble ring
+ * that preserves the closed frame topology, and a clean label. */
 function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
 	const color = edgeColor(group.color ?? 'gray');
 	const radius = cornerRadius(box.width, box.height);
 	let overlay = '';
 	if (wobble) {
-		// The frame ring samples a closed contour, but its clean treatment is
-		// dashed. A solid overlay band would paint the gaps shut and erase the
-		// dash semantics, so the overlay follows the same dash pattern as one
-		// open freehand run per dash around the full ring.
+		// The frame ring is a closed contour whose clean treatment is dashed. A
+		// solid overlay band would paint the gaps shut and erase the dash
+		// semantics, so the overlay keeps the closed ring topology but tiles the
+		// dash cycle around it as one open freehand run per dash.
 		const seed = deriveWobbleSeed(`group:${group.id}`, [
 			box.x,
 			box.y,
@@ -224,7 +226,7 @@ function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
 		overlay = wobbleOverlayDashedMarkup(
 			seed,
 			{
-				closed: false,
+				closed: true,
 				points,
 				stroke: color,
 				strokeWidth: GROUP_STROKE,
@@ -236,6 +238,9 @@ function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
 	return `<g data-group="${escapeText(group.id)}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"/>${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
 }
 
+/** Edge markup: the clean cubic path with clean markers, an optional open
+ * wobble overlay (dashed runs for dashed edges), and a clean label.
+ * Invisible or dangling edges render nothing. */
 function edgeMarkup(
 	edge: SceneEdge,
 	nodes: Map<string, SceneNode>,
@@ -294,6 +299,8 @@ function edgeMarkup(
 	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
 }
 
+/** Node markup: clean component geometry, optional per-component wobble
+ * overlays inside the same rotated group, and clean labels. */
 function nodeMarkup(
 	node: SceneNode,
 	fontSize: number,

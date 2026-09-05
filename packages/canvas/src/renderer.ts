@@ -34,6 +34,10 @@ export type RenderSceneOptions = {
 	/** Overrides the zoom-derived default. Omitted node labels keep node
 	 * geometry and layout untouched. */
 	showNodeLabels?: boolean;
+	/** When true, render deterministic hand-drawn wobble overlays above the
+	 * clean geometry. Defaults to false so callers stay clean unless they
+	 * request the display-only aesthetic layer. */
+	wobble?: boolean;
 	width?: number;
 };
 
@@ -216,9 +220,6 @@ export function renderSceneResult(
 		renderSceneElements(snapshot.scene, groupBoxes, {
 			...options,
 			showNodeLabels,
-			// Always on for the product canvas; projections stay clean by default
-			// so SVG/PNG export never carries the display-only layer.
-			wobble: true,
 		}),
 		legend,
 		'</g>',

@@ -103,6 +103,7 @@ describe('renderScene', () => {
 		const editor = createEditor(makeScene());
 		const svg = renderScene(editor.getSnapshot(), {
 			showGrid: false,
+			wobble: true,
 		});
 
 		expect(svg).toContain('<rect width="294" height="212" fill="#fbfcfe"/>');
@@ -119,6 +120,7 @@ describe('renderScene', () => {
 			renderScene(editor.getSnapshot(), {
 				height: 240,
 				width: 360,
+				wobble: true,
 			})
 		).toMatchSnapshot();
 	});
@@ -419,6 +421,20 @@ describe('renderScene', () => {
 		);
 	}
 
+	test('stays clean by default and renders overlays only when wobble is requested', () => {
+		const editor = createEditor(makeScene());
+		const clean = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+		});
+		expect(clean).not.toContain('data-wobble');
+
+		const wobbled = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+			wobble: true,
+		});
+		expect(overlayPaths(wobbled).length).toBeGreaterThan(0);
+	});
+
 	test('keeps wobble overlays identical across repeated renders and viewport changes', () => {
 		const editor = createEditor(makeScene());
 		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
@@ -426,11 +442,13 @@ describe('renderScene', () => {
 			height: 240,
 			showGrid: false,
 			width: 360,
+			wobble: true,
 		});
 		const repeat = renderScene(editor.getSnapshot(), {
 			height: 240,
 			showGrid: false,
 			width: 360,
+			wobble: true,
 		});
 		expect(overlayPaths(base).length).toBeGreaterThan(0);
 		expect(repeat).toBe(base);
@@ -440,6 +458,7 @@ describe('renderScene', () => {
 			height: 240,
 			showGrid: false,
 			width: 360,
+			wobble: true,
 		});
 		expect(overlayPaths(panned)).toEqual(overlayPaths(base));
 		expect(panned).toContain('transform="translate(-140 60) scale(2.5)"');
@@ -453,6 +472,7 @@ describe('renderScene', () => {
 			height: 240,
 			showGrid: false,
 			width: 360,
+			wobble: true,
 		});
 
 		const selection = svg.match(
@@ -468,6 +488,7 @@ describe('renderScene', () => {
 		const editor = createEditor(makeScene());
 		const svg = renderScene(editor.getSnapshot(), {
 			showGrid: false,
+			wobble: true,
 		});
 
 		const elementGroups = [

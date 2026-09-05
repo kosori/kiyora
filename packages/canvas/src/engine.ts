@@ -46,6 +46,9 @@ export function createEngine(
 			height: height > 0 ? height : 1,
 			showGrid: options.showGrid ?? true,
 			width: width > 0 ? width : 1,
+			// The product canvas opts into the display-only wobble layer
+			// explicitly; pure projections stay clean unless asked otherwise.
+			wobble: true,
 		});
 		svg.setAttribute('width', String(result.width));
 		svg.setAttribute('height', String(result.height));

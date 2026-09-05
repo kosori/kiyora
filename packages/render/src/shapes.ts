@@ -2,6 +2,7 @@ import type { Corner } from '@kiyora/dsl';
 import { cornerRadius, INK, type Style } from './style';
 import {
 	type DrawableContour,
+	roundedRectSegments,
 	sampleEllipse,
 	samplePolygon,
 	samplePolyline,
@@ -45,6 +46,8 @@ export const FALLBACK_SHAPES = [
 	'cube',
 ] as const;
 
+/** Serialize the shared rounded-rectangle segment table into the clean path,
+ * so the clean fallback and its wobble contour come from one definition. */
 function roundedRectPath(
 	x: number,
 	y: number,
@@ -52,23 +55,50 @@ function roundedRectPath(
 	height: number,
 	radius: number
 ): string {
-	const r = Math.min(radius, width / 2, height / 2);
-	return [
-		`M ${x + r} ${y}`,
-		`H ${x + width - r}`,
-		`A ${r} ${r} 0 0 1 ${x + width} ${y + r}`,
-		`V ${y + height - r}`,
-		`A ${r} ${r} 0 0 1 ${x + width - r} ${y + height}`,
-		`H ${x + r}`,
-		`A ${r} ${r} 0 0 1 ${x} ${y + height - r}`,
-		`V ${y + r}`,
-		`A ${r} ${r} 0 0 1 ${x + r} ${y}`,
-		'Z',
-	].join(' ');
+	return segmentsPathD(roundedRectSegments({ height, width, x, y }, radius));
 }
 
 function polygonPath(points: readonly [number, number][]): string {
 	return `M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`;
+}
+
+/** Serialize the same absolute segments that feed the wobble contour sampling
+ * into the clean SVG path `d`, so each shape's two layers share one geometric
+ * source instead of duplicated coordinates. Axis-aligned lines keep the
+ * compact `H`/`V` commands the clean paths have always used. */
+function segmentsPathD(segments: readonly WobbleSegment[]): string {
+	const [start] = segments;
+	if (!start) {
+		return '';
+	}
+	const parts: string[] = [`M ${start.from[0]} ${start.from[1]}`];
+	for (const segment of segments) {
+		switch (segment.type) {
+			case 'line': {
+				const [fx, fy] = segment.from;
+				const [tx, ty] = segment.to;
+				if (fy === ty) {
+					parts.push(`H ${tx}`);
+				} else if (fx === tx) {
+					parts.push(`V ${ty}`);
+				} else {
+					parts.push(`L ${tx} ${ty}`);
+				}
+				break;
+			}
+			case 'cubic':
+				parts.push(
+					`C ${segment.c1[0]} ${segment.c1[1]}, ${segment.c2[0]} ${segment.c2[1]}, ${segment.to[0]} ${segment.to[1]}`
+				);
+				break;
+			default:
+				parts.push(
+					`A ${segment.rx} ${segment.ry} 0 ${segment.largeArc ? 1 : 0} ${segment.sweep ? 1 : 0} ${segment.to[0]} ${segment.to[1]}`
+				);
+		}
+	}
+	parts.push('Z');
+	return parts.join(' ');
 }
 
 /** `M … L …` markup for one or more independent open strokes. */
@@ -82,13 +112,14 @@ function openPath(strokes: readonly WobblePoint[][]): string {
 		.join(' ');
 }
 
+/** One open contour per independent stroke, sampled for the wobble overlay. */
 function openContours(
 	strokes: readonly WobblePoint[][],
 	stroke: string,
 	strokeWidth: number
 ): DrawableContour[] {
 	return strokes.map((points) =>
-		contour(false, samplePolyline(points), stroke, strokeWidth)
+		createDrawableContour(false, samplePolyline(points), stroke, strokeWidth)
 	);
 }
 
@@ -121,6 +152,8 @@ function ellipse(
 	return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${attrs(style, width)}/>`;
 }
 
+/** Cloud outline: relative arcs kept for compact clean markup, plus the
+ * absolute segments the wobble contour samples. */
 function cloudGeometry(box: Box): { d: string; segments: WobbleSegment[] } {
 	const cx = box.x + box.width / 2;
 	const cy = box.y + box.height / 2;
@@ -160,6 +193,7 @@ function cloudGeometry(box: Box): { d: string; segments: WobbleSegment[] } {
 
 type CurveVertex = { c1: WobblePoint; c2: WobblePoint; to: WobblePoint };
 
+/** Heart outline from one cubic table feeding both clean markup and contours. */
 function heartGeometry(box: Box): { d: string; segments: WobbleSegment[] } {
 	const cx = box.x + box.width / 2;
 	const bottom = box.y + box.height;
@@ -210,23 +244,13 @@ function heartGeometry(box: Box): { d: string; segments: WobbleSegment[] } {
 	return { d, segments };
 }
 
+/** Document outline with a wavy bottom edge; segments feed clean and wobble. */
 function documentGeometry(
 	box: Box,
 	radius: number
 ): { d: string; segments: WobbleSegment[] } {
 	const wave = box.height * 0.18;
 	const { x, y, width, height } = box;
-	const d = [
-		`M ${x + radius} ${y}`,
-		`H ${x + width - radius}`,
-		`A ${radius} ${radius} 0 0 1 ${x + width} ${y + radius}`,
-		`V ${y + height - wave}`,
-		`C ${x + width * 0.75} ${y + height}, ${x + width * 0.5} ${y + height - wave * 0.6}, ${x + width * 0.25} ${y + height}`,
-		`C ${x + width * 0.12} ${y + height - wave * 0.4}, ${x} ${y + height - wave}, ${x} ${y + height - wave}`,
-		`V ${y + radius}`,
-		`A ${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
-		'Z',
-	].join(' ');
 	const segments: WobbleSegment[] = [
 		{ from: [x + radius, y], to: [x + width - radius, y], type: 'line' },
 		{
@@ -268,27 +292,17 @@ function documentGeometry(
 			type: 'arc',
 		},
 	];
-	return { d, segments };
+	return { d: segmentsPathD(segments), segments };
 }
 
+/** Note-family folded contour: one segment list drives both the clean `d`
+ * markup and the wobble contour sampling. */
 function noteGeometry(
 	box: Box,
 	radius: number
 ): { d: string; segments: WobbleSegment[] } {
 	const fold = Math.min(16, box.width * 0.2, box.height * 0.3);
 	const { x, y, width, height } = box;
-	const d = [
-		`M ${x + radius} ${y}`,
-		`H ${x + width - fold}`,
-		`L ${x + width} ${y + fold}`,
-		`V ${y + height - radius}`,
-		`A ${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height}`,
-		`H ${x + radius}`,
-		`A ${radius} ${radius} 0 0 1 ${x} ${y + height - radius}`,
-		`V ${y + radius}`,
-		`A ${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
-		'Z',
-	].join(' ');
 	const segments: WobbleSegment[] = [
 		{ from: [x + radius, y], to: [x + width - fold, y], type: 'line' },
 		{ from: [x + width - fold, y], to: [x + width, y + fold], type: 'line' },
@@ -331,7 +345,7 @@ function noteGeometry(
 			type: 'arc',
 		},
 	];
-	return { d, segments };
+	return { d: segmentsPathD(segments), segments };
 }
 
 function starPoints(
@@ -386,7 +400,9 @@ function isStyle(value: unknown): value is Style {
 	);
 }
 
-function contour(
+/** Build the structured drawable-contour object shared by clean and wobble
+ * layers of one component. */
+function createDrawableContour(
 	closed: boolean,
 	points: WobblePoint[],
 	stroke: string,
@@ -406,13 +422,19 @@ function insetFrame(box: Box): WobblePoint[] {
 	];
 }
 
+/** Closed rounded-rectangle contour matching the default clean fallback path. */
 function roundedRectContour(
 	box: Box,
 	radius: number,
 	stroke: string,
 	strokeWidth: number
 ): DrawableContour {
-	return contour(true, sampleRoundedRect(box, radius), stroke, strokeWidth);
+	return createDrawableContour(
+		true,
+		sampleRoundedRect(box, radius),
+		stroke,
+		strokeWidth
+	);
 }
 
 /** Closed contour stitched from absolute path segments. */
@@ -421,7 +443,12 @@ function segmentsContour(
 	stroke: string,
 	strokeWidth: number
 ): DrawableContour {
-	return contour(true, sampleSegments(segments, true), stroke, strokeWidth);
+	return createDrawableContour(
+		true,
+		sampleSegments(segments, true),
+		stroke,
+		strokeWidth
+	);
 }
 
 /**
@@ -447,7 +474,7 @@ export function shapeComponents(
 				{
 					clean: ellipse(cx, cy, width / 2, height / 2, style, strokeWidth),
 					contours: [
-						contour(
+						createDrawableContour(
 							true,
 							sampleEllipse(cx, cy, width / 2, height / 2),
 							stroke,
@@ -462,7 +489,12 @@ export function shapeComponents(
 				{
 					clean: circle(cx, cy, r, style, strokeWidth),
 					contours: [
-						contour(true, sampleEllipse(cx, cy, r, r), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							sampleEllipse(cx, cy, r, r),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -474,7 +506,7 @@ export function shapeComponents(
 				{
 					clean: circle(cx, cy, outer, style, strokeWidth),
 					contours: [
-						contour(
+						createDrawableContour(
 							true,
 							sampleEllipse(cx, cy, outer, outer),
 							stroke,
@@ -487,7 +519,7 @@ export function shapeComponents(
 					contours:
 						inner > 0
 							? [
-									contour(
+									createDrawableContour(
 										true,
 										sampleEllipse(cx, cy, inner, inner),
 										stroke,
@@ -509,7 +541,12 @@ export function shapeComponents(
 				{
 					clean: path(polygonPath(vertices), style, strokeWidth),
 					contours: [
-						contour(true, samplePolygon(vertices), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							samplePolygon(vertices),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -524,7 +561,12 @@ export function shapeComponents(
 				{
 					clean: path(polygonPath(vertices), style, strokeWidth),
 					contours: [
-						contour(true, samplePolygon(vertices), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							samplePolygon(vertices),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -543,7 +585,12 @@ export function shapeComponents(
 				{
 					clean: path(polygonPath(vertices), style, strokeWidth),
 					contours: [
-						contour(true, samplePolygon(vertices), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							samplePolygon(vertices),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -560,7 +607,12 @@ export function shapeComponents(
 				{
 					clean: path(polygonPath(vertices), style, strokeWidth),
 					contours: [
-						contour(true, samplePolygon(vertices), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							samplePolygon(vertices),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -593,16 +645,15 @@ export function shapeComponents(
 					type: 'arc',
 				},
 			];
-			const body = `M ${x} ${y + ry} V ${y + height - ry} A ${width / 2} ${ry} 0 0 0 ${x + width} ${y + height - ry} V ${y + ry} A ${width / 2} ${ry} 0 0 1 ${x} ${y + ry} Z`;
 			return [
 				{
-					clean: path(body, style, strokeWidth),
+					clean: path(segmentsPathD(segments), style, strokeWidth),
 					contours: [segmentsContour(segments, stroke, strokeWidth)],
 				},
 				{
 					clean: ellipse(cx, y + ry, width / 2, ry, style, strokeWidth),
 					contours: [
-						contour(
+						createDrawableContour(
 							true,
 							sampleEllipse(cx, y + ry, width / 2, ry),
 							stroke,
@@ -641,7 +692,12 @@ export function shapeComponents(
 				{
 					clean: path(polygonPath(vertices), style, strokeWidth),
 					contours: [
-						contour(true, samplePolygon(vertices), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							samplePolygon(vertices),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -659,7 +715,12 @@ export function shapeComponents(
 				{
 					clean: path(polygonPath(vertices), style, strokeWidth),
 					contours: [
-						contour(true, samplePolygon(vertices), stroke, strokeWidth),
+						createDrawableContour(
+							true,
+							samplePolygon(vertices),
+							stroke,
+							strokeWidth
+						),
 					],
 				},
 			];
@@ -711,7 +772,7 @@ export function shapeComponents(
 					contours:
 						headRadius > 0
 							? [
-									contour(
+									createDrawableContour(
 										true,
 										sampleEllipse(cx, headY, headRadius, headRadius),
 										stroke,
@@ -738,7 +799,14 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(polygonPath(frame), style, strokeWidth),
-					contours: [contour(true, samplePolygon(frame), stroke, strokeWidth)],
+					contours: [
+						createDrawableContour(
+							true,
+							samplePolygon(frame),
+							stroke,
+							strokeWidth
+						),
+					],
 				},
 				{
 					clean: `<path d="${openPath(mark)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
@@ -761,7 +829,14 @@ export function shapeComponents(
 			return [
 				{
 					clean: path(polygonPath(frame), style, strokeWidth),
-					contours: [contour(true, samplePolygon(frame), stroke, strokeWidth)],
+					contours: [
+						createDrawableContour(
+							true,
+							samplePolygon(frame),
+							stroke,
+							strokeWidth
+						),
+					],
 				},
 				{
 					clean: `<path d="${openPath(diagonals)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`,

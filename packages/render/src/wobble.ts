@@ -20,7 +20,6 @@ const FREEHAND_OPTIONS = {
 } as const;
 
 const SAMPLE_SPACING = 5;
-const ARC_SEGMENTS = 5;
 export const WOBBLE_OPACITY = 0.66;
 
 const LEHMER_MODULUS = 2_147_483_647;
@@ -54,6 +53,7 @@ function randomFor(seed: number): () => number {
 	};
 }
 
+/** Interpolate dense samples along straight edges between the given vertices. */
 function densify(
 	vertices: readonly WobblePoint[],
 	closed: boolean
@@ -90,34 +90,39 @@ function densify(
 	return points;
 }
 
-/** Closed ring approximating the same rounded rectangle as `roundedRectPath`. */
-export function sampleRoundedRect(box: Box, radius: number): WobblePoint[] {
+/** Closed rounded-rectangle segment table: the single source for both the
+ * clean `roundedRectPath` markup and the sampled contour below. */
+export function roundedRectSegments(box: Box, radius: number): WobbleSegment[] {
 	const r = Math.max(0, Math.min(radius, box.width / 2, box.height / 2));
 	const { height, width, x, y } = box;
-	const vertices: WobblePoint[] = [];
-	const arc = (cx: number, cy: number, start: number): void => {
-		for (let step = 1; step < ARC_SEGMENTS; step += 1) {
-			const angle = start + (Math.PI * step) / (2 * ARC_SEGMENTS);
-			vertices.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
-		}
-	};
-	vertices.push([x + r, y], [x + width - r, y]);
-	if (r > 0) {
-		arc(x + width - r, y + r, -Math.PI / 2);
-	}
-	vertices.push([x + width, y + r], [x + width, y + height - r]);
-	if (r > 0) {
-		arc(x + width - r, y + height - r, 0);
-	}
-	vertices.push([x + width - r, y + height], [x + r, y + height]);
-	if (r > 0) {
-		arc(x + r, y + height - r, Math.PI / 2);
-	}
-	vertices.push([x, y + height - r], [x, y + r]);
-	if (r > 0) {
-		arc(x + r, y + r, Math.PI);
-	}
-	return densify(vertices, true);
+	const corner = (from: WobblePoint, to: WobblePoint): WobbleSegment => ({
+		from,
+		largeArc: false,
+		rx: r,
+		ry: r,
+		sweep: true,
+		to,
+		type: 'arc',
+	});
+	return [
+		{ from: [x + r, y], to: [x + width - r, y], type: 'line' },
+		corner([x + width - r, y], [x + width, y + r]),
+		{ from: [x + width, y + r], to: [x + width, y + height - r], type: 'line' },
+		corner([x + width, y + height - r], [x + width - r, y + height]),
+		{
+			from: [x + width - r, y + height],
+			to: [x + r, y + height],
+			type: 'line',
+		},
+		corner([x + r, y + height], [x, y + height - r]),
+		{ from: [x, y + height - r], to: [x, y + r], type: 'line' },
+		corner([x, y + r], [x + r, y]),
+	];
+}
+
+/** Closed ring approximating the same rounded rectangle as `roundedRectPath`. */
+export function sampleRoundedRect(box: Box, radius: number): WobblePoint[] {
+	return sampleSegments(roundedRectSegments(box, radius), true);
 }
 
 /** Closed ring through the given polygon vertices. */
@@ -286,6 +291,7 @@ export type WobbleSegment =
 			type: 'arc';
 	  };
 
+/** Dense point samples for one drawable segment, whatever its command kind. */
 function sampleSegment(segment: WobbleSegment): WobblePoint[] {
 	switch (segment.type) {
 		case 'line':
@@ -376,24 +382,31 @@ export function sampleCubic(
 	return points;
 }
 
-function strokePath(points: readonly WobblePoint[]): string {
+/** Canonical perfect-freehand `getSvgPathFromStroke` rendering (smooth
+ * quadratics through the stroke polygon midpoints), with coordinates rounded
+ * for compact deterministic markup. */
+function getSvgPathFromStroke(points: readonly WobblePoint[]): string {
+	if (points.length === 0) {
+		return '';
+	}
 	const round = (value: number): string => Number(value.toFixed(2)).toString();
 	const [startX = 0, startY = 0] = points[0] ?? [];
-	const pairs: string[] = [];
+	const parts: string[] = ['M', round(startX), round(startY), 'Q'];
 	for (let index = 0; index < points.length; index += 1) {
 		const current = points[index];
 		const next = points[(index + 1) % points.length];
 		if (!(current && next)) {
 			continue;
 		}
-		const [cx, cy] = current;
-		const [nx, ny] = next;
-		pairs.push(
-			`${round(cx)} ${round(cy)}`,
-			`${round((cx + nx) / 2)} ${round((cy + ny) / 2)}`
+		parts.push(
+			round(current[0]),
+			round(current[1]),
+			round((current[0] + next[0]) / 2),
+			round((current[1] + next[1]) / 2)
 		);
 	}
-	return `M ${round(startX)} ${round(startY)} Q ${pairs.join(' ')} Z`;
+	parts.push('Z');
+	return parts.join(' ');
 }
 
 /** Deterministic freehand outline for one contour, or `''` when the input is
@@ -431,7 +444,7 @@ export function wobbleOverlayMarkup(
 	if (outline.length < 2) {
 		return '';
 	}
-	const d = strokePath(outline);
+	const d = getSvgPathFromStroke(outline);
 	if (d.length === 0) {
 		return '';
 	}
@@ -453,24 +466,34 @@ export function wobbleOverlayGroup(
 		.join('');
 }
 
-/** Split a dense open contour into one point run per visible dash, so a
- * dashed clean line keeps its gaps beneath the wobble overlay. Runs shorter
- * than two points are dropped. */
+/** Split a dense contour into one point run per visible dash, so a dashed
+ * clean line keeps its gaps beneath the wobble overlay. Runs shorter than two
+ * points are dropped. Open contours start their first dash on the first point.
+ * Closed contours phase the pattern cyclically so the ring seam always lands
+ * inside a gap and no dash straddles the closure. */
 function dashRuns(
 	points: readonly WobblePoint[],
 	dash: number,
-	gap: number
+	gap: number,
+	closed: boolean
 ): WobblePoint[][] {
 	const [first] = points;
 	if (dash <= 0 || gap <= 0 || points.length < 2 || first === undefined) {
 		return [points.slice()];
 	}
 	const runs: WobblePoint[][] = [];
-	let drawing = true;
-	let travelled = 0;
-	let run: WobblePoint[] = [first];
-	const flush = (): void => {
-		if (drawing && run.length >= 2) {
+	// A closed ring centres a gap on its seam so no dash straddles the
+	// closure; an open contour starts its first dash on the first point.
+	let drawing = !closed;
+	let travelled = closed ? gap / 2 : 0;
+	let run: WobblePoint[] = closed ? [] : [first];
+	// A closed ring may end inside a partial dash at the seam; that run is
+	// dropped so ink never piles up where the ring closes.
+	const flush = (atSeam: boolean): void => {
+		if (!drawing || run.length < 2) {
+			return;
+		}
+		if (!(atSeam && closed && travelled < dash)) {
 			runs.push(run);
 		}
 	};
@@ -505,26 +528,28 @@ function dashRuns(
 			if (drawing) {
 				run.push(boundary);
 			}
-			flush();
+			flush(false);
 			drawing = !drawing;
 			run = [boundary];
 			travelled = 0;
 			consumed += until;
 		}
 	}
-	flush();
+	flush(true);
 	return runs.filter((candidate) => candidate.length >= 2);
 }
 
-/** Overlay markup for a dashed open contour: one freehand run per dash, each
- * with its own seed variation so repeated dashes do not look stamped. */
+/** Overlay markup for a dashed contour: one freehand run per dash, each with
+ * its own seed variation so repeated dashes do not look stamped. A closed
+ * contour keeps its ring topology by tiling the dash cycle cyclically around
+ * the seam while each band stays individually open with rounded ends. */
 export function wobbleOverlayDashedMarkup(
 	seed: number,
 	contour: DrawableContour,
 	dash: number,
 	gap: number
 ): string {
-	return dashRuns(contour.points, dash, gap)
+	return dashRuns(contour.points, dash, gap, contour.closed)
 		.map((points, index) =>
 			wobbleOverlayMarkup(seed + index * CONTOUR_SEED_STRIDE, {
 				...contour,
