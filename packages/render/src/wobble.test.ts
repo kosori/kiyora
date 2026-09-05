@@ -8,6 +8,7 @@ import {
 	samplePolyline,
 	sampleRoundedRect,
 	sampleSegments,
+	wobbleOverlayDashedMarkup,
 	wobbleOverlayGroup,
 	wobbleOverlayMarkup,
 } from './wobble';
@@ -281,5 +282,45 @@ describe('wobble overlay generation', () => {
 			openLineContour(),
 		]);
 		expect(group.match(/data-wobble="true"/g)?.length).toBe(2);
+	});
+
+	describe('dashed overlays', () => {
+		const denseLine = (): DrawableContour => ({
+			closed: false,
+			points: samplePolyline([
+				[0, 0],
+				[100, 0],
+			]),
+			stroke: '#1e1e1e',
+			strokeWidth: 2.5,
+		});
+
+		test('a dashed contour produces one overlay run per dash', () => {
+			const markup = wobbleOverlayDashedMarkup(11, denseLine(), 4.5, 6);
+			const runs = markup.match(/data-wobble="true"/g)?.length ?? 0;
+			expect(runs).toBe(10);
+			expect(wobbleOverlayMarkup(11, denseLine())).not.toBe(markup);
+		});
+
+		test('dashed overlay output is deterministic and seed-sensitive', () => {
+			expect(wobbleOverlayDashedMarkup(5, denseLine(), 4.5, 6)).toBe(
+				wobbleOverlayDashedMarkup(5, denseLine(), 4.5, 6)
+			);
+			expect(wobbleOverlayDashedMarkup(5, denseLine(), 4.5, 6)).not.toBe(
+				wobbleOverlayDashedMarkup(6, denseLine(), 4.5, 6)
+			);
+		});
+
+		test('non-positive dash metrics fall back to one continuous run', () => {
+			expect(wobbleOverlayDashedMarkup(2, denseLine(), 0, 6)).toBe(
+				wobbleOverlayMarkup(2, denseLine())
+			);
+		});
+
+		test('runs are distinct so repeated dashes do not look stamped', () => {
+			const markup = wobbleOverlayDashedMarkup(9, denseLine(), 4.5, 6);
+			const ds = [...markup.matchAll(/d="([^"]+)"/g)].map((match) => match[1]);
+			expect(new Set(ds).size).toBe(ds.length);
+		});
 	});
 });

@@ -129,18 +129,37 @@ export function cornerRadius(width: number, height: number): number {
 	return Math.min(12, Math.max(6, Math.round(Math.min(width, height) * 0.08)));
 }
 
+export type DashAttrs = {
+	/** Visible dash length, when the line is dashed or dotted. */
+	dash?: number;
+	/** Gap length between dashes, when the line is dashed or dotted. */
+	gap?: number;
+	strokeDasharray?: string;
+	strokeLinecap: 'round';
+};
+
 export function dashAttrs(
 	dash: 'solid' | 'dashed' | 'dotted',
 	width = EDGE_STROKE
-): { strokeDasharray?: string; strokeLinecap: 'round' } {
+): DashAttrs {
 	if (dash === 'dashed') {
+		const dashLength = width * 1.8;
+		const gapLength = width * 2.4;
 		return {
-			strokeDasharray: `${width * 1.8} ${width * 2.4}`,
+			dash: dashLength,
+			gap: gapLength,
+			strokeDasharray: `${dashLength} ${gapLength}`,
 			strokeLinecap: 'round',
 		};
 	}
 	if (dash === 'dotted') {
-		return { strokeDasharray: `0.01 ${width * 2}`, strokeLinecap: 'round' };
+		const gapLength = width * 2;
+		return {
+			dash: 0.01,
+			gap: gapLength,
+			strokeDasharray: `0.01 ${gapLength}`,
+			strokeLinecap: 'round',
+		};
 	}
 	return { strokeLinecap: 'round' };
 }

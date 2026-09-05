@@ -645,6 +645,253 @@ describe('render scaffold', () => {
 			expect(svg).toContain('data-node="a"');
 			expect(svg).not.toContain('data-wobble');
 		});
+
+		const edgeScene = (
+			edgeOverrides: Partial<Scene['edges'][number]> = {},
+			nodeOverrides: Partial<Parameters<typeof sceneNode>[0]> = {}
+		): Scene => ({
+			edges: [
+				{
+					from: 'a',
+					label: 'relates',
+					span,
+					to: 'b',
+					...edgeOverrides,
+				},
+			],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 44,
+					id: 'a',
+					label: 'Node A',
+					span,
+					width: 100,
+					x: 20,
+					y: 30,
+					...nodeOverrides,
+				}),
+				sceneNode({
+					height: 44,
+					id: 'b',
+					label: 'Node B',
+					span,
+					width: 100,
+					x: 260,
+					y: 30,
+				}),
+			],
+			title: '',
+		});
+
+		test('visible edges get a wobble overlay when enabled', () => {
+			const { svg: clean } = renderToSvg(edgeScene());
+			expect(clean).not.toContain('data-wobble');
+			const { svg } = renderToSvg(edgeScene(), { wobble: true });
+			const edgeGroup =
+				svg.match(/<g data-edge="a-b">([\s\S]*?)<\/g>/)?.[1] ?? '';
+			expect(edgeGroup).toContain('data-wobble="true"');
+			expect(edgeGroup).toContain('pointer-events="none"');
+			const cleanPath = edgeGroup.indexOf('<path d="M');
+			const overlayPath = edgeGroup.indexOf('data-wobble');
+			expect(cleanPath).toBeGreaterThanOrEqual(0);
+			expect(overlayPath).toBeGreaterThan(cleanPath);
+		});
+
+		test('invisible edges never get an overlay', () => {
+			const { svg: hidden } = renderToSvg(edgeScene({ invisible: true }), {
+				wobble: true,
+			});
+			expect(hidden).not.toContain('data-edge');
+			const { svg: missing } = renderToSvg(edgeScene({ to: 'ghost' }), {
+				wobble: true,
+			});
+			expect(missing).not.toContain('data-edge');
+		});
+
+		test('edge markers, dash semantics, and labels stay clean', () => {
+			const { svg } = renderToSvg(
+				edgeScene({
+					bidirectional: true,
+					color: 'red',
+					dashed: true,
+					head: 'circle',
+				}),
+				{ wobble: true }
+			);
+			const edgeGroup = svg.match(/<g data-edge="a-b">([\s\S]*?)<\/g>/)?.[1];
+			expect(edgeGroup).toContain('marker-end="url(#kiyora-circle)"');
+			expect(edgeGroup).toContain('marker-start="url(#kiyora-circle-reverse)"');
+			expect(edgeGroup).toContain('stroke-dasharray="4.5 6"');
+			expect(edgeGroup).toContain('>relates</text>');
+			expect(svg.match(/<text/g)?.length).toBe(3);
+			const overlays =
+				edgeGroup?.match(/<path data-wobble="true"[^/]*\/>/g) ?? [];
+			expect(overlays.length).toBeGreaterThan(5);
+			expect(overlays.every((path) => path.includes('fill="#ff6b6b"'))).toBe(
+				true
+			);
+			expect(
+				overlays.some(
+					(path) =>
+						path.includes('stroke-dasharray') || path.includes('marker-end')
+				)
+			).toBe(false);
+		});
+
+		test('edge overlays are deterministic and follow geometry and identity', () => {
+			const { svg: first } = renderToSvg(edgeScene(), { wobble: true });
+			const { svg: second } = renderToSvg(edgeScene(), { wobble: true });
+			expect(first).toBe(second);
+			const overlayD = (svg: string, name: string): string | undefined =>
+				svg.match(
+					new RegExp(
+						`<g data-edge="${name}">[\\s\\S]*?data-wobble="true"[^/]*d="([^"]+)"`
+					)
+				)?.[1];
+			const base = overlayD(first, 'a-b');
+			expect(base).toBeDefined();
+			expect(
+				overlayD(
+					renderToSvg(edgeScene({}, { x: 24 }), { wobble: true }).svg,
+					'a-b'
+				)
+			).not.toBe(base);
+			const twin: Scene = {
+				...edgeScene(),
+				edges: [{ from: 'c', label: 'relates', span, to: 'd' }],
+				nodes: [
+					sceneNode({
+						height: 44,
+						id: 'c',
+						span,
+						width: 100,
+						x: 20,
+						y: 30,
+					}),
+					sceneNode({
+						height: 44,
+						id: 'd',
+						span,
+						width: 100,
+						x: 260,
+						y: 30,
+					}),
+				],
+			};
+			const twinD = overlayD(renderToSvg(twin, { wobble: true }).svg, 'c-d');
+			expect(twinD).toBeDefined();
+			expect(twinD).not.toBe(base);
+		});
+
+		test('degenerate edges degrade to clean geometry only', () => {
+			const { svg } = renderToSvg(
+				edgeScene({}, { height: 0, width: 0, x: 260, y: 52 }),
+				{ wobble: true }
+			);
+			expect(svg).toContain('data-edge="a-b"');
+			const edgeGroup = svg.match(/<g data-edge="a-b">([\s\S]*?)<\/g>/)?.[1];
+			expect(edgeGroup).not.toContain('data-wobble');
+		});
+
+		const groupScene = (
+			groupOverrides: Partial<Scene['groups'][number]> = {},
+			nodeOverrides: Partial<Parameters<typeof sceneNode>[0]> = {}
+		): Scene => ({
+			edges: [],
+			groups: [
+				{
+					color: 'gray',
+					id: 'g',
+					label: 'Group label',
+					span,
+					...groupOverrides,
+				},
+			],
+			nodes: [
+				sceneNode({
+					group: 'g',
+					height: 44,
+					id: 'a',
+					label: 'Node A',
+					span,
+					width: 100,
+					x: 20,
+					y: 30,
+					...nodeOverrides,
+				}),
+			],
+			title: '',
+		});
+
+		test('group frames get a wobble overlay when enabled', () => {
+			const { svg: clean } = renderToSvg(groupScene());
+			expect(clean).not.toContain('data-wobble');
+			const { svg } = renderToSvg(groupScene(), { wobble: true });
+			const group = svg.match(/<g data-group="g">([\s\S]*?)<\/text><\/g>/)?.[0];
+			expect(group).toBeDefined();
+			expect(group).toContain('data-wobble="true"');
+			expect(group).toContain('pointer-events="none"');
+			const cleanRect = group?.indexOf('<rect') ?? -1;
+			const overlay = group?.indexOf('data-wobble') ?? -1;
+			expect(cleanRect).toBeGreaterThanOrEqual(0);
+			expect(overlay).toBeGreaterThan(cleanRect);
+		});
+
+		test('group frames keep dash semantics, clean labels, and ink-free text', () => {
+			const { svg } = renderToSvg(groupScene(), { wobble: true });
+			expect(svg).toContain('stroke-dasharray="6 6"');
+			expect(svg).toContain('>Group label</text>');
+			const group = svg.match(/<g data-group="g">([\s\S]*?)<\/text><\/g>/)?.[0];
+			const overlayPaths =
+				group?.match(/<path data-wobble="true"[^/]*\/>/g) ?? [];
+			expect(overlayPaths.length).toBeGreaterThan(5);
+			expect(
+				overlayPaths.every((path) => path.includes('fill="#868e96"'))
+			).toBe(true);
+			expect(
+				overlayPaths.some((path) => path.includes('stroke-dasharray'))
+			).toBe(false);
+			expect(svg.match(/<text/g)?.length).toBe(2);
+		});
+
+		test('empty groups never get an overlay', () => {
+			const { svg } = renderToSvg(groupScene(), { wobble: true });
+			const orphan: Scene = {
+				edges: [],
+				groups: groupScene().groups,
+				nodes: [],
+				title: '',
+			};
+			const orphanRender = renderToSvg(orphan, { wobble: true });
+			expect(orphanRender.svg).not.toContain('data-group');
+			expect(orphanRender.svg).not.toContain('data-wobble');
+			expect(svg).toContain('data-group="g"');
+		});
+
+		test('group overlays are deterministic and follow bounds and identity', () => {
+			const { svg: first } = renderToSvg(groupScene(), { wobble: true });
+			const { svg: second } = renderToSvg(groupScene(), { wobble: true });
+			expect(first).toBe(second);
+			const overlayD = (svg: string): string | undefined =>
+				svg.match(
+					/<g data-group="g">[\s\S]*?data-wobble="true"[^/]*d="([^"]+)"/
+				)?.[1];
+			const base = overlayD(first);
+			expect(base).toBeDefined();
+			expect(
+				overlayD(renderToSvg(groupScene({}, { x: 60 }), { wobble: true }).svg)
+			).not.toBe(base);
+			const { svg: twin } = renderToSvg(
+				groupScene({ id: 'h' }, { group: 'h' }),
+				{ wobble: true }
+			);
+			const twinD = twin.match(
+				/<g data-group="h">[\s\S]*?data-wobble="true"[^/]*d="([^"]+)"/
+			)?.[1];
+			expect(twinD).toBeDefined();
+			expect(twinD).not.toBe(base);
+		});
 	});
 
 	test('honors explicit dimensions, padding, fonts, and the render convenience', () => {

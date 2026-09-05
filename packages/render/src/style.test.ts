@@ -52,10 +52,14 @@ describe('style', () => {
 	test('returns dash attributes', () => {
 		expect(dashAttrs('solid')).toEqual({ strokeLinecap: 'round' });
 		expect(dashAttrs('dashed')).toEqual({
+			dash: 4.5,
+			gap: 6,
 			strokeDasharray: '4.5 6',
 			strokeLinecap: 'round',
 		});
 		expect(dashAttrs('dotted', 2)).toEqual({
+			dash: 0.01,
+			gap: 4,
 			strokeDasharray: '0.01 4',
 			strokeLinecap: 'round',
 		});

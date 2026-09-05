@@ -1,5 +1,5 @@
 import { COLORS, type Color } from '@kiyora/dsl';
-import { type Box, edgePathD, intersectRect } from './geometry';
+import { type Box, edgeCubic, edgeCubicPathD } from './geometry';
 import { measureLabel, measureLabelWidth } from './label';
 import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 import { shapeComponents } from './shapes';
@@ -15,7 +15,14 @@ import {
 	resolveStyle,
 	TEXT_PADDING,
 } from './style';
-import { deriveWobbleSeed, wobbleOverlayGroup } from './wobble';
+import {
+	deriveWobbleSeed,
+	sampleCubic,
+	sampleRoundedRect,
+	type WobblePoint,
+	wobbleOverlayDashedMarkup,
+	wobbleOverlayGroup,
+} from './wobble';
 
 type SceneBounds = {
 	maxX: number;
@@ -41,6 +48,8 @@ const EFFECTS = `<filter id="kiyora-shadow" x="-20%" y="-20%" width="140%" heigh
 
 const GROUP_PADDING = 30;
 const GROUP_STROKE = 1.5;
+const GROUP_DASH = 6;
+const GROUP_DASH_GAP = 6;
 const GROUP_FONT_SIZE = 13;
 
 export function escapeText(value: string): string {
@@ -196,16 +205,42 @@ export function contentBounds(
 	return toRect(bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 });
 }
 
-function groupMarkup(group: SceneGroup, box: Box): string {
+function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
 	const color = edgeColor(group.color ?? 'gray');
 	const radius = cornerRadius(box.width, box.height);
-	return `<g data-group="${escapeText(group.id)}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="6 6" stroke-linecap="round"/><text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
+	let overlay = '';
+	if (wobble) {
+		// The frame ring samples a closed contour, but its clean treatment is
+		// dashed. A solid overlay band would paint the gaps shut and erase the
+		// dash semantics, so the overlay follows the same dash pattern as one
+		// open freehand run per dash around the full ring.
+		const seed = deriveWobbleSeed(`group:${group.id}`, [
+			box.x,
+			box.y,
+			box.width,
+			box.height,
+		]);
+		const points: WobblePoint[] = sampleRoundedRect(box, radius);
+		overlay = wobbleOverlayDashedMarkup(
+			seed,
+			{
+				closed: false,
+				points,
+				stroke: color,
+				strokeWidth: GROUP_STROKE,
+			},
+			GROUP_DASH,
+			GROUP_DASH_GAP
+		);
+	}
+	return `<g data-group="${escapeText(group.id)}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"/>${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
 }
 
 function edgeMarkup(
 	edge: SceneEdge,
 	nodes: Map<string, SceneNode>,
-	edgeFontSize: number
+	edgeFontSize: number,
+	wobble: boolean
 ): string {
 	const from = nodes.get(edge.from);
 	const to = nodes.get(edge.to);
@@ -214,15 +249,8 @@ function edgeMarkup(
 	}
 	const fromBox = boxForNode(from);
 	const toBox = boxForNode(to);
-	const d = edgePathD(fromBox, toBox);
-	const start = intersectRect(fromBox, {
-		x: to.x + to.width / 2,
-		y: to.y + to.height / 2,
-	});
-	const end = intersectRect(toBox, {
-		x: from.x + from.width / 2,
-		y: from.y + from.height / 2,
-	});
+	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
+	const d = edgeCubicPathD({ c1, c2, end, start });
 	const color = edgeColor(edge.color);
 	const head = edge.head ?? 'arrow';
 	const dash = dashAttrs(edge.dashed ? 'dashed' : 'solid', EDGE_STROKE);
@@ -234,7 +262,36 @@ function edgeMarkup(
 		edge.label === undefined
 			? ''
 			: `<text x="${(start.x + end.x) / 2}" y="${(start.y + end.y) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${label}</g>`;
+	let overlay = '';
+	if (wobble) {
+		const seed = deriveWobbleSeed(`edge:${edge.from}->${edge.to}`, [
+			start.x,
+			start.y,
+			c1.x,
+			c1.y,
+			c2.x,
+			c2.y,
+			end.x,
+			end.y,
+		]);
+		const points: WobblePoint[] = sampleCubic(
+			[start.x, start.y],
+			[c1.x, c1.y],
+			[c2.x, c2.y],
+			[end.x, end.y]
+		);
+		const contour = {
+			closed: false,
+			points,
+			stroke: color,
+			strokeWidth: EDGE_STROKE,
+		};
+		overlay =
+			dash.dash === undefined || dash.gap === undefined
+				? wobbleOverlayGroup(seed, [contour])
+				: wobbleOverlayDashedMarkup(seed, contour, dash.dash, dash.gap);
+	}
+	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
 }
 
 function nodeMarkup(
@@ -309,12 +366,12 @@ export function renderSceneElements(
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
 		if (box) {
-			parts.push(groupMarkup(group, box));
+			parts.push(groupMarkup(group, box, wobble));
 		}
 	}
 	const nodes = new Map(scene.nodes.map((node) => [node.id, node]));
 	for (const edge of scene.edges) {
-		parts.push(edgeMarkup(edge, nodes, edgeFontSize));
+		parts.push(edgeMarkup(edge, nodes, edgeFontSize, wobble));
 	}
 	for (const node of scene.nodes) {
 		parts.push(nodeMarkup(node, nodeFontSize, showNodeLabels, wobble));

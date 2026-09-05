@@ -452,3 +452,85 @@ export function wobbleOverlayGroup(
 		)
 		.join('');
 }
+
+/** Split a dense open contour into one point run per visible dash, so a
+ * dashed clean line keeps its gaps beneath the wobble overlay. Runs shorter
+ * than two points are dropped. */
+function dashRuns(
+	points: readonly WobblePoint[],
+	dash: number,
+	gap: number
+): WobblePoint[][] {
+	const [first] = points;
+	if (dash <= 0 || gap <= 0 || points.length < 2 || first === undefined) {
+		return [points.slice()];
+	}
+	const runs: WobblePoint[][] = [];
+	let drawing = true;
+	let travelled = 0;
+	let run: WobblePoint[] = [first];
+	const flush = (): void => {
+		if (drawing && run.length >= 2) {
+			runs.push(run);
+		}
+	};
+	for (let index = 1; index < points.length; index += 1) {
+		const from = points[index - 1];
+		const to = points[index];
+		if (!(from && to)) {
+			continue;
+		}
+		const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+		if (length === 0) {
+			if (drawing) {
+				run.push(to);
+			}
+			continue;
+		}
+		let consumed = 0;
+		while (consumed < length) {
+			const until = (drawing ? dash : gap) - travelled;
+			if (length - consumed <= until) {
+				travelled += length - consumed;
+				if (drawing) {
+					run.push(to);
+				}
+				break;
+			}
+			const t = (consumed + until) / length;
+			const boundary: WobblePoint = [
+				from[0] + (to[0] - from[0]) * t,
+				from[1] + (to[1] - from[1]) * t,
+			];
+			if (drawing) {
+				run.push(boundary);
+			}
+			flush();
+			drawing = !drawing;
+			run = [boundary];
+			travelled = 0;
+			consumed += until;
+		}
+	}
+	flush();
+	return runs.filter((candidate) => candidate.length >= 2);
+}
+
+/** Overlay markup for a dashed open contour: one freehand run per dash, each
+ * with its own seed variation so repeated dashes do not look stamped. */
+export function wobbleOverlayDashedMarkup(
+	seed: number,
+	contour: DrawableContour,
+	dash: number,
+	gap: number
+): string {
+	return dashRuns(contour.points, dash, gap)
+		.map((points, index) =>
+			wobbleOverlayMarkup(seed + index * CONTOUR_SEED_STRIDE, {
+				...contour,
+				closed: false,
+				points,
+			})
+		)
+		.join('');
+}
