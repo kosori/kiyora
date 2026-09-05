@@ -325,4 +325,35 @@ describe('downloadPng', () => {
 		expect(handedToRasterizer).not.toMatch(/<rect[^>]*fill[^>]*background/i);
 		expect(handedToRasterizer).not.toMatch(/<svg[^>]*style=[^>]*background/i);
 	});
+
+	test('hands the rasterizer the clean wobble-free projection so the PNG never carries the display-only layer', async () => {
+		const { downloadable } = makeRecording();
+		let handedToRasterizer = '';
+		const rasterizer: PngRasterizer = {
+			rasterize: ({ svg }) => {
+				handedToRasterizer = svg;
+				return Promise.resolve(new Blob(['PNG'], { type: 'image/png' }));
+			},
+		};
+
+		await downloadPng({
+			downloadable,
+			fonts: FONTS,
+			rasterizer,
+			scene: SCENE,
+			title: 'Clean contract',
+		});
+
+		// PNG derives from the same canonical static projection as SVG
+		// export; embedding fonts only inserts a <style> block after the
+		// opening <svg> tag, so the rest must be byte-identical to the
+		// default (wobble-disabled) projection.
+		expect(handedToRasterizer).not.toContain('data-wobble');
+		const { svg: clean } = renderToSvg(SCENE);
+		const withoutStyle = handedToRasterizer.replace(
+			/<style>.*?<\/style>/su,
+			''
+		);
+		expect(withoutStyle).toBe(clean);
+	});
 });

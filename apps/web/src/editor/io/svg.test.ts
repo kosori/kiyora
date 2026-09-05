@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Scene } from '@kiyora/render';
+import { renderToSvg, type Scene } from '@kiyora/render';
 import { downloadSvg, SVG_MIME_TYPE, svgFilename } from './io';
 
 const span = { end: { column: 1, line: 1 }, start: { column: 1, line: 1 } };
@@ -93,6 +93,28 @@ describe('downloadSvg', () => {
 		expect(text).not.toContain('selection');
 		// The product canvas enables wobble, but SVG export stays clean.
 		expect(text).not.toContain('data-wobble');
+	});
+
+	test('exports the exact clean projection so wobble can never leak into the artifact', async () => {
+		// Embedding fonts only inserts a <style> block after the opening
+		// <svg> tag; the remaining markup must be byte-identical to the
+		// default (wobble-disabled) static projection, which locks bounds,
+		// typography, and geometry against any future export-path drift.
+		const { downloadable, recorded } = makeRecording();
+		const fonts = {
+			bold: { bytes: new Uint8Array([4, 5, 6]), mimeType: 'font/woff2' },
+			regular: { bytes: new Uint8Array([1, 2, 3]), mimeType: 'font/woff2' },
+		};
+
+		downloadSvg({ downloadable, fonts, scene: SCENE, title: 'Clean contract' });
+
+		const [entry] = recorded;
+		const text = await entry?.blob.text();
+		const { svg: clean } = renderToSvg(SCENE);
+		const withoutStyle = text?.replace(/<style>.*?<\/style>/su, '');
+		expect(withoutStyle).toBe(clean);
+		expect(clean).not.toContain('data-wobble');
+		expect(text).toContain('<svg');
 	});
 
 	test('embeds the regular and bold font faces as data-URI @font-face rules', async () => {
