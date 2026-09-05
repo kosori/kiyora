@@ -52,6 +52,43 @@ function asElement(element: unknown): HTMLElement {
 }
 
 describe('canvas engine', () => {
+	test('mounts the product canvas with wobble overlays that never intercept pointers', () => {
+		const window = new Window();
+		const container = window.document.createElement('div');
+		container.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 300);
+		window.document.body.append(container);
+		const editor = createEditor(makeScene());
+		const engine = createEngine(asElement(container), editor);
+		const overlays = container.querySelectorAll('[data-wobble="true"]');
+
+		expect(overlays.length).toBeGreaterThan(0);
+		for (const overlay of overlays) {
+			expect(asElement(overlay).getAttribute('pointer-events')).toBe('none');
+		}
+
+		const overlayPaths = (): string[] =>
+			[...container.querySelectorAll('[data-wobble="true"]')]
+				.map((overlay) => asElement(overlay).getAttribute('d') ?? '')
+				.filter((d) => d.length > 0);
+
+		const base = makeScene();
+		const initial = overlayPaths();
+		expect(initial.length).toBeGreaterThan(0);
+		expect(overlayPaths()).toEqual(initial);
+
+		editor.setScene({
+			...base,
+			nodes: base.nodes.map((node) => ({ ...node, x: 4, y: 8 })),
+		});
+		const moved = overlayPaths();
+		editor.setScene(base);
+		const restored = overlayPaths();
+		expect(moved).not.toEqual(initial);
+		expect(restored).toEqual(initial);
+
+		engine.destroy();
+	});
+
 	test('mounts, renders, and commits one history entry per node drag', () => {
 		const window = new Window();
 		const container = window.document.createElement('div');

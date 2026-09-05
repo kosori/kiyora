@@ -91,6 +91,8 @@ describe('downloadSvg', () => {
 		// artifact, so the projection must contain none of those markers.
 		expect(text).not.toContain('grid');
 		expect(text).not.toContain('selection');
+		// The product canvas enables wobble, but SVG export stays clean.
+		expect(text).not.toContain('data-wobble');
 	});
 
 	test('embeds the regular and bold font faces as data-URI @font-face rules', async () => {

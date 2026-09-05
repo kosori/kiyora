@@ -413,6 +413,81 @@ describe('renderScene', () => {
 		expect(hasDot(dots, 19.2, 0)).toBe(true);
 	});
 
+	function overlayPaths(svg: string): string[] {
+		return [...svg.matchAll(/data-wobble="true"[^>]*d="([^"]+)"/gu)].map(
+			(match) => match[1] ?? ''
+		);
+	}
+
+	test('keeps wobble overlays identical across repeated renders and viewport changes', () => {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		const base = renderScene(editor.getSnapshot(), {
+			height: 240,
+			showGrid: false,
+			width: 360,
+		});
+		const repeat = renderScene(editor.getSnapshot(), {
+			height: 240,
+			showGrid: false,
+			width: 360,
+		});
+		expect(overlayPaths(base).length).toBeGreaterThan(0);
+		expect(repeat).toBe(base);
+
+		editor.setViewport({ tx: -140, ty: 60, zoom: 2.5 });
+		const panned = renderScene(editor.getSnapshot(), {
+			height: 240,
+			showGrid: false,
+			width: 360,
+		});
+		expect(overlayPaths(panned)).toEqual(overlayPaths(base));
+		expect(panned).toContain('transform="translate(-140 60) scale(2.5)"');
+	});
+
+	test('keeps selection and resize chrome wobble-free over clean geometry', () => {
+		const editor = createEditor(makeScene());
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('source');
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 240,
+			showGrid: false,
+			width: 360,
+		});
+
+		const selection = svg.match(
+			/<rect[^>]*stroke="#4dabf7"[^>]*stroke-dasharray="4 3"[^>]*\/>/u
+		)?.[0];
+		expect(selection).toBeDefined();
+		expect(selection).not.toContain('data-wobble');
+		expect(svg.match(/data-resize-handle=[^>]*data-wobble/gu)).toBeNull();
+		expect(svg.match(/data-wobble[^>]*#4dabf7/gu)).toBeNull();
+	});
+
+	test('enables hand-drawn wobble overlays on every scene element', () => {
+		const editor = createEditor(makeScene());
+		const svg = renderScene(editor.getSnapshot(), {
+			showGrid: false,
+		});
+
+		const elementGroups = [
+			['group', /<g data-group="group">([\s\S]*?)<\/g>/u],
+			['edge', /<g data-edge="source-target">([\s\S]*?)<\/g>/u],
+			['node source', /<g data-node="source">([\s\S]*?)<\/g>/u],
+			['node target', /<g data-node="target">([\s\S]*?)<\/g>/u],
+		] as const;
+		for (const [label, pattern] of elementGroups) {
+			const markup = svg.match(pattern)?.[1] ?? '';
+			expect(
+				[...markup.matchAll(/data-wobble="true"/gu)].length,
+				label
+			).toBeGreaterThanOrEqual(1);
+		}
+		for (const overlay of svg.matchAll(/<path data-wobble="true"[^>]*\/>/gu)) {
+			expect(overlay[0]).toContain('pointer-events="none"');
+		}
+	});
+
 	test('omits node labels below 20% zoom while other text stays', () => {
 		const editor = createEditor(makeScene());
 		editor.setViewport({ tx: 0, ty: 0, zoom: 0.15 });

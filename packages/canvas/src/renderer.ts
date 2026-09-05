@@ -216,6 +216,9 @@ export function renderSceneResult(
 		renderSceneElements(snapshot.scene, groupBoxes, {
 			...options,
 			showNodeLabels,
+			// Always on for the product canvas; projections stay clean by default
+			// so SVG/PNG export never carries the display-only layer.
+			wobble: true,
 		}),
 		legend,
 		'</g>',
