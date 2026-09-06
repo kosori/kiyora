@@ -9,13 +9,29 @@
 import {
 	findConnector,
 	findToken,
-	scanHops,
 	spanAt,
 	stripComment,
 	unquote,
 } from './scan';
 import type { Actor, Diagnostic, Message, ParseResult, Span } from './types';
-import { ARROWS, isBack, isDotted, slugify, uniqueId } from './vocab';
+import { slugify, uniqueId } from './vocab';
+
+const SEQUENCE_ARROWS = ['-->', '->'] as const;
+
+type MessageArrow = {
+	dashed: boolean;
+	direction: 'forward';
+};
+
+function parseMessageArrow(token: string): MessageArrow | null {
+	if (token === '-->') {
+		return { dashed: true, direction: 'forward' };
+	}
+	if (token === '->') {
+		return { dashed: false, direction: 'forward' };
+	}
+	return null;
+}
 
 function parseName(text: string): { id?: string; name: string } {
 	const i = findToken(text, '=');
@@ -97,7 +113,7 @@ export function parseSequence(source: string): ParseResult {
 			continue;
 		}
 
-		const anchor = findConnector(rawLine, ARROWS);
+		const anchor = findConnector(rawLine, SEQUENCE_ARROWS);
 		if (anchor) {
 			const colonIdx = findToken(rawLine, ':', anchor.index + 1);
 			const headText = colonIdx === -1 ? rawLine : rawLine.slice(0, colonIdx);
@@ -107,12 +123,20 @@ export function parseSequence(source: string): ParseResult {
 				labelPart = unquote(after) || undefined;
 			}
 
-			const parsedHops = scanHops(headText, ARROWS);
-			if (parsedHops && parsedHops.hops.length > 0) {
-				let fromSegment = parsedHops.first.trim();
-				for (const hop of parsedHops.hops) {
-					const toSegment = hop.segment.trim();
-					if (!(fromSegment && toSegment)) {
+			const connector = findConnector(headText, SEQUENCE_ARROWS);
+			if (connector) {
+				const fromSegment = headText.slice(0, connector.index).trim();
+				const afterConnector = headText.slice(
+					connector.index + connector.token.length
+				);
+				// Chained multi-hop messages (A -> B -> C: ping) are out of scope for MVP
+				if (findConnector(afterConnector, SEQUENCE_ARROWS)) {
+					continue;
+				}
+				const toSegment = afterConnector.trim();
+				if (fromSegment && toSegment) {
+					const arrow = parseMessageArrow(connector.token);
+					if (!arrow) {
 						continue;
 					}
 					const fromId = getOrCreateActor(
@@ -134,36 +158,49 @@ export function parseSequence(source: string): ParseResult {
 							severity: 'warning',
 							span: lineSpan,
 						});
-						fromSegment = toSegment;
 						continue;
 					}
-					const back = isBack(hop.token);
-					const dashed = isDotted(hop.token);
 					const message: Message = {
-						from: back ? toId : fromId,
+						from: fromId,
 						span: lineSpan,
-						to: back ? fromId : toId,
+						to: toId,
 					};
 					if (labelPart !== undefined) {
 						message.label = labelPart;
 					}
-					if (dashed) {
+					if (arrow.dashed) {
 						message.dashed = true;
 					}
 					messages.push(message);
-					fromSegment = toSegment;
 				}
 			}
 			continue;
 		}
 
-		let decl = rawLine;
-		if (/^actor\s+/i.test(decl)) {
-			decl = decl.replace(/^actor\s+/i, '');
+		if (/^actor\b/i.test(rawLine)) {
+			const decl = rawLine.replace(/^actor\s*/i, '').trim();
+			if (!decl) {
+				diagnostics.push({
+					code: 'expected-node-name',
+					message: 'expected an actor name',
+					severity: 'error',
+					span: lineSpan,
+				});
+				continue;
+			}
+			const { id, name } = parseName(decl);
+			if (name) {
+				getOrCreateActor(state, name, id, lineSpan);
+			}
+			continue;
 		}
-		const { id, name } = parseName(decl);
-		if (name) {
-			getOrCreateActor(state, name, id, lineSpan);
+
+		const eqIdx = findToken(rawLine, '=');
+		if (eqIdx !== -1) {
+			const { id, name } = parseName(rawLine);
+			if (id && name) {
+				getOrCreateActor(state, name, id, lineSpan);
+			}
 		}
 	}
 

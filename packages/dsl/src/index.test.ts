@@ -305,27 +305,63 @@ B -> C
 		}
 	});
 
-	test('handles reverse message arrows in sequence diagrams', () => {
+	test('ignores reverse arrows and chained multi-hop messages in sequence diagrams', () => {
 		const source = `sequence
 A <- B: pull
 A <-- B: reply
+A -> B -> C: multi
 `;
 		const result = parse(source);
 		expect(result.diagnostics).toEqual([]);
 		if (result.diagram.kind === 'sequence') {
-			expect(result.diagram.messages).toEqual([
-				expect.objectContaining({
-					from: 'b',
-					label: 'pull',
-					to: 'a',
-				}),
-				expect.objectContaining({
-					dashed: true,
-					from: 'b',
-					label: 'reply',
-					to: 'a',
-				}),
+			expect(result.diagram.messages).toEqual([]);
+			expect(result.diagram.actors).toEqual([]);
+		}
+	});
+
+	test('ignores unhandled raw text without instantiating garbage actors', () => {
+		const source = `sequence
+actor Client
+server = "Auth Server"
+Client -> server: Login
+random unhandled text
+another rogue line
+`;
+		const result = parse(source);
+		expect(result.diagnostics).toEqual([]);
+		if (result.diagram.kind === 'sequence') {
+			expect(result.diagram.actors.map((a) => a.id)).toEqual([
+				'client',
+				'server',
 			]);
+			expect(result.diagram.messages).toHaveLength(1);
+			expect(result.diagram.messages[0]).toMatchObject({
+				from: 'client',
+				label: 'Login',
+				to: 'server',
+			});
+		}
+	});
+
+	test('reports expected-node-name when actor statement has no name', () => {
+		const source = `sequence
+actor
+actor Client
+`;
+		const result = parse(source);
+		expect(result.diagnostics).toEqual([
+			{
+				code: 'expected-node-name',
+				message: 'expected an actor name',
+				severity: 'error',
+				span: {
+					end: { column: 5, line: 2 },
+					start: { column: 1, line: 2 },
+				},
+			},
+		]);
+		if (result.diagram.kind === 'sequence') {
+			expect(result.diagram.actors.map((a) => a.id)).toEqual(['client']);
 		}
 	});
 
@@ -352,29 +388,6 @@ Alice -> Bob: ok
 				severity: 'warning',
 				span: {
 					end: { column: 25, line: 2 },
-					start: { column: 1, line: 2 },
-				},
-			},
-		]);
-	});
-
-	test('traps reverse self-messages (A <- A) and emits a self-edge warning', () => {
-		const source = `sequence
-Loop <- Loop: loopback
-`;
-		const result = parse(source);
-		expect(result.diagram.kind).toBe('sequence');
-		if (result.diagram.kind === 'sequence') {
-			expect(result.diagram.actors.map((a) => a.id)).toEqual(['loop']);
-			expect(result.diagram.messages).toHaveLength(0);
-		}
-		expect(result.diagnostics).toEqual([
-			{
-				code: 'self-edge',
-				message: 'self-edges are not drawn',
-				severity: 'warning',
-				span: {
-					end: { column: 22, line: 2 },
 					start: { column: 1, line: 2 },
 				},
 			},

@@ -76,6 +76,34 @@ function unionBounds(bounds: SceneBounds, box: Box): SceneBounds {
 	};
 }
 
+function expandBounds(bounds: SceneBounds | undefined, box: Box): SceneBounds {
+	if (!bounds) {
+		return {
+			maxX: box.x + box.width,
+			maxY: box.y + box.height,
+			minX: box.x,
+			minY: box.y,
+		};
+	}
+	return unionBounds(bounds, box);
+}
+
+function expandBoundsCoord(
+	bounds: SceneBounds | undefined,
+	coord: { x?: number; y: number }
+): SceneBounds {
+	const x = coord.x ?? 0;
+	if (!bounds) {
+		return { maxX: x, maxY: coord.y, minX: x, minY: 0 };
+	}
+	return {
+		maxX: coord.x === undefined ? bounds.maxX : Math.max(bounds.maxX, x),
+		maxY: Math.max(bounds.maxY, coord.y),
+		minX: coord.x === undefined ? bounds.minX : Math.min(bounds.minX, x),
+		minY: bounds.minY,
+	};
+}
+
 function toRect(bounds: SceneBounds): {
 	height: number;
 	width: number;
@@ -127,27 +155,12 @@ export function deriveGroupBoxes(scene: Scene): Map<string, Box> {
 		resolving.add(id);
 		let bounds: SceneBounds | undefined;
 		for (const node of nodesByGroup.get(id) ?? []) {
-			const box = boxForNode(node);
-			bounds = bounds
-				? unionBounds(bounds, box)
-				: {
-						maxX: box.x + box.width,
-						maxY: box.y + box.height,
-						minX: box.x,
-						minY: box.y,
-					};
+			bounds = expandBounds(bounds, boxForNode(node));
 		}
 		for (const child of childrenByParent.get(id) ?? []) {
 			const childBox = resolve(child.id);
 			if (childBox) {
-				bounds = bounds
-					? unionBounds(bounds, childBox)
-					: {
-							maxX: childBox.x + childBox.width,
-							maxY: childBox.y + childBox.height,
-							minX: childBox.x,
-							minY: childBox.y,
-						};
+				bounds = expandBounds(bounds, childBox);
 			}
 		}
 		resolving.delete(id);
@@ -175,30 +188,15 @@ export function contentBounds(
 ): { height: number; width: number; x: number; y: number } {
 	let bounds: SceneBounds | undefined;
 	for (const node of scene.nodes) {
-		const box = boxForNode(node);
-		bounds = bounds
-			? unionBounds(bounds, box)
-			: {
-					maxX: box.x + box.width,
-					maxY: box.y + box.height,
-					minX: box.x,
-					minY: box.y,
-				};
+		bounds = expandBounds(bounds, boxForNode(node));
 	}
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
 		if (!box) {
 			continue;
 		}
-		bounds = bounds
-			? unionBounds(bounds, box)
-			: {
-					maxX: box.x + box.width,
-					maxY: box.y + box.height,
-					minX: box.x,
-					minY: box.y,
-				};
-		bounds = unionBounds(bounds, {
+		bounds = expandBounds(bounds, box);
+		bounds = expandBounds(bounds, {
 			height: GROUP_FONT_SIZE,
 			width: measureLabelWidth(group.label, GROUP_FONT_SIZE),
 			x: box.x + 14,
@@ -209,24 +207,10 @@ export function contentBounds(
 		if (edge.y2 !== undefined) {
 			const node = scene.nodes.find((n) => n.id === edge.from);
 			const x = node ? node.x + node.width / 2 : 0;
-			bounds = bounds
-				? {
-						maxX: Math.max(bounds.maxX, x),
-						maxY: Math.max(bounds.maxY, edge.y2),
-						minX: Math.min(bounds.minX, x),
-						minY: bounds.minY,
-					}
-				: { maxX: x, maxY: edge.y2, minX: x, minY: 0 };
+			bounds = expandBoundsCoord(bounds, { x, y: edge.y2 });
 		}
 		if (edge.y !== undefined) {
-			bounds = bounds
-				? {
-						maxX: bounds.maxX,
-						maxY: Math.max(bounds.maxY, edge.y),
-						minX: bounds.minX,
-						minY: bounds.minY,
-					}
-				: { maxX: 0, maxY: edge.y, minX: 0, minY: 0 };
+			bounds = expandBoundsCoord(bounds, { y: edge.y });
 		}
 	}
 	return toRect(bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 });
@@ -290,6 +274,47 @@ function straightEdgeWobbleOverlay(
 		: wobbleOverlayDashedMarkup(seed, contour, dash.dash, dash.gap);
 }
 
+type StraightEdgeOptions = {
+	color: string;
+	dash: { dash?: number; gap?: number; strokeDasharray?: string };
+	edgeFontSize: number;
+	edgeId: string;
+	from: WobblePoint;
+	label?: string;
+	labelY: number;
+	markerEnd?: string;
+	to: WobblePoint;
+	wobble: boolean;
+};
+
+function straightEdgeMarkup(options: StraightEdgeOptions): string {
+	const {
+		color,
+		dash,
+		edgeFontSize,
+		edgeId,
+		from,
+		label: labelText,
+		labelY,
+		markerEnd = '',
+		to,
+		wobble,
+	} = options;
+	const d = `M ${from[0]} ${from[1]} L ${to[0]} ${to[1]}`;
+	const labelX = (from[0] + to[0]) / 2;
+	const labelMarkup =
+		labelText === undefined
+			? ''
+			: `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(labelText)}</text>`;
+	const overlay = wobble
+		? straightEdgeWobbleOverlay(edgeId, from, to, color, dash)
+		: '';
+	const dashAttr = dash.strokeDasharray
+		? ` stroke-dasharray="${dash.strokeDasharray}"`
+		: '';
+	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
+}
+
 /** Edge markup: the clean cubic path with clean markers, an optional open
  * wobble overlay (dashed runs for dashed edges), and a clean label.
  * Invisible or dangling edges render nothing. */
@@ -314,36 +339,35 @@ function edgeMarkup(
 		const x = fromBox.x + fromBox.width / 2;
 		const y1 = edge.y1 ?? fromBox.y + fromBox.height;
 		const { y2 } = edge;
-		const d = `M ${x} ${y1} L ${x} ${y2}`;
-		const edgeId = `${edge.from}-lifeline`;
-		const label =
-			edge.label === undefined
-				? ''
-				: `<text x="${x}" y="${(y1 + y2) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-		const overlay = wobble
-			? straightEdgeWobbleOverlay(edgeId, [x, y1], [x, y2], color, dash)
-			: '';
-		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}/>${overlay}${label}</g>`;
+		return straightEdgeMarkup({
+			color,
+			dash,
+			edgeFontSize,
+			edgeId: `${edge.from}-lifeline`,
+			from: [x, y1],
+			label: edge.label,
+			labelY: (y1 + y2) / 2,
+			to: [x, y2],
+			wobble,
+		});
 	}
 
 	if (edge.y !== undefined) {
 		const startX = fromBox.x + fromBox.width / 2;
 		const endX = toBox.x + toBox.width / 2;
 		const { y } = edge;
-		const d = `M ${startX} ${y} L ${endX} ${y}`;
-		const edgeId = `${edge.from}-${edge.to}`;
-		const markerStart = edge.bidirectional
-			? ` marker-start="url(#kiyora-${head}-reverse)"`
-			: '';
-		const markerEnd = ` marker-end="url(#kiyora-${head})"`;
-		const label =
-			edge.label === undefined
-				? ''
-				: `<text x="${(startX + endX) / 2}" y="${y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-		const overlay = wobble
-			? straightEdgeWobbleOverlay(edgeId, [startX, y], [endX, y], color, dash)
-			: '';
-		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
+		return straightEdgeMarkup({
+			color,
+			dash,
+			edgeFontSize,
+			edgeId: `${edge.from}-${edge.to}`,
+			from: [startX, y],
+			label: edge.label,
+			labelY: y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y,
+			markerEnd: ` marker-end="url(#kiyora-${head})"`,
+			to: [endX, y],
+			wobble,
+		});
 	}
 
 	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
