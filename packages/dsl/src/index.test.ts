@@ -305,10 +305,12 @@ B -> C
 		}
 	});
 
-	test('ignores reverse arrows and chained multi-hop messages in sequence diagrams', () => {
+	test('ignores reverse, bidirectional arrows, and chained multi-hop messages in sequence diagrams', () => {
 		const source = `sequence
 A <- B: pull
 A <-- B: reply
+A <-> B: sync
+A <--> B: sync2
 A -> B -> C: multi
 `;
 		const result = parse(source);

@@ -14,21 +14,18 @@ import {
 	unquote,
 } from './scan';
 import type { Actor, Diagnostic, Message, ParseResult, Span } from './types';
-import { slugify, uniqueId } from './vocab';
-
-const SEQUENCE_ARROWS = ['-->', '->'] as const;
+import { ARROWS, slugify, uniqueId } from './vocab';
 
 type MessageArrow = {
 	dashed: boolean;
-	direction: 'forward';
 };
 
 function parseMessageArrow(token: string): MessageArrow | null {
 	if (token === '-->') {
-		return { dashed: true, direction: 'forward' };
+		return { dashed: true };
 	}
 	if (token === '->') {
-		return { dashed: false, direction: 'forward' };
+		return { dashed: false };
 	}
 	return null;
 }
@@ -113,7 +110,7 @@ export function parseSequence(source: string): ParseResult {
 			continue;
 		}
 
-		const anchor = findConnector(rawLine, SEQUENCE_ARROWS);
+		const anchor = findConnector(rawLine, ARROWS);
 		if (anchor) {
 			const colonIdx = findToken(rawLine, ':', anchor.index + 1);
 			const headText = colonIdx === -1 ? rawLine : rawLine.slice(0, colonIdx);
@@ -123,22 +120,23 @@ export function parseSequence(source: string): ParseResult {
 				labelPart = unquote(after) || undefined;
 			}
 
-			const connector = findConnector(headText, SEQUENCE_ARROWS);
+			const connector = findConnector(headText, ARROWS);
 			if (connector) {
+				const arrow = parseMessageArrow(connector.token);
+				if (!arrow) {
+					// Reverse, bidirectional, or other unsupported arrows are dropped in MVP
+					continue;
+				}
 				const fromSegment = headText.slice(0, connector.index).trim();
 				const afterConnector = headText.slice(
 					connector.index + connector.token.length
 				);
 				// Chained multi-hop messages (A -> B -> C: ping) are out of scope for MVP
-				if (findConnector(afterConnector, SEQUENCE_ARROWS)) {
+				if (findConnector(afterConnector, ARROWS)) {
 					continue;
 				}
 				const toSegment = afterConnector.trim();
 				if (fromSegment && toSegment) {
-					const arrow = parseMessageArrow(connector.token);
-					if (!arrow) {
-						continue;
-					}
 					const fromId = getOrCreateActor(
 						state,
 						unquote(fromSegment),

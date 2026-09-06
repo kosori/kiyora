@@ -918,7 +918,6 @@ Bob --> Alice: Bye
 			const wobbled = renderToSvg(compiled, { wobble: true });
 			expect(wobbled.svg).toMatchSnapshot();
 
-			// Deterministic output
 			const secondWobbled = renderToSvg(compiled, { wobble: true });
 			expect(secondWobbled.svg).toBe(wobbled.svg);
 		});
