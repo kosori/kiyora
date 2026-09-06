@@ -894,6 +894,40 @@ describe('render scaffold', () => {
 		});
 	});
 
+	describe('sequence projection', () => {
+		test('renders actors, lifelines, and messages to valid SVG', () => {
+			const source = `sequence
+title Login Flow
+Alice -> Bob: Credentials
+Bob --> Alice: Token
+`;
+			const compiled = compile(parse(source).diagram);
+			const result = renderToSvg(compiled);
+			expect(result.svg).toContain('Login Flow');
+			expect(result.svg).toContain('data-node="alice"');
+			expect(result.svg).toContain('data-node="bob"');
+			expect(result.svg).toContain('data-edge="alice-lifeline"');
+			expect(result.svg).toContain('data-edge="bob-lifeline"');
+			expect(result.svg).toContain('data-edge="alice-bob"');
+			expect(result.svg).toContain('data-edge="bob-alice"');
+			expect(result.svg).toContain('Credentials');
+			expect(result.svg).toContain('Token');
+			// Lifelines are dashed and have no arrowhead
+			expect(result.svg).toMatch(
+				/<g data-edge="alice-lifeline">[\s\S]*?stroke-dasharray="4\.5 6"/
+			);
+			const aliceLifeline = result.svg.match(
+				/<g data-edge="alice-lifeline">[\s\S]*?<\/g>/
+			)?.[0];
+			expect(aliceLifeline).toBeDefined();
+			expect(aliceLifeline).not.toContain('marker-end');
+			// Messages have arrowheads
+			expect(result.svg).toMatch(
+				/<g data-edge="alice-bob">[\s\S]*?marker-end="url\(#kiyora-arrow\)"/
+			);
+		});
+	});
+
 	test('honors explicit dimensions, padding, fonts, and the render convenience', () => {
 		const options = {
 			edgeFontSize: 11,

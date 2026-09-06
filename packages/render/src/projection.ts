@@ -24,6 +24,8 @@ import {
 	wobbleOverlayGroup,
 } from './wobble';
 
+const SEQUENCE_MESSAGE_LABEL_OFFSET_Y = 8;
+
 type SceneBounds = {
 	maxX: number;
 	maxY: number;
@@ -202,6 +204,30 @@ export function contentBounds(
 			y: box.y + 4,
 		});
 	}
+	for (const edge of scene.edges) {
+		if (edge.y2 !== undefined) {
+			const node = scene.nodes.find((n) => n.id === edge.from);
+			const x = node ? node.x + node.width / 2 : 0;
+			bounds = bounds
+				? {
+						maxX: Math.max(bounds.maxX, x),
+						maxY: Math.max(bounds.maxY, edge.y2),
+						minX: Math.min(bounds.minX, x),
+						minY: bounds.minY,
+					}
+				: { maxX: x, maxY: edge.y2, minX: x, minY: 0 };
+		}
+		if (edge.y !== undefined) {
+			bounds = bounds
+				? {
+						maxX: bounds.maxX,
+						maxY: Math.max(bounds.maxY, edge.y),
+						minX: bounds.minX,
+						minY: bounds.minY,
+					}
+				: { maxX: 0, maxY: edge.y, minX: 0, minY: 0 };
+		}
+	}
 	return toRect(bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 });
 }
 
@@ -254,11 +280,42 @@ function edgeMarkup(
 	}
 	const fromBox = boxForNode(from);
 	const toBox = boxForNode(to);
-	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
-	const d = edgeCubicPathD({ c1, c2, end, start });
 	const color = edgeColor(edge.color);
 	const head = edge.head ?? 'arrow';
 	const dash = dashAttrs(edge.dashed ? 'dashed' : 'solid', EDGE_STROKE);
+
+	if (edge.y2 !== undefined) {
+		const x = fromBox.x + fromBox.width / 2;
+		const y1 = edge.y1 ?? fromBox.y + fromBox.height;
+		const { y2 } = edge;
+		const d = `M ${x} ${y1} L ${x} ${y2}`;
+		const edgeId = `${edge.from}-lifeline`;
+		const label =
+			edge.label === undefined
+				? ''
+				: `<text x="${x}" y="${(y1 + y2) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
+		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}/>${label}</g>`;
+	}
+
+	if (edge.y !== undefined) {
+		const startX = fromBox.x + fromBox.width / 2;
+		const endX = toBox.x + toBox.width / 2;
+		const { y } = edge;
+		const d = `M ${startX} ${y} L ${endX} ${y}`;
+		const edgeId = `${edge.from}-${edge.to}`;
+		const markerStart = edge.bidirectional
+			? ` marker-start="url(#kiyora-${head}-reverse)"`
+			: '';
+		const markerEnd = ` marker-end="url(#kiyora-${head})"`;
+		const label =
+			edge.label === undefined
+				? ''
+				: `<text x="${(startX + endX) / 2}" y="${y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
+		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${label}</g>`;
+	}
+
+	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
+	const d = edgeCubicPathD({ c1, c2, end, start });
 	const markerStart = edge.bidirectional
 		? ` marker-start="url(#kiyora-${head}-reverse)"`
 		: '';

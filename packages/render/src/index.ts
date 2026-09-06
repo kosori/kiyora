@@ -42,6 +42,15 @@ export {
 	TITLE_HEIGHT,
 } from './projection';
 export type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
+export {
+	layoutSequence,
+	SEQUENCE_ACTOR_HEIGHT,
+	SEQUENCE_ACTOR_WIDTH,
+	SEQUENCE_COLUMN_WIDTH,
+	SEQUENCE_FIRST_MESSAGE_Y,
+	SEQUENCE_LIFELINE_PADDING,
+	SEQUENCE_ROW_HEIGHT,
+} from './sequence-layout';
 export type { ShapeKind } from './shapes';
 export * as shapes from './shapes';
 export { FALLBACK_SHAPES, renderShape, roundedRectPath } from './shapes';

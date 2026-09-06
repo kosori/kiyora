@@ -9,6 +9,9 @@ import {
 	FILLS,
 	FRAMES,
 	HEADS,
+	isBack,
+	isBidirectional,
+	isDotted,
 	resolveColor,
 	resolveCorner,
 	resolveFill,
@@ -133,6 +136,20 @@ describe('arrows', () => {
 		for (const token of required) {
 			expect(ARROWS).toContain(token);
 		}
+	});
+
+	test('arrow classifiers correctly classify arrow tokens', () => {
+		expect(isDotted('-->')).toBe(true);
+		expect(isDotted('..>')).toBe(true);
+		expect(isDotted('->')).toBe(false);
+
+		expect(isBack('<-')).toBe(true);
+		expect(isBack('<--')).toBe(true);
+		expect(isBack('->')).toBe(false);
+
+		expect(isBidirectional('<->')).toBe(true);
+		expect(isBidirectional('<-->')).toBe(true);
+		expect(isBidirectional('->')).toBe(false);
 	});
 });
 

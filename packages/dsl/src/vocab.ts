@@ -168,6 +168,14 @@ export const ARROWS = [
 	'<',
 ] as const;
 
+/** Arrow token classifiers: dotted/dashed style, reverse, bidirectional. */
+export const isDotted = (t: string): boolean =>
+	t.includes('.') || t.includes('--');
+export const isBack = (t: string): boolean =>
+	t === '<-' || t === '<..' || t === '<--' || t === '<-.-' || t === '<';
+export const isBidirectional = (t: string): boolean =>
+	t === '<->' || t === '<..>' || t === '<-->' || t === '<-.->' || t === '<>';
+
 /** Layout directions. */
 export const DIRECTIONS = ['right', 'down', 'left', 'up'] as const;
 export type Direction = (typeof DIRECTIONS)[number];

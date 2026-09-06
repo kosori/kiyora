@@ -122,4 +122,97 @@ describe('compile', () => {
 			title: 'My Flow',
 		});
 	});
+
+	test('compiles sequence diagram actors into fixed-grid SceneNodes', () => {
+		const seqDiagram: Diagram = {
+			actors: [
+				{ id: 'client', label: 'Client', span },
+				{ id: 'server', label: 'Server', span },
+			],
+			kind: 'sequence',
+			messages: [{ from: 'client', label: 'request', span, to: 'server' }],
+			title: 'Auth Flow',
+		};
+		const scene = compile(seqDiagram);
+		expect(scene.readOnly).toBe(true);
+		expect(scene.title).toBe('Auth Flow');
+		expect(scene.nodes).toEqual([
+			{
+				height: 40,
+				id: 'client',
+				label: 'Client',
+				rotation: 0,
+				shape: 'rectangle',
+				span,
+				width: 100,
+				x: 50,
+				y: 0,
+			},
+			{
+				height: 40,
+				id: 'server',
+				label: 'Server',
+				rotation: 0,
+				shape: 'rectangle',
+				span,
+				width: 100,
+				x: 250,
+				y: 0,
+			},
+		]);
+	});
+
+	test('compiles lifelines and horizontal messages with fixed-grid coordinates', () => {
+		const seqDiagram: Diagram = {
+			actors: [
+				{ id: 'a', label: 'A', span },
+				{ id: 'b', label: 'B', span },
+			],
+			kind: 'sequence',
+			messages: [
+				{ from: 'a', label: 'req', span, to: 'b' },
+				{ dashed: true, from: 'b', label: 'res', span, to: 'a' },
+			],
+			title: '',
+		};
+		const scene = compile(seqDiagram);
+		// Last message is at y = 100 + 1 * 60 = 160. Lifeline capped at 160 + 40 = 200.
+		expect(scene.edges).toEqual([
+			// Lifelines first
+			{
+				dashed: true,
+				from: 'a',
+				span,
+				to: 'a',
+				y1: 40,
+				y2: 200,
+			},
+			{
+				dashed: true,
+				from: 'b',
+				span,
+				to: 'b',
+				y1: 40,
+				y2: 200,
+			},
+			// Messages
+			{
+				from: 'a',
+				head: 'arrow',
+				label: 'req',
+				span,
+				to: 'b',
+				y: 100,
+			},
+			{
+				dashed: true,
+				from: 'b',
+				head: 'arrow',
+				label: 'res',
+				span,
+				to: 'a',
+				y: 160,
+			},
+		]);
+	});
 });

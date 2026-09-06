@@ -220,4 +220,112 @@ describe('parse', () => {
 			},
 		});
 	});
+
+	test('parses actors and messages in a sequence diagram', () => {
+		const source = `sequence
+title Auth Flow
+actor Client
+server = "Auth Server"
+Client -> server: Login Request
+server --> Client: Token
+`;
+		const result = parse(source);
+		expect(result.diagnostics).toEqual([]);
+		expect(result.diagram.kind).toBe('sequence');
+		if (result.diagram.kind === 'sequence') {
+			expect(result.diagram.title).toBe('Auth Flow');
+			expect(result.diagram.actors).toEqual([
+				{
+					id: 'client',
+					label: 'Client',
+					span: {
+						end: { column: 12, line: 3 },
+						start: { column: 1, line: 3 },
+					},
+				},
+				{
+					id: 'server',
+					label: 'Auth Server',
+					span: {
+						end: { column: 22, line: 4 },
+						start: { column: 1, line: 4 },
+					},
+				},
+			]);
+			expect(result.diagram.messages).toEqual([
+				{
+					from: 'client',
+					label: 'Login Request',
+					span: {
+						end: { column: 31, line: 5 },
+						start: { column: 1, line: 5 },
+					},
+					to: 'server',
+				},
+				{
+					dashed: true,
+					from: 'server',
+					label: 'Token',
+					span: {
+						end: { column: 24, line: 6 },
+						start: { column: 1, line: 6 },
+					},
+					to: 'client',
+				},
+			]);
+		}
+	});
+
+	test('auto-declares implicit actors from message endpoints', () => {
+		const source = `sequence
+A -> B: ping
+B -> C
+`;
+		const result = parse(source);
+		expect(result.diagnostics).toEqual([]);
+		if (result.diagram.kind === 'sequence') {
+			expect(
+				result.diagram.actors.map((a) => ({ id: a.id, label: a.label }))
+			).toEqual([
+				{ id: 'a', label: 'A' },
+				{ id: 'b', label: 'B' },
+				{ id: 'c', label: 'C' },
+			]);
+			expect(result.diagram.messages.length).toBe(2);
+			expect(result.diagram.messages[0]).toMatchObject({
+				from: 'a',
+				label: 'ping',
+				to: 'b',
+			});
+			expect(result.diagram.messages[1]).toMatchObject({
+				from: 'b',
+				to: 'c',
+			});
+			expect(result.diagram.messages[1]?.label).toBeUndefined();
+		}
+	});
+
+	test('handles reverse message arrows in sequence diagrams', () => {
+		const source = `sequence
+A <- B: pull
+A <-- B: reply
+`;
+		const result = parse(source);
+		expect(result.diagnostics).toEqual([]);
+		if (result.diagram.kind === 'sequence') {
+			expect(result.diagram.messages).toEqual([
+				expect.objectContaining({
+					from: 'b',
+					label: 'pull',
+					to: 'a',
+				}),
+				expect.objectContaining({
+					dashed: true,
+					from: 'b',
+					label: 'reply',
+					to: 'a',
+				}),
+			]);
+		}
+	});
 });

@@ -30,7 +30,11 @@ export type SceneNode = {
 	y: number;
 };
 
-/** A renderable edge that refers to nodes by id, rather than coordinates. */
+/**
+ * A renderable edge that connects nodes by id. For sequence diagrams,
+ * explicit row or lifeline Y coordinates (`y` for horizontal messages,
+ * `y1`/`y2` for vertical lifelines) guide projection.
+ */
 export type SceneEdge = {
 	back?: boolean;
 	bidirectional?: boolean;
@@ -43,6 +47,9 @@ export type SceneEdge = {
 	label?: string;
 	span: Span;
 	to: string;
+	y?: number;
+	y1?: number;
+	y2?: number;
 };
 
 /** A renderable group; its derived bounds are intentionally not stored. */

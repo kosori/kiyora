@@ -10,6 +10,7 @@ import {
 } from '@kiyora/dsl';
 import { type Box, type LayoutOptions, layoutGraph } from './layout';
 import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
+import { layoutSequence } from './sequence-layout';
 
 function isHead(value: string | undefined): value is Head {
 	return value !== undefined && resolveHead(value) !== null;
@@ -106,10 +107,11 @@ function activeGroupIds(
 /** Compile a graph or sequence Diagram into a deterministic, serializable Scene. */
 export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 	if (diagram.kind === 'sequence') {
+		const { edges, nodes } = layoutSequence(diagram);
 		return {
-			edges: [],
+			edges,
 			groups: [],
-			nodes: [],
+			nodes,
 			readOnly: true,
 			title: diagram.title,
 		};

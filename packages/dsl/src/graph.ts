@@ -54,6 +54,9 @@ import type { Family } from './vocab';
 import {
 	ARROWS,
 	FAMILIES,
+	isBack,
+	isBidirectional,
+	isDotted,
 	resolveFill,
 	STANDALONE_FAMILIES,
 	slugify,
@@ -579,13 +582,6 @@ function parseInlineGroup(
 		getOrCreateNode(state, name, ma, id, span, gid);
 	}
 }
-
-/** Arrow token classifiers: dotted/dashed style, reverse, bidirectional. */
-const isDotted = (t: string) => t.includes('.') || t.includes('--');
-const isBack = (t: string) =>
-	t === '<-' || t === '<..' || t === '<--' || t === '<-.-' || t === '<';
-const isBidirectional = (t: string) =>
-	t === '<->' || t === '<..>' || t === '<-->' || t === '<-.->' || t === '<>';
 
 /**
  * Parse an edge statement: `A -> B`, chains, fan-out/fan-in, labels, and a
