@@ -159,7 +159,7 @@ export function samplePolyline(
 }
 
 /** Dense open sample of a single straight segment, anchored on both endpoints. */
-function sampleLine(from: WobblePoint, to: WobblePoint): WobblePoint[] {
+export function sampleLine(from: WobblePoint, to: WobblePoint): WobblePoint[] {
 	const steps = Math.max(
 		1,
 		Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / SAMPLE_SPACING)

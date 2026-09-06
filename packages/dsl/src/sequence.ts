@@ -109,7 +109,7 @@ export function parseSequence(source: string): ParseResult {
 
 			const parsedHops = scanHops(headText, ARROWS);
 			if (parsedHops && parsedHops.hops.length > 0) {
-				const fromSegment = parsedHops.first.trim();
+				let fromSegment = parsedHops.first.trim();
 				for (const hop of parsedHops.hops) {
 					const toSegment = hop.segment.trim();
 					if (!(fromSegment && toSegment)) {
@@ -127,6 +127,16 @@ export function parseSequence(source: string): ParseResult {
 						undefined,
 						lineSpan
 					);
+					if (fromId === toId) {
+						diagnostics.push({
+							code: 'self-edge',
+							message: 'self-edges are not drawn',
+							severity: 'warning',
+							span: lineSpan,
+						});
+						fromSegment = toSegment;
+						continue;
+					}
 					const back = isBack(hop.token);
 					const dashed = isDotted(hop.token);
 					const message: Message = {
@@ -141,6 +151,7 @@ export function parseSequence(source: string): ParseResult {
 						message.dashed = true;
 					}
 					messages.push(message);
+					fromSegment = toSegment;
 				}
 			}
 			continue;

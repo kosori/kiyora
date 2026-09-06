@@ -18,6 +18,7 @@ import {
 import {
 	deriveWobbleSeed,
 	sampleCubic,
+	sampleLine,
 	sampleRoundedRect,
 	type WobblePoint,
 	wobbleOverlayDashedMarkup,
@@ -264,6 +265,31 @@ function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
 	return `<g data-group="${escapeText(group.id)}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"/>${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
 }
 
+function straightEdgeWobbleOverlay(
+	edgeId: string,
+	from: WobblePoint,
+	to: WobblePoint,
+	color: string,
+	dash: { dash?: number; gap?: number }
+): string {
+	const seed = deriveWobbleSeed(`edge:${edgeId}`, [
+		from[0],
+		from[1],
+		to[0],
+		to[1],
+	]);
+	const points = sampleLine(from, to);
+	const contour = {
+		closed: false,
+		points,
+		stroke: color,
+		strokeWidth: EDGE_STROKE,
+	};
+	return dash.dash === undefined || dash.gap === undefined
+		? wobbleOverlayGroup(seed, [contour])
+		: wobbleOverlayDashedMarkup(seed, contour, dash.dash, dash.gap);
+}
+
 /** Edge markup: the clean cubic path with clean markers, an optional open
  * wobble overlay (dashed runs for dashed edges), and a clean label.
  * Invisible or dangling edges render nothing. */
@@ -294,7 +320,10 @@ function edgeMarkup(
 			edge.label === undefined
 				? ''
 				: `<text x="${x}" y="${(y1 + y2) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}/>${label}</g>`;
+		const overlay = wobble
+			? straightEdgeWobbleOverlay(edgeId, [x, y1], [x, y2], color, dash)
+			: '';
+		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}/>${overlay}${label}</g>`;
 	}
 
 	if (edge.y !== undefined) {
@@ -311,7 +340,10 @@ function edgeMarkup(
 			edge.label === undefined
 				? ''
 				: `<text x="${(startX + endX) / 2}" y="${y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${label}</g>`;
+		const overlay = wobble
+			? straightEdgeWobbleOverlay(edgeId, [startX, y], [endX, y], color, dash)
+			: '';
+		return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
 	}
 
 	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);

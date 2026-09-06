@@ -328,4 +328,56 @@ A <-- B: reply
 			]);
 		}
 	});
+
+	test('traps self-messages, drops them from AST, and emits a self-edge warning with source span', () => {
+		const source = `sequence
+Alice -> Alice: self call
+Alice -> Bob: ok
+`;
+		const result = parse(source);
+		expect(result.diagram.kind).toBe('sequence');
+		if (result.diagram.kind === 'sequence') {
+			expect(result.diagram.actors.map((a) => a.id)).toEqual(['alice', 'bob']);
+			expect(result.diagram.messages).toHaveLength(1);
+			expect(result.diagram.messages[0]).toMatchObject({
+				from: 'alice',
+				label: 'ok',
+				to: 'bob',
+			});
+		}
+		expect(result.diagnostics).toEqual([
+			{
+				code: 'self-edge',
+				message: 'self-edges are not drawn',
+				severity: 'warning',
+				span: {
+					end: { column: 25, line: 2 },
+					start: { column: 1, line: 2 },
+				},
+			},
+		]);
+	});
+
+	test('traps reverse self-messages (A <- A) and emits a self-edge warning', () => {
+		const source = `sequence
+Loop <- Loop: loopback
+`;
+		const result = parse(source);
+		expect(result.diagram.kind).toBe('sequence');
+		if (result.diagram.kind === 'sequence') {
+			expect(result.diagram.actors.map((a) => a.id)).toEqual(['loop']);
+			expect(result.diagram.messages).toHaveLength(0);
+		}
+		expect(result.diagnostics).toEqual([
+			{
+				code: 'self-edge',
+				message: 'self-edges are not drawn',
+				severity: 'warning',
+				span: {
+					end: { column: 22, line: 2 },
+					start: { column: 1, line: 2 },
+				},
+			},
+		]);
+	});
 });

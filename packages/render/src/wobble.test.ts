@@ -4,6 +4,7 @@ import {
 	deriveWobbleSeed,
 	sampleCubic,
 	sampleEllipse,
+	sampleLine,
 	samplePolygon,
 	samplePolyline,
 	sampleRoundedRect,
@@ -134,6 +135,18 @@ describe('wobble sampling', () => {
 		expect(points[0]).toEqual([0, 0]);
 		expect(points.at(-1)).toEqual([20, 0]);
 		expect(points.length).toBeGreaterThan(3);
+	});
+
+	test('sampleLine samples straight line anchored on both endpoints', () => {
+		const points = sampleLine([10, 20], [10, 100]);
+		expect(points[0]).toEqual([10, 20]);
+		expect(points.at(-1)).toEqual([10, 100]);
+		expect(points.length).toBe(17);
+		for (const [x, y] of points) {
+			expect(x).toBe(10);
+			expect(y).toBeGreaterThanOrEqual(20);
+			expect(y).toBeLessThanOrEqual(100);
+		}
 	});
 
 	test('arc sampling honors the sweep direction', () => {

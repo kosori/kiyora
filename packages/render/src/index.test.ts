@@ -926,6 +926,55 @@ Bob --> Alice: Token
 				/<g data-edge="alice-bob">[\s\S]*?marker-end="url\(#kiyora-arrow\)"/
 			);
 		});
+
+		test('applies perfect-freehand wobble overlays to lifelines and messages when enabled', () => {
+			const source = `sequence
+Alice -> Bob: Hello
+Bob --> Alice: Bye
+`;
+			const compiled = compile(parse(source).diagram);
+			const clean = renderToSvg(compiled);
+			expect(clean.svg).not.toContain('data-wobble');
+
+			const wobbled = renderToSvg(compiled, { wobble: true });
+
+			// Lifelines get dashed wobble overlays
+			const aliceLifeline =
+				wobbled.svg.match(
+					/<g data-edge="alice-lifeline">([\s\S]*?)<\/g>/
+				)?.[1] ?? '';
+			expect(aliceLifeline).toContain('data-wobble="true"');
+			expect(aliceLifeline).toContain('pointer-events="none"');
+			const lifelineRuns =
+				aliceLifeline.match(/<path data-wobble="true"/g)?.length ?? 0;
+			expect(lifelineRuns).toBeGreaterThan(1);
+			expect(aliceLifeline.indexOf('<path d="M')).toBeLessThan(
+				aliceLifeline.indexOf('data-wobble')
+			);
+
+			// Solid message gets wobble overlay
+			const aliceBobMessage =
+				wobbled.svg.match(/<g data-edge="alice-bob">([\s\S]*?)<\/g>/)?.[1] ??
+				'';
+			expect(aliceBobMessage).toContain('data-wobble="true"');
+			expect(aliceBobMessage).toContain('marker-end="url(#kiyora-arrow)"');
+			expect(aliceBobMessage.indexOf('<path d="M')).toBeLessThan(
+				aliceBobMessage.indexOf('data-wobble')
+			);
+
+			// Dashed message gets dashed wobble overlay
+			const bobAliceMessage =
+				wobbled.svg.match(/<g data-edge="bob-alice">([\s\S]*?)<\/g>/)?.[1] ??
+				'';
+			expect(bobAliceMessage).toContain('data-wobble="true"');
+			const dashedMessageRuns =
+				bobAliceMessage.match(/<path data-wobble="true"/g)?.length ?? 0;
+			expect(dashedMessageRuns).toBeGreaterThan(1);
+
+			// Deterministic output
+			const secondWobbled = renderToSvg(compiled, { wobble: true });
+			expect(secondWobbled.svg).toBe(wobbled.svg);
+		});
 	});
 
 	test('honors explicit dimensions, padding, fonts, and the render convenience', () => {
