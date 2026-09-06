@@ -410,4 +410,32 @@ describe('useCanvasKeyboardShortcuts', () => {
 		dispatchKey({ key: 'ArrowRight', type: 'keyup' });
 		expect(editor.getSnapshot()).toBe(before);
 	});
+
+	test('shortcuts do not mutate a read-only sequence scene', () => {
+		withHappyDom();
+		const scene: Scene = {
+			...sceneWithNodes('one'),
+			readOnly: true,
+		};
+		const editor = createEditor(scene);
+		editor.select('one');
+
+		const { unmount } = renderHook(editor, CANVAS_FOCUSED);
+
+		dispatchKey({ key: 'Delete' });
+		dispatchKey({ key: 'Backspace' });
+		dispatchKey({ key: 'ArrowRight' });
+		dispatchKey({ key: 'ArrowRight', type: 'keyup' });
+		dispatchKey({ altKey: true, key: 'ArrowRight' });
+		dispatchKey({ altKey: true, key: 'ArrowRight', type: 'keyup' });
+		dispatchKey({ key: 'x', metaKey: true });
+		dispatchKey({ key: 'v', metaKey: true });
+		dispatchKey({ key: 'd', metaKey: true });
+
+		expect(editor.getScene().nodes).toHaveLength(1);
+		expect(editor.getScene().nodes[0]).toEqual(scene.nodes[0]);
+		expect(editor.canUndo).toBe(false);
+
+		unmount();
+	});
 });

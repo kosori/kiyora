@@ -33,12 +33,14 @@ import {
 	findConnector,
 	findToken,
 	scanHops,
+	spanAt,
 	splitListOffsets,
 	splitOn,
 	splitTrailingAttrs,
 	stripComment,
 	unquote,
 } from './scan';
+
 import type {
 	Diagnostic,
 	Edge,
@@ -949,12 +951,4 @@ function findColon(source: string): { key: string; value: string } | null {
 		return null;
 	}
 	return { key: source.slice(0, i).trim(), value: source.slice(i + 1).trim() };
-}
-
-/** A 1-based span covering `width` columns starting at `column`. */
-function spanAt(line: number, column: number, width: number): Span {
-	return {
-		end: { column: column + Math.max(0, width - 1), line },
-		start: { column, line },
-	};
 }

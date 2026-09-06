@@ -151,10 +151,14 @@ function resizeHandlesMarkup(
 	snapshot: EditorSnapshot,
 	nodeIndex: Map<string, SceneNode>
 ): string {
+	if (snapshot.scene.readOnly) {
+		return '';
+	}
 	const node = singleSelectedNode(nodeIndex, snapshot.selection);
 	if (!node) {
 		return '';
 	}
+
 	const handles: string[] = [];
 	for (const handle of RESIZE_HANDLES) {
 		const center = handleScreenCenter(snapshot.viewport, node, handle);

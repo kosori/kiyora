@@ -205,7 +205,6 @@ export const STANDALONE_FAMILIES = [
 export const UNSUPPORTED_GRAPH_FAMILIES = [
 	'class',
 	'erd',
-	'sequence',
 	'uml',
 	'wireframe',
 ] as const;

@@ -265,3 +265,11 @@ export function scanHops(
 	}
 	return { first: firstText, hops };
 }
+
+/** Construct a Span from 1-based line, column, and length. */
+export function spanAt(line: number, column: number, length: number) {
+	return {
+		end: { column: column + Math.max(0, length - 1), line },
+		start: { column, line },
+	};
+}

@@ -103,14 +103,25 @@ function activeGroupIds(
 	return active;
 }
 
-/** Compile a graph Diagram into a deterministic, serializable Scene. */
+/** Compile a graph or sequence Diagram into a deterministic, serializable Scene. */
 export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
+	if (diagram.kind === 'sequence') {
+		return {
+			edges: [],
+			groups: [],
+			nodes: [],
+			readOnly: true,
+			title: diagram.title,
+		};
+	}
+
 	const layout = layoutGraph(
 		diagram.nodes,
 		diagram.edges,
 		diagram.direction ?? 'right',
 		options
 	);
+
 	const nodes: SceneNode[] = [];
 	for (const node of diagram.nodes) {
 		const box = layout.boxes.get(node.id);

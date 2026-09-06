@@ -26,6 +26,19 @@ describe('parseAndCompile', () => {
 		expect(result.diagnostics.length).toBeGreaterThan(0);
 		expect(result.scene.nodes).toHaveLength(1);
 	});
+
+	test('compiles a sequence diagram to a read-only empty Scene', () => {
+		const result = parseAndCompile('sequence\ntitle My Flow');
+
+		expect(result.diagnostics).toEqual([]);
+		expect(result.scene).toEqual({
+			edges: [],
+			groups: [],
+			nodes: [],
+			readOnly: true,
+			title: 'My Flow',
+		});
+	});
 });
 
 describe('parseTitle', () => {
@@ -39,5 +52,9 @@ describe('parseTitle', () => {
 
 	test('reads an explicit title directive', () => {
 		expect(parseTitle('architecture\ntitle T\nA -> B')).toBe('T');
+	});
+
+	test('reads a sequence diagram title directive', () => {
+		expect(parseTitle('sequence\ntitle My Flow')).toBe('My Flow');
 	});
 });

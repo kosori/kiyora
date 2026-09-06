@@ -51,7 +51,9 @@ export type EditorSnapshot = {
 export type Editor = {
 	readonly canRedo: boolean;
 	readonly canUndo: boolean;
+	readonly readOnly: boolean;
 	beginDrag: (id: string) => void;
+
 	/** Start a screen-space marquee rectangle anchored at `point`. */
 	beginMarquee: (point: Point) => void;
 	/** Start a keyboard nudge run for the current selection. */
@@ -464,7 +466,7 @@ export function createEditor(initialScene?: Scene): Editor {
 	}
 
 	function deleteSelectedNodes(): void {
-		if (selection.length === 0) {
+		if (scene.readOnly || selection.length === 0) {
 			return;
 		}
 		commitScene(deleteNodes(scene, selection));
@@ -472,6 +474,9 @@ export function createEditor(initialScene?: Scene): Editor {
 	}
 
 	function commitPaste(fragment: ClipboardFragment): void {
+		if (scene.readOnly) {
+			return;
+		}
 		commitScene(pasteFragment(scene, fragment, PASTE_OFFSET, PASTE_OFFSET));
 	}
 
@@ -504,6 +509,9 @@ export function createEditor(initialScene?: Scene): Editor {
 
 	const editor: Editor = {
 		beginDrag(id) {
+			if (scene.readOnly) {
+				return;
+			}
 			const node = nodeIndex.get(id);
 			if (!node) {
 				return;
@@ -534,7 +542,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			setMarquee({ x1: point.x, x2: point.x, y1: point.y, y2: point.y });
 		},
 		beginNudge() {
-			if (nudgeState) {
+			if (scene.readOnly || nudgeState) {
 				return;
 			}
 			const ids = selection.filter((selectedId) => nodeIndex.has(selectedId));
@@ -544,6 +552,9 @@ export function createEditor(initialScene?: Scene): Editor {
 			nudgeState = { before: scene, ids };
 		},
 		beginResize(id, handle) {
+			if (scene.readOnly) {
+				return;
+			}
 			const node = nodeIndex.get(id);
 			if (!(node && RESIZE_HANDLES.includes(handle))) {
 				return;
@@ -577,6 +588,9 @@ export function createEditor(initialScene?: Scene): Editor {
 			clipboard = captureFragment(scene, selection) ?? clipboard;
 		},
 		cut() {
+			if (scene.readOnly) {
+				return;
+			}
 			const fragment = captureFragment(scene, selection);
 			if (!fragment) {
 				return;
@@ -585,10 +599,13 @@ export function createEditor(initialScene?: Scene): Editor {
 			deleteSelectedNodes();
 		},
 		deleteSelection() {
+			if (scene.readOnly) {
+				return;
+			}
 			deleteSelectedNodes();
 		},
 		drag(dx, dy) {
-			if (!dragState || (dx === 0 && dy === 0)) {
+			if (scene.readOnly || !dragState || (dx === 0 && dy === 0)) {
 				return;
 			}
 			const totalScreenDx = dragState.totalScreenDx + dx;
@@ -614,6 +631,9 @@ export function createEditor(initialScene?: Scene): Editor {
 			setCurrentScene(moveNodes(scene, dragState.ids, stepDx, stepDy));
 		},
 		duplicate() {
+			if (scene.readOnly) {
+				return;
+			}
 			const fragment = captureFragment(scene, selection);
 			if (!fragment) {
 				return;
@@ -669,6 +689,9 @@ export function createEditor(initialScene?: Scene): Editor {
 			return null;
 		},
 		hitTestHandle(point) {
+			if (scene.readOnly) {
+				return null;
+			}
 			const node = singleSelectedNode(nodeIndex, selection);
 			if (!node) {
 				return null;
@@ -687,7 +710,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			setMarquee({ ...marquee, x2: point.x, y2: point.y });
 		},
 		nudge(direction, byGridStep) {
-			if (!nudgeState) {
+			if (scene.readOnly || !nudgeState) {
 				return;
 			}
 			const step = byGridStep ? SNAP_STEP / viewport.zoom : NUDGE_UNIT;
@@ -700,10 +723,13 @@ export function createEditor(initialScene?: Scene): Editor {
 			setViewport(panViewportBy(viewport, dx, dy));
 		},
 		paste() {
-			if (!clipboard) {
+			if (scene.readOnly || !clipboard) {
 				return;
 			}
 			commitPaste(clipboard);
+		},
+		get readOnly() {
+			return Boolean(scene.readOnly);
 		},
 		redo() {
 			const next = redoStack.pop();
@@ -717,7 +743,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			setViewport(resetViewport(viewport));
 		},
 		resizeBy(direction, shrink = false) {
-			if (dragState) {
+			if (scene.readOnly || dragState) {
 				return false;
 			}
 			const handle = RESIZE_HANDLE_FOR_DIRECTION[direction];
@@ -746,7 +772,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			return true;
 		},
 		resizeTo(point) {
-			if (!resizeState) {
+			if (scene.readOnly || !resizeState) {
 				return;
 			}
 			const node = nodeIndex.get(resizeState.id);
@@ -755,6 +781,7 @@ export function createEditor(initialScene?: Scene): Editor {
 			}
 			applyResizeBox(node, resizeState.handle, point);
 		},
+
 		select(id) {
 			if (id === null) {
 				setSelection([]);

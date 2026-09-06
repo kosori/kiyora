@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 
-import { parse } from './index';
+import { type Diagram, type GraphDiagram, parse } from './index';
+
+function assertGraph(diagram: Diagram): asserts diagram is GraphDiagram {
+	expect(diagram.kind).toBe('graph');
+	if (diagram.kind !== 'graph') {
+		throw new Error(`Expected graph diagram, got ${diagram.kind}`);
+	}
+}
 
 describe('parse', () => {
 	test('handles empty and whitespace-only input as an empty graph Diagram', () => {
@@ -30,6 +37,7 @@ describe('parse', () => {
 
 	test('drops a malformed edge and continues parsing later statements', () => {
 		const result = parse('A ->\nB\nC -> D');
+		assertGraph(result.diagram);
 
 		expect(result.diagram.nodes.map((node) => node.id)).toEqual([
 			'b',
@@ -60,6 +68,7 @@ describe('parse', () => {
 
 	test('reports unclosed groups while retaining their partial content', () => {
 		const result = parse('group Services {\nCache\n');
+		assertGraph(result.diagram);
 
 		expect(result.diagram.groups.map((group) => group.id)).toEqual([
 			'services',
@@ -79,6 +88,7 @@ describe('parse', () => {
 
 	test('drops an unclosed attribute statement and continues parsing', () => {
 		const result = parse('Cache [red\nDatabase');
+		assertGraph(result.diagram);
 
 		expect(result.diagram.nodes.map((node) => node.id)).toEqual(['database']);
 		expect(result.diagnostics[0]).toMatchObject({
@@ -89,6 +99,7 @@ describe('parse', () => {
 
 	test('reports an unmatched closing block as an error and continues', () => {
 		const result = parse('}\nCache');
+		assertGraph(result.diagram);
 
 		expect(result.diagram.nodes.map((node) => node.id)).toEqual(['cache']);
 		expect(result.diagnostics[0]).toMatchObject({
@@ -99,6 +110,7 @@ describe('parse', () => {
 
 	test('does not turn an empty explicit id into a node', () => {
 		const result = parse('= Cache\nDatabase');
+		assertGraph(result.diagram);
 
 		expect(result.diagram.nodes.map((node) => node.id)).toEqual(['database']);
 		expect(result.diagnostics[0]).toMatchObject({
@@ -109,7 +121,7 @@ describe('parse', () => {
 
 	test('parses node statements with spans', () => {
 		const result = parse('Cache [cylinder, red]\n');
-		expect(result.diagram.kind).toBe('graph');
+		assertGraph(result.diagram);
 		expect(result.diagram.nodes).toHaveLength(1);
 		expect(result.diagram.nodes[0]?.id).toBe('cache');
 		expect(result.diagram.nodes[0]?.label).toBe('Cache');
@@ -124,6 +136,7 @@ describe('parse', () => {
 
 	test('adds the edge statement span to every produced edge', () => {
 		const result = parse('A, B -> C\n');
+		assertGraph(result.diagram);
 
 		expect(result.diagram.edges).toHaveLength(2);
 		expect(result.diagram.edges[0]?.span).toEqual({
@@ -138,6 +151,7 @@ describe('parse', () => {
 
 	test('uses a later explicit statement name as the redeclared node label', () => {
 		const result = parse('Cache [red]\ncache = Cache Server\n');
+		assertGraph(result.diagram);
 		const [node] = result.diagram.nodes;
 
 		expect(node?.label).toBe('Cache Server');
@@ -170,5 +184,40 @@ describe('parse', () => {
 				},
 			});
 		}
+	});
+
+	test('parses empty sequence diagram with optional title', () => {
+		const emptyResult = parse('sequence\n');
+		expect(emptyResult).toEqual({
+			diagnostics: [],
+			diagram: {
+				actors: [],
+				kind: 'sequence',
+				messages: [],
+				title: '',
+			},
+		});
+
+		const titledResult = parse('sequence\ntitle My Flow\n');
+		expect(titledResult).toEqual({
+			diagnostics: [],
+			diagram: {
+				actors: [],
+				kind: 'sequence',
+				messages: [],
+				title: 'My Flow',
+			},
+		});
+
+		const leadingTitleResult = parse('title My Flow\nsequence\n');
+		expect(leadingTitleResult).toEqual({
+			diagnostics: [],
+			diagram: {
+				actors: [],
+				kind: 'sequence',
+				messages: [],
+				title: 'My Flow',
+			},
+		});
 	});
 });

@@ -2,11 +2,11 @@
   "diagnostics": [
     {
       "code": "unsupported-family",
-      "message": "unsupported family \"sequence\"",
+      "message": "unsupported family \"erd\"",
       "severity": "error",
       "span": {
         "end": {
-          "column": 8,
+          "column": 3,
           "line": 1
         },
         "start": {

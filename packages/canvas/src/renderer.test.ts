@@ -227,6 +227,39 @@ describe('renderScene', () => {
 		);
 	});
 
+	test('omits resize handles when the scene is read-only', () => {
+		const scene: Scene = {
+			edges: [],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 40,
+					id: 'box',
+					label: 'Box',
+					span,
+					width: 80,
+					x: 100,
+					y: 100,
+				}),
+			],
+			readOnly: true,
+			title: '',
+		};
+		const editor = createEditor(scene);
+		editor.setViewport({ tx: 0, ty: 0, zoom: 1 });
+		editor.select('box');
+
+		const svg = renderScene(editor.getSnapshot(), {
+			height: 300,
+			showGrid: false,
+			width: 400,
+		});
+
+		for (const handle of RESIZE_HANDLES) {
+			expect(svg).not.toContain(`data-resize-handle="${handle}"`);
+		}
+	});
+
 	test('edges re-route to the resized bounds of an endpoint node', () => {
 		const source = sceneNode({
 			height: 40,

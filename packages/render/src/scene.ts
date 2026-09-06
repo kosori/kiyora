@@ -63,5 +63,6 @@ export type Scene = {
 	groups: SceneGroup[];
 	legend?: LegendEntry[];
 	nodes: SceneNode[];
+	readOnly?: boolean;
 	title: string;
 };

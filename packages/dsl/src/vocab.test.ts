@@ -201,7 +201,6 @@ describe('families', () => {
 		expect(UNSUPPORTED_GRAPH_FAMILIES).toEqual([
 			'class',
 			'erd',
-			'sequence',
 			'uml',
 			'wireframe',
 		]);

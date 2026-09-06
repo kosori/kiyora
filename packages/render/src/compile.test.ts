@@ -105,4 +105,21 @@ describe('compile', () => {
 		) as Scene;
 		expect(compile(parse(source).diagram)).toEqual(expected);
 	});
+
+	test('compiles SequenceDiagram to an empty Scene with title and readOnly: true', () => {
+		const seqDiagram: Diagram = {
+			actors: [],
+			kind: 'sequence',
+			messages: [],
+			title: 'My Flow',
+		};
+		const scene = compile(seqDiagram);
+		expect(scene).toEqual({
+			edges: [],
+			groups: [],
+			nodes: [],
+			readOnly: true,
+			title: 'My Flow',
+		});
+	});
 });

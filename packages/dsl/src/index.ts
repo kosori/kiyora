@@ -15,9 +15,13 @@
  */
 
 import { parseGraph } from './graph';
+import { stripComment } from './scan';
+import { parseSequence } from './sequence';
 import type { ParseResult } from './types';
 
+export { parseSequence } from './sequence';
 export type {
+	Actor,
 	Color,
 	Corner,
 	Diagnostic,
@@ -28,9 +32,11 @@ export type {
 	GraphDiagram,
 	Group,
 	LegendEntry,
+	Message,
 	Node,
 	ParseResult,
 	Position,
+	SequenceDiagram,
 	Span,
 } from './types';
 export type { Direction, Family, Frame, Head, Shape } from './vocab';
@@ -66,9 +72,23 @@ export {
  * reported as a diagnostic with a source span, and parsing continues past
  * malformed statements.
  *
- * v1 parses the graph family (architecture, flowchart, bpmn, orgchart,
- * statemachine).
+ * Supports the graph family (architecture, flowchart, bpmn, orgchart,
+ * statemachine) and sequence family.
  */
 export function parse(source: string): ParseResult {
+	const lines = source.split('\n');
+	for (const raw of lines) {
+		const line = stripComment(raw).trim();
+		if (!line) {
+			continue;
+		}
+		if (line.toLowerCase() === 'sequence') {
+			return parseSequence(source);
+		}
+		if (/^(title\b|colormode\b)/i.test(line)) {
+			continue;
+		}
+		break;
+	}
 	return parseGraph(source);
 }

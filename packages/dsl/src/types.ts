@@ -121,8 +121,32 @@ export type GraphDiagram = {
 	variant?: 'orgchart' | 'statemachine';
 };
 
-/** Every Diagram is discriminated by `kind`; v1 ships the graph family. */
-export type Diagram = GraphDiagram;
+/** A participant in a sequence diagram. */
+export type Actor = {
+	id: string;
+	label: string;
+	span: Span;
+};
+
+/** A communication between actors in a sequence diagram. */
+export type Message = {
+	dashed?: boolean;
+	from: string;
+	label?: string;
+	span: Span;
+	to: string;
+};
+
+/** A sequence-family diagram: actors, messages, and title. */
+export type SequenceDiagram = {
+	actors: Actor[];
+	kind: 'sequence';
+	messages: Message[];
+	title: string;
+};
+
+/** Every Diagram is discriminated by `kind`. */
+export type Diagram = GraphDiagram | SequenceDiagram;
 
 /** The result of parsing Kira source: a best-effort Diagram plus diagnostics. */
 export type ParseResult = {

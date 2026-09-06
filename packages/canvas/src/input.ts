@@ -99,6 +99,10 @@ export function attachInput(
 				editor.select(node.id);
 				notify();
 			}
+			if (editor.readOnly) {
+				drag.mode = 'press';
+				return;
+			}
 			drag.mode = 'node';
 			editor.beginDrag(node.id);
 			handlers.onDragStateChange?.(true);

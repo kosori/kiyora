@@ -961,4 +961,57 @@ describe('editor', () => {
 		expect(editor.getScene().nodes[0]?.id).toBe('replacement');
 		expect(editor.getViewport()).toEqual(viewport);
 	});
+
+	test('disables structural edits, dragging, and resizing for read-only sequence scenes', () => {
+		const readOnlyScene: Scene = {
+			edges: [],
+			groups: [],
+			nodes: [node('one', 10, 10)],
+			readOnly: true,
+			title: 'Sequence Flow',
+		};
+		const editor = createEditor(readOnlyScene);
+
+		expect(editor.readOnly).toBe(true);
+
+		// Selection works
+		editor.select('one');
+		expect(editor.getSelection()).toEqual(['one']);
+
+		// Dragging is disabled
+		editor.beginDrag('one');
+		editor.drag(50, 50);
+		editor.endDrag();
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 10, y: 10 });
+
+		// Handle hit test is disabled
+		expect(editor.hitTestHandle({ x: 10, y: 10 })).toBeNull();
+
+		// Resizing is disabled
+		editor.beginResize('one', 'se');
+		editor.resizeTo({ x: 100, y: 100 });
+		editor.endResize();
+		expect(editor.getScene().nodes[0]).toMatchObject({ height: 20, width: 20 });
+		expect(editor.resizeBy('right')).toBe(false);
+
+		// Nudge is disabled
+		editor.beginNudge();
+		editor.nudge('right', false);
+		editor.endNudge();
+		expect(editor.getScene().nodes[0]).toMatchObject({ x: 10, y: 10 });
+
+		// Structural edits (delete, cut, paste, duplicate) are disabled
+		editor.deleteSelection();
+		expect(editor.getScene().nodes).toHaveLength(1);
+
+		editor.copy();
+		editor.cut();
+		expect(editor.getScene().nodes).toHaveLength(1);
+
+		editor.paste();
+		expect(editor.getScene().nodes).toHaveLength(1);
+
+		editor.duplicate();
+		expect(editor.getScene().nodes).toHaveLength(1);
+	});
 });
