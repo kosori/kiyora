@@ -71,7 +71,8 @@
       "width": 72,
       "x": 168,
       "y": 24,
-      "shape": "ellipse"
+      "shape": "rectangle",
+      "corner": "rounded"
     },
     {
       "height": 44,

@@ -476,8 +476,9 @@ function buildDiagram(state: GraphState): {
 				node.color ??= 'gray';
 			} else if (isEnd) {
 				node.shape ??= 'double-circle';
-			} else {
-				node.shape ??= 'ellipse';
+			} else if (!node.shape) {
+				node.shape = 'rectangle';
+				node.corner ??= 'rounded';
 			}
 		} else if (isBlock) {
 			node.shape ??= 'rectangle';

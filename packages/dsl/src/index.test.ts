@@ -158,6 +158,26 @@ describe('parse', () => {
 		expect(node?.color).toBe('red');
 	});
 
+	test('statemachine diagram defaults nodes without explicit shape to rounded rectangles', () => {
+		const result = parse(
+			'statemachine\nStateA -> StateB\nExplicit [diamond]\n'
+		);
+		assertGraph(result.diagram);
+
+		const stateA = result.diagram.nodes.find((n) => n.id === 'statea');
+		const stateB = result.diagram.nodes.find((n) => n.id === 'stateb');
+		const explicit = result.diagram.nodes.find((n) => n.id === 'explicit');
+
+		expect(stateA?.shape).toBe('rectangle');
+		expect(stateA?.corner).toBe('rounded');
+
+		expect(stateB?.shape).toBe('rectangle');
+		expect(stateB?.corner).toBe('rounded');
+
+		expect(explicit?.shape).toBe('diamond');
+		expect(explicit?.corner).toBeUndefined();
+	});
+
 	test('refuses infographic and chart family headers', () => {
 		for (const family of ['infographic', 'chart']) {
 			const result = parse(`${family}\nLater Node`);

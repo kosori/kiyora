@@ -37,7 +37,8 @@
             "line": 3
           }
         },
-        "shape": "ellipse"
+        "shape": "rectangle",
+        "corner": "rounded"
       },
       {
         "id": "active",
