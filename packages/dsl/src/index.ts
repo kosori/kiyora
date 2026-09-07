@@ -14,20 +14,25 @@
  * entry point is the package's public surface.
  */
 
+import { parseClass } from './class';
 import { parseGraph } from './graph';
 import { stripComment } from './scan';
 import { parseSequence } from './sequence';
 import type { ParseResult } from './types';
 
+export { parseClass } from './class';
 export { parseSequence } from './sequence';
 export type {
 	Actor,
+	ClassDiagram,
 	Color,
 	Corner,
 	Diagnostic,
 	DiagnosticCode,
 	Diagram,
 	Edge,
+	Entity,
+	EntityField,
 	Fill,
 	GraphDiagram,
 	Group,
@@ -36,6 +41,7 @@ export type {
 	Node,
 	ParseResult,
 	Position,
+	Relation,
 	SequenceDiagram,
 	Span,
 } from './types';
@@ -43,9 +49,12 @@ export type { Direction, Family, Frame, Head, Shape } from './vocab';
 /** Canonical shape names, aliases, palette colors, style tokens, and resolution helpers. */
 export {
 	ARROWS,
+	CARDINALITY,
+	CLASS_ARROWS,
 	COLOR_ALIASES,
 	COLORS,
 	CORNERS,
+	CROWS,
 	DIRECTIONS,
 	FAMILIES,
 	FILLS,
@@ -61,6 +70,7 @@ export {
 	SHAPES,
 	STANDALONE_FAMILIES,
 	slugify,
+	UML_RELATIONS,
 	UNSUPPORTED_GRAPH_FAMILIES,
 	uniqueId,
 } from './vocab';
@@ -82,8 +92,12 @@ export function parse(source: string): ParseResult {
 		if (!line) {
 			continue;
 		}
-		if (line.toLowerCase() === 'sequence') {
+		const lower = line.toLowerCase();
+		if (lower === 'sequence') {
 			return parseSequence(source);
+		}
+		if (lower === 'class' || lower === 'erd' || lower === 'uml') {
+			return parseClass(source);
 		}
 		if (/^(title\b|colormode\b)/i.test(line)) {
 			continue;

@@ -106,7 +106,18 @@ describe('fills, corners, frames, heads', () => {
 	});
 
 	test('heads with aliases', () => {
-		expect(HEADS).toEqual(['arrow', 'circle', 'cross']);
+		expect(HEADS).toEqual([
+			'arrow',
+			'circle',
+			'cross',
+			'crow-one',
+			'crow-many',
+			'crow-one-or-many',
+			'crow-zero-or-one',
+			'uml-generalization',
+			'uml-composition',
+			'uml-aggregation',
+		]);
 		expect(resolveHead('x')).toBe('cross');
 		expect(resolveHead('o')).toBe('circle');
 		expect(resolveHead('dot')).toBe('circle');
@@ -204,6 +215,9 @@ describe('families', () => {
 		expect(FAMILIES.statemachine).toBe('statemachine');
 		expect(FAMILIES.state).toBe('statemachine');
 		expect(FAMILIES.fsm).toBe('statemachine');
+		expect(FAMILIES.class).toBe('class');
+		expect(FAMILIES.erd).toBe('class');
+		expect(FAMILIES.uml).toBe('class');
 	});
 
 	test('unsupported family keywords are listed for refusal', () => {
@@ -215,12 +229,7 @@ describe('families', () => {
 			'infographic',
 			'chart',
 		]);
-		expect(UNSUPPORTED_GRAPH_FAMILIES).toEqual([
-			'class',
-			'erd',
-			'uml',
-			'wireframe',
-		]);
+		expect(UNSUPPORTED_GRAPH_FAMILIES).toEqual(['wireframe']);
 	});
 
 	test('a whole-line family header must match exactly', () => {

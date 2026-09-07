@@ -52,6 +52,7 @@ export const SHAPES = [
 	'package',
 	'component',
 	'brace',
+	'entity',
 ] as const;
 
 export type Shape = (typeof SHAPES)[number];
@@ -135,7 +136,18 @@ export const FRAMES = ['browser', 'phone', 'window', 'tablet'] as const;
 export type Frame = (typeof FRAMES)[number];
 
 /** Arrow head styles. */
-export const HEADS = ['arrow', 'circle', 'cross'] as const;
+export const HEADS = [
+	'arrow',
+	'circle',
+	'cross',
+	'crow-one',
+	'crow-many',
+	'crow-one-or-many',
+	'crow-zero-or-one',
+	'uml-generalization',
+	'uml-composition',
+	'uml-aggregation',
+] as const;
 export type Head = (typeof HEADS)[number];
 
 const HEAD_ALIASES: Record<string, Head> = {
@@ -168,6 +180,61 @@ export const ARROWS = [
 	'<',
 ] as const;
 
+export const CROWS: Record<
+	string,
+	{ from?: string; to?: string; identifying?: boolean }
+> = {
+	'..': { identifying: false },
+	'}|--|{': { from: 'one-or-many', to: 'one-or-many' },
+	'}|--||': { from: 'one-or-many', to: 'one' },
+	'}|--o{': { from: 'one-or-many', to: 'many' },
+	'}|--o|': { from: 'one-or-many', to: 'zero-or-one' },
+	'}o--|{': { from: 'many', to: 'one-or-many' },
+	'}o--||': { from: 'many', to: 'one' },
+	'}o--o{': { from: 'many', to: 'many' },
+	'}o--o|': { from: 'many', to: 'zero-or-one' },
+	'||--|{': { from: 'one', to: 'one-or-many' },
+	'||--||': { from: 'one', to: 'one' },
+	'||--o{': { from: 'one', to: 'many' },
+	'||--o|': { from: 'one', to: 'zero-or-one' },
+	'|o--|{': { from: 'zero-or-one', to: 'one-or-many' },
+	'|o--||': { from: 'zero-or-one', to: 'one' },
+	'|o--o{': { from: 'zero-or-one', to: 'many' },
+	'|o--o|': { from: 'zero-or-one', to: 'zero-or-one' },
+};
+
+export const UML_RELATIONS: Record<string, { kind: string; swap?: boolean }> = {
+	'--': { kind: 'association' },
+	'--*': { kind: 'composition', swap: true },
+	'-->': { kind: 'association', swap: true },
+	'--|>': { kind: 'generalization', swap: true },
+	'--o': { kind: 'aggregation', swap: true },
+	'..>': { kind: 'dependency', swap: true },
+	'..|>': { kind: 'realization', swap: true },
+	'*--': { kind: 'composition' },
+	'<--': { kind: 'association' },
+	'<-->': { kind: 'association' },
+	'<..': { kind: 'dependency' },
+	'<|--': { kind: 'generalization' },
+	'<|..': { kind: 'realization' },
+	'o--': { kind: 'aggregation' },
+};
+
+export const CARDINALITY: Record<string, { value: string; swap?: boolean }> = {
+	'*': { value: '*' },
+	'0..1': { value: '0..1' },
+	'1': { value: '1' },
+	'1..*': { value: '1..*' },
+	m: { value: 'm' },
+	n: { value: 'n' },
+};
+
+export const CLASS_ARROWS = [
+	...Object.keys(CROWS),
+	...Object.keys(UML_RELATIONS),
+	...ARROWS,
+];
+
 /** Arrow token classifiers: dotted/dashed style, reverse, bidirectional. */
 export const isDotted = (t: string): boolean =>
 	t.includes('.') || t.includes('--');
@@ -188,6 +255,8 @@ export type Direction = (typeof DIRECTIONS)[number];
 export const FAMILIES: Record<string, string> = {
 	architecture: 'architecture',
 	bpmn: 'bpmn',
+	class: 'class',
+	erd: 'class',
 	flow: 'flowchart',
 	flowchart: 'flowchart',
 	fsm: 'statemachine',
@@ -196,6 +265,7 @@ export const FAMILIES: Record<string, string> = {
 	orgchart: 'orgchart',
 	state: 'statemachine',
 	statemachine: 'statemachine',
+	uml: 'class',
 };
 
 /** Non-graph family headers recognized so they can be refused with an
@@ -210,12 +280,7 @@ export const STANDALONE_FAMILIES = [
 ] as const;
 
 /** Unsupported graph-family keywords → refused with `unsupported-family`. */
-export const UNSUPPORTED_GRAPH_FAMILIES = [
-	'class',
-	'erd',
-	'uml',
-	'wireframe',
-] as const;
+export const UNSUPPORTED_GRAPH_FAMILIES = ['wireframe'] as const;
 
 /** The five v1 graph-family variants. */
 export type Family =

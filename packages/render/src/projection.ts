@@ -46,7 +46,7 @@ export type SceneProjectionOptions = {
 	wobble?: boolean;
 };
 
-const MARKERS = `<marker id="kiyora-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-arrow-reverse" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker>`;
+const MARKERS = `<marker id="kiyora-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-arrow-reverse" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-crow-one" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 6 2 L 6 12 M 10 2 L 10 12 M 0 7 L 14 7" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-crow-many" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 4 2 L 10 7 L 4 12 M 10 7 L 14 7 M 0 7 L 4 7" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-crow-one-or-many" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 4 2 L 10 7 L 4 12 M 10 7 L 14 7 M 0 7 L 4 7 M 8 2 L 8 12" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-crow-zero-or-one" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><circle cx="4" cy="7" r="2.5" fill="none" stroke="context-stroke" stroke-width="1.5"/><path d="M 6.5 7 L 14 7 M 10 2 L 10 12" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-uml-generalization" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 0 2 L 12 7 L 0 12 z" fill="#ffffff" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-uml-composition" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 0 7 L 6 2 L 12 7 L 6 12 z" fill="context-stroke" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-uml-aggregation" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 0 7 L 6 2 L 12 7 L 6 12 z" fill="#ffffff" stroke="context-stroke" stroke-width="1.5"/></marker>`;
 const EFFECTS = `<filter id="kiyora-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.12"/></filter>`;
 
 const GROUP_PADDING = 30;
@@ -454,21 +454,120 @@ function nodeMarkup(
 	let labels = '';
 	if (showLabels) {
 		const textColor = node.labelColor ? edgeColor(node.labelColor) : style.text;
-		const metrics = measureLabel(node.label, {
-			fontSize,
-			maxWidth: Math.max(1, box.width - TEXT_PADDING * 2),
-			verticalPadding: TEXT_PADDING * 2,
-		});
-		const firstY =
-			box.y +
-			box.height / 2 -
-			((metrics.lines.length - 1) * metrics.lineHeight) / 2;
-		labels = metrics.lines
-			.map(
-				(line, index) =>
-					`<text x="${box.x + box.width / 2}" y="${firstY + index * metrics.lineHeight}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize}" fill="${textColor}">${escapeText(line)}</text>`
-			)
-			.join('');
+
+		if (node.shape === 'entity') {
+			const headerMetrics = measureLabel(node.label, {
+				fontSize,
+				maxWidth: Math.max(1, box.width - TEXT_PADDING * 2),
+				verticalPadding: TEXT_PADDING, // actually we used + TEXT_PADDING in totalHeight
+			});
+			const headerHeight = headerMetrics.height + TEXT_PADDING;
+			const radius =
+				node.corner === 'sharp' ? 0 : cornerRadius(box.width, box.height);
+
+			// Draw header fill if color is defined. We must clip the top corners.
+			if (node.color || node.fill) {
+				const fillPath =
+					radius === 0
+						? `M ${box.x} ${box.y} L ${box.x + box.width} ${box.y} L ${box.x + box.width} ${box.y + headerHeight} L ${box.x} ${box.y + headerHeight} Z`
+						: `M ${box.x} ${box.y + radius} A ${radius} ${radius} 0 0 1 ${box.x + radius} ${box.y} L ${box.x + box.width - radius} ${box.y} A ${radius} ${radius} 0 0 1 ${box.x + box.width} ${box.y + radius} L ${box.x + box.width} ${box.y + headerHeight} L ${box.x} ${box.y + headerHeight} Z`;
+				labels += `<path d="${fillPath}" fill="${style.fill}" stroke="none" />`;
+			}
+
+			// Header text
+			const titleY = box.y + TEXT_PADDING / 2 + headerMetrics.lineHeight / 2;
+			labels += headerMetrics.lines
+				.map(
+					(line, index) =>
+						`<text x="${box.x + box.width / 2}" y="${titleY + index * headerMetrics.lineHeight}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize}" font-weight="bold" fill="${textColor}">${escapeText(line)}</text>`
+				)
+				.join('');
+
+			let currentY = box.y + headerHeight;
+
+			const drawDivider = (yOffset: number) => {
+				labels += `<path d="M ${box.x} ${yOffset} L ${box.x + box.width} ${yOffset}" fill="none" stroke="${style.stroke}" stroke-width="${NODE_STROKE}" stroke-linecap="round"/>`;
+				if (wobble) {
+					const seed = deriveWobbleSeed(`${identity}:div`, [
+						box.x,
+						yOffset,
+						box.width,
+					]);
+					const pts = sampleLine(
+						[box.x, yOffset],
+						[box.x + box.width, yOffset]
+					);
+					labels += wobbleOverlayGroup(seed, [
+						{
+							closed: false,
+							points: pts,
+							stroke: style.stroke,
+							strokeWidth: NODE_STROKE,
+						},
+					]);
+				}
+			};
+
+			const drawList = (
+				items: {
+					name: string;
+					type?: string;
+					visibility?: string;
+					key?: string;
+				}[],
+				startY: number
+			) => {
+				let y = startY + 4; // padding
+				for (const item of items) {
+					const text = `${item.visibility ? `${item.visibility} ` : ''}${item.name}${item.type ? `: ${item.type}` : ''}`;
+					const textMetrics = measureLabel(text, {
+						fontSize: fontSize - 2,
+						maxWidth: 320,
+					});
+					// Align left
+					labels += textMetrics.lines
+						.map(
+							(line, index) =>
+								`<text x="${box.x + TEXT_PADDING}" y="${y + index * textMetrics.lineHeight + textMetrics.lineHeight / 2}" text-anchor="start" dominant-baseline="middle" font-size="${fontSize - 2}" fill="${textColor}">${escapeText(line)}</text>`
+						)
+						.join('');
+					// Draw key tag (PK/FK) right-aligned if it exists
+					if (item.key) {
+						labels += `<text x="${box.x + box.width - TEXT_PADDING}" y="${y + textMetrics.lineHeight / 2}" text-anchor="end" dominant-baseline="middle" font-size="${fontSize - 4}" font-weight="bold" fill="${textColor}">${escapeText(item.key.toUpperCase())}</text>`;
+					}
+					y += textMetrics.height;
+				}
+				return y + 4; // padding
+			};
+
+			if (node.fields && node.fields.length > 0) {
+				drawDivider(currentY);
+				currentY = drawList(node.fields, currentY);
+			} else if (node.methods && node.methods.length > 0) {
+				drawDivider(currentY); // still draw a divider if there are methods but no fields
+			}
+
+			if (node.methods && node.methods.length > 0) {
+				drawDivider(currentY);
+				currentY = drawList(node.methods, currentY);
+			}
+		} else {
+			const metrics = measureLabel(node.label, {
+				fontSize,
+				maxWidth: Math.max(1, box.width - TEXT_PADDING * 2),
+				verticalPadding: TEXT_PADDING * 2,
+			});
+			const firstY =
+				box.y +
+				box.height / 2 -
+				((metrics.lines.length - 1) * metrics.lineHeight) / 2;
+			labels = metrics.lines
+				.map(
+					(line, index) =>
+						`<text x="${box.x + box.width / 2}" y="${firstY + index * metrics.lineHeight}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize}" fill="${textColor}">${escapeText(line)}</text>`
+				)
+				.join('');
+		}
 	}
 	const filter = node.shadow ? ' filter="url(#kiyora-shadow)"' : '';
 	const rotation =

@@ -104,6 +104,48 @@ function activeGroupIds(
 	return active;
 }
 
+function compileEntity(
+	entity: import('@kiyora/dsl').Entity,
+	box: Box
+): SceneNode {
+	return {
+		height: box.height,
+		id: entity.id,
+		label: entity.label,
+		rotation: 0,
+		shape: 'entity',
+		span: entity.span,
+		width: box.width,
+		x: box.x,
+		y: box.y,
+		...(entity.color === undefined ? {} : { color: entity.color }),
+		...(entity.group === undefined ? {} : { group: entity.group }),
+		...(entity.fields === undefined ? {} : { fields: entity.fields }),
+		...(entity.methods === undefined ? {} : { methods: entity.methods }),
+	};
+}
+
+function compileRelation(relation: import('@kiyora/dsl').Relation): SceneEdge {
+	return {
+		from: relation.from,
+		span: relation.span,
+		to: relation.to,
+		...(relation.label === undefined ? {} : { label: relation.label }),
+		...(relation.dashed === undefined ? {} : { dashed: relation.dashed }),
+		...(relation.fromCard === undefined
+			? {}
+			: { head: `crow-${relation.fromCard}` as Head }),
+		// Note: render currently only supports a single head (at the 'to' end in edge layout).
+		// If we need both ends, we'd need to extend scene edge to have fromHead and toHead.
+		...(relation.toCard === undefined
+			? {}
+			: { head: `crow-${relation.toCard}` as Head }),
+		...(relation.kind === undefined
+			? {}
+			: { head: `uml-${relation.kind}` as Head }),
+	};
+}
+
 /** Compile a graph or sequence Diagram into a deterministic, serializable Scene. */
 export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 	if (diagram.kind === 'sequence') {
@@ -117,28 +159,61 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 		};
 	}
 
+	const isClass = diagram.kind === 'class';
+	const diagramNodes = isClass
+		? diagram.entities.map((e) => ({
+				group: e.group,
+				id: e.id,
+				label: e.label,
+				shape: 'entity' as const,
+				span: e.span,
+			}))
+		: diagram.nodes;
+	const diagramEdges = isClass
+		? diagram.relations.map((r) => ({ from: r.from, span: r.span, to: r.to }))
+		: diagram.edges;
+
 	const layout = layoutGraph(
-		diagram.nodes,
-		diagram.edges,
+		diagramNodes,
+		diagramEdges,
 		diagram.direction ?? 'right',
 		options
 	);
 
 	const nodes: SceneNode[] = [];
-	for (const node of diagram.nodes) {
-		const box = layout.boxes.get(node.id);
-		if (box) {
-			nodes.push(compileNode(node, box));
+	if (isClass) {
+		for (const entity of diagram.entities) {
+			const box = layout.boxes.get(entity.id);
+			if (box) {
+				nodes.push(compileEntity(entity, box));
+			}
+		}
+	} else {
+		for (const node of diagram.nodes) {
+			const box = layout.boxes.get(node.id);
+			if (box) {
+				nodes.push(compileNode(node, box));
+			}
 		}
 	}
+
 	const nodeIds = new Set(nodes.map((node) => node.id));
 	const edges: SceneEdge[] = [];
-	for (const edge of diagram.edges) {
-		if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
-			edges.push(compileEdge(edge));
+	if (isClass) {
+		for (const relation of diagram.relations) {
+			if (nodeIds.has(relation.from) && nodeIds.has(relation.to)) {
+				edges.push(compileRelation(relation));
+			}
+		}
+	} else {
+		for (const edge of diagram.edges) {
+			if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
+				edges.push(compileEdge(edge));
+			}
 		}
 	}
-	const activeGroups = activeGroupIds(diagram.groups, diagram.nodes);
+
+	const activeGroups = activeGroupIds(diagram.groups, diagramNodes as Node[]);
 	return {
 		edges,
 		groups: diagram.groups
@@ -149,7 +224,9 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 		...(diagram.direction === undefined
 			? {}
 			: { direction: diagram.direction }),
-		...(diagram.legend === undefined ? {} : { legend: diagram.legend }),
+		...(diagram.kind === 'graph' && diagram.legend !== undefined
+			? { legend: diagram.legend }
+			: {}),
 		...(diagram.kind === 'graph' && diagram.variant !== undefined
 			? { variant: diagram.variant }
 			: {}),

@@ -36,24 +36,90 @@ const DEFAULTS: Required<LayoutOptions> = {
 	padding: 24,
 };
 
-/** Measure a node using the same wrapping heuristic used by projections. */
 export function measureNode(
-	node: Node,
+	node: Node & {
+		fields?: {
+			name: string;
+			type?: string;
+			visibility?: string;
+			key?: string;
+		}[];
+		methods?: { name: string; type?: string; visibility?: string }[];
+	},
 	options: LayoutOptions = {}
 ): { height: number; width: number } {
 	const opts = { ...DEFAULTS, ...options };
-	const naturalWidth = measureLabel(node.label, {
+
+	let naturalWidth = measureLabel(node.label, {
 		fontSize: opts.fontSize,
 		maxWidth: 320 - TEXT_PADDING * 2,
 	}).width;
+
+	let totalHeight = 0;
+
+	if (node.shape === 'entity') {
+		// Entity header
+		const headerMetrics = measureLabel(node.label, {
+			fontSize: opts.fontSize,
+			maxWidth: 320 - TEXT_PADDING * 2,
+		});
+		naturalWidth = Math.max(naturalWidth, headerMetrics.width);
+		totalHeight += headerMetrics.height + TEXT_PADDING;
+
+		// Fields
+		if (node.fields) {
+			for (const f of node.fields) {
+				const text = `${f.visibility ? `${f.visibility} ` : ''}${f.name}${f.type ? `: ${f.type}` : ''}`;
+				const m = measureLabel(text, {
+					fontSize: opts.fontSize - 2,
+					maxWidth: 320,
+				});
+				let fieldWidth = m.width;
+				if (f.key) {
+					fieldWidth +=
+						measureLabel(f.key.toUpperCase(), {
+							fontSize: opts.fontSize - 4,
+							maxWidth: 320,
+						}).width + 16;
+				}
+				naturalWidth = Math.max(naturalWidth, fieldWidth);
+				totalHeight += m.height;
+			}
+			if (node.fields.length > 0) {
+				totalHeight += 8; // padding
+			}
+		}
+
+		// Methods
+		if (node.methods) {
+			for (const m of node.methods) {
+				const text = `${m.visibility ? `${m.visibility} ` : ''}${m.name}${m.type ? `: ${m.type}` : ''}`;
+				const mMetrics = measureLabel(text, {
+					fontSize: opts.fontSize - 2,
+					maxWidth: 320,
+				});
+				naturalWidth = Math.max(naturalWidth, mMetrics.width);
+				totalHeight += mMetrics.height;
+			}
+			if (node.methods.length > 0) {
+				totalHeight += 8; // padding
+			}
+		}
+	} else {
+		totalHeight = measureLabel(node.label, {
+			fontSize: opts.fontSize,
+			maxWidth: Math.max(
+				1,
+				Math.max(opts.minWidth - TEXT_PADDING * 2, naturalWidth)
+			),
+		}).height;
+	}
+
 	const contentWidth = Math.max(opts.minWidth - TEXT_PADDING * 2, naturalWidth);
-	const metrics = measureLabel(node.label, {
-		fontSize: opts.fontSize,
-		maxWidth: Math.max(1, contentWidth),
-	});
+
 	return {
-		height: Math.max(opts.minHeight, metrics.height),
-		width: Math.max(opts.minWidth, metrics.width + TEXT_PADDING * 2),
+		height: Math.max(opts.minHeight, totalHeight),
+		width: Math.max(opts.minWidth, contentWidth + TEXT_PADDING * 2),
 	};
 }
 

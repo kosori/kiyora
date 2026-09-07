@@ -40,3 +40,11 @@ yarn-error.log*
 # misc
 .DS_Store
 *.pem
+
+# others
+.agents/
+skills-lock.json
+reference/
+docs/
+.issues/
+.commandcode/

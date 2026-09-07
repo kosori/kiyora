@@ -814,6 +814,21 @@ export function shapeComponents(
 				},
 			];
 		}
+		case 'entity': {
+			// A simple rectangle with a solid header background
+			// We only provide the clean rect and contour for the outer box here.
+			// Internal lines and text are handled by nodeMarkup in projection.ts.
+			return [
+				{
+					clean: path(
+						roundedRectPath(x, y, width, height, radius),
+						{ ...style, fill: '#ffffff' },
+						strokeWidth
+					),
+					contours: [roundedRectContour(box, radius, stroke, strokeWidth)],
+				},
+			];
+		}
 		case 'crossbox': {
 			const frame = insetFrame(box);
 			const diagonals: WobblePoint[][] = [

@@ -145,8 +145,51 @@ export type SequenceDiagram = {
 	title: string;
 };
 
+/** A field or method inside an ERD/class entity. */
+export type EntityField = {
+	key?: 'pk' | 'fk';
+	name: string;
+	type?: string;
+	visibility?: 'public' | 'private' | 'protected' | 'package';
+};
+
+/** An entity or class in a class-family diagram. */
+export type Entity = {
+	color?: Color;
+	fields?: EntityField[];
+	group?: string;
+	id: string;
+	label: string;
+	methods?: EntityField[];
+	span: Span;
+};
+
+/** A relationship between two entities. */
+export type Relation = {
+	cardinality?: string;
+	dashed?: boolean;
+	from: string;
+	fromCard?: string;
+	identifying?: boolean;
+	kind?: string;
+	label?: string;
+	span: Span;
+	to: string;
+	toCard?: string;
+};
+
+/** A class-family diagram (ERD or UML class). */
+export type ClassDiagram = {
+	direction?: 'right' | 'down' | 'left' | 'up';
+	entities: Entity[];
+	groups: Group[];
+	kind: 'class';
+	relations: Relation[];
+	title: string;
+};
+
 /** Every Diagram is discriminated by `kind`. */
-export type Diagram = GraphDiagram | SequenceDiagram;
+export type Diagram = ClassDiagram | GraphDiagram | SequenceDiagram;
 
 /** The result of parsing Kira source: a best-effort Diagram plus diagnostics. */
 export type ParseResult = {

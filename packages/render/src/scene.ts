@@ -2,6 +2,7 @@ import type {
 	Color,
 	Corner,
 	Direction,
+	EntityField,
 	Fill,
 	Frame,
 	Head,
@@ -22,6 +23,8 @@ export type SceneNode = {
 	labelColor?: Color;
 	link?: string;
 	rotation: number;
+	fields?: EntityField[];
+	methods?: EntityField[];
 	shadow?: boolean;
 	shape?: string;
 	span: Span;
