@@ -1,10 +1,12 @@
 import {
 	type Diagram,
 	type Edge,
+	type Entity,
 	type Frame,
 	type Group,
 	type Head,
 	type Node,
+	type Relation,
 	resolveFrame,
 	resolveHead,
 } from '@kiyora/dsl';
@@ -104,10 +106,7 @@ function activeGroupIds(
 	return active;
 }
 
-function compileEntity(
-	entity: import('@kiyora/dsl').Entity,
-	box: Box
-): SceneNode {
+function compileEntity(entity: Entity, box: Box): SceneNode {
 	return {
 		height: box.height,
 		id: entity.id,
@@ -125,22 +124,28 @@ function compileEntity(
 	};
 }
 
-function compileRelation(relation: import('@kiyora/dsl').Relation): SceneEdge {
+function resolveCrowHead(card: string | undefined): Head | undefined {
+	const head = `crow-${card}`;
+	return isHead(head) ? head : undefined;
+}
+
+function resolveUmlHead(kind: string | undefined): Head | undefined {
+	const head = `uml-${kind}`;
+	return isHead(head) ? head : undefined;
+}
+
+function compileRelation(relation: Relation): SceneEdge {
+	const fromHead = resolveCrowHead(relation.fromCard);
+	const head =
+		resolveUmlHead(relation.kind) ?? resolveCrowHead(relation.toCard);
 	return {
 		from: relation.from,
 		span: relation.span,
 		to: relation.to,
 		...(relation.label === undefined ? {} : { label: relation.label }),
 		...(relation.dashed === undefined ? {} : { dashed: relation.dashed }),
-		...(relation.fromCard === undefined
-			? {}
-			: { fromHead: `crow-${relation.fromCard}` as Head }),
-		...(relation.toCard === undefined
-			? {}
-			: { head: `crow-${relation.toCard}` as Head }),
-		...(relation.kind === undefined
-			? {}
-			: { head: `uml-${relation.kind}` as Head }),
+		...(fromHead === undefined ? {} : { fromHead }),
+		...(head === undefined ? {} : { head }),
 	};
 }
 
@@ -158,11 +163,11 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 	}
 
 	if (diagram.kind === 'class') {
-		const diagramNodes = diagram.entities.map((entity) => ({
+		const diagramNodes: Node[] = diagram.entities.map((entity) => ({
 			group: entity.group,
 			id: entity.id,
 			label: entity.label,
-			shape: 'entity' as const,
+			shape: 'entity',
 			span: entity.span,
 		}));
 		const diagramEdges = diagram.relations.map((relation) => ({
@@ -194,7 +199,7 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 			}
 		}
 
-		const activeGroups = activeGroupIds(diagram.groups, diagramNodes as Node[]);
+		const activeGroups = activeGroupIds(diagram.groups, diagramNodes);
 		return {
 			edges,
 			groups: diagram.groups

@@ -292,7 +292,6 @@ type StraightEdgeOptions = {
 	label?: string;
 	labelY: number;
 	markerEnd?: string;
-	markerStart?: string;
 	to: WobblePoint;
 	wobble: boolean;
 };
@@ -307,7 +306,6 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 		label: labelText,
 		labelY,
 		markerEnd = '',
-		markerStart = '',
 		to,
 		wobble,
 	} = options;
@@ -323,7 +321,7 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 	const dashAttr = dash.strokeDasharray
 		? ` stroke-dasharray="${dash.strokeDasharray}"`
 		: '';
-	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${labelMarkup}</g>`;
+	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
 }
 
 /** Edge markup: the clean cubic path with clean markers, an optional open

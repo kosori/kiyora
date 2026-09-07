@@ -145,16 +145,16 @@ export function parseClass(source: string): ParseResult {
 			const vis = /^([+\-#~])\s*(.+)$/.exec(trimmed);
 			const visibilitySymbol = vis ? vis[1] : undefined;
 			const restOfLine = vis ? vis[2] || '' : trimmed;
-			const visibility: EntityField['visibility'] = visibilitySymbol
-				? (
-						{
-							'-': 'private',
-							'#': 'protected',
-							'+': 'public',
-							'~': 'package',
-						} as const
-					)[visibilitySymbol as '+' | '-' | '#' | '~']
-				: undefined;
+			const visibility: EntityField['visibility'] =
+				visibilitySymbol === '+'
+					? 'public'
+					: visibilitySymbol === '-'
+						? 'private'
+						: visibilitySymbol === '#'
+							? 'protected'
+							: visibilitySymbol === '~'
+								? 'package'
+								: undefined;
 
 			const parts = splitOn(restOfLine, ' ')
 				.map((token) => token.trim())

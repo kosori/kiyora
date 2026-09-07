@@ -1061,7 +1061,6 @@ User {
 		const { svg } = renderToSvg(compiled);
 		const userNode =
 			svg.match(/<g data-node="user">([\s\S]*?)<\/g>/)?.[0] ?? '';
-		// Match horizontal divider paths: <path d="M ... L ..." fill="none" stroke=...
 		const dividerMatches =
 			userNode.match(/<path d="M [^"]+ L [^"]+" fill="none"/g) ?? [];
 		expect(dividerMatches.length).toBe(1);
