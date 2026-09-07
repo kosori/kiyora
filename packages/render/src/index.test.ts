@@ -952,6 +952,29 @@ Bob --> Alice: Bye
 	});
 
 	describe('statemachine projection', () => {
+		test('compiles statemachine diagram preserving variant and compound state group hierarchy', () => {
+			const source = `statemachine
+title Order Lifecycle
+[*] -> Pending
+group Active {
+	Pending -> Processing
+}
+Processing -> [*]
+`;
+			const compiled = compile(parse(source).diagram);
+			expect(compiled.variant).toBe('statemachine');
+			expect(compiled.title).toBe('Order Lifecycle');
+			expect(compiled.groups).toHaveLength(1);
+			expect(compiled.groups[0]?.id).toBe('active');
+			expect(compiled.groups[0]?.label).toBe('Active');
+			expect(compiled.nodes.find((n) => n.id === 'pending')?.group).toBe(
+				'active'
+			);
+			expect(compiled.nodes.find((n) => n.id === 'processing')?.group).toBe(
+				'active'
+			);
+		});
+
 		test('renders compound states, start and end states, and transitions to valid SVG', () => {
 			const source = `statemachine
 title Order Lifecycle
@@ -964,8 +987,11 @@ Completed -> [*]
 `;
 			const compiled = compile(parse(source).diagram);
 			const result = renderToSvg(compiled);
-			expect(result.svg).toContain('data-group="active"');
-			expect(result.svg).not.toContain('stroke-dasharray');
+			const activeGroup = result.svg.match(
+				/<g data-group="active">([\s\S]*?)<\/g>/
+			)?.[0];
+			expect(activeGroup).toBeDefined();
+			expect(activeGroup).not.toContain('stroke-dasharray');
 			expect(result.svg).toMatchSnapshot();
 		});
 
