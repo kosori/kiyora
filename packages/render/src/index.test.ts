@@ -892,6 +892,34 @@ describe('render scaffold', () => {
 			expect(twinD).toBeDefined();
 			expect(twinD).not.toBe(base);
 		});
+
+		test('statemachine compound state groups render with solid rounded rectangle and top-left header', () => {
+			const scene: Scene = {
+				...groupScene(),
+				variant: 'statemachine',
+			};
+			const { svg: clean } = renderToSvg(scene);
+			const group = clean.match(/<g data-group="g">([\s\S]*?)<\/g>/)?.[0];
+			expect(group).toBeDefined();
+			expect(group).not.toContain('stroke-dasharray');
+			expect(group).toContain('<rect');
+			expect(group).toContain(
+				'<text x="4" y="18" text-anchor="start" font-size="13"'
+			);
+			expect(group).toContain('>Group label</text>');
+		});
+
+		test('statemachine compound state groups use solid wobble overlay when wobble is enabled', () => {
+			const scene: Scene = {
+				...groupScene(),
+				variant: 'statemachine',
+			};
+			const { svg } = renderToSvg(scene, { wobble: true });
+			const group = svg.match(/<g data-group="g">([\s\S]*?)<\/g>/)?.[0];
+			expect(group).toBeDefined();
+			expect(group).toContain('data-wobble="true"');
+			expect(group).not.toContain('stroke-dasharray');
+		});
 	});
 
 	describe('sequence projection', () => {
@@ -910,6 +938,45 @@ Bob --> Alice: Token
 			const source = `sequence
 Alice -> Bob: Hello
 Bob --> Alice: Bye
+`;
+			const compiled = compile(parse(source).diagram);
+			const clean = renderToSvg(compiled);
+			expect(clean.svg).not.toContain('data-wobble');
+
+			const wobbled = renderToSvg(compiled, { wobble: true });
+			expect(wobbled.svg).toMatchSnapshot();
+
+			const secondWobbled = renderToSvg(compiled, { wobble: true });
+			expect(secondWobbled.svg).toBe(wobbled.svg);
+		});
+	});
+
+	describe('statemachine projection', () => {
+		test('renders compound states, start and end states, and transitions to valid SVG', () => {
+			const source = `statemachine
+title Order Lifecycle
+[*] -> Pending
+group Active {
+	Pending -> Processing
+	Processing -> Completed
+}
+Completed -> [*]
+`;
+			const compiled = compile(parse(source).diagram);
+			const result = renderToSvg(compiled);
+			expect(result.svg).toContain('data-group="active"');
+			expect(result.svg).not.toContain('stroke-dasharray');
+			expect(result.svg).toMatchSnapshot();
+		});
+
+		test('applies wobble overlays to statemachine compound state frame and states when enabled', () => {
+			const source = `statemachine
+title Order Lifecycle
+[*] -> Pending
+group Active {
+	Pending -> Processing
+}
+Processing -> [*]
 `;
 			const compiled = compile(parse(source).diagram);
 			const clean = renderToSvg(compiled);

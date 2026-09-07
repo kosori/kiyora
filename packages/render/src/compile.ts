@@ -150,5 +150,8 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 			? {}
 			: { direction: diagram.direction }),
 		...(diagram.legend === undefined ? {} : { legend: diagram.legend }),
+		...(diagram.kind === 'graph' && diagram.variant !== undefined
+			? { variant: diagram.variant }
+			: {}),
 	};
 }

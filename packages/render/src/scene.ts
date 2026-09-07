@@ -72,4 +72,5 @@ export type Scene = {
 	nodes: SceneNode[];
 	readOnly?: boolean;
 	title: string;
+	variant?: 'orgchart' | 'statemachine';
 };

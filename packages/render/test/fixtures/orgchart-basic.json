@@ -59,5 +59,6 @@
     }
   ],
   "title": "",
-  "direction": "down"
+  "direction": "down",
+  "variant": "orgchart"
 }

@@ -216,17 +216,19 @@ export function contentBounds(
 	return toRect(bounds ?? { maxX: 0, maxY: 0, minX: 0, minY: 0 });
 }
 
-/** Group frame markup: a dashed clean rect, an optional dashed wobble ring
- * that preserves the closed frame topology, and a clean label. */
-function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
+/** Group frame markup: a clean rect (dashed for standard graphs, solid for
+ * statemachine compound states), an optional wobble overlay that preserves
+ * the closed frame topology, and a clean label. */
+function groupMarkup(
+	group: SceneGroup,
+	box: Box,
+	wobble: boolean,
+	isStatemachine = false
+): string {
 	const color = edgeColor(group.color ?? 'gray');
 	const radius = cornerRadius(box.width, box.height);
 	let overlay = '';
 	if (wobble) {
-		// The frame ring is a closed contour whose clean treatment is dashed. A
-		// solid overlay band would paint the gaps shut and erase the dash
-		// semantics, so the overlay keeps the closed ring topology but tiles the
-		// dash cycle around it as one open freehand run per dash.
 		const seed = deriveWobbleSeed(`group:${group.id}`, [
 			box.x,
 			box.y,
@@ -234,19 +236,20 @@ function groupMarkup(group: SceneGroup, box: Box, wobble: boolean): string {
 			box.height,
 		]);
 		const points: WobblePoint[] = sampleRoundedRect(box, radius);
-		overlay = wobbleOverlayDashedMarkup(
-			seed,
-			{
-				closed: true,
-				points,
-				stroke: color,
-				strokeWidth: GROUP_STROKE,
-			},
-			GROUP_DASH,
-			GROUP_DASH_GAP
-		);
+		const contour = {
+			closed: true,
+			points,
+			stroke: color,
+			strokeWidth: GROUP_STROKE,
+		};
+		overlay = isStatemachine
+			? wobbleOverlayGroup(seed, [contour])
+			: wobbleOverlayDashedMarkup(seed, contour, GROUP_DASH, GROUP_DASH_GAP);
 	}
-	return `<g data-group="${escapeText(group.id)}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"/>${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
+	const rectMarkup = isStatemachine
+		? `<rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}"/>`
+		: `<rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"/>`;
+	return `<g data-group="${escapeText(group.id)}">${rectMarkup}${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
 }
 
 function straightEdgeWobbleOverlay(
@@ -482,11 +485,12 @@ export function renderSceneElements(
 	const nodeFontSize = options.nodeFontSize ?? NODE_FONT_SIZE;
 	const showNodeLabels = options.showNodeLabels ?? true;
 	const wobble = options.wobble ?? false;
+	const isStatemachine = scene.variant === 'statemachine';
 	const parts: string[] = [];
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
 		if (box) {
-			parts.push(groupMarkup(group, box, wobble));
+			parts.push(groupMarkup(group, box, wobble, isStatemachine));
 		}
 	}
 	const nodes = new Map(scene.nodes.map((node) => [node.id, node]));

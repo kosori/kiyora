@@ -66,6 +66,20 @@ describe('compile', () => {
 		}
 	});
 
+	test('preserves statemachine and orgchart graph variants on the compiled scene', () => {
+		const statemachineScene = compile({
+			...diagram,
+			variant: 'statemachine',
+		});
+		expect(statemachineScene.variant).toBe('statemachine');
+
+		const orgchartScene = compile({
+			...diagram,
+			variant: 'orgchart',
+		});
+		expect(orgchartScene.variant).toBe('orgchart');
+	});
+
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',

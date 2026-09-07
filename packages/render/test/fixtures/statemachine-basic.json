@@ -96,5 +96,6 @@
     }
   ],
   "title": "",
-  "direction": "right"
+  "direction": "right",
+  "variant": "statemachine"
 }
