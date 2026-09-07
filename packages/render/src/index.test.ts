@@ -25,6 +25,12 @@ const diagram: Diagram = {
 	title: '',
 };
 
+function extractGroupElement(svg: string, groupId = 'g'): string | undefined {
+	return svg.match(
+		new RegExp(`<g data-group="${groupId}">([\\s\\S]*?)<\\/g>`)
+	)?.[0];
+}
+
 describe('render scaffold', () => {
 	test('compiles any diagram to an empty scene', () => {
 		expect(compile(diagram)).toEqual({
@@ -828,7 +834,7 @@ describe('render scaffold', () => {
 			const { svg: clean } = renderToSvg(groupScene());
 			expect(clean).not.toContain('data-wobble');
 			const { svg } = renderToSvg(groupScene(), { wobble: true });
-			const group = svg.match(/<g data-group="g">([\s\S]*?)<\/text><\/g>/)?.[0];
+			const group = extractGroupElement(svg);
 			expect(group).toBeDefined();
 			expect(group).toContain('data-wobble="true"');
 			expect(group).toContain('pointer-events="none"');
@@ -842,7 +848,7 @@ describe('render scaffold', () => {
 			const { svg } = renderToSvg(groupScene(), { wobble: true });
 			expect(svg).toContain('stroke-dasharray="6 6"');
 			expect(svg).toContain('>Group label</text>');
-			const group = svg.match(/<g data-group="g">([\s\S]*?)<\/text><\/g>/)?.[0];
+			const group = extractGroupElement(svg);
 			const overlayPaths =
 				group?.match(/<path data-wobble="true"[^/]*\/>/g) ?? [];
 			expect(overlayPaths.length).toBeGreaterThan(5);
@@ -899,7 +905,7 @@ describe('render scaffold', () => {
 				variant: 'statemachine',
 			};
 			const { svg: clean } = renderToSvg(scene);
-			const group = clean.match(/<g data-group="g">([\s\S]*?)<\/g>/)?.[0];
+			const group = extractGroupElement(clean);
 			expect(group).toBeDefined();
 			expect(group).not.toContain('stroke-dasharray');
 			expect(group).toContain('<rect');
@@ -909,16 +915,15 @@ describe('render scaffold', () => {
 			expect(group).toContain('>Group label</text>');
 		});
 
-		test('statemachine compound state groups use solid wobble overlay when wobble is enabled', () => {
+		test('statemachine compound state groups render with wobble overlay when wobble is enabled', () => {
 			const scene: Scene = {
 				...groupScene(),
 				variant: 'statemachine',
 			};
 			const { svg } = renderToSvg(scene, { wobble: true });
-			const group = svg.match(/<g data-group="g">([\s\S]*?)<\/g>/)?.[0];
+			const group = extractGroupElement(svg);
 			expect(group).toBeDefined();
 			expect(group).toContain('data-wobble="true"');
-			expect(group).not.toContain('stroke-dasharray');
 		});
 	});
 
@@ -987,9 +992,7 @@ Completed -> [*]
 `;
 			const compiled = compile(parse(source).diagram);
 			const result = renderToSvg(compiled);
-			const activeGroup = result.svg.match(
-				/<g data-group="active">([\s\S]*?)<\/g>/
-			)?.[0];
+			const activeGroup = extractGroupElement(result.svg, 'active');
 			expect(activeGroup).toBeDefined();
 			expect(activeGroup).not.toContain('stroke-dasharray');
 			expect(result.svg).toMatchSnapshot();

@@ -64,7 +64,23 @@ import {
 	uniqueId,
 } from './vocab';
 
-/** Graph-family state accumulated while scanning lines. */
+const STATEMACHINE_START_KEYWORDS = ['start', 'begin', 'initial'] as const;
+const STATEMACHINE_END_KEYWORDS = ['end', 'final', 'stop', 'done'] as const;
+
+/**
+ * Split trailing attribute block off a node statement or endpoint, protecting
+ * the statemachine `[*]` start/end state syntax from being treated as a bare
+ * attribute block.
+ */
+function splitNodeAttrs(
+	family: Family | null,
+	source: string
+): { attrs: string | null; rest: string } {
+	if (family === 'statemachine' && source.trim() === '[*]') {
+		return { attrs: null, rest: source };
+	}
+	return splitTrailingAttrs(source);
+}
 type GraphState = {
 	defaultFill?: 'pastel' | 'bold' | 'outline';
 	diagnostics: Diagnostic[];
@@ -189,7 +205,7 @@ export function parseGraph(source: string): ParseResult {
 		// ordinary node statements that carry the group), and members
 		// may carry their own trailing attributes.
 		const inGroup = groupStack.at(-1);
-		const { attrs, rest } = splitTrailingAttrs(line);
+		const { attrs, rest } = splitNodeAttrs(state.family, line);
 		const a = parseAttrs(
 			attrs ?? '',
 			lineNo,
@@ -476,13 +492,11 @@ function buildDiagram(state: GraphState): {
 
 		const isEnd =
 			(isAsterisk && isTarget && !isSource) ||
-			['end', 'final', 'stop', 'done'].includes(id) ||
-			['end', 'final', 'stop', 'done'].includes(label);
+			STATEMACHINE_END_KEYWORDS.some((kw) => kw === id || kw === label);
 
 		const isStart =
 			(isAsterisk && !isEnd) ||
-			['start', 'begin', 'initial'].includes(id) ||
-			['start', 'begin', 'initial'].includes(label);
+			STATEMACHINE_START_KEYWORDS.some((kw) => kw === id || kw === label);
 
 		if (isStart) {
 			node.shape ??= 'circle';
@@ -586,7 +600,10 @@ function parseInlineGroup(
 		if (!text) {
 			continue;
 		}
-		const { attrs: memberAttrs, rest: memberRest } = splitTrailingAttrs(text);
+		const { attrs: memberAttrs, rest: memberRest } = splitNodeAttrs(
+			state.family,
+			text
+		);
 		const ma = parseAttrs(
 			memberAttrs ?? '',
 			lineNo,
@@ -766,7 +783,7 @@ function endpointNodes(
 		// Use the raw item so `rest` keeps any leading whitespace,
 		// matching the node-statement convention of `rest.length + 2`
 		// for the first character after `[`.
-		const { attrs, rest } = splitTrailingAttrs(item);
+		const { attrs, rest } = splitNodeAttrs(state.family, item);
 		if (attrs === null) {
 			const { id, name } = parseName(text);
 			if (!name) {
@@ -846,16 +863,12 @@ function getOrCreateNode(
 			attrs.label?.toLowerCase() ?? '',
 		].filter(Boolean)
 	);
-	const isAnonymousAsterisk =
-		state.family === 'statemachine' && !id && name === '[*]';
 	let existing: string | undefined;
-	if (!isAnonymousAsterisk) {
-		for (const k of keys) {
-			const hit = state.nodeByKey.get(k);
-			if (hit !== undefined) {
-				existing = hit;
-				break;
-			}
+	for (const k of keys) {
+		const hit = state.nodeByKey.get(k);
+		if (hit !== undefined) {
+			existing = hit;
+			break;
 		}
 	}
 	if (existing) {
@@ -924,10 +937,8 @@ function getOrCreateNode(
 		node.link = attrs.link;
 	}
 	state.nodes.push(node);
-	if (!isAnonymousAsterisk) {
-		for (const k of keys) {
-			state.nodeByKey.set(k, nid);
-		}
+	for (const k of keys) {
+		state.nodeByKey.set(k, nid);
 	}
 	return nid;
 }

@@ -223,11 +223,10 @@ function groupMarkup(
 	group: SceneGroup,
 	box: Box,
 	wobble: boolean,
-	variant?: Scene['variant']
+	isSolid = false
 ): string {
 	const color = edgeColor(group.color ?? 'gray');
 	const radius = cornerRadius(box.width, box.height);
-	const isSolid = variant === 'statemachine';
 	let overlay = '';
 	if (wobble) {
 		const seed = deriveWobbleSeed(`group:${group.id}`, [
@@ -237,15 +236,17 @@ function groupMarkup(
 			box.height,
 		]);
 		const points: WobblePoint[] = sampleRoundedRect(box, radius);
-		const contour = {
-			closed: true,
-			points,
-			stroke: color,
-			strokeWidth: GROUP_STROKE,
-		};
-		overlay = isSolid
-			? wobbleOverlayGroup(seed, [contour])
-			: wobbleOverlayDashedMarkup(seed, contour, GROUP_DASH, GROUP_DASH_GAP);
+		overlay = wobbleOverlayDashedMarkup(
+			seed,
+			{
+				closed: true,
+				points,
+				stroke: color,
+				strokeWidth: GROUP_STROKE,
+			},
+			GROUP_DASH,
+			GROUP_DASH_GAP
+		);
 	}
 	const dashAttrs = isSolid
 		? ''
@@ -486,11 +487,12 @@ export function renderSceneElements(
 	const nodeFontSize = options.nodeFontSize ?? NODE_FONT_SIZE;
 	const showNodeLabels = options.showNodeLabels ?? true;
 	const wobble = options.wobble ?? false;
+	const isSolid = scene.variant === 'statemachine';
 	const parts: string[] = [];
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
 		if (box) {
-			parts.push(groupMarkup(group, box, wobble, scene.variant));
+			parts.push(groupMarkup(group, box, wobble, isSolid));
 		}
 	}
 	const nodes = new Map(scene.nodes.map((node) => [node.id, node]));

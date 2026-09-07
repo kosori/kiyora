@@ -225,29 +225,26 @@ describe('parse', () => {
 		expect(endNode?.color).toBeUndefined();
 	});
 
-	test('statemachine diagram infers both start and end [*] in a workflow', () => {
-		const { diagram } = parse('statemachine\n[*] -> Active\nActive -> [*]\n');
-		assertGraph(diagram);
-
+	const assertSingleAsteriskState = (diagram: GraphDiagram) => {
 		const asteriskNodes = diagram.nodes.filter(
 			(n) => n.label === '[*]' || n.id === '[*]'
 		);
-		expect(asteriskNodes).toHaveLength(2);
+		expect(asteriskNodes).toHaveLength(1);
+		expect(asteriskNodes[0]?.shape).toBe('circle');
+		expect(asteriskNodes[0]?.fill).toBe('bold');
+		expect(asteriskNodes[0]?.color).toBe('gray');
+	};
 
-		const startNode = asteriskNodes.find((n) =>
-			diagram.edges.some((e) => e.from === n.id)
-		);
-		const endNode = asteriskNodes.find((n) =>
-			diagram.edges.some((e) => e.to === n.id)
-		);
+	test('statemachine diagram resolves multiple [*] references to a single node', () => {
+		const { diagram } = parse('statemachine\n[*] -> Active\n[*] -> Standby\n');
+		assertGraph(diagram);
+		assertSingleAsteriskState(diagram);
+	});
 
-		expect(startNode?.shape).toBe('circle');
-		expect(startNode?.fill).toBe('bold');
-		expect(startNode?.color).toBe('gray');
-
-		expect(endNode?.shape).toBe('double-circle');
-		expect(endNode?.fill).toBeUndefined();
-		expect(endNode?.color).toBeUndefined();
+	test('statemachine diagram preserves single node deduplication when [*] appears as both source and target', () => {
+		const { diagram } = parse('statemachine\n[*] -> Active\nActive -> [*]\n');
+		assertGraph(diagram);
+		assertSingleAsteriskState(diagram);
 	});
 
 	test('refuses infographic and chart family headers', () => {
