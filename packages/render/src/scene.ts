@@ -45,6 +45,7 @@ export type SceneEdge = {
 	dashed?: boolean;
 	flow?: boolean;
 	from: string;
+	fromHead?: Head;
 	head?: Head;
 	invisible?: boolean;
 	label?: string;

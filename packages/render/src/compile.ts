@@ -134,9 +134,7 @@ function compileRelation(relation: import('@kiyora/dsl').Relation): SceneEdge {
 		...(relation.dashed === undefined ? {} : { dashed: relation.dashed }),
 		...(relation.fromCard === undefined
 			? {}
-			: { head: `crow-${relation.fromCard}` as Head }),
-		// Note: render currently only supports a single head (at the 'to' end in edge layout).
-		// If we need both ends, we'd need to extend scene edge to have fromHead and toHead.
+			: { fromHead: `crow-${relation.fromCard}` as Head }),
 		...(relation.toCard === undefined
 			? {}
 			: { head: `crow-${relation.toCard}` as Head }),
@@ -159,61 +157,81 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 		};
 	}
 
-	const isClass = diagram.kind === 'class';
-	const diagramNodes = isClass
-		? diagram.entities.map((e) => ({
-				group: e.group,
-				id: e.id,
-				label: e.label,
-				shape: 'entity' as const,
-				span: e.span,
-			}))
-		: diagram.nodes;
-	const diagramEdges = isClass
-		? diagram.relations.map((r) => ({ from: r.from, span: r.span, to: r.to }))
-		: diagram.edges;
+	if (diagram.kind === 'class') {
+		const diagramNodes = diagram.entities.map((entity) => ({
+			group: entity.group,
+			id: entity.id,
+			label: entity.label,
+			shape: 'entity' as const,
+			span: entity.span,
+		}));
+		const diagramEdges = diagram.relations.map((relation) => ({
+			from: relation.from,
+			span: relation.span,
+			to: relation.to,
+		}));
 
-	const layout = layoutGraph(
-		diagramNodes,
-		diagramEdges,
-		diagram.direction ?? 'right',
-		options
-	);
+		const layout = layoutGraph(
+			diagramNodes,
+			diagramEdges,
+			diagram.direction ?? 'right',
+			options
+		);
 
-	const nodes: SceneNode[] = [];
-	if (isClass) {
+		const nodes: SceneNode[] = [];
 		for (const entity of diagram.entities) {
 			const box = layout.boxes.get(entity.id);
 			if (box) {
 				nodes.push(compileEntity(entity, box));
 			}
 		}
-	} else {
-		for (const node of diagram.nodes) {
-			const box = layout.boxes.get(node.id);
-			if (box) {
-				nodes.push(compileNode(node, box));
-			}
-		}
-	}
 
-	const nodeIds = new Set(nodes.map((node) => node.id));
-	const edges: SceneEdge[] = [];
-	if (isClass) {
+		const nodeIds = new Set(nodes.map((node) => node.id));
+		const edges: SceneEdge[] = [];
 		for (const relation of diagram.relations) {
 			if (nodeIds.has(relation.from) && nodeIds.has(relation.to)) {
 				edges.push(compileRelation(relation));
 			}
 		}
-	} else {
-		for (const edge of diagram.edges) {
-			if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
-				edges.push(compileEdge(edge));
-			}
+
+		const activeGroups = activeGroupIds(diagram.groups, diagramNodes as Node[]);
+		return {
+			edges,
+			groups: diagram.groups
+				.filter((group) => activeGroups.has(group.id))
+				.map(compileGroup),
+			nodes,
+			title: diagram.title,
+			...(diagram.direction === undefined
+				? {}
+				: { direction: diagram.direction }),
+		};
+	}
+
+	const layout = layoutGraph(
+		diagram.nodes,
+		diagram.edges,
+		diagram.direction ?? 'right',
+		options
+	);
+
+	const nodes: SceneNode[] = [];
+	for (const node of diagram.nodes) {
+		const box = layout.boxes.get(node.id);
+		if (box) {
+			nodes.push(compileNode(node, box));
 		}
 	}
 
-	const activeGroups = activeGroupIds(diagram.groups, diagramNodes as Node[]);
+	const nodeIds = new Set(nodes.map((node) => node.id));
+	const edges: SceneEdge[] = [];
+	for (const edge of diagram.edges) {
+		if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
+			edges.push(compileEdge(edge));
+		}
+	}
+
+	const activeGroups = activeGroupIds(diagram.groups, diagram.nodes);
 	return {
 		edges,
 		groups: diagram.groups
@@ -224,11 +242,7 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 		...(diagram.direction === undefined
 			? {}
 			: { direction: diagram.direction }),
-		...(diagram.kind === 'graph' && diagram.legend !== undefined
-			? { legend: diagram.legend }
-			: {}),
-		...(diagram.kind === 'graph' && diagram.variant !== undefined
-			? { variant: diagram.variant }
-			: {}),
+		...(diagram.legend === undefined ? {} : { legend: diagram.legend }),
+		...(diagram.variant === undefined ? {} : { variant: diagram.variant }),
 	};
 }

@@ -1033,4 +1033,37 @@ Processing -> [*]
 		expect(result).toMatchObject({ height: 300, width: 400 });
 		expect(result.svg).toContain('font-family="Test Font"');
 	});
+
+	test('renders crow foot relation markers on both ends of an edge', () => {
+		const source = `class
+User {
+  + id int pk
+}
+Order {
+  + id int pk
+}
+User ||--o{ Order
+`;
+		const compiled = compile(parse(source).diagram);
+		const { svg } = renderToSvg(compiled);
+		expect(svg).toContain('marker-start="url(#kiyora-crow-one)"');
+		expect(svg).toContain('marker-end="url(#kiyora-crow-many)"');
+	});
+
+	test('renders only a single divider when entity has methods but no fields', () => {
+		const source = `class
+User {
+  ---
+  + getName() string
+}
+`;
+		const compiled = compile(parse(source).diagram);
+		const { svg } = renderToSvg(compiled);
+		const userNode =
+			svg.match(/<g data-node="user">([\s\S]*?)<\/g>/)?.[0] ?? '';
+		// Match horizontal divider paths: <path d="M ... L ..." fill="none" stroke=...
+		const dividerMatches =
+			userNode.match(/<path d="M [^"]+ L [^"]+" fill="none"/g) ?? [];
+		expect(dividerMatches.length).toBe(1);
+	});
 });

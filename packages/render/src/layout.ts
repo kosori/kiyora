@@ -1,5 +1,5 @@
-import type { Direction, Edge, Node } from '@kiyora/dsl';
-import { measureLabel } from './label';
+import type { Direction, Edge, EntityField, Node } from '@kiyora/dsl';
+import { formatEntityField, measureLabel } from './label';
 import { TEXT_PADDING } from './style';
 
 /** A node box produced by the layered layout. */
@@ -36,15 +36,16 @@ const DEFAULTS: Required<LayoutOptions> = {
 	padding: 24,
 };
 
+const ENTITY_MAX_WIDTH = 320;
+const MEMBER_FONT_SIZE_OFFSET = 2;
+const KEY_FONT_SIZE_OFFSET = 4;
+const KEY_SPACING = 16;
+const SECTION_PADDING = 8;
+
 export function measureNode(
 	node: Node & {
-		fields?: {
-			name: string;
-			type?: string;
-			visibility?: string;
-			key?: string;
-		}[];
-		methods?: { name: string; type?: string; visibility?: string }[];
+		fields?: EntityField[];
+		methods?: EntityField[];
 	},
 	options: LayoutOptions = {}
 ): { height: number; width: number } {
@@ -52,57 +53,54 @@ export function measureNode(
 
 	let naturalWidth = measureLabel(node.label, {
 		fontSize: opts.fontSize,
-		maxWidth: 320 - TEXT_PADDING * 2,
+		maxWidth: ENTITY_MAX_WIDTH - TEXT_PADDING * 2,
 	}).width;
 
 	let totalHeight = 0;
 
 	if (node.shape === 'entity') {
-		// Entity header
 		const headerMetrics = measureLabel(node.label, {
 			fontSize: opts.fontSize,
-			maxWidth: 320 - TEXT_PADDING * 2,
+			maxWidth: ENTITY_MAX_WIDTH - TEXT_PADDING * 2,
 		});
 		naturalWidth = Math.max(naturalWidth, headerMetrics.width);
 		totalHeight += headerMetrics.height + TEXT_PADDING;
 
-		// Fields
 		if (node.fields) {
-			for (const f of node.fields) {
-				const text = `${f.visibility ? `${f.visibility} ` : ''}${f.name}${f.type ? `: ${f.type}` : ''}`;
-				const m = measureLabel(text, {
-					fontSize: opts.fontSize - 2,
-					maxWidth: 320,
+			for (const field of node.fields) {
+				const text = formatEntityField(field);
+				const memberMetrics = measureLabel(text, {
+					fontSize: opts.fontSize - MEMBER_FONT_SIZE_OFFSET,
+					maxWidth: ENTITY_MAX_WIDTH,
 				});
-				let fieldWidth = m.width;
-				if (f.key) {
+				let fieldWidth = memberMetrics.width;
+				if (field.key) {
 					fieldWidth +=
-						measureLabel(f.key.toUpperCase(), {
-							fontSize: opts.fontSize - 4,
-							maxWidth: 320,
-						}).width + 16;
+						measureLabel(field.key.toUpperCase(), {
+							fontSize: opts.fontSize - KEY_FONT_SIZE_OFFSET,
+							maxWidth: ENTITY_MAX_WIDTH,
+						}).width + KEY_SPACING;
 				}
 				naturalWidth = Math.max(naturalWidth, fieldWidth);
-				totalHeight += m.height;
+				totalHeight += memberMetrics.height;
 			}
 			if (node.fields.length > 0) {
-				totalHeight += 8; // padding
+				totalHeight += SECTION_PADDING;
 			}
 		}
 
-		// Methods
 		if (node.methods) {
-			for (const m of node.methods) {
-				const text = `${m.visibility ? `${m.visibility} ` : ''}${m.name}${m.type ? `: ${m.type}` : ''}`;
-				const mMetrics = measureLabel(text, {
-					fontSize: opts.fontSize - 2,
-					maxWidth: 320,
+			for (const method of node.methods) {
+				const text = formatEntityField(method);
+				const methodMetrics = measureLabel(text, {
+					fontSize: opts.fontSize - MEMBER_FONT_SIZE_OFFSET,
+					maxWidth: ENTITY_MAX_WIDTH,
 				});
-				naturalWidth = Math.max(naturalWidth, mMetrics.width);
-				totalHeight += mMetrics.height;
+				naturalWidth = Math.max(naturalWidth, methodMetrics.width);
+				totalHeight += methodMetrics.height;
 			}
 			if (node.methods.length > 0) {
-				totalHeight += 8; // padding
+				totalHeight += SECTION_PADDING;
 			}
 		}
 	} else {

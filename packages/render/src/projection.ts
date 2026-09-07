@@ -1,6 +1,6 @@
-import { COLORS, type Color } from '@kiyora/dsl';
+import { COLORS, type Color, type EntityField } from '@kiyora/dsl';
 import { type Box, edgeCubic, edgeCubicPathD } from './geometry';
-import { measureLabel, measureLabelWidth } from './label';
+import { formatEntityField, measureLabel, measureLabelWidth } from './label';
 import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 import { shapeComponents } from './shapes';
 import {
@@ -26,6 +26,10 @@ import {
 } from './wobble';
 
 const SEQUENCE_MESSAGE_LABEL_OFFSET_Y = 8;
+const ENTITY_MAX_WIDTH = 320;
+const MEMBER_VERTICAL_PADDING = 4;
+const MEMBER_FONT_SIZE_OFFSET = 2;
+const KEY_FONT_SIZE_OFFSET = 4;
 
 type SceneBounds = {
 	maxX: number;
@@ -288,6 +292,7 @@ type StraightEdgeOptions = {
 	label?: string;
 	labelY: number;
 	markerEnd?: string;
+	markerStart?: string;
 	to: WobblePoint;
 	wobble: boolean;
 };
@@ -302,6 +307,7 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 		label: labelText,
 		labelY,
 		markerEnd = '',
+		markerStart = '',
 		to,
 		wobble,
 	} = options;
@@ -317,7 +323,7 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 	const dashAttr = dash.strokeDasharray
 		? ` stroke-dasharray="${dash.strokeDasharray}"`
 		: '';
-	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
+	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${labelMarkup}</g>`;
 }
 
 /** Edge markup: the clean cubic path with clean markers, an optional open
@@ -377,9 +383,11 @@ function edgeMarkup(
 
 	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
 	const d = edgeCubicPathD({ c1, c2, end, start });
-	const markerStart = edge.bidirectional
-		? ` marker-start="url(#kiyora-${head}-reverse)"`
-		: '';
+	const markerStart = edge.fromHead
+		? ` marker-start="url(#kiyora-${edge.fromHead})"`
+		: edge.bidirectional
+			? ` marker-start="url(#kiyora-${head}-reverse)"`
+			: '';
 	const markerEnd = ` marker-end="url(#kiyora-${head})"`;
 	const label =
 		edge.label === undefined
@@ -459,13 +467,12 @@ function nodeMarkup(
 			const headerMetrics = measureLabel(node.label, {
 				fontSize,
 				maxWidth: Math.max(1, box.width - TEXT_PADDING * 2),
-				verticalPadding: TEXT_PADDING, // actually we used + TEXT_PADDING in totalHeight
+				verticalPadding: TEXT_PADDING,
 			});
 			const headerHeight = headerMetrics.height + TEXT_PADDING;
 			const radius =
 				node.corner === 'sharp' ? 0 : cornerRadius(box.width, box.height);
 
-			// Draw header fill if color is defined. We must clip the top corners.
 			if (node.color || node.fill) {
 				const fillPath =
 					radius === 0
@@ -474,7 +481,6 @@ function nodeMarkup(
 				labels += `<path d="${fillPath}" fill="${style.fill}" stroke="none" />`;
 			}
 
-			// Header text
 			const titleY = box.y + TEXT_PADDING / 2 + headerMetrics.lineHeight / 2;
 			labels += headerMetrics.lines
 				.map(
@@ -493,14 +499,14 @@ function nodeMarkup(
 						yOffset,
 						box.width,
 					]);
-					const pts = sampleLine(
+					const points = sampleLine(
 						[box.x, yOffset],
 						[box.x + box.width, yOffset]
 					);
 					labels += wobbleOverlayGroup(seed, [
 						{
 							closed: false,
-							points: pts,
+							points,
 							stroke: style.stroke,
 							strokeWidth: NODE_STROKE,
 						},
@@ -508,43 +514,31 @@ function nodeMarkup(
 				}
 			};
 
-			const drawList = (
-				items: {
-					name: string;
-					type?: string;
-					visibility?: string;
-					key?: string;
-				}[],
-				startY: number
-			) => {
-				let y = startY + 4; // padding
+			const drawList = (items: EntityField[], startY: number) => {
+				let y = startY + MEMBER_VERTICAL_PADDING;
 				for (const item of items) {
-					const text = `${item.visibility ? `${item.visibility} ` : ''}${item.name}${item.type ? `: ${item.type}` : ''}`;
+					const text = formatEntityField(item);
 					const textMetrics = measureLabel(text, {
-						fontSize: fontSize - 2,
-						maxWidth: 320,
+						fontSize: fontSize - MEMBER_FONT_SIZE_OFFSET,
+						maxWidth: ENTITY_MAX_WIDTH,
 					});
-					// Align left
 					labels += textMetrics.lines
 						.map(
 							(line, index) =>
-								`<text x="${box.x + TEXT_PADDING}" y="${y + index * textMetrics.lineHeight + textMetrics.lineHeight / 2}" text-anchor="start" dominant-baseline="middle" font-size="${fontSize - 2}" fill="${textColor}">${escapeText(line)}</text>`
+								`<text x="${box.x + TEXT_PADDING}" y="${y + index * textMetrics.lineHeight + textMetrics.lineHeight / 2}" text-anchor="start" dominant-baseline="middle" font-size="${fontSize - MEMBER_FONT_SIZE_OFFSET}" fill="${textColor}">${escapeText(line)}</text>`
 						)
 						.join('');
-					// Draw key tag (PK/FK) right-aligned if it exists
 					if (item.key) {
-						labels += `<text x="${box.x + box.width - TEXT_PADDING}" y="${y + textMetrics.lineHeight / 2}" text-anchor="end" dominant-baseline="middle" font-size="${fontSize - 4}" font-weight="bold" fill="${textColor}">${escapeText(item.key.toUpperCase())}</text>`;
+						labels += `<text x="${box.x + box.width - TEXT_PADDING}" y="${y + textMetrics.lineHeight / 2}" text-anchor="end" dominant-baseline="middle" font-size="${fontSize - KEY_FONT_SIZE_OFFSET}" font-weight="bold" fill="${textColor}">${escapeText(item.key.toUpperCase())}</text>`;
 					}
 					y += textMetrics.height;
 				}
-				return y + 4; // padding
+				return y + MEMBER_VERTICAL_PADDING;
 			};
 
 			if (node.fields && node.fields.length > 0) {
 				drawDivider(currentY);
 				currentY = drawList(node.fields, currentY);
-			} else if (node.methods && node.methods.length > 0) {
-				drawDivider(currentY); // still draw a divider if there are methods but no fields
 			}
 
 			if (node.methods && node.methods.length > 0) {

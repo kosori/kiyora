@@ -53,18 +53,18 @@ type ClassState = {
 };
 
 function getOrCreateGroup(
-	s: ClassState,
+	state: ClassState,
 	label: string,
 	attrs: { label?: string; color?: string; frame?: string },
 	parent?: string,
 	span?: Span
 ): string {
 	const key = label.toLowerCase();
-	const existing = s.groupByKey.get(key);
+	const existing = state.groupByKey.get(key);
 	if (existing) {
 		return existing;
 	}
-	const id = uniqueId(slugify(label), s.usedIds);
+	const id = uniqueId(slugify(label), state.usedIds);
 	const group: Group = {
 		id,
 		label: attrs.label || label,
@@ -82,19 +82,21 @@ function getOrCreateGroup(
 	if (parent && parent !== id) {
 		group.parent = parent;
 	}
-	s.groups.push(group);
-	s.groupByKey.set(key, id);
+	state.groups.push(group);
+	state.groupByKey.set(key, id);
 	return id;
 }
 
-function lookupEntity(s: ClassState, name: string): string | null {
-	const direct = s.entityByKey.get(name.toLowerCase());
+function lookupEntity(state: ClassState, name: string): string | null {
+	const direct = state.entityByKey.get(name.toLowerCase());
 	if (direct) {
 		return direct;
 	}
 	const dot = name.lastIndexOf('.');
 	if (dot > 0) {
-		return s.entityByKey.get(name.slice(0, dot).trim().toLowerCase()) ?? null;
+		return (
+			state.entityByKey.get(name.slice(0, dot).trim().toLowerCase()) ?? null
+		);
 	}
 	return null;
 }
@@ -134,21 +136,16 @@ export function parseClass(source: string): ParseResult {
 		}
 
 		if (state.currentEntity) {
-			const parts = splitOn(rawLine.replace(/,$/, ''), ' ')
-				.map((t) => t.trim())
-				.filter(Boolean);
-			if (parts.length === 0) {
-				continue;
-			}
-
-			const first = unquote(parts[0] || '');
-			if (/^-{2,}$/.test(first) && parts.length === 1) {
+			const trimmed = rawLine.replace(/,$/, '').trim();
+			if (/^-{2,}$/.test(trimmed)) {
 				state.currentEntity.methods ??= [];
 				continue;
 			}
 
-			const vis = /^([+\-#~])(.+)$/.exec(first);
-			const visibility: EntityField['visibility'] = vis
+			const vis = /^([+\-#~])\s*(.+)$/.exec(trimmed);
+			const visibilitySymbol = vis ? vis[1] : undefined;
+			const restOfLine = vis ? vis[2] || '' : trimmed;
+			const visibility: EntityField['visibility'] = visibilitySymbol
 				? (
 						{
 							'-': 'private',
@@ -156,17 +153,24 @@ export function parseClass(source: string): ParseResult {
 							'+': 'public',
 							'~': 'package',
 						} as const
-					)[vis[1] as '+' | '-' | '#' | '~']
+					)[visibilitySymbol as '+' | '-' | '#' | '~']
 				: undefined;
-			const name = vis ? vis[2] || first : first;
 
+			const parts = splitOn(restOfLine, ' ')
+				.map((token) => token.trim())
+				.filter(Boolean);
+			if (parts.length === 0) {
+				continue;
+			}
+
+			const name = unquote(parts[0] || '');
 			let type: string | undefined;
 			let key: EntityField['key'];
 
 			for (const token of parts.slice(1)) {
-				const t = token.toLowerCase();
-				if (t === 'pk' || t === 'fk') {
-					key = t as 'pk' | 'fk';
+				const normalizedToken = token.toLowerCase();
+				if (normalizedToken === 'pk' || normalizedToken === 'fk') {
+					key = normalizedToken as 'pk' | 'fk';
 				} else if (type) {
 					state.diagnostics.push({
 						code: 'unknown-attribute',
@@ -225,10 +229,16 @@ export function parseClass(source: string): ParseResult {
 		const groupMatch = /^group\b([^{]*)\{$/i.exec(rawLine);
 		if (groupMatch) {
 			const { attrs, rest } = splitTrailingAttrs(groupMatch[1]?.trim() || '');
-			const a = parseAttrs(attrs ?? '', lineNo, 1, state.diagnostics);
+			const groupAttrs = parseAttrs(attrs ?? '', lineNo, 1, state.diagnostics);
 			const label = unquote(rest) || `Group ${state.groups.length + 1}`;
 			state.groupStack.push(
-				getOrCreateGroup(state, label, a, state.groupStack.at(-1), lineSpan)
+				getOrCreateGroup(
+					state,
+					label,
+					groupAttrs,
+					state.groupStack.at(-1),
+					lineSpan
+				)
 			);
 			continue;
 		}
@@ -236,11 +246,10 @@ export function parseClass(source: string): ParseResult {
 		if (rawLine.endsWith('{') || /\{\s*\}$/.test(rawLine)) {
 			const inline = /\{\s*\}$/.test(rawLine);
 			const cleaned = rawLine.replace(/\{\s*\}?$/, '').trim();
-			// Remove optional "class", "table", "entity" prefix
 			const noKeyword = cleaned.replace(/^(class|table|entity)\s+/i, '').trim();
 
 			const { attrs, rest } = splitTrailingAttrs(noKeyword);
-			const a = parseAttrs(attrs ?? '', lineNo, 1, state.diagnostics);
+			const entityAttrs = parseAttrs(attrs ?? '', lineNo, 1, state.diagnostics);
 			const { id, name } = parseName(rest);
 
 			if (!name) {
@@ -256,11 +265,11 @@ export function parseClass(source: string): ParseResult {
 			const eid = uniqueId(id ?? slugify(name), state.usedIds);
 			const entity: Entity = {
 				id: eid,
-				label: a.label ?? name,
+				label: entityAttrs.label ?? name,
 				span: lineSpan,
 			};
-			if (a.color) {
-				entity.color = a.color as never;
+			if (entityAttrs.color) {
+				entity.color = entityAttrs.color as never;
 			}
 			if (state.groupStack.length > 0) {
 				entity.group = state.groupStack.at(-1);
@@ -276,7 +285,6 @@ export function parseClass(source: string): ParseResult {
 			continue;
 		}
 
-		// Try to parse relation
 		const anchor = findConnector(rawLine, CLASS_ARROWS);
 		if (anchor) {
 			const colonIdx = findToken(rawLine, ':', anchor.index + 1);

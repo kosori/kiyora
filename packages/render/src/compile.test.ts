@@ -229,4 +229,35 @@ describe('compile', () => {
 			},
 		]);
 	});
+
+	test('compiles class diagram relations with both fromCard and toCard', () => {
+		const classDiagram: Diagram = {
+			entities: [
+				{ id: 'user', label: 'User', span },
+				{ id: 'order', label: 'Order', span },
+			],
+			groups: [],
+			kind: 'class',
+			relations: [
+				{
+					from: 'user',
+					fromCard: 'one',
+					span,
+					to: 'order',
+					toCard: 'many',
+				},
+			],
+			title: 'Store',
+		};
+		const scene = compile(classDiagram);
+		expect(scene.edges).toEqual([
+			{
+				from: 'user',
+				fromHead: 'crow-one',
+				head: 'crow-many',
+				span,
+				to: 'order',
+			},
+		]);
+	});
 });

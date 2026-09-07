@@ -1,3 +1,4 @@
+import type { EntityField } from '@kiyora/dsl';
 import { TEXT_PADDING } from './style';
 
 export type LabelMetrics = {
@@ -108,4 +109,9 @@ export function measureLabel(
 		lines,
 		width,
 	};
+}
+
+/** Format an entity field or method into a display label. */
+export function formatEntityField(item: EntityField): string {
+	return `${item.visibility ? `${item.visibility} ` : ''}${item.name}${item.type ? `: ${item.type}` : ''}`;
 }

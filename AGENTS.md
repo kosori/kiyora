@@ -37,7 +37,7 @@ The web app also provides:
 - `bun --cwd apps/web run preview` — preview the production build
 - `bun --cwd apps/web run build` — build only the web application
 
-Run the test suite with `bunx turbo run test` (or `bun test <package-path>` for one package). Do not claim tests pass unless you have run them.
+There is currently no test command configured. Do not claim that tests pass when no test suite exists. When adding important behavior, first establish the appropriate test tooling and script.
 
 ## Repository Rules
 
@@ -162,17 +162,3 @@ Review the generated diff, but do not hand-edit `apps/web/src/routeTree.gen.ts`.
 - For compiler behavior, update `tooling/typescript/` rather than copying settings into individual packages.
 - When adding a dependency, determine which workspace owns it and keep dependency direction one-way: shared packages must not import from `apps/web`.
 - Avoid broad refactors while implementing a focused feature.
-
-## Agent skills
-
-### Issue tracker
-
-Issues and specs live as markdown files under `.issues/`. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical triage roles are used as-is: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: `CONTEXT.md` at the repo root, ADRs under `docs/adr/`. See `docs/agents/domain.md`.

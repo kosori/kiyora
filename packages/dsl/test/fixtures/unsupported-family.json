@@ -2,11 +2,11 @@
   "diagnostics": [
     {
       "code": "unsupported-family",
-      "message": "unsupported family \"erd\"",
+      "message": "unsupported family \"wireframe\"",
       "severity": "error",
       "span": {
         "end": {
-          "column": 3,
+          "column": 9,
           "line": 1
         },
         "start": {
