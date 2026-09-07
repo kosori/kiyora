@@ -178,13 +178,14 @@ describe('parse', () => {
 		expect(explicit?.corner).toBeUndefined();
 	});
 
+	const findAsteriskNode = (diagram: GraphDiagram) =>
+		diagram.nodes.find((n) => n.label === '[*]' || n.id === '[*]');
+
 	test('statemachine diagram infers [*] with outgoing edges as start state', () => {
 		const result = parse('statemachine\n[*] -> StateA\n');
 		assertGraph(result.diagram);
 
-		const startNode = result.diagram.nodes.find(
-			(n) => n.label === '[*]' || n.id === '[*]'
-		);
+		const startNode = findAsteriskNode(result.diagram);
 		expect(startNode).toBeDefined();
 		expect(startNode?.shape).toBe('circle');
 		expect(startNode?.fill).toBe('bold');
@@ -195,9 +196,7 @@ describe('parse', () => {
 		const result = parse('statemachine\nStateA -> [*]\n');
 		assertGraph(result.diagram);
 
-		const endNode = result.diagram.nodes.find(
-			(n) => n.label === '[*]' || n.id === '[*]'
-		);
+		const endNode = findAsteriskNode(result.diagram);
 		expect(endNode).toBeDefined();
 		expect(endNode?.shape).toBe('double-circle');
 		expect(endNode?.fill).toBeUndefined();
@@ -208,9 +207,7 @@ describe('parse', () => {
 		const result = parse('statemachine\n[*]\n');
 		assertGraph(result.diagram);
 
-		const node = result.diagram.nodes.find(
-			(n) => n.label === '[*]' || n.id === '[*]'
-		);
+		const node = findAsteriskNode(result.diagram);
 		expect(node).toBeDefined();
 		expect(node?.shape).toBe('circle');
 		expect(node?.fill).toBe('bold');
@@ -221,10 +218,33 @@ describe('parse', () => {
 		const result = parse('statemachine\nStateA -> [*]\nStateB -> [*]\n');
 		assertGraph(result.diagram);
 
-		const endNode = result.diagram.nodes.find(
+		const endNode = findAsteriskNode(result.diagram);
+		expect(endNode).toBeDefined();
+		expect(endNode?.shape).toBe('double-circle');
+		expect(endNode?.fill).toBeUndefined();
+		expect(endNode?.color).toBeUndefined();
+	});
+
+	test('statemachine diagram infers both start and end [*] in a workflow', () => {
+		const { diagram } = parse('statemachine\n[*] -> Active\nActive -> [*]\n');
+		assertGraph(diagram);
+
+		const asteriskNodes = diagram.nodes.filter(
 			(n) => n.label === '[*]' || n.id === '[*]'
 		);
-		expect(endNode).toBeDefined();
+		expect(asteriskNodes).toHaveLength(2);
+
+		const startNode = asteriskNodes.find((n) =>
+			diagram.edges.some((e) => e.from === n.id)
+		);
+		const endNode = asteriskNodes.find((n) =>
+			diagram.edges.some((e) => e.to === n.id)
+		);
+
+		expect(startNode?.shape).toBe('circle');
+		expect(startNode?.fill).toBe('bold');
+		expect(startNode?.color).toBe('gray');
+
 		expect(endNode?.shape).toBe('double-circle');
 		expect(endNode?.fill).toBeUndefined();
 		expect(endNode?.color).toBeUndefined();

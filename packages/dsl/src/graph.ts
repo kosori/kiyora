@@ -461,38 +461,44 @@ function buildDiagram(state: GraphState): {
 	const isBlock =
 		family === 'flowchart' || family === 'bpmn' || family === 'orgchart';
 	for (const node of state.nodes) {
-		if (family === 'statemachine') {
-			const id = node.id.toLowerCase();
-			const label = node.label.toLowerCase();
-			const isAsterisk = id === '[*]' || label === '[*]';
-			const isStart =
-				['start', 'begin', 'initial'].includes(id) ||
-				['start', 'begin', 'initial'].includes(label);
-			const isEnd =
-				['end', 'final', 'stop', 'done'].includes(id) ||
-				['end', 'final', 'stop', 'done'].includes(label);
-			if (isAsterisk) {
-				const isTarget = state.edges.some((edge) => edge.to === node.id);
-				const isSource = state.edges.some((edge) => edge.from === node.id);
-				if (isTarget && !isSource) {
-					node.shape ??= 'double-circle';
-				} else {
-					node.shape ??= 'circle';
-					node.fill ??= 'bold';
-					node.color ??= 'gray';
-				}
-			} else if (isStart) {
-				node.shape ??= 'circle';
-				node.fill ??= 'bold';
-				node.color ??= 'gray';
-			} else if (isEnd) {
-				node.shape ??= 'double-circle';
-			} else if (!node.shape) {
-				node.shape = 'rectangle';
-				node.corner ??= 'rounded';
+		if (family !== 'statemachine') {
+			if (isBlock) {
+				node.shape ??= 'rectangle';
 			}
-		} else if (isBlock) {
-			node.shape ??= 'rectangle';
+			continue;
+		}
+
+		const id = node.id.toLowerCase();
+		const label = node.label.toLowerCase();
+		const isAsterisk = id === '[*]' || label === '[*]';
+		const isTarget = isAsterisk && state.edges.some((e) => e.to === node.id);
+		const isSource = isAsterisk && state.edges.some((e) => e.from === node.id);
+
+		const isEnd =
+			(isAsterisk && isTarget && !isSource) ||
+			['end', 'final', 'stop', 'done'].includes(id) ||
+			['end', 'final', 'stop', 'done'].includes(label);
+
+		const isStart =
+			(isAsterisk && !isEnd) ||
+			['start', 'begin', 'initial'].includes(id) ||
+			['start', 'begin', 'initial'].includes(label);
+
+		if (isStart) {
+			node.shape ??= 'circle';
+			node.fill ??= 'bold';
+			node.color ??= 'gray';
+			continue;
+		}
+
+		if (isEnd) {
+			node.shape ??= 'double-circle';
+			continue;
+		}
+
+		if (!node.shape) {
+			node.shape = 'rectangle';
+			node.corner ??= 'rounded';
 		}
 	}
 	if (state.defaultFill) {
@@ -840,12 +846,16 @@ function getOrCreateNode(
 			attrs.label?.toLowerCase() ?? '',
 		].filter(Boolean)
 	);
+	const isAnonymousAsterisk =
+		state.family === 'statemachine' && !id && name === '[*]';
 	let existing: string | undefined;
-	for (const k of keys) {
-		const hit = state.nodeByKey.get(k);
-		if (hit !== undefined) {
-			existing = hit;
-			break;
+	if (!isAnonymousAsterisk) {
+		for (const k of keys) {
+			const hit = state.nodeByKey.get(k);
+			if (hit !== undefined) {
+				existing = hit;
+				break;
+			}
 		}
 	}
 	if (existing) {
@@ -914,8 +924,10 @@ function getOrCreateNode(
 		node.link = attrs.link;
 	}
 	state.nodes.push(node);
-	for (const k of keys) {
-		state.nodeByKey.set(k, nid);
+	if (!isAnonymousAsterisk) {
+		for (const k of keys) {
+			state.nodeByKey.set(k, nid);
+		}
 	}
 	return nid;
 }
