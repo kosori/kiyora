@@ -223,10 +223,11 @@ function groupMarkup(
 	group: SceneGroup,
 	box: Box,
 	wobble: boolean,
-	isStatemachine = false
+	variant?: Scene['variant']
 ): string {
 	const color = edgeColor(group.color ?? 'gray');
 	const radius = cornerRadius(box.width, box.height);
+	const isSolid = variant === 'statemachine';
 	let overlay = '';
 	if (wobble) {
 		const seed = deriveWobbleSeed(`group:${group.id}`, [
@@ -242,14 +243,14 @@ function groupMarkup(
 			stroke: color,
 			strokeWidth: GROUP_STROKE,
 		};
-		overlay = isStatemachine
+		overlay = isSolid
 			? wobbleOverlayGroup(seed, [contour])
 			: wobbleOverlayDashedMarkup(seed, contour, GROUP_DASH, GROUP_DASH_GAP);
 	}
-	const rectMarkup = isStatemachine
-		? `<rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}"/>`
-		: `<rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}" stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"/>`;
-	return `<g data-group="${escapeText(group.id)}">${rectMarkup}${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
+	const dashAttrs = isSolid
+		? ''
+		: ` stroke-dasharray="${GROUP_DASH} ${GROUP_DASH_GAP}" stroke-linecap="round"`;
+	return `<g data-group="${escapeText(group.id)}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="${radius}" fill="none" stroke="${color}" stroke-width="${GROUP_STROKE}"${dashAttrs}/>${overlay}<text x="${box.x + 14}" y="${box.y + 18}" text-anchor="start" font-size="${GROUP_FONT_SIZE}" fill="${color}">${escapeText(group.label)}</text></g>`;
 }
 
 function straightEdgeWobbleOverlay(
@@ -485,12 +486,11 @@ export function renderSceneElements(
 	const nodeFontSize = options.nodeFontSize ?? NODE_FONT_SIZE;
 	const showNodeLabels = options.showNodeLabels ?? true;
 	const wobble = options.wobble ?? false;
-	const isStatemachine = scene.variant === 'statemachine';
 	const parts: string[] = [];
 	for (const group of scene.groups) {
 		const box = groupBoxes.get(group.id);
 		if (box) {
-			parts.push(groupMarkup(group, box, wobble, isStatemachine));
+			parts.push(groupMarkup(group, box, wobble, scene.variant));
 		}
 	}
 	const nodes = new Map(scene.nodes.map((node) => [node.id, node]));
