@@ -228,4 +228,15 @@ describe('splitTrailingAttrs', () => {
 	test('handles empty attribute blocks', () => {
 		expect(splitTrailingAttrs('A []')).toEqual({ attrs: '', rest: 'A ' });
 	});
+
+	test('does not treat [*] as an attribute block', () => {
+		expect(splitTrailingAttrs('[*]')).toEqual({ attrs: null, rest: '[*]' });
+	});
+
+	test('splits trailing attributes on [*] node', () => {
+		expect(splitTrailingAttrs('[*] [red]')).toEqual({
+			attrs: 'red',
+			rest: '[*] ',
+		});
+	});
 });

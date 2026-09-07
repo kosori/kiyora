@@ -101,7 +101,11 @@ export function splitTrailingAttrs(line: string): {
 		} else if (!inQuote && ch === '[') {
 			depth -= 1;
 			if (depth === 0) {
-				return { attrs: t.slice(i + 1, -1), rest: t.slice(0, i) };
+				const attrs = t.slice(i + 1, -1);
+				if (attrs.trim() === '*') {
+					return { attrs: null, rest: line };
+				}
+				return { attrs, rest: t.slice(0, i) };
 			}
 		}
 	}

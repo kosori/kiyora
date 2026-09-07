@@ -178,6 +178,58 @@ describe('parse', () => {
 		expect(explicit?.corner).toBeUndefined();
 	});
 
+	test('statemachine diagram infers [*] with outgoing edges as start state', () => {
+		const result = parse('statemachine\n[*] -> StateA\n');
+		assertGraph(result.diagram);
+
+		const startNode = result.diagram.nodes.find(
+			(n) => n.label === '[*]' || n.id === '[*]'
+		);
+		expect(startNode).toBeDefined();
+		expect(startNode?.shape).toBe('circle');
+		expect(startNode?.fill).toBe('bold');
+		expect(startNode?.color).toBe('gray');
+	});
+
+	test('statemachine diagram infers [*] strictly as edge target as end state', () => {
+		const result = parse('statemachine\nStateA -> [*]\n');
+		assertGraph(result.diagram);
+
+		const endNode = result.diagram.nodes.find(
+			(n) => n.label === '[*]' || n.id === '[*]'
+		);
+		expect(endNode).toBeDefined();
+		expect(endNode?.shape).toBe('double-circle');
+		expect(endNode?.fill).toBeUndefined();
+		expect(endNode?.color).toBeUndefined();
+	});
+
+	test('statemachine diagram defaults isolated [*] without edges to start state', () => {
+		const result = parse('statemachine\n[*]\n');
+		assertGraph(result.diagram);
+
+		const node = result.diagram.nodes.find(
+			(n) => n.label === '[*]' || n.id === '[*]'
+		);
+		expect(node).toBeDefined();
+		expect(node?.shape).toBe('circle');
+		expect(node?.fill).toBe('bold');
+		expect(node?.color).toBe('gray');
+	});
+
+	test('statemachine diagram infers [*] with multiple incoming edges and no outgoing edges as end state', () => {
+		const result = parse('statemachine\nStateA -> [*]\nStateB -> [*]\n');
+		assertGraph(result.diagram);
+
+		const endNode = result.diagram.nodes.find(
+			(n) => n.label === '[*]' || n.id === '[*]'
+		);
+		expect(endNode).toBeDefined();
+		expect(endNode?.shape).toBe('double-circle');
+		expect(endNode?.fill).toBeUndefined();
+		expect(endNode?.color).toBeUndefined();
+	});
+
 	test('refuses infographic and chart family headers', () => {
 		for (const family of ['infographic', 'chart']) {
 			const result = parse(`${family}\nLater Node`);

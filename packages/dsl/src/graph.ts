@@ -464,13 +464,24 @@ function buildDiagram(state: GraphState): {
 		if (family === 'statemachine') {
 			const id = node.id.toLowerCase();
 			const label = node.label.toLowerCase();
+			const isAsterisk = id === '[*]' || label === '[*]';
 			const isStart =
-				['[*]', 'start', 'begin', 'initial'].includes(id) ||
-				['[*]', 'start', 'begin', 'initial'].includes(label);
+				['start', 'begin', 'initial'].includes(id) ||
+				['start', 'begin', 'initial'].includes(label);
 			const isEnd =
 				['end', 'final', 'stop', 'done'].includes(id) ||
 				['end', 'final', 'stop', 'done'].includes(label);
-			if (isStart) {
+			if (isAsterisk) {
+				const isTarget = state.edges.some((edge) => edge.to === node.id);
+				const isSource = state.edges.some((edge) => edge.from === node.id);
+				if (isTarget && !isSource) {
+					node.shape ??= 'double-circle';
+				} else {
+					node.shape ??= 'circle';
+					node.fill ??= 'bold';
+					node.color ??= 'gray';
+				}
+			} else if (isStart) {
 				node.shape ??= 'circle';
 				node.fill ??= 'bold';
 				node.color ??= 'gray';
