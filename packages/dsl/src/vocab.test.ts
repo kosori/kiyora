@@ -110,6 +110,7 @@ describe('fills, corners, frames, heads', () => {
 			'arrow',
 			'circle',
 			'cross',
+			'none',
 			'crow-one',
 			'crow-many',
 			'crow-one-or-many',
@@ -118,6 +119,7 @@ describe('fills, corners, frames, heads', () => {
 			'uml-composition',
 			'uml-aggregation',
 		]);
+		expect(resolveHead('none')).toBe('none');
 		expect(resolveHead('x')).toBe('cross');
 		expect(resolveHead('o')).toBe('circle');
 		expect(resolveHead('dot')).toBe('circle');

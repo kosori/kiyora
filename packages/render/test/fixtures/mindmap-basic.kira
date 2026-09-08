@@ -1,0 +1,6 @@
+mindmap
+title: Project Structure
+root: Root
+- Frontend [blue, bold]
+  - Web
+- Backend

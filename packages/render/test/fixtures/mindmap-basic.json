@@ -1,0 +1,140 @@
+{
+  "edges": [
+    {
+      "from": "root",
+      "head": "none",
+      "span": {
+        "end": {
+          "column": 11,
+          "line": 4
+        },
+        "start": {
+          "column": 3,
+          "line": 4
+        }
+      },
+      "to": "frontend"
+    },
+    {
+      "from": "frontend",
+      "head": "none",
+      "span": {
+        "end": {
+          "column": 8,
+          "line": 5
+        },
+        "start": {
+          "column": 5,
+          "line": 5
+        }
+      },
+      "to": "web"
+    },
+    {
+      "from": "root",
+      "head": "none",
+      "span": {
+        "end": {
+          "column": 10,
+          "line": 6
+        },
+        "start": {
+          "column": 3,
+          "line": 6
+        }
+      },
+      "to": "backend"
+    }
+  ],
+  "groups": [],
+  "nodes": [
+    {
+      "corner": "rounded",
+      "height": 44,
+      "id": "root",
+      "label": "Root",
+      "rotation": 0,
+      "shape": "rectangle",
+      "span": {
+        "end": {
+          "column": 11,
+          "line": 3
+        },
+        "start": {
+          "column": 7,
+          "line": 3
+        }
+      },
+      "width": 72,
+      "x": 24,
+      "y": 70
+    },
+    {
+      "color": "blue",
+      "corner": "rounded",
+      "fill": "bold",
+      "height": 44,
+      "id": "frontend",
+      "label": "Frontend",
+      "rotation": 0,
+      "shape": "rectangle",
+      "span": {
+        "end": {
+          "column": 11,
+          "line": 4
+        },
+        "start": {
+          "column": 3,
+          "line": 4
+        }
+      },
+      "width": 86.24,
+      "x": 168,
+      "y": 24
+    },
+    {
+      "corner": "rounded",
+      "height": 44,
+      "id": "web",
+      "label": "Web",
+      "rotation": 0,
+      "shape": "rectangle",
+      "span": {
+        "end": {
+          "column": 8,
+          "line": 5
+        },
+        "start": {
+          "column": 5,
+          "line": 5
+        }
+      },
+      "width": 72,
+      "x": 326.24,
+      "y": 24
+    },
+    {
+      "corner": "rounded",
+      "height": 44,
+      "id": "backend",
+      "label": "Backend",
+      "rotation": 0,
+      "shape": "rectangle",
+      "span": {
+        "end": {
+          "column": 10,
+          "line": 6
+        },
+        "start": {
+          "column": 3,
+          "line": 6
+        }
+      },
+      "width": 76.96,
+      "x": 168,
+      "y": 116
+    }
+  ],
+  "readOnly": true,
+  "title": "Project Structure"
+}

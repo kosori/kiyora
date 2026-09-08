@@ -140,6 +140,7 @@ export const HEADS = [
 	'arrow',
 	'circle',
 	'cross',
+	'none',
 	'crow-one',
 	'crow-many',
 	'crow-one-or-many',

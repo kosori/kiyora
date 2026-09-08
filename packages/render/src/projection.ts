@@ -373,7 +373,7 @@ function edgeMarkup(
 			from: [startX, y],
 			label: edge.label,
 			labelY: y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y,
-			markerEnd: ` marker-end="url(#kiyora-${head})"`,
+			markerEnd: head === 'none' ? '' : ` marker-end="url(#kiyora-${head})"`,
 			to: [endX, y],
 			wobble,
 		});
@@ -381,12 +381,13 @@ function edgeMarkup(
 
 	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
 	const d = edgeCubicPathD({ c1, c2, end, start });
-	const markerStart = edge.fromHead
-		? ` marker-start="url(#kiyora-${edge.fromHead})"`
-		: edge.bidirectional
-			? ` marker-start="url(#kiyora-${head}-reverse)"`
-			: '';
-	const markerEnd = ` marker-end="url(#kiyora-${head})"`;
+	const markerStart =
+		edge.fromHead && edge.fromHead !== 'none'
+			? ` marker-start="url(#kiyora-${edge.fromHead})"`
+			: edge.bidirectional && head !== 'none'
+				? ` marker-start="url(#kiyora-${head}-reverse)"`
+				: '';
+	const markerEnd = head === 'none' ? '' : ` marker-end="url(#kiyora-${head})"`;
 	const label =
 		edge.label === undefined
 			? ''

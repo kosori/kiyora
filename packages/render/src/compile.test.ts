@@ -102,6 +102,14 @@ describe('compile', () => {
 		}
 	});
 
+	test('covers the mindmap contract fixture', () => {
+		const source = readFileSync(join(FIXTURES, 'mindmap-basic.kira'), 'utf8');
+		const expected = JSON.parse(
+			readFileSync(join(FIXTURES, 'mindmap-basic.json'), 'utf8')
+		) as Scene;
+		expect(compile(parse(source).diagram)).toEqual(expected);
+	});
+
 	test('does not let groups affect node positions', () => {
 		const ungrouped = compile({
 			...diagram,
@@ -298,5 +306,110 @@ describe('compile', () => {
 		expect(rootNode?.height).toBeGreaterThan(0);
 		expect(scene.edges).toEqual([]);
 		expect(scene.groups).toEqual([]);
+	});
+
+	test('compiles mindmap diagram with branches into horizontal tree layout, centering parents without overlap', () => {
+		const mindmapDiagram: MindMapDiagram = {
+			kind: 'mindmap',
+			root: {
+				children: [
+					{
+						children: [
+							{
+								children: [],
+								id: 'sub-1',
+								label: 'Sub Branch 1',
+								span,
+							},
+							{
+								children: [],
+								id: 'sub-2',
+								label: 'Sub Branch 2',
+								span,
+							},
+						],
+						color: 'blue',
+						fill: 'bold',
+						id: 'branch-1',
+						label: 'Branch 1',
+						span,
+					},
+					{
+						children: [],
+						id: 'branch-2',
+						label: 'Branch 2',
+						span,
+					},
+				],
+				id: 'root',
+				label: 'Root Node',
+				span,
+			},
+			title: 'Mindmap',
+		};
+
+		const scene = compile(mindmapDiagram);
+		expect(scene.readOnly).toBe(true);
+		expect(scene.nodes).toHaveLength(5);
+
+		const nodeMap = new Map(scene.nodes.map((node) => [node.id, node]));
+		const root = nodeMap.get('root');
+		const branch1 = nodeMap.get('branch-1');
+		const branch2 = nodeMap.get('branch-2');
+		const sub1 = nodeMap.get('sub-1');
+		const sub2 = nodeMap.get('sub-2');
+
+		expect(root).toBeDefined();
+		expect(branch1).toBeDefined();
+		expect(branch2).toBeDefined();
+		expect(sub1).toBeDefined();
+		expect(sub2).toBeDefined();
+
+		if (!(root && branch1 && branch2 && sub1 && sub2)) {
+			throw new Error('Expected all nodes to be present');
+		}
+
+		expect(branch1.x).toBeGreaterThanOrEqual(root.x + root.width);
+		expect(branch2.x).toBeGreaterThanOrEqual(root.x + root.width);
+		expect(sub1.x).toBeGreaterThanOrEqual(branch1.x + branch1.width);
+		expect(sub2.x).toBeGreaterThanOrEqual(branch1.x + branch1.width);
+
+		expect(branch1).toMatchObject({
+			color: 'blue',
+			corner: 'rounded',
+			fill: 'bold',
+			shape: 'rectangle',
+		});
+
+		for (const node of scene.nodes) {
+			expect(node.shape).toBe('rectangle');
+			expect(node.corner).toBe('rounded');
+			expect(node.rotation).toBe(0);
+		}
+
+		expect(sub1.y + sub1.height).toBeLessThanOrEqual(sub2.y);
+
+		const branch1ChildrenMidY = (sub1.y + sub2.y + sub2.height) / 2;
+		const branch1MidY = branch1.y + branch1.height / 2;
+		expect(branch1MidY).toBeCloseTo(branch1ChildrenMidY, 1);
+
+		const branch1SubtreeBottom = Math.max(
+			branch1.y + branch1.height,
+			sub2.y + sub2.height
+		);
+		expect(branch1SubtreeBottom).toBeLessThanOrEqual(branch2.y);
+
+		const rootChildrenTop = Math.min(branch1.y, sub1.y);
+		const rootChildrenBottom = Math.max(branch2.y + branch2.height);
+		const rootChildrenMidY = (rootChildrenTop + rootChildrenBottom) / 2;
+		const rootMidY = root.y + root.height / 2;
+		expect(rootMidY).toBeCloseTo(rootChildrenMidY, 1);
+
+		expect(scene.edges).toEqual([
+			{ from: 'root', head: 'none', span, to: 'branch-1' },
+			{ from: 'branch-1', head: 'none', span, to: 'sub-1' },
+			{ from: 'branch-1', head: 'none', span, to: 'sub-2' },
+			{ from: 'root', head: 'none', span, to: 'branch-2' },
+		]);
 	});
 });

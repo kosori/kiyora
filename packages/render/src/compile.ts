@@ -5,6 +5,7 @@ import {
 	type Frame,
 	type Group,
 	type Head,
+	type MindMapBranch,
 	type Node,
 	type Relation,
 	resolveFrame,
@@ -42,6 +43,23 @@ function compileNode(node: Node, box: Box): SceneNode {
 		...(node.icon === undefined ? {} : { icon: node.icon }),
 		...(node.link === undefined ? {} : { link: node.link }),
 		...(node.group === undefined ? {} : { group: node.group }),
+	};
+}
+
+function compileMindmapNode(branch: MindMapBranch, box: Box): SceneNode {
+	return {
+		corner: 'rounded',
+		height: box.height,
+		id: branch.id,
+		label: branch.label,
+		rotation: 0,
+		shape: 'rectangle',
+		span: branch.span,
+		width: box.width,
+		x: box.x,
+		y: box.y,
+		...(branch.color === undefined ? {} : { color: branch.color }),
+		...(branch.fill === undefined ? {} : { fill: branch.fill }),
 	};
 }
 
@@ -164,7 +182,28 @@ export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 	}
 
 	if (diagram.kind === 'mindmap') {
-		const { edges, nodes } = layoutMindmap(diagram, options);
+		const layout = layoutMindmap(diagram, options);
+		const nodes: SceneNode[] = [];
+		const edges: SceneEdge[] = [];
+
+		function traverse(branch: MindMapBranch): void {
+			const box = layout.boxes.get(branch.id);
+			if (box) {
+				nodes.push(compileMindmapNode(branch, box));
+			}
+			for (const child of branch.children) {
+				edges.push({
+					from: branch.id,
+					head: 'none',
+					span: child.span,
+					to: child.id,
+				});
+				traverse(child);
+			}
+		}
+
+		traverse(diagram.root);
+
 		return {
 			edges,
 			groups: [],

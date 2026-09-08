@@ -1065,4 +1065,17 @@ User {
 			userNode.match(/<path d="M [^"]+ L [^"]+" fill="none"/g) ?? [];
 		expect(dividerMatches.length).toBe(1);
 	});
+
+	describe('mindmap projection', () => {
+		test('renders branches as Bezier curves without arrowheads', () => {
+			const source = `mindmap
+root: Root
+- Child
+`;
+			const compiled = compile(parse(source).diagram);
+			const { svg } = renderToSvg(compiled);
+			expect(svg).toContain('data-edge="root-child"');
+			expect(svg).not.toContain('marker-end=');
+		});
+	});
 });
