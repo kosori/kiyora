@@ -11,69 +11,98 @@ import { slugify } from './vocab';
  * markdown list syntax (`- ` or `* `) with indentation defining the
  * tree hierarchy.
  */
+const BRACKET_DELIMITER_OFFSET = 2;
+
+type ParsedItem = {
+	attrs: ReturnType<typeof parseAttrs>;
+	indent: number;
+	label: string;
+	span: { column: number; line: number };
+};
+
+/**
+ * Mindmap diagram statement parser.
+ *
+ * Line-oriented: blank lines and `//` comments are ignored.
+ * The `mindmap` header selects this parser. Nodes are declared using
+ * markdown list syntax (`- ` or `* `) with indentation defining the
+ * tree hierarchy.
+ */
 export function parseMindmap(
 	source: string,
 	diagnostics: Diagnostic[] = []
 ): ParseResult {
 	let title = '';
 	let central = '';
-	const items: {
-		attrs: ReturnType<typeof parseAttrs>;
-		indent: number;
-		label: string;
-		span: { column: number; line: number };
-	}[] = [];
+	let centralSpan = {
+		end: { column: 1, line: 1 },
+		start: { column: 1, line: 1 },
+	};
+	const items: ParsedItem[] = [];
 
 	const lines = source.split('\n');
-	for (let i = 0; i < lines.length; i += 1) {
-		const lineNo = i + 1;
-		const raw = lines[i];
+	for (const [index, raw] of lines.entries()) {
+		const lineNo = index + 1;
 		if (raw === undefined) {
 			continue;
 		}
 		const line = stripComment(raw.replace(/\t/g, '  '));
-		const c = line.trim();
-		if (c.length === 0 || c.toLowerCase() === 'mindmap') {
+		const trimmedLine = line.trim();
+		if (trimmedLine.length === 0 || trimmedLine.toLowerCase() === 'mindmap') {
 			continue;
 		}
 
-		const meta = /^(title|central|root|center)(?:\s*:\s*|\s+)(.*)$/i.exec(c);
+		const meta = /^(title|central|root|center)(?:\s*:\s*|\s+)(.*)$/i.exec(
+			trimmedLine
+		);
 		if (meta && meta[1] !== undefined && meta[2] !== undefined) {
 			const key = meta[1].toLowerCase();
-			const v = unquote(meta[2].trim());
+			const directiveValue = unquote(meta[2].trim());
 			if (key === 'title') {
 				if (!title) {
-					title = v;
+					title = directiveValue;
 				}
 				continue;
 			}
 			if (!central) {
-				central = v;
+				central = directiveValue;
+				const valCol = line.indexOf(directiveValue) + 1;
+				centralSpan = {
+					end: { column: valCol + directiveValue.length, line: lineNo },
+					start: { column: valCol, line: lineNo },
+				};
 				continue;
 			}
 		}
 
-		const item = line.match(/^(\s*)[-*]\s+(.*)$/);
-		if (item) {
-			const [, indentStr, contentRaw] = item;
+		const itemMatch = line.match(/^(\s*)(?:[-*])\s+(.*)$/);
+		if (itemMatch) {
+			const [, indentStr, contentRaw] = itemMatch;
 			if (indentStr !== undefined && contentRaw !== undefined) {
 				const content = contentRaw.trim();
 				const { attrs, rest } = splitTrailingAttrs(content);
 
-				const col =
+				const contentStartCol =
 					indentStr.length +
-					2 +
+					(line.slice(indentStr.length).indexOf(content) + 1);
+				const attrCol =
+					contentStartCol +
 					content.length -
-					(attrs ? attrs.length + 2 : 0);
-				const a = parseAttrs(attrs ?? '', lineNo, col, diagnostics);
+					(attrs ? attrs.length + BRACKET_DELIMITER_OFFSET : 0);
+				const parsedAttrs = parseAttrs(
+					attrs ?? '',
+					lineNo,
+					attrCol,
+					diagnostics
+				);
 
 				const label = unquote(rest.trim());
 				if (label.length > 0) {
 					items.push({
-						attrs: a,
+						attrs: parsedAttrs,
 						indent: indentStr.length,
 						label,
-						span: { column: indentStr.length + 1, line: lineNo },
+						span: { column: contentStartCol, line: lineNo },
 					});
 				}
 				continue;
@@ -81,19 +110,27 @@ export function parseMindmap(
 		}
 
 		if (central) {
-			const col = line.indexOf(c) + 1;
-			const { attrs, rest } = splitTrailingAttrs(c);
-			const attrCol = col + c.length - (attrs ? attrs.length + 2 : 0);
-			const a = parseAttrs(attrs ?? '', lineNo, attrCol, diagnostics);
+			const col = line.indexOf(trimmedLine) + 1;
+			const { attrs, rest } = splitTrailingAttrs(trimmedLine);
+			const attrCol =
+				col +
+				trimmedLine.length -
+				(attrs ? attrs.length + BRACKET_DELIMITER_OFFSET : 0);
+			const parsedAttrs = parseAttrs(attrs ?? '', lineNo, attrCol, diagnostics);
 			items.push({
-				attrs: a,
+				attrs: parsedAttrs,
 				indent: 0,
 				label: unquote(rest.trim()),
 				span: { column: col, line: lineNo },
 			});
 		} else {
-			const { rest } = splitTrailingAttrs(c);
+			const { rest } = splitTrailingAttrs(trimmedLine);
 			central = unquote(rest.trim());
+			const valCol = line.indexOf(central) + 1;
+			centralSpan = {
+				end: { column: valCol + central.length, line: lineNo },
+				start: { column: valCol, line: lineNo },
+			};
 		}
 	}
 
@@ -101,33 +138,36 @@ export function parseMindmap(
 		children: [],
 		id: slugify(central || title || 'central'),
 		label: central || title || 'Central',
-		span: {
-			end: { column: 1, line: 1 },
-			start: { column: 1, line: 1 },
-		},
+		span: centralSpan,
 	};
 
 	let branchId = 0;
 	const stack: { children: MindMapBranch[]; indent: number }[] = [];
 	stack.push({ children: root.children, indent: -1 });
 
-	for (const it of items) {
+	for (const branchItem of items) {
 		branchId += 1;
 		const node: MindMapBranch = {
 			children: [],
-			color: it.attrs.color,
-			fill: it.attrs.fill,
-			id: slugify(it.label) || `b${branchId}`,
-			label: it.label,
+			color: branchItem.attrs.color,
+			fill: branchItem.attrs.fill,
+			id: slugify(branchItem.label) || `b${branchId}`,
+			label: branchItem.label,
 			span: {
-				end: { column: it.span.column + it.label.length, line: it.span.line },
-				start: { column: it.span.column, line: it.span.line },
+				end: {
+					column: branchItem.span.column + branchItem.label.length,
+					line: branchItem.span.line,
+				},
+				start: {
+					column: branchItem.span.column,
+					line: branchItem.span.line,
+				},
 			},
 		};
 
 		while (stack.length > 1) {
 			const top = stack.at(-1);
-			if (top && it.indent <= top.indent) {
+			if (top && branchItem.indent <= top.indent) {
 				stack.pop();
 			} else {
 				break;
@@ -138,7 +178,7 @@ export function parseMindmap(
 		if (parent) {
 			parent.children.push(node);
 		}
-		stack.push({ children: node.children, indent: it.indent });
+		stack.push({ children: node.children, indent: branchItem.indent });
 	}
 
 	return {

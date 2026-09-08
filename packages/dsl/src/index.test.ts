@@ -5,7 +5,6 @@ import {
 	type GraphDiagram,
 	type MindMapDiagram,
 	parse,
-	parseMindmap,
 } from './index';
 
 function assertGraph(diagram: Diagram): asserts diagram is GraphDiagram {
@@ -523,17 +522,25 @@ root: Root Node
   * API Gateway
     * Auth Service
 `;
-		const result = parseMindmap(source);
+		const result = parse(source);
 		expect(result.diagnostics).toEqual([]);
 		assertMindmap(result.diagram);
 		expect(result.diagram.title).toBe('Project Structure');
 		expect(result.diagram.root.label).toBe('Root Node');
+		expect(result.diagram.root.span).toEqual({
+			end: { column: 16, line: 3 },
+			start: { column: 7, line: 3 },
+		});
 
 		const [frontend, backend] = result.diagram.root.children;
 		expect(frontend).toBeDefined();
 		expect(backend).toBeDefined();
 
 		expect(frontend?.label).toBe('Frontend');
+		expect(frontend?.span).toEqual({
+			end: { column: 11, line: 4 },
+			start: { column: 3, line: 4 },
+		});
 		expect(frontend?.color).toBe('blue');
 		expect(frontend?.fill).toBe('bold');
 		expect(frontend?.children).toHaveLength(2);
