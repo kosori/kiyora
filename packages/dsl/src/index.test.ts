@@ -1,11 +1,24 @@
 import { describe, expect, test } from 'bun:test';
 
-import { type Diagram, type GraphDiagram, parse } from './index';
+import {
+	type Diagram,
+	type GraphDiagram,
+	type MindMapDiagram,
+	parse,
+	parseMindmap,
+} from './index';
 
 function assertGraph(diagram: Diagram): asserts diagram is GraphDiagram {
 	expect(diagram.kind).toBe('graph');
 	if (diagram.kind !== 'graph') {
 		throw new Error(`Expected graph diagram, got ${diagram.kind}`);
+	}
+}
+
+function assertMindmap(diagram: Diagram): asserts diagram is MindMapDiagram {
+	expect(diagram.kind).toBe('mindmap');
+	if (diagram.kind !== 'mindmap') {
+		throw new Error(`Expected mindmap diagram, got ${diagram.kind}`);
 	}
 }
 
@@ -483,5 +496,101 @@ Alice -> Bob: ok
 				},
 			},
 		]);
+	});
+
+	test('delegates mindmap keyword to parseMindmap and extracts title and central node', () => {
+		const source = `mindmap
+title: Product Roadmap
+central: Core Platform
+`;
+		const result = parse(source);
+		expect(result.diagnostics).toEqual([]);
+		assertMindmap(result.diagram);
+		expect(result.diagram.title).toBe('Product Roadmap');
+		expect(result.diagram.root.label).toBe('Core Platform');
+		expect(result.diagram.root.id).toBe('core-platform');
+		expect(result.diagram.root.children).toEqual([]);
+	});
+
+	test('parses nested branches, bullet styles, and inline attributes', () => {
+		const source = `mindmap
+title: Project Structure
+root: Root Node
+- Frontend [blue, bold]
+  - Web App
+  - Mobile App [teal]
+* Backend
+  * API Gateway
+    * Auth Service
+`;
+		const result = parseMindmap(source);
+		expect(result.diagnostics).toEqual([]);
+		assertMindmap(result.diagram);
+		expect(result.diagram.title).toBe('Project Structure');
+		expect(result.diagram.root.label).toBe('Root Node');
+
+		const [frontend, backend] = result.diagram.root.children;
+		expect(frontend).toBeDefined();
+		expect(backend).toBeDefined();
+
+		expect(frontend?.label).toBe('Frontend');
+		expect(frontend?.color).toBe('blue');
+		expect(frontend?.fill).toBe('bold');
+		expect(frontend?.children).toHaveLength(2);
+		expect(frontend?.children[0]?.label).toBe('Web App');
+		expect(frontend?.children[1]?.label).toBe('Mobile App');
+		expect(frontend?.children[1]?.color).toBe('teal');
+
+		expect(backend?.label).toBe('Backend');
+		expect(backend?.children).toHaveLength(1);
+		expect(backend?.children[0]?.label).toBe('API Gateway');
+		expect(backend?.children[0]?.children).toHaveLength(1);
+		expect(backend?.children[0]?.children[0]?.label).toBe('Auth Service');
+	});
+
+	test('infers central node from first bare line and falls back sensibly', () => {
+		const bareFirst = `mindmap
+Implicit Central
+  - Child A
+`;
+		const res1 = parse(bareFirst);
+		assertMindmap(res1.diagram);
+		expect(res1.diagram.root.label).toBe('Implicit Central');
+		expect(res1.diagram.root.children).toHaveLength(1);
+		expect(res1.diagram.root.children[0]?.label).toBe('Child A');
+
+		const emptyHeader = parse('mindmap');
+		assertMindmap(emptyHeader.diagram);
+		expect(emptyHeader.diagram.title).toBe('');
+		expect(emptyHeader.diagram.root.label).toBe('Central');
+		expect(emptyHeader.diagram.root.id).toBe('central');
+		expect(emptyHeader.diagram.root.children).toEqual([]);
+	});
+
+	test('degrades gracefully on malformed mindmap input, empty bullets, comments, and unclosed attrs', () => {
+		const malformed = `mindmap
+title: "Resilient Mindmap"
+// this is a comment
+central: Root
+
+- 
+* [invalid-attr
+- Valid Branch [green]
+      - Far Indented Child
+  - De-indented Sibling
+`;
+		const result = parse(malformed);
+		assertMindmap(result.diagram);
+		expect(result.diagram.title).toBe('Resilient Mindmap');
+		expect(result.diagram.root.label).toBe('Root');
+		expect(result.diagram.root.children.length).toBeGreaterThan(0);
+
+		const validBranch = result.diagram.root.children.find(
+			(child) => child.label === 'Valid Branch'
+		);
+		expect(validBranch).toBeDefined();
+		expect(validBranch?.color).toBe('green');
+		expect(validBranch?.children[0]?.label).toBe('Far Indented Child');
+		expect(validBranch?.children[1]?.label).toBe('De-indented Sibling');
 	});
 });

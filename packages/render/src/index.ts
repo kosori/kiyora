@@ -25,6 +25,7 @@ export { measureLabel, measureLabelWidth, wrapLabel } from './label';
 export type { Box as LayoutBox, Layout, LayoutOptions } from './layout';
 export * as layout from './layout';
 export { layoutGraph, measureNode } from './layout';
+export { layoutMindmap } from './mindmap-layout';
 export type { SceneProjectionOptions } from './projection';
 export {
 	contentBounds,

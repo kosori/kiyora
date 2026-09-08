@@ -39,6 +39,21 @@ describe('parseAndCompile', () => {
 			title: 'My Flow',
 		});
 	});
+
+	test('compiles a mindmap diagram to a read-only Scene', () => {
+		const result = parseAndCompile('mindmap\ntitle My Mindmap\nroot Central');
+
+		expect(result.diagnostics).toEqual([]);
+		expect(result.scene.readOnly).toBe(true);
+		expect(result.scene.title).toBe('My Mindmap');
+		expect(result.scene.nodes).toHaveLength(1);
+		expect(result.scene.nodes[0]).toMatchObject({
+			corner: 'rounded',
+			id: 'central',
+			label: 'Central',
+			shape: 'rectangle',
+		});
+	});
 });
 
 describe('parseTitle', () => {
@@ -56,5 +71,9 @@ describe('parseTitle', () => {
 
 	test('reads a sequence diagram title directive', () => {
 		expect(parseTitle('sequence\ntitle My Flow')).toBe('My Flow');
+	});
+
+	test('reads a mindmap diagram title directive', () => {
+		expect(parseTitle('mindmap\ntitle My Mindmap')).toBe('My Mindmap');
 	});
 });

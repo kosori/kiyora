@@ -261,6 +261,7 @@ export const FAMILIES: Record<string, string> = {
 	flowchart: 'flowchart',
 	fsm: 'statemachine',
 	graph: 'architecture',
+	mindmap: 'mindmap',
 	org: 'orgchart',
 	orgchart: 'orgchart',
 	state: 'statemachine',
@@ -271,7 +272,6 @@ export const FAMILIES: Record<string, string> = {
 /** Non-graph family headers recognized so they can be refused with an
  * `unsupported-family` error instead of being misparsed as a graph. */
 export const STANDALONE_FAMILIES = [
-	'mindmap',
 	'gitgraph',
 	'gantt',
 	'sankey',

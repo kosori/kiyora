@@ -11,6 +11,7 @@ import {
 	resolveHead,
 } from '@kiyora/dsl';
 import { type Box, type LayoutOptions, layoutGraph } from './layout';
+import { layoutMindmap } from './mindmap-layout';
 import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 import { layoutSequence } from './sequence-layout';
 
@@ -149,10 +150,21 @@ function compileRelation(relation: Relation): SceneEdge {
 	};
 }
 
-/** Compile a graph or sequence Diagram into a deterministic, serializable Scene. */
+/** Compile a diagram into a deterministic, serializable Scene. */
 export function compile(diagram: Diagram, options: LayoutOptions = {}): Scene {
 	if (diagram.kind === 'sequence') {
 		const { edges, nodes } = layoutSequence(diagram);
+		return {
+			edges,
+			groups: [],
+			nodes,
+			readOnly: true,
+			title: diagram.title,
+		};
+	}
+
+	if (diagram.kind === 'mindmap') {
+		const { edges, nodes } = layoutMindmap(diagram, options);
 		return {
 			edges,
 			groups: [],

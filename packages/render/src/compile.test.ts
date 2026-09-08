@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { type Diagram, parse, type Span } from '@kiyora/dsl';
+import {
+	type Diagram,
+	type MindMapDiagram,
+	parse,
+	type Span,
+} from '@kiyora/dsl';
 import { compile } from './compile';
 import type { Scene } from './scene';
 
@@ -259,5 +264,39 @@ describe('compile', () => {
 				to: 'order',
 			},
 		]);
+	});
+
+	test('compiles mindmap diagram with readOnly: true and rounded rectangle root node', () => {
+		const mindmapDiagram: MindMapDiagram = {
+			kind: 'mindmap',
+			root: {
+				children: [],
+				color: 'blue',
+				fill: 'bold',
+				id: 'root',
+				label: 'Root Node',
+				span,
+			},
+			title: 'Mindmap',
+		};
+		const scene = compile(mindmapDiagram);
+		expect(scene.readOnly).toBe(true);
+		expect(scene.title).toBe('Mindmap');
+		expect(scene.nodes).toHaveLength(1);
+		const [rootNode] = scene.nodes;
+		expect(rootNode).toMatchObject({
+			color: 'blue',
+			corner: 'rounded',
+			fill: 'bold',
+			id: 'root',
+			label: 'Root Node',
+			rotation: 0,
+			shape: 'rectangle',
+			span,
+		});
+		expect(rootNode?.width).toBeGreaterThan(0);
+		expect(rootNode?.height).toBeGreaterThan(0);
+		expect(scene.edges).toEqual([]);
+		expect(scene.groups).toEqual([]);
 	});
 });

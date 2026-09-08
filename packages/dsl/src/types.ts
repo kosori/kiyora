@@ -188,8 +188,29 @@ export type ClassDiagram = {
 	title: string;
 };
 
+/** A node branch in a mindmap. */
+export type MindMapBranch = {
+	children: MindMapBranch[];
+	color?: Color;
+	fill?: Fill;
+	id: string;
+	label: string;
+	span: Span;
+};
+
+/** A mindmap diagram tree. */
+export type MindMapDiagram = {
+	kind: 'mindmap';
+	root: MindMapBranch;
+	title: string;
+};
+
 /** Every Diagram is discriminated by `kind`. */
-export type Diagram = ClassDiagram | GraphDiagram | SequenceDiagram;
+export type Diagram =
+	| ClassDiagram
+	| GraphDiagram
+	| SequenceDiagram
+	| MindMapDiagram;
 
 /** The result of parsing Kira source: a best-effort Diagram plus diagnostics. */
 export type ParseResult = {

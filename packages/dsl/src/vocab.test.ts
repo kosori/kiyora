@@ -222,7 +222,6 @@ describe('families', () => {
 
 	test('unsupported family keywords are listed for refusal', () => {
 		expect(STANDALONE_FAMILIES).toEqual([
-			'mindmap',
 			'gitgraph',
 			'gantt',
 			'sankey',

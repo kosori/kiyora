@@ -16,11 +16,13 @@
 
 import { parseClass } from './class';
 import { parseGraph } from './graph';
+import { parseMindmap } from './mindmap';
 import { stripComment } from './scan';
 import { parseSequence } from './sequence';
 import type { ParseResult } from './types';
 
 export { parseClass } from './class';
+export { parseMindmap } from './mindmap';
 export { parseSequence } from './sequence';
 export type {
 	Actor,
@@ -38,6 +40,8 @@ export type {
 	Group,
 	LegendEntry,
 	Message,
+	MindMapBranch,
+	MindMapDiagram,
 	Node,
 	ParseResult,
 	Position,
@@ -95,6 +99,9 @@ export function parse(source: string): ParseResult {
 		const lower = line.toLowerCase();
 		if (lower === 'sequence') {
 			return parseSequence(source);
+		}
+		if (lower === 'mindmap') {
+			return parseMindmap(source);
 		}
 		if (lower === 'class' || lower === 'erd' || lower === 'uml') {
 			return parseClass(source);
