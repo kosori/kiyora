@@ -22,7 +22,7 @@
         "from": "docs",
         "span": {
           "end": {
-            "column": 16,
+            "column": 27,
             "line": 6
           },
           "start": {
@@ -30,7 +30,8 @@
             "line": 6
           }
         },
-        "to": "database"
+        "to": "database",
+        "width": 5
       }
     ],
     "groups": [],
@@ -72,7 +73,7 @@
         "label": "Database",
         "span": {
           "end": {
-            "column": 25,
+            "column": 37,
             "line": 4
           },
           "start": {
@@ -80,7 +81,8 @@
             "line": 4
           }
         },
-        "icon": "database"
+        "icon": "database",
+        "width": 140
       }
     ],
     "title": "Attributes A5"

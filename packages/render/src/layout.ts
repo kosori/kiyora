@@ -51,9 +51,14 @@ export function measureNode(
 ): { height: number; width: number } {
 	const opts = { ...DEFAULTS, ...options };
 
+	const labelMaxWidth =
+		node.width === undefined
+			? ENTITY_MAX_WIDTH - TEXT_PADDING * 2
+			: Math.max(1, node.width - TEXT_PADDING * 2);
+
 	let naturalWidth = measureLabel(node.label, {
 		fontSize: opts.fontSize,
-		maxWidth: ENTITY_MAX_WIDTH - TEXT_PADDING * 2,
+		maxWidth: labelMaxWidth,
 	}).width;
 
 	let totalHeight = 0;
@@ -61,24 +66,27 @@ export function measureNode(
 	if (node.shape === 'entity') {
 		const headerMetrics = measureLabel(node.label, {
 			fontSize: opts.fontSize,
-			maxWidth: ENTITY_MAX_WIDTH - TEXT_PADDING * 2,
+			maxWidth: labelMaxWidth,
 		});
 		naturalWidth = Math.max(naturalWidth, headerMetrics.width);
 		totalHeight += headerMetrics.height + TEXT_PADDING;
+
+		const entityMaxWidth =
+			node.width === undefined ? ENTITY_MAX_WIDTH : Math.max(1, node.width);
 
 		if (node.fields) {
 			for (const field of node.fields) {
 				const text = formatEntityField(field);
 				const memberMetrics = measureLabel(text, {
 					fontSize: opts.fontSize - MEMBER_FONT_SIZE_OFFSET,
-					maxWidth: ENTITY_MAX_WIDTH,
+					maxWidth: entityMaxWidth,
 				});
 				let fieldWidth = memberMetrics.width;
 				if (field.key) {
 					fieldWidth +=
 						measureLabel(field.key.toUpperCase(), {
 							fontSize: opts.fontSize - KEY_FONT_SIZE_OFFSET,
-							maxWidth: ENTITY_MAX_WIDTH,
+							maxWidth: entityMaxWidth,
 						}).width + KEY_SPACING;
 				}
 				naturalWidth = Math.max(naturalWidth, fieldWidth);
@@ -94,7 +102,7 @@ export function measureNode(
 				const text = formatEntityField(method);
 				const methodMetrics = measureLabel(text, {
 					fontSize: opts.fontSize - MEMBER_FONT_SIZE_OFFSET,
-					maxWidth: ENTITY_MAX_WIDTH,
+					maxWidth: entityMaxWidth,
 				});
 				naturalWidth = Math.max(naturalWidth, methodMetrics.width);
 				totalHeight += methodMetrics.height;
@@ -106,10 +114,13 @@ export function measureNode(
 	} else {
 		totalHeight = measureLabel(node.label, {
 			fontSize: opts.fontSize,
-			maxWidth: Math.max(
-				1,
-				Math.max(opts.minWidth - TEXT_PADDING * 2, naturalWidth)
-			),
+			maxWidth:
+				node.width === undefined
+					? Math.max(
+							1,
+							Math.max(opts.minWidth - TEXT_PADDING * 2, naturalWidth)
+						)
+					: Math.max(1, node.width - TEXT_PADDING * 2),
 		}).height;
 	}
 
@@ -117,7 +128,10 @@ export function measureNode(
 
 	return {
 		height: Math.max(opts.minHeight, totalHeight),
-		width: Math.max(opts.minWidth, contentWidth + TEXT_PADDING * 2),
+		width:
+			node.width === undefined
+				? Math.max(opts.minWidth, contentWidth + TEXT_PADDING * 2)
+				: node.width,
 	};
 }
 

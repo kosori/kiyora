@@ -91,6 +91,7 @@ function compileEdge(edge: Edge): SceneEdge {
 		...(edge.flow === undefined ? {} : { flow: edge.flow }),
 		...(edge.invisible === undefined ? {} : { invisible: edge.invisible }),
 		...(edge.back === undefined ? {} : { back: edge.back }),
+		...(edge.width === undefined ? {} : { width: edge.width }),
 		...(isHead(edge.head) ? { head: resolveHead(edge.head) ?? undefined } : {}),
 	};
 }

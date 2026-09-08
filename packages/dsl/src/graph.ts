@@ -750,6 +750,9 @@ function parseEdgeLine(
 				if (attrs.flow) {
 					edge.flow = true;
 				}
+				if (attrs.width !== undefined) {
+					edge.width = attrs.width;
+				}
 				if (attrs.head) {
 					edge.head = attrs.head;
 				}
@@ -912,6 +915,9 @@ function getOrCreateNode(
 			if (node.link === undefined && attrs.link !== undefined) {
 				node.link = attrs.link;
 			}
+			if (node.width === undefined && attrs.width !== undefined) {
+				node.width = attrs.width;
+			}
 			node.label = attrs.label ?? name;
 		}
 		return existing;
@@ -944,6 +950,9 @@ function getOrCreateNode(
 	}
 	if (attrs.link) {
 		node.link = attrs.link;
+	}
+	if (attrs.width !== undefined) {
+		node.width = attrs.width;
 	}
 	state.nodes.push(node);
 	for (const k of keys) {

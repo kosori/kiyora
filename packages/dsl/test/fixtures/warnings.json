@@ -17,7 +17,7 @@
     },
     {
       "code": "attribute-ignored",
-      "message": "attribute \"width\" is recognized but not supported in v1",
+      "message": "attribute \"score\" is recognized but not supported in v1",
       "severity": "warning",
       "span": {
         "end": {

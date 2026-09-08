@@ -40,9 +40,10 @@ export type Attrs = {
 	link?: string;
 	shadow?: boolean;
 	shape?: Shape;
+	width?: number;
 };
 
-const IGNORED_KEYS = new Set(['width', 'value', 'score']);
+const IGNORED_KEYS = new Set(['value', 'score']);
 
 const FLAG_WORDS: Record<string, keyof Attrs> = {
 	animated: 'flow',
@@ -129,6 +130,14 @@ export function parseAttrs(
 			case 'url':
 				out.link = value || undefined;
 				break;
+			case 'width': {
+				const cleaned = value.replace(/[^0-9.-]/g, '');
+				const num = Number.parseFloat(cleaned);
+				if (!Number.isNaN(num) && Number.isFinite(num)) {
+					out.width = num;
+				}
+				break;
+			}
 			case 'head':
 				out.head = value;
 				break;

@@ -337,6 +337,29 @@ describe('render scaffold', () => {
 		);
 	});
 
+	test('renders edges with explicit width scaled stroke-width', () => {
+		const scene: Scene = {
+			edges: [
+				{ from: 'a', span, to: 'b', width: 5 },
+				{ from: 'b', span, to: 'c' },
+			],
+			groups: [],
+			nodes: [
+				sceneNode({ id: 'a' }),
+				sceneNode({ id: 'b' }),
+				sceneNode({ id: 'c' }),
+			],
+			title: '',
+		};
+		const result = renderToSvg(scene);
+		expect(result.svg).toContain('data-edge="a-b"');
+		expect(result.svg).toMatch(/<g data-edge="a-b"><path[^>]*stroke-width="5"/);
+		expect(result.svg).toContain('data-edge="b-c"');
+		expect(result.svg).toMatch(
+			/<g data-edge="b-c"><path[^>]*stroke-width="2.5"/
+		);
+	});
+
 	test('projects clickable nodes, flow animations, and stylesheet from attributes-a5 fixture', () => {
 		const source = readFileSync(
 			join(import.meta.dir, '..', 'test', 'fixtures', 'attributes-a5.kira'),
@@ -355,6 +378,12 @@ describe('render scaffold', () => {
 		);
 		expect(result.svg).toContain(
 			'<g data-edge="web-docs"><path class="kiyora-flow" d="M 96 46 C 124.8 46, 139.2 46, 168 46" fill="none" stroke="#1e1e1e" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6" marker-end="url(#kiyora-arrow)"/>'
+		);
+		expect(result.svg).toContain(
+			'<g data-edge="docs-database"><path d="M 240 46 C 268.8 46, 283.2 46, 312 46" fill="none" stroke="#1e1e1e" stroke-width="5" stroke-linecap="round" marker-end="url(#kiyora-arrow)"/>'
+		);
+		expect(result.svg).toContain(
+			'<g data-node="database"><path d="M 318 24 H 446 A 6 6 0 0 1 452 30 V 62 A 6 6 0 0 1 446 68 H 318 A 6 6 0 0 1 312 62 V 30 A 6 6 0 0 1 318 24 Z"'
 		);
 		expect(result.svg).toMatchSnapshot();
 	});

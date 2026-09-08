@@ -51,6 +51,7 @@ export type SceneEdge = {
 	label?: string;
 	span: Span;
 	to: string;
+	width?: number;
 	y?: number;
 	y1?: number;
 	y2?: number;

@@ -71,6 +71,7 @@ export type Node = {
 	shadow?: boolean;
 	shape?: string;
 	span: Span;
+	width?: number;
 };
 
 /** A group of nodes inside a graph-family Diagram. */
@@ -97,6 +98,7 @@ export type Edge = {
 	label?: string;
 	span: Span;
 	to: string;
+	width?: number;
 };
 
 /** A legend entry: a swatch meaning pair declared with `legend { … }`. */

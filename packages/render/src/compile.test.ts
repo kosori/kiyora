@@ -93,6 +93,14 @@ describe('compile', () => {
 		expect(scene.edges[0]?.flow).toBe(true);
 	});
 
+	test('preserves width on compiled edges', () => {
+		const scene = compile({
+			...diagram,
+			edges: [{ from: 'a', span, to: 'b', width: 5 }],
+		});
+		expect(scene.edges[0]?.width).toBe(5);
+	});
+
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',

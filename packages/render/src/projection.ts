@@ -273,7 +273,8 @@ function straightEdgeWobbleOverlay(
 	from: WobblePoint,
 	to: WobblePoint,
 	color: string,
-	dash: { dash?: number; gap?: number }
+	dash: { dash?: number; gap?: number },
+	strokeWidth = EDGE_STROKE
 ): string {
 	const seed = deriveWobbleSeed(`edge:${edgeId}`, [
 		from[0],
@@ -286,7 +287,7 @@ function straightEdgeWobbleOverlay(
 		closed: false,
 		points,
 		stroke: color,
-		strokeWidth: EDGE_STROKE,
+		strokeWidth,
 	};
 	return dash.dash === undefined || dash.gap === undefined
 		? wobbleOverlayGroup(seed, [contour])
@@ -303,6 +304,7 @@ type StraightEdgeOptions = {
 	label?: string;
 	labelY: number;
 	markerEnd?: string;
+	strokeWidth?: number;
 	to: WobblePoint;
 	wobble: boolean;
 };
@@ -328,6 +330,7 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 		label: labelText,
 		labelY,
 		markerEnd = '',
+		strokeWidth = EDGE_STROKE,
 		to,
 		wobble,
 	} = options;
@@ -339,10 +342,10 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 			: `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(labelText)}</text>`;
 	const overlay =
 		wobble && !flow
-			? straightEdgeWobbleOverlay(edgeId, from, to, color, dash)
+			? straightEdgeWobbleOverlay(edgeId, from, to, color, dash, strokeWidth)
 			: '';
 	const { dashAttr, flowClass } = edgeDashAndClass(dash, flow);
-	return `<g data-edge="${escapeText(edgeId)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
+	return `<g data-edge="${escapeText(edgeId)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
 }
 
 function markerAttr(
@@ -374,7 +377,8 @@ function edgeMarkup(
 	const toBox = boxForNode(to);
 	const color = edgeColor(edge.color);
 	const head = edge.head ?? 'arrow';
-	const dash = dashAttrs(edge.dashed ? 'dashed' : 'solid', EDGE_STROKE);
+	const strokeWidth = edge.width === undefined ? EDGE_STROKE : edge.width;
+	const dash = dashAttrs(edge.dashed ? 'dashed' : 'solid', strokeWidth);
 
 	if (edge.y2 !== undefined) {
 		const x = fromBox.x + fromBox.width / 2;
@@ -388,6 +392,7 @@ function edgeMarkup(
 			from: [x, y1],
 			label: edge.label,
 			labelY: (y1 + y2) / 2,
+			strokeWidth,
 			to: [x, y2],
 			wobble,
 		});
@@ -407,6 +412,7 @@ function edgeMarkup(
 			label: edge.label,
 			labelY: y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y,
 			markerEnd: markerAttr('marker-end', head),
+			strokeWidth,
 			to: [endX, y],
 			wobble,
 		});
@@ -444,7 +450,7 @@ function edgeMarkup(
 			closed: false,
 			points,
 			stroke: color,
-			strokeWidth: EDGE_STROKE,
+			strokeWidth,
 		};
 		overlay =
 			dash.dash === undefined || dash.gap === undefined
@@ -452,7 +458,7 @@ function edgeMarkup(
 				: wobbleOverlayDashedMarkup(seed, contour, dash.dash, dash.gap);
 	}
 	const { dashAttr, flowClass } = edgeDashAndClass(dash, edge.flow);
-	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
+	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
 }
 
 /** Node markup: clean component geometry, optional per-component wobble

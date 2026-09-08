@@ -79,4 +79,21 @@ describe('layered layout', () => {
 		expect(layoutGraph([], []).width).toBe(48);
 		expect(layoutGraph([], []).height).toBe(48);
 	});
+
+	test('applies explicit width as an absolute pixel boundary overriding auto-measurement', () => {
+		const fixedWide = { ...node('a', 'Short'), width: 250 };
+		const fixedNarrow = { ...node('b', 'Short'), width: 50 };
+		expect(measureNode(fixedWide).width).toBe(250);
+		expect(measureNode(fixedNarrow).width).toBe(50);
+	});
+
+	test('preserves text wrap boundaries when explicit width is applied', () => {
+		const label = 'This is a long sentence that wraps across lines';
+		const autoNode = node('a', label);
+		const narrowNode = { ...node('b', label), width: 100 };
+		const autoMetrics = measureNode(autoNode);
+		const narrowMetrics = measureNode(narrowNode);
+		expect(narrowMetrics.width).toBe(100);
+		expect(narrowMetrics.height).toBeGreaterThan(autoMetrics.height);
+	});
 });

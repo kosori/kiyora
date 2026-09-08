@@ -626,4 +626,37 @@ central: Root
 		expect(db?.color).toBe('teal');
 		expect(client?.color).toBe('green');
 	});
+
+	test('parses numeric width attribute on nodes and edges, stripping invalid chars', () => {
+		const result = parse(
+			'Box [width: 150]\n' +
+				'Card [width: "200px"]\n' +
+				'Banner [width: "80%"]\n' +
+				'Invalid [width: "abc"]\n' +
+				'Box -> Card [width: 4]\n' +
+				'Card -> Banner [width: "6px"]\n'
+		);
+		assertGraph(result.diagram);
+		expect(result.diagnostics).toEqual([]);
+
+		const box = result.diagram.nodes.find((n) => n.id === 'box');
+		const card = result.diagram.nodes.find((n) => n.id === 'card');
+		const banner = result.diagram.nodes.find((n) => n.id === 'banner');
+		const invalid = result.diagram.nodes.find((n) => n.id === 'invalid');
+
+		expect(box?.width).toBe(150);
+		expect(card?.width).toBe(200);
+		expect(banner?.width).toBe(80);
+		expect(invalid?.width).toBeUndefined();
+
+		const edge1 = result.diagram.edges.find(
+			(e) => e.from === 'box' && e.to === 'card'
+		);
+		const edge2 = result.diagram.edges.find(
+			(e) => e.from === 'card' && e.to === 'banner'
+		);
+
+		expect(edge1?.width).toBe(4);
+		expect(edge2?.width).toBe(6);
+	});
 });
