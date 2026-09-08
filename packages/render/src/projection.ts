@@ -324,6 +324,17 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
 }
 
+function markerAttr(
+	name: 'marker-end' | 'marker-start',
+	head: string | undefined,
+	suffix = ''
+): string {
+	if (!head || head === 'none') {
+		return '';
+	}
+	return ` ${name}="url(#kiyora-${head}${suffix})"`;
+}
+
 /** Edge markup: the clean cubic path with clean markers, an optional open
  * wobble overlay (dashed runs for dashed edges), and a clean label.
  * Invisible or dangling edges render nothing. */
@@ -373,7 +384,7 @@ function edgeMarkup(
 			from: [startX, y],
 			label: edge.label,
 			labelY: y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y,
-			markerEnd: head === 'none' ? '' : ` marker-end="url(#kiyora-${head})"`,
+			markerEnd: markerAttr('marker-end', head),
 			to: [endX, y],
 			wobble,
 		});
@@ -382,12 +393,9 @@ function edgeMarkup(
 	const { c1, c2, end, start } = edgeCubic(fromBox, toBox);
 	const d = edgeCubicPathD({ c1, c2, end, start });
 	const markerStart =
-		edge.fromHead && edge.fromHead !== 'none'
-			? ` marker-start="url(#kiyora-${edge.fromHead})"`
-			: edge.bidirectional && head !== 'none'
-				? ` marker-start="url(#kiyora-${head}-reverse)"`
-				: '';
-	const markerEnd = head === 'none' ? '' : ` marker-end="url(#kiyora-${head})"`;
+		markerAttr('marker-start', edge.fromHead) ||
+		(edge.bidirectional ? markerAttr('marker-start', head, '-reverse') : '');
+	const markerEnd = markerAttr('marker-end', head);
 	const label =
 		edge.label === undefined
 			? ''

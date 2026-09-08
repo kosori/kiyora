@@ -15,16 +15,22 @@ const DEFAULTS: Required<LayoutOptions> = {
 	padding: 24,
 };
 
-type MeasuredBranch = {
+export type MeasuredBranch = {
 	branch: MindMapBranch;
 	children: MeasuredBranch[];
 	childrenHeight: number;
 	height: number;
 	subtreeHeight: number;
+	subtreeWidth: number;
 	width: number;
 };
 
-function measureBranch(
+type LayoutContext = {
+	boxes: Map<string, Box>;
+	opts: Required<LayoutOptions>;
+};
+
+export function measureBranch(
 	branch: MindMapBranch,
 	opts: Required<LayoutOptions>
 ): MeasuredBranch {
@@ -43,8 +49,10 @@ function measureBranch(
 	}
 
 	let totalChildHeights = 0;
+	let maxChildSubtreeWidth = 0;
 	for (const child of children) {
 		totalChildHeights += child.subtreeHeight;
+		maxChildSubtreeWidth = Math.max(maxChildSubtreeWidth, child.subtreeWidth);
 	}
 
 	const childrenHeight =
@@ -52,6 +60,8 @@ function measureBranch(
 			? totalChildHeights + (children.length - 1) * opts.nodeGapY
 			: 0;
 	const subtreeHeight = Math.max(height, childrenHeight);
+	const subtreeWidth =
+		children.length > 0 ? width + opts.nodeGapX + maxChildSubtreeWidth : width;
 
 	return {
 		branch,
@@ -59,6 +69,7 @@ function measureBranch(
 		childrenHeight,
 		height,
 		subtreeHeight,
+		subtreeWidth,
 		width,
 	};
 }
@@ -67,9 +78,9 @@ function positionBranch(
 	measured: MeasuredBranch,
 	x: number,
 	yIntervalStart: number,
-	opts: Required<LayoutOptions>,
-	boxes: Map<string, Box>
+	ctx: LayoutContext
 ): void {
+	const { boxes, opts } = ctx;
 	const nodeY = yIntervalStart + (measured.subtreeHeight - measured.height) / 2;
 	boxes.set(measured.branch.id, {
 		height: measured.height,
@@ -88,7 +99,7 @@ function positionBranch(
 
 	let currentY = childrenStartY;
 	for (const child of measured.children) {
-		positionBranch(child, childX, currentY, opts, boxes);
+		positionBranch(child, childX, currentY, ctx);
 		currentY += child.subtreeHeight + opts.nodeGapY;
 	}
 }
@@ -101,34 +112,41 @@ export function layoutMindmap(
 	const opts = { ...DEFAULTS, ...options };
 	const measured = measureBranch(diagram.root, opts);
 
-	const boxes = new Map<string, Box>();
-	positionBranch(measured, opts.padding, opts.padding, opts, boxes);
+	const ctx: LayoutContext = {
+		boxes: new Map<string, Box>(),
+		opts,
+	};
+	positionBranch(measured, opts.padding, opts.padding, ctx);
 
 	let minX = Number.POSITIVE_INFINITY;
 	let minY = Number.POSITIVE_INFINITY;
-	for (const box of boxes.values()) {
+	for (const box of ctx.boxes.values()) {
 		minX = Math.min(minX, box.x);
 		minY = Math.min(minY, box.y);
 	}
 
 	if (!Number.isFinite(minX)) {
-		return { boxes, height: opts.padding * 2, width: opts.padding * 2 };
+		return {
+			boxes: ctx.boxes,
+			height: opts.padding * 2,
+			width: opts.padding * 2,
+		};
 	}
 
-	for (const box of boxes.values()) {
+	for (const box of ctx.boxes.values()) {
 		box.x += opts.padding - minX;
 		box.y += opts.padding - minY;
 	}
 
 	let width = 0;
 	let height = 0;
-	for (const box of boxes.values()) {
+	for (const box of ctx.boxes.values()) {
 		width = Math.max(width, box.x + box.width);
 		height = Math.max(height, box.y + box.height);
 	}
 
 	return {
-		boxes,
+		boxes: ctx.boxes,
 		height: Math.max(1, height + opts.padding),
 		width: Math.max(1, width + opts.padding),
 	};
