@@ -85,6 +85,14 @@ describe('compile', () => {
 		expect(orgchartScene.variant).toBe('orgchart');
 	});
 
+	test('preserves flow on compiled edges', () => {
+		const scene = compile({
+			...diagram,
+			edges: [{ flow: true, from: 'a', span, to: 'b' }],
+		});
+		expect(scene.edges[0]?.flow).toBe(true);
+	});
+
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',

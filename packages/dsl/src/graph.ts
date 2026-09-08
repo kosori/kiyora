@@ -66,6 +66,7 @@ import {
 
 const STATEMACHINE_START_KEYWORDS = ['start', 'begin', 'initial'] as const;
 const STATEMACHINE_END_KEYWORDS = ['end', 'final', 'stop', 'done'] as const;
+const BRACKET_CONTENT_OFFSET = 2; // +1 to advance past '[', +1 for 1-based column offset
 
 /**
  * Split trailing attribute block off a node statement or endpoint, protecting
@@ -635,21 +636,29 @@ function parseEdgeLine(
 		return;
 	}
 	const colonIdx = findToken(line, ':', anchor.index + 1);
-	const headText = colonIdx === -1 ? line : line.slice(0, colonIdx);
+	let headText = colonIdx === -1 ? line : line.slice(0, colonIdx);
 	let labelPart: string | undefined;
 	let attrs: Attrs = {};
-	if (colonIdx !== -1) {
+	if (colonIdx === -1) {
+		const trimmed = line.trimEnd();
+		if (!(state.family === 'statemachine' && trimmed.endsWith('[*]'))) {
+			const { attrs: rawAttrs, rest } = splitTrailingAttrs(line);
+			if (rawAttrs !== null) {
+				headText = rest;
+				const blockStart = rest.length + BRACKET_CONTENT_OFFSET;
+				attrs = parseAttrs(rawAttrs, lineNo, blockStart, state.diagnostics);
+			}
+		}
+	} else {
 		const after = line.slice(colonIdx + 1);
 		const trimmed = after.trim();
 		const leading = after.length - trimmed.length;
-		const { attrs: a, rest } = splitTrailingAttrs(trimmed);
+		const { attrs: rawAttrs, rest } = splitTrailingAttrs(trimmed);
 		labelPart = unquote(rest.trim()) || undefined;
-		if (a !== null) {
-			// The block's inner text starts at the value column after
-			// `:`, the label, and the leading `[` (1-based column =
-			// raw offset + 1).
-			const blockStart = colonIdx + 1 + leading + rest.length + 2;
-			attrs = parseAttrs(a, lineNo, blockStart, state.diagnostics);
+		if (rawAttrs !== null) {
+			const blockStart =
+				colonIdx + 1 + leading + rest.length + BRACKET_CONTENT_OFFSET;
+			attrs = parseAttrs(rawAttrs, lineNo, blockStart, state.diagnostics);
 		}
 	}
 

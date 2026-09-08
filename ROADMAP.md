@@ -208,7 +208,7 @@ honored.
 - ⏳ `width` / `value` / `score` honored in render (currently `attribute-ignored`
   warning)
 - ✅ `link` (wrap shape in `<a>` for clickable)
-- ⏳ `flow` (animated dashes via CSS keyframes)
+- ✅ `flow` (animated dashes via CSS keyframes)
 - ⏳ `icon` rendering — gated on A6 (icon registry) below
 
 ### A6 — Sidebar / multi-document (⏳)

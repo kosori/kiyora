@@ -5,6 +5,7 @@ import type { Scene, SceneEdge, SceneGroup, SceneNode } from './scene';
 import { shapeComponents } from './shapes';
 import {
 	cornerRadius,
+	type DashAttrs,
 	dashAttrs,
 	EDGE_FONT_SIZE,
 	EDGE_STROKE,
@@ -52,6 +53,11 @@ export type SceneProjectionOptions = {
 
 const MARKERS = `<marker id="kiyora-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-arrow-reverse" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" stroke="context-stroke" stroke-width="1"/></marker><marker id="kiyora-circle-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><circle cx="5" cy="5" r="3" fill="context-stroke"/></marker><marker id="kiyora-cross-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 2 2 L 8 8 M 8 2 L 2 8" fill="none" stroke="context-stroke" stroke-width="2" stroke-linecap="round"/></marker><marker id="kiyora-crow-one" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 6 2 L 6 12 M 10 2 L 10 12 M 0 7 L 14 7" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-crow-many" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 4 2 L 10 7 L 4 12 M 10 7 L 14 7 M 0 7 L 4 7" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-crow-one-or-many" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 4 2 L 10 7 L 4 12 M 10 7 L 14 7 M 0 7 L 4 7 M 8 2 L 8 12" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-crow-zero-or-one" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><circle cx="4" cy="7" r="2.5" fill="none" stroke="context-stroke" stroke-width="1.5"/><path d="M 6.5 7 L 14 7 M 10 2 L 10 12" fill="none" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-uml-generalization" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 0 2 L 12 7 L 0 12 z" fill="#ffffff" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-uml-composition" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 0 7 L 6 2 L 12 7 L 6 12 z" fill="context-stroke" stroke="context-stroke" stroke-width="1.5"/></marker><marker id="kiyora-uml-aggregation" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M 0 7 L 6 2 L 12 7 L 6 12 z" fill="#ffffff" stroke="context-stroke" stroke-width="1.5"/></marker>`;
 const EFFECTS = `<filter id="kiyora-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.12"/></filter>`;
+const FLOW_CLASS = 'kiyora-flow';
+const FLOW_DASHARRAY = '6 6';
+const FLOW_KEYFRAME_OFFSET = -12;
+const FLOW_ANIMATION_DURATION = '0.5s';
+const FLOW_STYLES = `<style>@keyframes ${FLOW_CLASS} { to { stroke-dashoffset: ${FLOW_KEYFRAME_OFFSET}; } } .${FLOW_CLASS} { animation: ${FLOW_CLASS} ${FLOW_ANIMATION_DURATION} linear infinite; stroke-dasharray: ${FLOW_DASHARRAY}; }</style>`;
 
 const GROUP_PADDING = 30;
 const GROUP_STROKE = 1.5;
@@ -289,9 +295,10 @@ function straightEdgeWobbleOverlay(
 
 type StraightEdgeOptions = {
 	color: string;
-	dash: { dash?: number; gap?: number; strokeDasharray?: string };
+	dash: DashAttrs;
 	edgeFontSize: number;
 	edgeId: string;
+	flow?: boolean;
 	from: WobblePoint;
 	label?: string;
 	labelY: number;
@@ -300,12 +307,23 @@ type StraightEdgeOptions = {
 	wobble: boolean;
 };
 
+function edgeDashAndClass(
+	dash: DashAttrs,
+	flow?: boolean
+): { dashAttr: string; flowClass: string } {
+	const flowClass = flow ? ` class="${FLOW_CLASS}"` : '';
+	const dashArray = flow ? FLOW_DASHARRAY : dash.strokeDasharray;
+	const dashAttr = dashArray ? ` stroke-dasharray="${dashArray}"` : '';
+	return { dashAttr, flowClass };
+}
+
 function straightEdgeMarkup(options: StraightEdgeOptions): string {
 	const {
 		color,
 		dash,
 		edgeFontSize,
 		edgeId,
+		flow,
 		from,
 		label: labelText,
 		labelY,
@@ -319,13 +337,12 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 		labelText === undefined
 			? ''
 			: `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(labelText)}</text>`;
-	const overlay = wobble
-		? straightEdgeWobbleOverlay(edgeId, from, to, color, dash)
-		: '';
-	const dashAttr = dash.strokeDasharray
-		? ` stroke-dasharray="${dash.strokeDasharray}"`
-		: '';
-	return `<g data-edge="${escapeText(edgeId)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
+	const overlay =
+		wobble && !flow
+			? straightEdgeWobbleOverlay(edgeId, from, to, color, dash)
+			: '';
+	const { dashAttr, flowClass } = edgeDashAndClass(dash, flow);
+	return `<g data-edge="${escapeText(edgeId)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
 }
 
 function markerAttr(
@@ -385,6 +402,7 @@ function edgeMarkup(
 			dash,
 			edgeFontSize,
 			edgeId: `${edge.from}-${edge.to}`,
+			flow: edge.flow,
 			from: [startX, y],
 			label: edge.label,
 			labelY: y - SEQUENCE_MESSAGE_LABEL_OFFSET_Y,
@@ -405,7 +423,7 @@ function edgeMarkup(
 			? ''
 			: `<text x="${(start.x + end.x) / 2}" y="${(start.y + end.y) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
 	let overlay = '';
-	if (wobble) {
+	if (wobble && !edge.flow) {
 		const seed = deriveWobbleSeed(`edge:${edge.from}->${edge.to}`, [
 			start.x,
 			start.y,
@@ -433,7 +451,8 @@ function edgeMarkup(
 				? wobbleOverlayGroup(seed, [contour])
 				: wobbleOverlayDashedMarkup(seed, contour, dash.dash, dash.gap);
 	}
-	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dash.strokeDasharray ? ` stroke-dasharray="${dash.strokeDasharray}"` : ''}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
+	const { dashAttr, flowClass } = edgeDashAndClass(dash, edge.flow);
+	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${EDGE_STROKE}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
 }
 
 /** Node markup: clean component geometry, optional per-component wobble
@@ -621,7 +640,7 @@ export function renderTitleMarkup(scene: Scene, x: number, y: number): string {
 }
 
 export function renderDefs(): string {
-	return `${MARKERS}${EFFECTS}`;
+	return `${MARKERS}${EFFECTS}${FLOW_STYLES}`;
 }
 
 function isPaletteColor(value: string): value is Color {

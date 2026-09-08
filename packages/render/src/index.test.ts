@@ -6,6 +6,7 @@ import {
 	compile,
 	deriveGroupBoxes,
 	render,
+	renderDefs,
 	renderSceneElements,
 	renderToSvg,
 	type Scene,
@@ -280,7 +281,63 @@ describe('render scaffold', () => {
 		expect(result.svg).toContain('<g data-node="unsafe"');
 	});
 
-	test('projects clickable nodes wrapped in anchor tags from attributes-a5 fixture', () => {
+	test('injects kiyora-flow keyframes style in renderDefs and applies animation class to flow edges', () => {
+		const defs = renderDefs();
+		expect(defs).toContain(
+			'<style>@keyframes kiyora-flow { to { stroke-dashoffset: -12; } }'
+		);
+		expect(defs).toContain('.kiyora-flow');
+
+		const result = renderToSvg({
+			edges: [
+				{ flow: true, from: 'web', span, to: 'docs' },
+				{ from: 'docs', span, to: 'database' },
+			],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 44,
+					id: 'web',
+					label: 'Web',
+					span,
+					width: 72,
+					x: 24,
+					y: 24,
+				}),
+				sceneNode({
+					height: 44,
+					id: 'docs',
+					label: 'Docs',
+					span,
+					width: 72,
+					x: 168,
+					y: 24,
+				}),
+				sceneNode({
+					height: 44,
+					id: 'database',
+					label: 'Database',
+					span,
+					width: 72,
+					x: 312,
+					y: 24,
+				}),
+			],
+			title: '',
+		});
+
+		expect(result.svg).toContain(
+			'@keyframes kiyora-flow { to { stroke-dashoffset: -12; } }'
+		);
+		expect(result.svg).toContain(
+			'<g data-edge="web-docs"><path class="kiyora-flow"'
+		);
+		expect(result.svg).not.toContain(
+			'<g data-edge="docs-database"><path class="kiyora-flow"'
+		);
+	});
+
+	test('projects clickable nodes, flow animations, and stylesheet from attributes-a5 fixture', () => {
 		const source = readFileSync(
 			join(import.meta.dir, '..', 'test', 'fixtures', 'attributes-a5.kira'),
 			'utf8'
@@ -292,6 +349,12 @@ describe('render scaffold', () => {
 		);
 		expect(result.svg).toContain(
 			'<a href="https://kiyora.dev/docs" target="_blank" rel="noopener"><g data-node="docs"'
+		);
+		expect(result.svg).toContain(
+			'<style>@keyframes kiyora-flow { to { stroke-dashoffset: -12; } } .kiyora-flow { animation: kiyora-flow 0.5s linear infinite; stroke-dasharray: 6 6; }</style>'
+		);
+		expect(result.svg).toContain(
+			'<g data-edge="web-docs"><path class="kiyora-flow" d="M 96 46 C 124.8 46, 139.2 46, 168 46" fill="none" stroke="#1e1e1e" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6" marker-end="url(#kiyora-arrow)"/>'
 		);
 		expect(result.svg).toMatchSnapshot();
 	});

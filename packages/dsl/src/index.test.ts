@@ -161,6 +161,18 @@ describe('parse', () => {
 		});
 	});
 
+	test('parses flow attributes on edges and attaches to AST', () => {
+		const result = parse(
+			'A -> B [flow]\nC -> D [flow: true]\nE -> F [flow: false]\n'
+		);
+		assertGraph(result.diagram);
+		expect(result.diagnostics).toEqual([]);
+		expect(result.diagram.edges).toHaveLength(3);
+		expect(result.diagram.edges[0]?.flow).toBe(true);
+		expect(result.diagram.edges[1]?.flow).toBe(true);
+		expect(result.diagram.edges[2]?.flow).toBeUndefined();
+	});
+
 	test('uses a later explicit statement name as the redeclared node label', () => {
 		const result = parse('Cache [red]\ncache = Cache Server\n');
 		assertGraph(result.diagram);

@@ -53,16 +53,27 @@ export function createEngine(
 		svg.setAttribute('width', String(result.width));
 		svg.setAttribute('height', String(result.height));
 		svg.setAttribute('viewBox', result.viewBox);
-		svg.innerHTML = result.body;
+		const domParserConstructor =
+			svg.ownerDocument.defaultView?.DOMParser ??
+			(typeof DOMParser === 'undefined' ? undefined : DOMParser);
+		if (domParserConstructor) {
+			const parsed = new domParserConstructor().parseFromString(
+				`<svg xmlns="http://www.w3.org/2000/svg">${result.body}</svg>`,
+				'image/svg+xml'
+			);
+			svg.replaceChildren(...parsed.documentElement.childNodes);
+		} else {
+			svg.innerHTML = result.body;
+		}
 	}
 
 	const unsubscribe = editor.subscribe(render);
 	const detachInput = attachInput(svg, editor, inputHandlers);
-	const ResizeObserverConstructor =
+	const resizeObserverConstructor =
 		document.defaultView?.ResizeObserver ??
 		(typeof ResizeObserver === 'undefined' ? undefined : ResizeObserver);
-	const observer = ResizeObserverConstructor
-		? new ResizeObserverConstructor(() => render())
+	const observer = resizeObserverConstructor
+		? new resizeObserverConstructor(() => render())
 		: null;
 	observer?.observe(container);
 	render();

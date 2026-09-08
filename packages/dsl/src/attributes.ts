@@ -132,6 +132,9 @@ export function parseAttrs(
 			case 'head':
 				out.head = value;
 				break;
+			case 'flow':
+				out.flow = v !== 'false' && v !== '0';
+				break;
 			case 'color':
 			case 'shape':
 				applyResolved(out, key, value, v, lineNo, valueCol, diagnostics, key);
