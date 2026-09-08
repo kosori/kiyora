@@ -5,6 +5,8 @@ import {
 	COLOR_ALIASES,
 	COLORS,
 	CORNERS,
+	CSS_NAMED_COLORS,
+	extractHue,
 	FAMILIES,
 	FILLS,
 	FRAMES,
@@ -22,6 +24,7 @@ import {
 	SHAPES,
 	STANDALONE_FAMILIES,
 	slugify,
+	snapHue,
 	UNSUPPORTED_GRAPH_FAMILIES,
 	uniqueId,
 } from './vocab';
@@ -71,14 +74,110 @@ describe('colors', () => {
 		expect(COLOR_ALIASES.purple).toBe('violet');
 	});
 
-	test('unknown and deferred colors resolve to null', () => {
-		expect(resolveColor('tomato')).toBeNull();
-		expect(resolveColor('#ff6347')).toBeNull();
+	test('CSS named colors and hex strings snap predictably to palette colors', () => {
+		expect(resolveColor('tomato')).toBe('red');
+		expect(resolveColor('#ff6347')).toBe('red');
+		expect(resolveColor('#f00')).toBe('red');
+		expect(resolveColor('coral')).toBe('orange');
+		expect(resolveColor('#ff922b')).toBe('orange');
+		expect(resolveColor('gold')).toBe('yellow');
+		expect(resolveColor('#ffd700')).toBe('yellow');
+		expect(resolveColor('lime')).toBe('green');
+		expect(resolveColor('#00ff00')).toBe('green');
+		expect(resolveColor('cyan')).toBe('teal');
+		expect(resolveColor('aqua')).toBe('teal');
+		expect(resolveColor('#00ffff')).toBe('teal');
+		expect(resolveColor('navy')).toBe('blue');
+		expect(resolveColor('#0000ff')).toBe('blue');
+		expect(resolveColor('magenta')).toBe('violet');
+		expect(resolveColor('#ff00ff')).toBe('violet');
+		expect(resolveColor('hotpink')).toBe('pink');
+		expect(resolveColor('#ff69b4')).toBe('pink');
+		expect(resolveColor('black')).toBe('gray');
+		expect(resolveColor('white')).toBe('gray');
+		expect(resolveColor('silver')).toBe('gray');
+		expect(resolveColor('#000000')).toBe('gray');
+		expect(resolveColor('#ffffff')).toBe('gray');
+		expect(resolveColor('#808080')).toBe('gray');
+	});
+
+	test('unknown garbage strings resolve to null', () => {
 		expect(resolveColor('bluish')).toBeNull();
+		expect(resolveColor('#xyz')).toBeNull();
+		expect(resolveColor('not-a-color')).toBeNull();
+		expect(resolveColor('#12345')).toBeNull();
 	});
 
 	test('tokens are trimmed and lowercased', () => {
 		expect(resolveColor(' Blue ')).toBe('blue');
+		expect(resolveColor('  Tomato  ')).toBe('red');
+		expect(resolveColor('  #FF6347  ')).toBe('red');
+	});
+});
+
+describe('extractHue', () => {
+	test('extracts hue from 6-digit hex codes', () => {
+		expect(extractHue('#ff0000')).toBe(0);
+		expect(extractHue('#ff6347')).toBe(9);
+		expect(extractHue('#00ff00')).toBe(120);
+		expect(extractHue('#00ffff')).toBe(180);
+		expect(extractHue('#0000ff')).toBe(240);
+		expect(extractHue('#ff00ff')).toBe(300);
+		expect(extractHue('#ffff00')).toBe(60);
+	});
+
+	test('extracts hue from 3-digit hex codes', () => {
+		expect(extractHue('#f00')).toBe(0);
+		expect(extractHue('#0f0')).toBe(120);
+		expect(extractHue('#00f')).toBe(240);
+	});
+
+	test('returns 0 for achromatic hex codes', () => {
+		expect(extractHue('#ffffff')).toBe(0);
+		expect(extractHue('#000000')).toBe(0);
+		expect(extractHue('#808080')).toBe(0);
+	});
+
+	test('returns null for invalid hex strings', () => {
+		expect(extractHue('bluish')).toBeNull();
+		expect(extractHue('#xyz')).toBeNull();
+		expect(extractHue('#12345')).toBeNull();
+		expect(extractHue('')).toBeNull();
+	});
+});
+
+describe('CSS_NAMED_COLORS', () => {
+	test('contains standard HTML/CSS color names', () => {
+		expect(CSS_NAMED_COLORS.tomato).toBe('#ff6347');
+		expect(CSS_NAMED_COLORS.crimson).toBe('#dc143c');
+		expect(CSS_NAMED_COLORS.navy).toBe('#000080');
+		expect(CSS_NAMED_COLORS.black).toBe('#000000');
+		expect(CSS_NAMED_COLORS.white).toBe('#ffffff');
+		expect(CSS_NAMED_COLORS.rebeccapurple).toBe('#663399');
+	});
+});
+
+describe('snapHue', () => {
+	test('snaps angles cleanly to closest palette hues', () => {
+		expect(snapHue(0)).toBe('red');
+		expect(snapHue(10)).toBe('red');
+		expect(snapHue(355)).toBe('red');
+		expect(snapHue(30)).toBe('orange');
+		expect(snapHue(60)).toBe('yellow');
+		expect(snapHue(120)).toBe('green');
+		expect(snapHue(170)).toBe('teal');
+		expect(snapHue(180)).toBe('teal');
+		expect(snapHue(215)).toBe('blue');
+		expect(snapHue(240)).toBe('blue');
+		expect(snapHue(280)).toBe('violet');
+		expect(snapHue(300)).toBe('violet');
+		expect(snapHue(330)).toBe('pink');
+	});
+
+	test('normalizes angles outside 0-360 range', () => {
+		expect(snapHue(-10)).toBe('red');
+		expect(snapHue(370)).toBe('red');
+		expect(snapHue(720)).toBe('red');
 	});
 });
 

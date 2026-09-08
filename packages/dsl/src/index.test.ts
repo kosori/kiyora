@@ -612,4 +612,18 @@ central: Root
 		expect(validBranch?.children[0]?.label).toBe('Far Indented Child');
 		expect(validBranch?.children[1]?.label).toBe('De-indented Sibling');
 	});
+
+	test('parses nodes with CSS named colors and hex color codes', () => {
+		const result = parse(
+			'Server [color: tomato]\nDatabase [color: "#00ffff"]\nClient [#00ff00]\n'
+		);
+		assertGraph(result.diagram);
+		expect(result.diagnostics).toEqual([]);
+		const server = result.diagram.nodes.find((n) => n.id === 'server');
+		const db = result.diagram.nodes.find((n) => n.id === 'database');
+		const client = result.diagram.nodes.find((n) => n.id === 'client');
+		expect(server?.color).toBe('red');
+		expect(db?.color).toBe('teal');
+		expect(client?.color).toBe('green');
+	});
 });
