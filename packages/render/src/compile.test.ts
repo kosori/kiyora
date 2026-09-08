@@ -88,6 +88,7 @@ describe('compile', () => {
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',
+			'attributes-a5',
 			'bpmn-basic',
 			'flowchart-wrapped',
 			'orgchart-basic',

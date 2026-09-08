@@ -67,6 +67,10 @@ export function escapeText(value: string): string {
 		.replaceAll('"', '&quot;');
 }
 
+export function isSafeUrl(value: string): boolean {
+	return !/^\s*javascript\s*:/i.test(value);
+}
+
 function boxForNode(node: SceneNode): Box {
 	return { height: node.height, width: node.width, x: node.x, y: node.y };
 }
@@ -575,7 +579,11 @@ function nodeMarkup(
 		node.rotation === 0
 			? ''
 			: ` transform="rotate(${node.rotation} ${box.x + box.width / 2} ${box.y + box.height / 2})"`;
-	return `<g data-node="${escapeText(node.id)}"${filter}${rotation}>${shape}${labels}</g>`;
+	const group = `<g data-node="${escapeText(node.id)}"${filter}${rotation}>${shape}${labels}</g>`;
+	if (node.link && isSafeUrl(node.link)) {
+		return `<a href="${escapeText(node.link)}" target="_blank" rel="noopener">${group}</a>`;
+	}
+	return group;
 }
 
 export function renderSceneElements(

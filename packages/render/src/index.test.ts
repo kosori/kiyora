@@ -219,6 +219,83 @@ describe('render scaffold', () => {
 		expect(result.svg).toContain('deliberately long');
 	});
 
+	test('wraps nodes with a link in an anchor tag and visually ignores icon in SVG projection', () => {
+		const result = renderToSvg({
+			edges: [],
+			groups: [],
+			nodes: [
+				sceneNode({
+					color: 'blue',
+					fill: 'pastel',
+					height: 44,
+					icon: 'globe',
+					id: 'web',
+					label: 'Web',
+					link: 'https://kiyora.dev',
+					span,
+					width: 72,
+					x: 24,
+					y: 24,
+				}),
+				sceneNode({
+					color: 'green',
+					fill: 'bold',
+					height: 44,
+					id: 'docs',
+					label: 'Docs',
+					span,
+					width: 72,
+					x: 168,
+					y: 24,
+				}),
+			],
+			title: '',
+		});
+		expect(result.svg).toContain(
+			'<a href="https://kiyora.dev" target="_blank" rel="noopener"><g data-node="web"'
+		);
+		expect(result.svg).toContain('</a><g data-node="docs"');
+		expect(result.svg).not.toContain('globe');
+	});
+
+	test('disallows unsafe javascript: URLs from wrapping nodes in anchor tags', () => {
+		const result = renderToSvg({
+			edges: [],
+			groups: [],
+			nodes: [
+				sceneNode({
+					height: 44,
+					id: 'unsafe',
+					label: 'Unsafe',
+					link: 'javascript:alert(1)',
+					span,
+					width: 72,
+					x: 24,
+					y: 24,
+				}),
+			],
+			title: '',
+		});
+		expect(result.svg).not.toContain('<a href=');
+		expect(result.svg).toContain('<g data-node="unsafe"');
+	});
+
+	test('projects clickable nodes wrapped in anchor tags from attributes-a5 fixture', () => {
+		const source = readFileSync(
+			join(import.meta.dir, '..', 'test', 'fixtures', 'attributes-a5.kira'),
+			'utf8'
+		);
+		const scene = compile(parse(source).diagram);
+		const result = renderToSvg(scene);
+		expect(result.svg).toContain(
+			'<a href="https://kiyora.dev" target="_blank" rel="noopener"><g data-node="web"'
+		);
+		expect(result.svg).toContain(
+			'<a href="https://kiyora.dev/docs" target="_blank" rel="noopener"><g data-node="docs"'
+		);
+		expect(result.svg).toMatchSnapshot();
+	});
+
 	test('locks a complete SVG golden projection', () => {
 		const result = renderToSvg({
 			edges: [

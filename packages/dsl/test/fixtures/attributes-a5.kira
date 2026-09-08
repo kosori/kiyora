@@ -1,0 +1,5 @@
+title Attributes A5
+Web [link: "https://kiyora.dev", icon: globe]
+Docs [url: "https://kiyora.dev/docs"]
+Database [icon: database]
+Web -> Docs -> Database
