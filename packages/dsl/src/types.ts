@@ -96,8 +96,10 @@ export type Edge = {
 	flow?: boolean;
 	from: string;
 	head?: string;
+	icon?: string;
 	invisible?: boolean;
 	label?: string;
+	link?: string;
 	score?: number;
 	span: Span;
 	to: string;

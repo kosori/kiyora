@@ -79,8 +79,13 @@ export function isSafeUrl(value: string): boolean {
 
 const BADGE_FONT_SIZE = 11;
 const BADGE_HEIGHT = 18;
+const BADGE_OFFSET_Y = 16;
 const BADGE_PADDING_X = 6;
 const BADGE_STROKE = 1.5;
+
+function edgeBadgeValue(edge: SceneEdge): number | undefined {
+	return edge.value ?? edge.score;
+}
 
 function badgeMarkup(
 	value: number,
@@ -368,7 +373,7 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 		labelText === undefined
 			? ''
 			: `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(labelText)}</text>`;
-	const badgeY = labelText === undefined ? labelY : labelY - 16;
+	const badgeY = labelText === undefined ? labelY : labelY - BADGE_OFFSET_Y;
 	const badgeMarkupEl =
 		badge === undefined ? '' : badgeMarkup(badge, labelX, badgeY, badgeColor);
 	const overlay =
@@ -416,7 +421,7 @@ function edgeMarkup(
 		const y1 = edge.y1 ?? fromBox.y + fromBox.height;
 		const { y2 } = edge;
 		return straightEdgeMarkup({
-			badge: edge.value ?? edge.score,
+			badge: edgeBadgeValue(edge),
 			badgeColor: edge.color,
 			color,
 			dash,
@@ -436,7 +441,7 @@ function edgeMarkup(
 		const endX = toBox.x + toBox.width / 2;
 		const { y } = edge;
 		return straightEdgeMarkup({
-			badge: edge.value ?? edge.score,
+			badge: edgeBadgeValue(edge),
 			badgeColor: edge.color,
 			color,
 			dash,
@@ -463,14 +468,12 @@ function edgeMarkup(
 		edge.label === undefined
 			? ''
 			: `<text x="${(start.x + end.x) / 2}" y="${(start.y + end.y) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-	const edgeBadgeValue = edge.value ?? edge.score;
+	const badge = edgeBadgeValue(edge);
 	const midX = (start.x + end.x) / 2;
 	const midY = (start.y + end.y) / 2;
-	const badgeY = edge.label === undefined ? midY : midY - 16;
+	const badgeY = edge.label === undefined ? midY : midY - BADGE_OFFSET_Y;
 	const badgeMarkupEl =
-		edgeBadgeValue === undefined
-			? ''
-			: badgeMarkup(edgeBadgeValue, midX, badgeY, edge.color);
+		badge === undefined ? '' : badgeMarkup(badge, midX, badgeY, edge.color);
 	let overlay = '';
 	if (wobble && !edge.flow) {
 		const seed = deriveWobbleSeed(`edge:${edge.from}->${edge.to}`, [

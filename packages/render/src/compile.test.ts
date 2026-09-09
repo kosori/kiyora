@@ -116,6 +116,23 @@ describe('compile', () => {
 		expect(scene.edges[0]?.value).toBe(42);
 	});
 
+	test('preserves link and icon on compiled edges', () => {
+		const scene = compile({
+			...diagram,
+			edges: [
+				{
+					from: 'a',
+					icon: 'cloud',
+					link: 'https://example.com',
+					span,
+					to: 'b',
+				},
+			],
+		});
+		expect(scene.edges[0]?.icon).toBe('cloud');
+		expect(scene.edges[0]?.link).toBe('https://example.com');
+	});
+
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',

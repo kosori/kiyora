@@ -24,8 +24,21 @@ function isFrame(value: string | undefined): value is Frame {
 	return value !== undefined && resolveFrame(value) !== null;
 }
 
+function compileNumericAttrs(source: {
+	score?: number;
+	value?: number;
+	width?: number;
+}): { score?: number; value?: number; width?: number } {
+	return {
+		...(source.score === undefined ? {} : { score: source.score }),
+		...(source.value === undefined ? {} : { value: source.value }),
+		...(source.width === undefined ? {} : { width: source.width }),
+	};
+}
+
 function compileNode(node: Node, box: Box): SceneNode {
 	return {
+		...compileNumericAttrs(node),
 		height: box.height,
 		id: node.id,
 		label: node.label,
@@ -43,8 +56,6 @@ function compileNode(node: Node, box: Box): SceneNode {
 		...(node.icon === undefined ? {} : { icon: node.icon }),
 		...(node.link === undefined ? {} : { link: node.link }),
 		...(node.group === undefined ? {} : { group: node.group }),
-		...(node.score === undefined ? {} : { score: node.score }),
-		...(node.value === undefined ? {} : { value: node.value }),
 	};
 }
 
@@ -81,6 +92,7 @@ function compileGroup(group: Group): SceneGroup {
 
 function compileEdge(edge: Edge): SceneEdge {
 	return {
+		...compileNumericAttrs(edge),
 		from: edge.from,
 		span: edge.span,
 		to: edge.to,
@@ -91,11 +103,10 @@ function compileEdge(edge: Edge): SceneEdge {
 			: { bidirectional: edge.bidirectional }),
 		...(edge.color === undefined ? {} : { color: edge.color }),
 		...(edge.flow === undefined ? {} : { flow: edge.flow }),
+		...(edge.icon === undefined ? {} : { icon: edge.icon }),
 		...(edge.invisible === undefined ? {} : { invisible: edge.invisible }),
+		...(edge.link === undefined ? {} : { link: edge.link }),
 		...(edge.back === undefined ? {} : { back: edge.back }),
-		...(edge.width === undefined ? {} : { width: edge.width }),
-		...(edge.score === undefined ? {} : { score: edge.score }),
-		...(edge.value === undefined ? {} : { value: edge.value }),
 		...(isHead(edge.head) ? { head: resolveHead(edge.head) ?? undefined } : {}),
 	};
 }

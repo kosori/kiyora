@@ -55,6 +55,12 @@ const FLAG_WORDS: Record<string, keyof Attrs> = {
 	shadow: 'shadow',
 };
 
+function parseNumberAttr(value: string): number | undefined {
+	const cleaned = value.replace(/[^0-9.-]/g, '');
+	const num = Number.parseFloat(cleaned);
+	return !Number.isNaN(num) && Number.isFinite(num) ? num : undefined;
+}
+
 /**
  * Parse the inner text of a `[ … ]` block (already split off the statement).
  * `column` is the 1-based column where the inner text starts, so diagnostic
@@ -132,27 +138,12 @@ export function parseAttrs(
 			case 'url':
 				out.link = value || undefined;
 				break;
-			case 'width': {
-				const cleaned = value.replace(/[^0-9.-]/g, '');
-				const num = Number.parseFloat(cleaned);
-				if (!Number.isNaN(num) && Number.isFinite(num)) {
-					out.width = num;
-				}
-				break;
-			}
-			case 'score': {
-				const cleaned = value.replace(/[^0-9.-]/g, '');
-				const num = Number.parseFloat(cleaned);
-				if (!Number.isNaN(num) && Number.isFinite(num)) {
-					out.score = num;
-				}
-				break;
-			}
+			case 'width':
+			case 'score':
 			case 'value': {
-				const cleaned = value.replace(/[^0-9.-]/g, '');
-				const num = Number.parseFloat(cleaned);
-				if (!Number.isNaN(num) && Number.isFinite(num)) {
-					out.value = num;
+				const num = parseNumberAttr(value);
+				if (num !== undefined) {
+					out[key] = num;
 				}
 				break;
 			}

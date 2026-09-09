@@ -51,10 +51,11 @@ export function measureNode(
 ): { height: number; width: number } {
 	const opts = { ...DEFAULTS, ...options };
 
-	const labelMaxWidth =
+	const innerWidth =
 		node.width === undefined
-			? ENTITY_MAX_WIDTH - TEXT_PADDING * 2
+			? undefined
 			: Math.max(1, node.width - TEXT_PADDING * 2);
+	const labelMaxWidth = innerWidth ?? ENTITY_MAX_WIDTH - TEXT_PADDING * 2;
 
 	let naturalWidth = measureLabel(node.label, {
 		fontSize: opts.fontSize,
@@ -115,12 +116,8 @@ export function measureNode(
 		totalHeight = measureLabel(node.label, {
 			fontSize: opts.fontSize,
 			maxWidth:
-				node.width === undefined
-					? Math.max(
-							1,
-							Math.max(opts.minWidth - TEXT_PADDING * 2, naturalWidth)
-						)
-					: Math.max(1, node.width - TEXT_PADDING * 2),
+				innerWidth ??
+				Math.max(1, Math.max(opts.minWidth - TEXT_PADDING * 2, naturalWidth)),
 		}).height;
 	}
 
@@ -129,9 +126,7 @@ export function measureNode(
 	return {
 		height: Math.max(opts.minHeight, totalHeight),
 		width:
-			node.width === undefined
-				? Math.max(opts.minWidth, contentWidth + TEXT_PADDING * 2)
-				: node.width,
+			node.width ?? Math.max(opts.minWidth, contentWidth + TEXT_PADDING * 2),
 	};
 }
 

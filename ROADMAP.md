@@ -182,21 +182,17 @@ Entity-relationship and UML class diagram family (`class`, `erd`, `uml`).
   - Spec: supported dual-ended crow's foot relations (`fromCard` and `toCard`), fixed visibility modifier parsing for whitespace separators, and avoided duplicate divider paths when entities have methods without fields
 - ⏳ ERD / class advanced features (deferred to follow-up increment): type annotation badges, package/namespace grouping, compartment scrolling
 
-### A4d — Mindmap family (✅ done)
+### A4d — Mindmap family (⏳)
 
-Hierarchical tree mindmap diagram family (`mindmap`).
+Hierarchical radial / tree mindmap diagram family.
 
-- ✅ Tolerant line-oriented parser with `mindmap` keyword, hierarchical `MindMapBranch` AST, markdown list items (`-`, `*`), inline attributes, and explicit or inferred central node
-- ✅ Horizontal tree layout in `@kiyora/render` with bottom-up height and width accumulation centering parents relative to children without overlap
-- ✅ Dynamic branch box measurement via `measureNode` adapting width and height to label content
-- ✅ Smooth cubic Bezier branch curves connecting parents to children without arrowheads
-- ✅ Read-only canvas protection (disables dragging, resizing, and structural mutations for mindmap scenes)
-- ✅ Contract fixture snapshot testing (`mindmap-basic.kira` and `mindmap-basic.json`)
-- ✅ Code-review refinements (Issue 03):
-  - Standards: shallow branching with early returns in `mindmap.ts`, unified span calculation, removed duplicate JSDoc, eliminated repeated switch checks for `'none'` marker URLs in `projection.ts`, and bundled layout context in `mindmap-layout.ts`
-  - Spec: full recursive horizontal subtree width accumulation (`subtreeWidth`) in `measureBranch` to avoid overlapping deep descendant branches; formalized scope and documentation updates in `spec.md` and `CONTEXT.md`
-- ⏳ Mindmap advanced features (deferred to follow-up increment): radial layout, multi-parent / cross-links, collapsible branches, custom branch shapes / underlines
+- ⏳ Parser changes and `MindMapBranch` AST variant
+- ⏳ Radial or horizontal tree auto-layout
+- ⏳ Branch curves and text node rendering
 - 🚫 Wireframe, infographic, gitgraph, gantt, sankey, chart (later)
+
+Per family: parser changes, AST variant, render path, fixtures. The reference
+under `reference/koboyo/compiler/dsl/parser.ts` is the model.
 
 ### A5 — Parser attribute backbone (⏳)
 
@@ -326,7 +322,6 @@ The actual "what's shipped" state is:
 | `.issues/sequence-mvp/spec.md`           | `done`            | shipped                              |
 | `.issues/statemachine-rendering/spec.md` | `ready-for-human` | shipped (acceptance review deferred) |
 | `.issues/class-diagram-rendering/spec.md`| `ready-for-human` | shipped (acceptance review deferred) |
-| `.issues/mindmap-rendering/spec.md`      | `ready-for-human` | shipped (acceptance review deferred) |
 
 We treat reality over headers. A spec header moves to `done` once a sweep
 confirms the spec/issue labels match the implementation, and is otherwise

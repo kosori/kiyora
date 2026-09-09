@@ -694,4 +694,18 @@ central: Root
 		expect(edge1?.value).toBe(12);
 		expect(edge2?.score).toBe(99);
 	});
+
+	test('parses link and icon attributes on edges and preserves them in AST', () => {
+		const result = parse(
+			'A -> B [link: "https://example.com", icon: "cloud"]\n'
+		);
+		assertGraph(result.diagram);
+		expect(result.diagnostics).toEqual([]);
+
+		const edge = result.diagram.edges.find(
+			(e) => e.from === 'a' && e.to === 'b'
+		);
+		expect(edge?.link).toBe('https://example.com');
+		expect(edge?.icon).toBe('cloud');
+	});
 });

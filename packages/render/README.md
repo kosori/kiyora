@@ -49,7 +49,8 @@ type SceneNode = {
 type SceneEdge = {
   from: string; to: string; span: Span; label?: string;
   dashed?: boolean; bidirectional?: boolean; color?: Color;
-  flow?: boolean; head?: Head; invisible?: boolean; back?: boolean;
+  flow?: boolean; head?: Head; icon?: string; invisible?: boolean;
+  link?: string; back?: boolean;
 };
 type SceneGroup = {
   id: string; label: string; span: Span; color?: Color;

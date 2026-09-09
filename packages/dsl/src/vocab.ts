@@ -525,11 +525,9 @@ function hueFromRgb(
 	return hue % 360;
 }
 
-/**
- * Extract the HSL hue angle (0-360) from a hex code, or null if the string is
- * not a valid hex color code.
- */
-export function extractHue(hex: string): number | null {
+type ColorMetrics = { delta: number; hue: number };
+
+function hexColorMetrics(hex: string): ColorMetrics | null {
 	const rgb = parseHex(hex);
 	if (!rgb) {
 		return null;
@@ -537,7 +535,15 @@ export function extractHue(hex: string): number | null {
 	const max = Math.max(rgb.r, rgb.g, rgb.b);
 	const min = Math.min(rgb.r, rgb.g, rgb.b);
 	const delta = max - min;
-	return hueFromRgb(rgb.r, rgb.g, rgb.b, max, delta);
+	return { delta, hue: hueFromRgb(rgb.r, rgb.g, rgb.b, max, delta) };
+}
+
+/**
+ * Extract the HSL hue angle (0-360) from a hex code, or null if the string is
+ * not a valid hex color code.
+ */
+export function extractHue(hex: string): number | null {
+	return hexColorMetrics(hex)?.hue ?? null;
 }
 
 /**
@@ -577,23 +583,15 @@ export function resolveColor(token: string): Color | null {
 	if (alias) {
 		return alias;
 	}
-	const namedHex = CSS_NAMED_COLORS[t];
-	const hex = namedHex ?? (t.startsWith('#') ? t : null);
-	if (!hex) {
+	const hex = CSS_NAMED_COLORS[t] ?? t;
+	const metrics = hexColorMetrics(hex);
+	if (!metrics) {
 		return null;
 	}
-	const rgb = parseHex(hex);
-	if (!rgb) {
-		return null;
-	}
-	const max = Math.max(rgb.r, rgb.g, rgb.b);
-	const min = Math.min(rgb.r, rgb.g, rgb.b);
-	const delta = max - min;
-	if (delta === 0) {
+	if (metrics.delta === 0) {
 		return 'gray';
 	}
-	const hue = hueFromRgb(rgb.r, rgb.g, rgb.b, max, delta);
-	return snapHue(hue);
+	return snapHue(metrics.hue);
 }
 
 /** Resolve a fill token, or `null`. */

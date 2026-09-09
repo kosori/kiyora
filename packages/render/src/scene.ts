@@ -49,8 +49,10 @@ export type SceneEdge = {
 	from: string;
 	fromHead?: Head;
 	head?: Head;
+	icon?: string;
 	invisible?: boolean;
 	label?: string;
+	link?: string;
 	score?: number;
 	span: Span;
 	to: string;

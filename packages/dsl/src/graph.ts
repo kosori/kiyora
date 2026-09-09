@@ -619,6 +619,24 @@ function parseInlineGroup(
 	}
 }
 
+type MetricAttrs = { score?: number; value?: number; width?: number };
+
+function assignMetrics(
+	target: MetricAttrs,
+	attrs: Attrs,
+	initial = false
+): void {
+	if (attrs.width !== undefined && (!initial || target.width === undefined)) {
+		target.width = attrs.width;
+	}
+	if (attrs.score !== undefined && (!initial || target.score === undefined)) {
+		target.score = attrs.score;
+	}
+	if (attrs.value !== undefined && (!initial || target.value === undefined)) {
+		target.value = attrs.value;
+	}
+}
+
 /**
  * Parse an edge statement: `A -> B`, chains, fan-out/fan-in, labels, and a
  * trailing attribute block applied to the edges. `:` splits the statement
@@ -750,15 +768,13 @@ function parseEdgeLine(
 				if (attrs.flow) {
 					edge.flow = true;
 				}
-				if (attrs.width !== undefined) {
-					edge.width = attrs.width;
+				if (attrs.icon) {
+					edge.icon = attrs.icon;
 				}
-				if (attrs.score !== undefined) {
-					edge.score = attrs.score;
+				if (attrs.link) {
+					edge.link = attrs.link;
 				}
-				if (attrs.value !== undefined) {
-					edge.value = attrs.value;
-				}
+				assignMetrics(edge, attrs);
 				if (attrs.head) {
 					edge.head = attrs.head;
 				}
@@ -921,15 +937,7 @@ function getOrCreateNode(
 			if (node.link === undefined && attrs.link !== undefined) {
 				node.link = attrs.link;
 			}
-			if (node.width === undefined && attrs.width !== undefined) {
-				node.width = attrs.width;
-			}
-			if (node.score === undefined && attrs.score !== undefined) {
-				node.score = attrs.score;
-			}
-			if (node.value === undefined && attrs.value !== undefined) {
-				node.value = attrs.value;
-			}
+			assignMetrics(node, attrs, true);
 			node.label = attrs.label ?? name;
 		}
 		return existing;
@@ -963,15 +971,7 @@ function getOrCreateNode(
 	if (attrs.link) {
 		node.link = attrs.link;
 	}
-	if (attrs.width !== undefined) {
-		node.width = attrs.width;
-	}
-	if (attrs.score !== undefined) {
-		node.score = attrs.score;
-	}
-	if (attrs.value !== undefined) {
-		node.value = attrs.value;
-	}
+	assignMetrics(node, attrs);
 	state.nodes.push(node);
 	for (const k of keys) {
 		state.nodeByKey.set(k, nid);

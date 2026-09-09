@@ -101,6 +101,13 @@ describe('colors', () => {
 		expect(resolveColor('#808080')).toBe('gray');
 	});
 
+	test('hex strings without # prefix snap to palette colors', () => {
+		expect(resolveColor('ff6347')).toBe('red');
+		expect(resolveColor('f00')).toBe('red');
+		expect(resolveColor('00ff00')).toBe('green');
+		expect(resolveColor('ffffff')).toBe('gray');
+	});
+
 	test('unknown garbage strings resolve to null', () => {
 		expect(resolveColor('bluish')).toBeNull();
 		expect(resolveColor('#xyz')).toBeNull();
