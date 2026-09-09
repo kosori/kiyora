@@ -182,30 +182,48 @@ Entity-relationship and UML class diagram family (`class`, `erd`, `uml`).
   - Spec: supported dual-ended crow's foot relations (`fromCard` and `toCard`), fixed visibility modifier parsing for whitespace separators, and avoided duplicate divider paths when entities have methods without fields
 - ⏳ ERD / class advanced features (deferred to follow-up increment): type annotation badges, package/namespace grouping, compartment scrolling
 
-### A4d — Mindmap family (⏳)
+### A4d — Mindmap family (✅ done)
 
-Hierarchical radial / tree mindmap diagram family.
+Hierarchical tree mindmap diagram family (`mindmap`).
 
-- ⏳ Parser changes and `MindMapBranch` AST variant
-- ⏳ Radial or horizontal tree auto-layout
-- ⏳ Branch curves and text node rendering
+- ✅ Tolerant line-oriented parser with `mindmap` keyword, hierarchical `MindMapBranch` AST, markdown list items (`-`, `*`), inline attributes, and explicit or inferred central node
+- ✅ Horizontal tree layout in `@kiyora/render` with bottom-up height and width accumulation centering parents relative to children without overlap
+- ✅ Dynamic branch box measurement via `measureNode` adapting width and height to label content
+- ✅ Smooth cubic Bezier branch curves connecting parents to children without arrowheads
+- ✅ Read-only canvas protection (disables dragging, resizing, and structural mutations for mindmap scenes)
+- ✅ Contract fixture snapshot testing (`mindmap-basic.kira` and `mindmap-basic.json`)
+- ✅ Code-review refinements (Issue 03):
+  - Standards: shallow branching with early returns in `mindmap.ts`, unified span calculation, removed duplicate JSDoc, eliminated repeated switch checks for `'none'` marker URLs in `projection.ts`, and bundled layout context in `mindmap-layout.ts`
+  - Spec: full recursive horizontal subtree width accumulation (`subtreeWidth`) in `measureBranch` to avoid overlapping deep descendant branches; formalized scope and documentation updates in `spec.md` and `CONTEXT.md`
+- ⏳ Mindmap advanced features (deferred to follow-up increment): radial layout, multi-parent / cross-links, collapsible branches, custom branch shapes / underlines
 - 🚫 Wireframe, infographic, gitgraph, gantt, sankey, chart (later)
 
-Per family: parser changes, AST variant, render path, fixtures. The reference
-under `reference/koboyo/compiler/dsl/parser.ts` is the model.
+### A5 — Parser attribute backbone (✅ done)
 
-### A5 — Parser attribute backbone (⏳)
+The deferred parser and render attributes are now honored across the full pipeline
+(DSL parser, layout measurement, SVG projection, animated styles, and edge AST
+pass-through).
 
-Fill in the deferred parser/render attributes that are already parsed but not
-honored.
-
-- ⏳ Longform / hex color resolution (`tomato`, `#ff6347` → nearest palette hue
-  via ~40 lines of HSL math)
-- ⏳ `width` / `value` / `score` honored in render (currently `attribute-ignored`
-  warning)
-- ✅ `link` (wrap shape in `<a>` for clickable)
-- ✅ `flow` (animated dashes via CSS keyframes)
-- ⏳ `icon` rendering — gated on A6 (icon registry) below
+- ✅ Longform / hex color resolution (`tomato`, `#ff6347` or prefix-less `ff6347` → nearest
+  palette hue via zero-dependency CSS color dictionary and hex-to-HSL math)
+- ✅ Explicit numeric `width` on nodes (overriding automatic text measurement) and
+  proportional stroke width scaling on edges
+- ✅ Numeric `value` and `score` attributes rendered as pill badges on node top-right
+  and along edge midpoints
+- ✅ `link` attribute wrapping rendered nodes in clickable external `<a>` links
+  (`target="_blank"`, `rel="noopener"`) and preserved on edges
+- ✅ `flow` attribute rendering animated marching ants edge dashes via injected
+  `@keyframes kiyora-flow` stylesheet block in `renderDefs()`
+- ✅ `icon` attribute parsed and preserved across node and edge AST (visual rendering
+  gated on A6 icon registry)
+- ✅ Code-review refinements (Issue 06):
+  - Standards: extracted `BADGE_OFFSET_Y` constant, promoted shared `NumericAttrs`
+    type across packages, deduplicated attribute string-to-number parsing, unified
+    hex-to-RGB conversion, generalized edge badge coalescing, and simplified node
+    width layout boundary checks
+  - Spec: extended `SceneEdge` with `link` and `icon` AST properties preserved during
+    edge parsing, and fixed `resolveColor` to accept prefix-less hex codes
+- ⏳ `icon` visual rendering (deferred to A6 icon registry)
 
 ### A6 — Sidebar / multi-document (⏳)
 
@@ -322,6 +340,8 @@ The actual "what's shipped" state is:
 | `.issues/sequence-mvp/spec.md`           | `done`            | shipped                              |
 | `.issues/statemachine-rendering/spec.md` | `ready-for-human` | shipped (acceptance review deferred) |
 | `.issues/class-diagram-rendering/spec.md`| `ready-for-human` | shipped (acceptance review deferred) |
+| `.issues/mindmap-rendering/spec.md`      | `ready-for-human` | shipped (acceptance review deferred) |
+| `.issues/parser-attribute-backbone/spec.md` | `ready-for-agent` | shipped (acceptance review deferred) |
 
 We treat reality over headers. A spec header moves to `done` once a sweep
 confirms the spec/issue labels match the implementation, and is otherwise
