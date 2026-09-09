@@ -7,6 +7,7 @@ import {
 	type Head,
 	type MindMapBranch,
 	type Node,
+	type NumericAttrs,
 	type Relation,
 	resolveFrame,
 	resolveHead,
@@ -24,11 +25,7 @@ function isFrame(value: string | undefined): value is Frame {
 	return value !== undefined && resolveFrame(value) !== null;
 }
 
-function compileNumericAttrs(source: {
-	score?: number;
-	value?: number;
-	width?: number;
-}): { score?: number; value?: number; width?: number } {
+function compileNumericAttrs(source: NumericAttrs): NumericAttrs {
 	return {
 		...(source.score === undefined ? {} : { score: source.score }),
 		...(source.value === undefined ? {} : { value: source.value }),

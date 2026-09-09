@@ -83,8 +83,11 @@ const BADGE_OFFSET_Y = 16;
 const BADGE_PADDING_X = 6;
 const BADGE_STROKE = 1.5;
 
-function edgeBadgeValue(edge: SceneEdge): number | undefined {
-	return edge.value ?? edge.score;
+function badgeValue(item: {
+	score?: number;
+	value?: number;
+}): number | undefined {
+	return item.value ?? item.score;
 }
 
 function badgeMarkup(
@@ -421,7 +424,7 @@ function edgeMarkup(
 		const y1 = edge.y1 ?? fromBox.y + fromBox.height;
 		const { y2 } = edge;
 		return straightEdgeMarkup({
-			badge: edgeBadgeValue(edge),
+			badge: badgeValue(edge),
 			badgeColor: edge.color,
 			color,
 			dash,
@@ -441,7 +444,7 @@ function edgeMarkup(
 		const endX = toBox.x + toBox.width / 2;
 		const { y } = edge;
 		return straightEdgeMarkup({
-			badge: edgeBadgeValue(edge),
+			badge: badgeValue(edge),
 			badgeColor: edge.color,
 			color,
 			dash,
@@ -468,7 +471,7 @@ function edgeMarkup(
 		edge.label === undefined
 			? ''
 			: `<text x="${(start.x + end.x) / 2}" y="${(start.y + end.y) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
-	const badge = edgeBadgeValue(edge);
+	const badge = badgeValue(edge);
 	const midX = (start.x + end.x) / 2;
 	const midY = (start.y + end.y) / 2;
 	const badgeY = edge.label === undefined ? midY : midY - BADGE_OFFSET_Y;
@@ -645,11 +648,11 @@ function nodeMarkup(
 				.join('');
 		}
 	}
-	const badgeValue = node.value ?? node.score;
+	const nodeBadge = badgeValue(node);
 	const badgeMarkupEl =
-		badgeValue === undefined
+		nodeBadge === undefined
 			? ''
-			: badgeMarkup(badgeValue, box.x + box.width, box.y, node.color);
+			: badgeMarkup(nodeBadge, box.x + box.width, box.y, node.color);
 	const filter = node.shadow ? ' filter="url(#kiyora-shadow)"' : '';
 	const rotation =
 		node.rotation === 0

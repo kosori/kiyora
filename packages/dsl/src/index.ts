@@ -43,6 +43,7 @@ export type {
 	MindMapBranch,
 	MindMapDiagram,
 	Node,
+	NumericAttrs,
 	ParseResult,
 	Position,
 	Relation,

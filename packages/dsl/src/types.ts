@@ -107,6 +107,13 @@ export type Edge = {
 	width?: number;
 };
 
+/** Numeric styling metrics shared by nodes, edges, and attribute blocks. */
+export type NumericAttrs = {
+	score?: number;
+	value?: number;
+	width?: number;
+};
+
 /** A legend entry: a swatch meaning pair declared with `legend { … }`. */
 export type LegendEntry = {
 	label: string;

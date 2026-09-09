@@ -47,6 +47,7 @@ import type {
 	Group,
 	LegendEntry,
 	Node,
+	NumericAttrs,
 	ParseResult,
 	Span,
 } from './types';
@@ -619,20 +620,27 @@ function parseInlineGroup(
 	}
 }
 
-type MetricAttrs = { score?: number; value?: number; width?: number };
-
 function assignMetrics(
-	target: MetricAttrs,
+	target: NumericAttrs,
 	attrs: Attrs,
-	initial = false
+	preserveExisting = false
 ): void {
-	if (attrs.width !== undefined && (!initial || target.width === undefined)) {
+	if (
+		attrs.width !== undefined &&
+		(!preserveExisting || target.width === undefined)
+	) {
 		target.width = attrs.width;
 	}
-	if (attrs.score !== undefined && (!initial || target.score === undefined)) {
+	if (
+		attrs.score !== undefined &&
+		(!preserveExisting || target.score === undefined)
+	) {
 		target.score = attrs.score;
 	}
-	if (attrs.value !== undefined && (!initial || target.value === undefined)) {
+	if (
+		attrs.value !== undefined &&
+		(!preserveExisting || target.value === undefined)
+	) {
 		target.value = attrs.value;
 	}
 }

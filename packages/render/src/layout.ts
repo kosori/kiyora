@@ -51,10 +51,12 @@ export function measureNode(
 ): { height: number; width: number } {
 	const opts = { ...DEFAULTS, ...options };
 
+	const clampedWidth =
+		node.width === undefined ? undefined : Math.max(1, node.width);
 	const innerWidth =
-		node.width === undefined
+		clampedWidth === undefined
 			? undefined
-			: Math.max(1, node.width - TEXT_PADDING * 2);
+			: Math.max(1, clampedWidth - TEXT_PADDING * 2);
 	const labelMaxWidth = innerWidth ?? ENTITY_MAX_WIDTH - TEXT_PADDING * 2;
 
 	let naturalWidth = measureLabel(node.label, {
@@ -72,8 +74,7 @@ export function measureNode(
 		naturalWidth = Math.max(naturalWidth, headerMetrics.width);
 		totalHeight += headerMetrics.height + TEXT_PADDING;
 
-		const entityMaxWidth =
-			node.width === undefined ? ENTITY_MAX_WIDTH : Math.max(1, node.width);
+		const entityMaxWidth = clampedWidth ?? ENTITY_MAX_WIDTH;
 
 		if (node.fields) {
 			for (const field of node.fields) {
