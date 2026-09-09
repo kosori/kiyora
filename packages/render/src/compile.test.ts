@@ -101,6 +101,21 @@ describe('compile', () => {
 		expect(scene.edges[0]?.width).toBe(5);
 	});
 
+	test('preserves score and value on compiled nodes and edges', () => {
+		const scene = compile({
+			...diagram,
+			edges: [{ from: 'a', score: 88, span, to: 'b', value: 42 }],
+			nodes: [
+				{ id: 'a', label: 'A', score: 95, span, value: 100 },
+				{ id: 'b', label: 'B', span },
+			],
+		});
+		expect(scene.nodes[0]?.score).toBe(95);
+		expect(scene.nodes[0]?.value).toBe(100);
+		expect(scene.edges[0]?.score).toBe(88);
+		expect(scene.edges[0]?.value).toBe(42);
+	});
+
 	test('covers each graph variant in contract fixtures', () => {
 		const fixtures = [
 			'architecture-basic',

@@ -68,9 +68,11 @@ export type Node = {
 	label: string;
 	labelColor?: Color;
 	link?: string;
+	score?: number;
 	shadow?: boolean;
 	shape?: string;
 	span: Span;
+	value?: number;
 	width?: number;
 };
 
@@ -96,8 +98,10 @@ export type Edge = {
 	head?: string;
 	invisible?: boolean;
 	label?: string;
+	score?: number;
 	span: Span;
 	to: string;
+	value?: number;
 	width?: number;
 };
 

@@ -77,6 +77,30 @@ export function isSafeUrl(value: string): boolean {
 	return !/^\s*javascript\s*:/i.test(value);
 }
 
+const BADGE_FONT_SIZE = 11;
+const BADGE_HEIGHT = 18;
+const BADGE_PADDING_X = 6;
+const BADGE_STROKE = 1.5;
+
+function badgeMarkup(
+	value: number,
+	cx: number,
+	cy: number,
+	baseColor?: string
+): string {
+	const text = String(value);
+	const textWidth = measureLabelWidth(text, BADGE_FONT_SIZE);
+	const width = Math.max(
+		BADGE_HEIGHT,
+		Math.round(textWidth + BADGE_PADDING_X * 2)
+	);
+	const rx = BADGE_HEIGHT / 2;
+	const x = cx - width / 2;
+	const y = cy - BADGE_HEIGHT / 2;
+	const style = resolveStyle(baseColor ?? 'gray', 'bold');
+	return `<g data-badge="${escapeText(text)}"><rect x="${x}" y="${y}" width="${width}" height="${BADGE_HEIGHT}" rx="${rx}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="${BADGE_STROKE}"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="${BADGE_FONT_SIZE}" font-weight="bold" fill="${style.text}">${escapeText(text)}</text></g>`;
+}
+
 function boxForNode(node: SceneNode): Box {
 	return { height: node.height, width: node.width, x: node.x, y: node.y };
 }
@@ -295,6 +319,8 @@ function straightEdgeWobbleOverlay(
 }
 
 type StraightEdgeOptions = {
+	badge?: number;
+	badgeColor?: string;
 	color: string;
 	dash: DashAttrs;
 	edgeFontSize: number;
@@ -321,6 +347,8 @@ function edgeDashAndClass(
 
 function straightEdgeMarkup(options: StraightEdgeOptions): string {
 	const {
+		badge,
+		badgeColor,
 		color,
 		dash,
 		edgeFontSize,
@@ -340,12 +368,15 @@ function straightEdgeMarkup(options: StraightEdgeOptions): string {
 		labelText === undefined
 			? ''
 			: `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(labelText)}</text>`;
+	const badgeY = labelText === undefined ? labelY : labelY - 16;
+	const badgeMarkupEl =
+		badge === undefined ? '' : badgeMarkup(badge, labelX, badgeY, badgeColor);
 	const overlay =
 		wobble && !flow
 			? straightEdgeWobbleOverlay(edgeId, from, to, color, dash, strokeWidth)
 			: '';
 	const { dashAttr, flowClass } = edgeDashAndClass(dash, flow);
-	return `<g data-edge="${escapeText(edgeId)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}</g>`;
+	return `<g data-edge="${escapeText(edgeId)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"${dashAttr}${markerEnd}/>${overlay}${labelMarkup}${badgeMarkupEl}</g>`;
 }
 
 function markerAttr(
@@ -385,6 +416,8 @@ function edgeMarkup(
 		const y1 = edge.y1 ?? fromBox.y + fromBox.height;
 		const { y2 } = edge;
 		return straightEdgeMarkup({
+			badge: edge.value ?? edge.score,
+			badgeColor: edge.color,
 			color,
 			dash,
 			edgeFontSize,
@@ -403,6 +436,8 @@ function edgeMarkup(
 		const endX = toBox.x + toBox.width / 2;
 		const { y } = edge;
 		return straightEdgeMarkup({
+			badge: edge.value ?? edge.score,
+			badgeColor: edge.color,
 			color,
 			dash,
 			edgeFontSize,
@@ -428,6 +463,14 @@ function edgeMarkup(
 		edge.label === undefined
 			? ''
 			: `<text x="${(start.x + end.x) / 2}" y="${(start.y + end.y) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${edgeFontSize}" fill="${INK}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeText(edge.label)}</text>`;
+	const edgeBadgeValue = edge.value ?? edge.score;
+	const midX = (start.x + end.x) / 2;
+	const midY = (start.y + end.y) / 2;
+	const badgeY = edge.label === undefined ? midY : midY - 16;
+	const badgeMarkupEl =
+		edgeBadgeValue === undefined
+			? ''
+			: badgeMarkup(edgeBadgeValue, midX, badgeY, edge.color);
 	let overlay = '';
 	if (wobble && !edge.flow) {
 		const seed = deriveWobbleSeed(`edge:${edge.from}->${edge.to}`, [
@@ -458,7 +501,7 @@ function edgeMarkup(
 				: wobbleOverlayDashedMarkup(seed, contour, dash.dash, dash.gap);
 	}
 	const { dashAttr, flowClass } = edgeDashAndClass(dash, edge.flow);
-	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${label}</g>`;
+	return `<g data-edge="${escapeText(`${edge.from}-${edge.to}`)}"><path${flowClass} d="${d}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"${dashAttr}${markerStart}${markerEnd}/>${overlay}${label}${badgeMarkupEl}</g>`;
 }
 
 /** Node markup: clean component geometry, optional per-component wobble
@@ -599,12 +642,17 @@ function nodeMarkup(
 				.join('');
 		}
 	}
+	const badgeValue = node.value ?? node.score;
+	const badgeMarkupEl =
+		badgeValue === undefined
+			? ''
+			: badgeMarkup(badgeValue, box.x + box.width, box.y, node.color);
 	const filter = node.shadow ? ' filter="url(#kiyora-shadow)"' : '';
 	const rotation =
 		node.rotation === 0
 			? ''
 			: ` transform="rotate(${node.rotation} ${box.x + box.width / 2} ${box.y + box.height / 2})"`;
-	const group = `<g data-node="${escapeText(node.id)}"${filter}${rotation}>${shape}${labels}</g>`;
+	const group = `<g data-node="${escapeText(node.id)}"${filter}${rotation}>${shape}${labels}${badgeMarkupEl}</g>`;
 	if (node.link && isSafeUrl(node.link)) {
 		return `<a href="${escapeText(node.link)}" target="_blank" rel="noopener">${group}</a>`;
 	}

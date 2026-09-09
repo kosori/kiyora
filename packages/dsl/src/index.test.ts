@@ -659,4 +659,39 @@ central: Root
 		expect(edge1?.width).toBe(4);
 		expect(edge2?.width).toBe(6);
 	});
+
+	test('parses numeric value and score attributes on nodes and edges, stripping invalid chars', () => {
+		const result = parse(
+			'Box [score: 95]\n' +
+				'Card [value: "100pts"]\n' +
+				'Banner [score: "4.5", value: 10]\n' +
+				'Invalid [score: "abc", value: "xyz"]\n' +
+				'Box -> Card [value: 12]\n' +
+				'Card -> Banner [score: 99]\n'
+		);
+		assertGraph(result.diagram);
+		expect(result.diagnostics).toEqual([]);
+
+		const box = result.diagram.nodes.find((n) => n.id === 'box');
+		const card = result.diagram.nodes.find((n) => n.id === 'card');
+		const banner = result.diagram.nodes.find((n) => n.id === 'banner');
+		const invalid = result.diagram.nodes.find((n) => n.id === 'invalid');
+
+		expect(box?.score).toBe(95);
+		expect(card?.value).toBe(100);
+		expect(banner?.score).toBe(4.5);
+		expect(banner?.value).toBe(10);
+		expect(invalid?.score).toBeUndefined();
+		expect(invalid?.value).toBeUndefined();
+
+		const edge1 = result.diagram.edges.find(
+			(e) => e.from === 'box' && e.to === 'card'
+		);
+		const edge2 = result.diagram.edges.find(
+			(e) => e.from === 'card' && e.to === 'banner'
+		);
+
+		expect(edge1?.value).toBe(12);
+		expect(edge2?.score).toBe(99);
+	});
 });

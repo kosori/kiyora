@@ -360,6 +360,71 @@ describe('render scaffold', () => {
 		);
 	});
 
+	test('renders numeric pill badges on nodes and edges using their base color scheme', () => {
+		const scene: Scene = {
+			edges: [
+				{ color: 'green', from: 'a', score: 99, span, to: 'b' },
+				{ from: 'b', label: 'transfers', span, to: 'c', value: 42 },
+			],
+			groups: [],
+			nodes: [
+				sceneNode({
+					color: 'red',
+					height: 44,
+					id: 'a',
+					score: 100,
+					width: 80,
+					x: 20,
+					y: 30,
+				}),
+				sceneNode({
+					height: 44,
+					id: 'b',
+					value: 0,
+					width: 80,
+					x: 150,
+					y: 30,
+				}),
+				sceneNode({
+					height: 44,
+					id: 'c',
+					width: 80,
+					x: 280,
+					y: 30,
+				}),
+			],
+			title: '',
+		};
+		const result = renderToSvg(scene);
+
+		// Node A has score: 100, top-right corner at x = 20 + 80 = 100, y = 30.
+		// Uses red color scheme: PALETTE.red.bold is #ff6b6b
+		expect(result.svg).toContain('<g data-badge="100">');
+		expect(result.svg).toMatch(
+			/<g data-node="a"[^>]*>[\s\S]*<g data-badge="100"><rect[^>]*fill="#ff6b6b"[^>]*\/><text[^>]*>100<\/text><\/g><\/g>/
+		);
+
+		// Node B has value: 0, top-right corner at x = 150 + 80 = 230, y = 30.
+		// Uses default gray color scheme: PALETTE.gray.bold is #868e96
+		expect(result.svg).toContain('<g data-badge="0">');
+		expect(result.svg).toMatch(
+			/<g data-node="b"[^>]*>[\s\S]*<g data-badge="0"><rect[^>]*fill="#868e96"[^>]*\/><text[^>]*>0<\/text><\/g><\/g>/
+		);
+
+		// Edge a-b has score: 99, color: green.
+		// Uses green color scheme: PALETTE.green.bold is #51cf66
+		expect(result.svg).toContain('<g data-badge="99">');
+		expect(result.svg).toMatch(
+			/<g data-edge="a-b"[^>]*>[\s\S]*<g data-badge="99"><rect[^>]*fill="#51cf66"[^>]*\/><text[^>]*>99<\/text><\/g><\/g>/
+		);
+
+		// Edge b-c has value: 42, default color (gray bold is #868e96), and has a label 'transfers'
+		expect(result.svg).toContain('<g data-badge="42">');
+		expect(result.svg).toMatch(
+			/<g data-edge="b-c"[^>]*>[\s\S]*transfers[\s\S]*<g data-badge="42"><rect[^>]*fill="#868e96"[^>]*\/><text[^>]*>42<\/text><\/g><\/g>/
+		);
+	});
+
 	test('projects clickable nodes, flow animations, and stylesheet from attributes-a5 fixture', () => {
 		const source = readFileSync(
 			join(import.meta.dir, '..', 'test', 'fixtures', 'attributes-a5.kira'),
@@ -380,11 +445,13 @@ describe('render scaffold', () => {
 			'<g data-edge="web-docs"><path class="kiyora-flow" d="M 96 46 C 124.8 46, 139.2 46, 168 46" fill="none" stroke="#1e1e1e" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6" marker-end="url(#kiyora-arrow)"/>'
 		);
 		expect(result.svg).toContain(
-			'<g data-edge="docs-database"><path d="M 240 46 C 268.8 46, 283.2 46, 312 46" fill="none" stroke="#1e1e1e" stroke-width="5" stroke-linecap="round" marker-end="url(#kiyora-arrow)"/>'
+			'<g data-edge="docs-database"><path d="M 240 46 C 268.8 46, 283.2 46, 312 46" fill="none" stroke="#1e1e1e" stroke-width="5" stroke-linecap="round" marker-end="url(#kiyora-arrow)"/><g data-badge="10"><rect x="263.5" y="37" width="25" height="18" rx="9" fill="#868e96" stroke="#1e1e1e" stroke-width="1.5"/><text x="276" y="46" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#ffffff">10</text></g></g>'
 		);
 		expect(result.svg).toContain(
-			'<g data-node="database"><path d="M 318 24 H 446 A 6 6 0 0 1 452 30 V 62 A 6 6 0 0 1 446 68 H 318 A 6 6 0 0 1 312 62 V 30 A 6 6 0 0 1 318 24 Z"'
+			'<g data-node="database"><path d="M 318 24 H 446 A 6 6 0 0 1 452 30 V 62 A 6 6 0 0 1 446 68 H 318 A 6 6 0 0 1 312 62 V 30 A 6 6 0 0 1 318 24 Z" fill="#e9ecef" fill-opacity="1" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="382" y="46" text-anchor="middle" dominant-baseline="middle" font-size="16" fill="#1e1e1e">Database</text><g data-badge="95"><rect x="439.5" y="15" width="25" height="18" rx="9" fill="#868e96" stroke="#1e1e1e" stroke-width="1.5"/><text x="452" y="24" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="bold" fill="#ffffff">95</text></g></g>'
 		);
+		expect(result.svg).toContain('<g data-badge="95">');
+		expect(result.svg).toContain('<g data-badge="10">');
 		expect(result.svg).toMatchSnapshot();
 	});
 

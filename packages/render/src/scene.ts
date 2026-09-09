@@ -23,11 +23,13 @@ export type SceneNode = {
 	labelColor?: Color;
 	link?: string;
 	rotation: number;
+	score?: number;
 	fields?: EntityField[];
 	methods?: EntityField[];
 	shadow?: boolean;
 	shape?: string;
 	span: Span;
+	value?: number;
 	width: number;
 	x: number;
 	y: number;
@@ -49,8 +51,10 @@ export type SceneEdge = {
 	head?: Head;
 	invisible?: boolean;
 	label?: string;
+	score?: number;
 	span: Span;
 	to: string;
+	value?: number;
 	width?: number;
 	y?: number;
 	y1?: number;

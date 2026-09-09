@@ -38,12 +38,14 @@ export type Attrs = {
 	label?: string;
 	labelColor?: Color;
 	link?: string;
+	score?: number;
 	shadow?: boolean;
 	shape?: Shape;
+	value?: number;
 	width?: number;
 };
 
-const IGNORED_KEYS = new Set(['value', 'score']);
+const IGNORED_KEYS = new Set<string>();
 
 const FLAG_WORDS: Record<string, keyof Attrs> = {
 	animated: 'flow',
@@ -135,6 +137,22 @@ export function parseAttrs(
 				const num = Number.parseFloat(cleaned);
 				if (!Number.isNaN(num) && Number.isFinite(num)) {
 					out.width = num;
+				}
+				break;
+			}
+			case 'score': {
+				const cleaned = value.replace(/[^0-9.-]/g, '');
+				const num = Number.parseFloat(cleaned);
+				if (!Number.isNaN(num) && Number.isFinite(num)) {
+					out.score = num;
+				}
+				break;
+			}
+			case 'value': {
+				const cleaned = value.replace(/[^0-9.-]/g, '');
+				const num = Number.parseFloat(cleaned);
+				if (!Number.isNaN(num) && Number.isFinite(num)) {
+					out.value = num;
 				}
 				break;
 			}

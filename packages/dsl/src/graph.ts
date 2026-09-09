@@ -753,6 +753,12 @@ function parseEdgeLine(
 				if (attrs.width !== undefined) {
 					edge.width = attrs.width;
 				}
+				if (attrs.score !== undefined) {
+					edge.score = attrs.score;
+				}
+				if (attrs.value !== undefined) {
+					edge.value = attrs.value;
+				}
 				if (attrs.head) {
 					edge.head = attrs.head;
 				}
@@ -918,6 +924,12 @@ function getOrCreateNode(
 			if (node.width === undefined && attrs.width !== undefined) {
 				node.width = attrs.width;
 			}
+			if (node.score === undefined && attrs.score !== undefined) {
+				node.score = attrs.score;
+			}
+			if (node.value === undefined && attrs.value !== undefined) {
+				node.value = attrs.value;
+			}
 			node.label = attrs.label ?? name;
 		}
 		return existing;
@@ -953,6 +965,12 @@ function getOrCreateNode(
 	}
 	if (attrs.width !== undefined) {
 		node.width = attrs.width;
+	}
+	if (attrs.score !== undefined) {
+		node.score = attrs.score;
+	}
+	if (attrs.value !== undefined) {
+		node.value = attrs.value;
 	}
 	state.nodes.push(node);
 	for (const k of keys) {

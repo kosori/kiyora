@@ -43,6 +43,8 @@ function compileNode(node: Node, box: Box): SceneNode {
 		...(node.icon === undefined ? {} : { icon: node.icon }),
 		...(node.link === undefined ? {} : { link: node.link }),
 		...(node.group === undefined ? {} : { group: node.group }),
+		...(node.score === undefined ? {} : { score: node.score }),
+		...(node.value === undefined ? {} : { value: node.value }),
 	};
 }
 
@@ -92,6 +94,8 @@ function compileEdge(edge: Edge): SceneEdge {
 		...(edge.invisible === undefined ? {} : { invisible: edge.invisible }),
 		...(edge.back === undefined ? {} : { back: edge.back }),
 		...(edge.width === undefined ? {} : { width: edge.width }),
+		...(edge.score === undefined ? {} : { score: edge.score }),
+		...(edge.value === undefined ? {} : { value: edge.value }),
 		...(isHead(edge.head) ? { head: resolveHead(edge.head) ?? undefined } : {}),
 	};
 }

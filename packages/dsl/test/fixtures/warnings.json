@@ -16,49 +16,33 @@
       }
     },
     {
-      "code": "attribute-ignored",
-      "message": "attribute \"score\" is recognized but not supported in v1",
-      "severity": "warning",
-      "span": {
-        "end": {
-          "column": 24,
-          "line": 1
-        },
-        "start": {
-          "column": 20,
-          "line": 1
-        }
-      }
-    },
-    {
       "code": "unknown-color",
       "message": "unknown color \"rainbow\"",
       "severity": "warning",
       "span": {
         "end": {
-          "column": 48,
+          "column": 38,
           "line": 1
         },
         "start": {
-          "column": 42,
+          "column": 32,
           "line": 1
         }
       }
     }
   ],
   "diagram": {
-    "kind": "graph",
-    "title": "",
     "direction": "right",
     "edges": [],
     "groups": [],
+    "kind": "graph",
     "nodes": [
       {
         "id": "cache",
         "label": "Cache",
         "span": {
           "end": {
-            "column": 49,
+            "column": 39,
             "line": 1
           },
           "start": {
@@ -68,6 +52,7 @@
         },
         "color": "teal"
       }
-    ]
+    ],
+    "title": ""
   }
 }
