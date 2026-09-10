@@ -26,10 +26,8 @@ export function parseAndCompile(source: string): ParseAndCompileResult {
 	};
 }
 
-/** Parse Source and return its Diagram title without compiling a Scene. */
+/** Fast-path: extract the title directly without parsing the full AST. */
 export function parseTitle(source: string): string {
-	if (source.trim().length === 0) {
-		return '';
-	}
-	return parse(source).diagram.title;
+	const match = source.match(/^[ \t]*title[ \t]+([^\r\n]+)/m);
+	return match?.[1]?.trim() ?? '';
 }
