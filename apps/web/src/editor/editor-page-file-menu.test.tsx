@@ -38,6 +38,7 @@ function makeFakeStorage(): SourceStorage & { saved: string[] } {
 		save(source) {
 			saved.push(source);
 			stored = source;
+			return true;
 		},
 		get saved() {
 			return saved;

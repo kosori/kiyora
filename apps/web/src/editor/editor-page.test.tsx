@@ -11,7 +11,10 @@ import { withHappyDom } from './test-happy-dom';
 	globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-function makeFakeStorage(seed: string | null = null): SourceStorage & {
+function makeFakeStorage(
+	seed: string | null = null,
+	saveSucceeds = true
+): SourceStorage & {
 	saved: string[];
 } {
 	let stored = seed;
@@ -22,7 +25,11 @@ function makeFakeStorage(seed: string | null = null): SourceStorage & {
 		},
 		save(source: string) {
 			saved.push(source);
+			if (!saveSucceeds) {
+				return false;
+			}
 			stored = source;
+			return true;
 		},
 		get saved() {
 			return saved;
@@ -182,12 +189,24 @@ describe('EditorPage durable Source workspace', () => {
 			load() {
 				throw new Error('quota');
 			},
-			save: () => undefined,
+			save: () => true,
 		};
 		const { container, unmount } = renderEditor(storage);
 
 		const textarea = findTextarea(container);
 		expect(textarea.value.startsWith('architecture')).toBe(true);
+
+		unmount();
+	});
+
+	test('surfaces an error message when localStorage save fails', () => {
+		const storage = makeFakeStorage(null, false);
+		const { container, unmount } = renderEditor(storage);
+
+		const error = container.querySelector('[data-file-status-error]');
+		expect(error?.textContent).toBe(
+			'Local storage is full or disabled. Edits will not be saved automatically.'
+		);
 
 		unmount();
 	});

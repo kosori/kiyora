@@ -42,6 +42,7 @@ function makeRecording(): Recording {
 		save(source) {
 			saved.push(source);
 			stored = source;
+			return true;
 		},
 		get saved() {
 			return saved;

@@ -29,7 +29,8 @@ describe('browserSourceStorage', () => {
 		const storage = browserSourceStorage();
 		w.localStorage.clear();
 
-		storage.save('architecture\ntitle Restored');
+		const saved = storage.save('architecture\ntitle Restored');
+		expect(saved).toBe(true);
 		expect(w.localStorage.getItem(SOURCE_STORAGE_KEY)).toBe(
 			'architecture\ntitle Restored'
 		);
@@ -40,8 +41,21 @@ describe('browserSourceStorage', () => {
 		const { storage, clear } = freshStorage();
 		clear();
 
-		storage.save('first');
-		storage.save('second');
+		expect(storage.save('first')).toBe(true);
+		expect(storage.save('second')).toBe(true);
 		expect(storage.load()).toBe('second');
+	});
+
+	test('returns false when storage.setItem throws (quota exceeded or disabled)', () => {
+		const { w } = withHappyDom();
+		const storage = browserSourceStorage();
+		Object.defineProperty(w.localStorage, 'setItem', {
+			configurable: true,
+			value: () => {
+				throw new Error('QuotaExceededError');
+			},
+		});
+
+		expect(storage.save('architecture\ntitle Oversized')).toBe(false);
 	});
 });

@@ -205,7 +205,12 @@ export function EditorPageSurface({
 		if (!restored) {
 			return;
 		}
-		storage.save(source);
+		const success = storage.save(source);
+		if (!success) {
+			setFileError(
+				'Local storage is full or disabled. Edits will not be saved automatically.'
+			);
+		}
 	}, [source, storage, restored]);
 
 	// Explicit compile on ⌘/Ctrl+Enter. Bypasses the debounce and applies the

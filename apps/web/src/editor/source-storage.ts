@@ -23,17 +23,17 @@ export type SourceStorage = {
 	 */
 	load: () => string | null;
 	/**
-	 * Persist the given Source, replacing any previous value. Failures
-	 * are swallowed: a full localStorage quota must not break the editor.
+	 * Persist the given Source, replacing any previous value.
+	 * Returns true if saved, or false if storage is disabled or quota exceeded.
 	 */
-	save: (source: string) => void;
+	save: (source: string) => boolean;
 };
 
 export function browserSourceStorage(): SourceStorage {
 	if (typeof window === 'undefined' || !window.localStorage) {
 		return {
 			load: () => null,
-			save: () => undefined,
+			save: () => false,
 		};
 	}
 	const storage = window.localStorage;
@@ -48,9 +48,11 @@ export function browserSourceStorage(): SourceStorage {
 		save: (source) => {
 			try {
 				storage.setItem(SOURCE_STORAGE_KEY, source);
+				return true;
 			} catch {
 				// Quota exceeded or storage disabled: dropping the write is
-				// safer than crashing the editor.
+				// safer than crashing the editor, but we notify the caller.
+				return false;
 			}
 		},
 	};
