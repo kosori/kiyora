@@ -23,6 +23,7 @@
     "generate-routes": "tsr generate",
     "preview": "vite preview",
     "test": "bun test",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -44,6 +45,7 @@
   "devDependencies": {
     "@kiyora/tailwind": "*",
     "@kiyora/typescript": "*",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/devtools-vite": "^0.8.3",
     "@tanstack/router-cli": "^1.132.0",
