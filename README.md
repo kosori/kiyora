@@ -113,6 +113,9 @@ GitHub Actions runs the same checks using the repository's Bun setup action.
 │           ├── routeTree.gen.ts    # Generated route tree
 │           └── styles.css          # Application Tailwind entry point
 ├── packages/
+│   ├── canvas/                    # Framework-agnostic canvas and viewport
+│   ├── dsl/                       # Diagram source parser and AST
+│   ├── render/                    # Diagram layout and SVG output
 │   └── ui/                        # Shared Base UI and shadcn-style components
 │       ├── src/components/         # Reusable UI components
 │       ├── src/hooks/              # Shared UI hooks
