@@ -1,10 +1,12 @@
 import { describe, expect, mock, test } from 'bun:test';
+import { withHappyDom } from '../test-happy-dom';
 import {
 	browserDownloadable,
 	browserOpenable,
 	downloadKira,
 	FILENAME_EXTENSION,
 	FILENAME_FALLBACK,
+	FOCUS_CANCEL_FALLBACK_MS,
 	kiraFilename,
 	MAX_KIRA_BYTES,
 	openKira,
@@ -255,8 +257,116 @@ describe('openKira', () => {
 });
 
 describe('browserOpenable', () => {
+	function attachMockFiles(input: HTMLElement, file: File): void {
+		Object.defineProperty(input, 'files', {
+			configurable: true,
+			value: [file],
+		});
+	}
+
 	test('returns an object whose pickFile method is a function', () => {
 		const openable = browserOpenable();
 		expect(typeof openable.pickFile).toBe('function');
+	});
+
+	test('resolves with the chosen file and removes input from document on change', async () => {
+		withHappyDom();
+		const openable = browserOpenable();
+		const promise = openable.pickFile();
+
+		const input = document.querySelector('input[type="file"]');
+		expect(input).toBeInstanceOf(HTMLElement);
+		if (!(input && input instanceof HTMLElement)) {
+			throw new Error('Expected file input to be an HTMLElement');
+		}
+		expect(document.body.contains(input)).toBe(true);
+
+		const fakeFile = new FakeFile(
+			'flowchart\nA -> B',
+			'test.kira'
+		) as unknown as File;
+		attachMockFiles(input, fakeFile);
+
+		input.dispatchEvent(new Event('change'));
+
+		const result = await promise;
+		expect(result).toBe(fakeFile);
+		expect(document.querySelector('input[type="file"]')).toBeNull();
+	});
+
+	test('resolves with null and removes input from document on cancel', async () => {
+		withHappyDom();
+		const openable = browserOpenable();
+		const promise = openable.pickFile();
+
+		const input = document.querySelector('input[type="file"]');
+		expect(input).toBeInstanceOf(HTMLElement);
+		if (!(input && input instanceof HTMLElement)) {
+			throw new Error('Expected file input to be an HTMLElement');
+		}
+
+		input.dispatchEvent(new Event('cancel'));
+
+		const result = await promise;
+		expect(result).toBeNull();
+		expect(document.querySelector('input[type="file"]')).toBeNull();
+	});
+
+	test('removes the input and resolves null on window focus fallback when cancel does not fire', async () => {
+		withHappyDom();
+		const openable = browserOpenable();
+		const promise = openable.pickFile();
+
+		const input = document.querySelector('input[type="file"]');
+		expect(input).toBeInstanceOf(HTMLElement);
+		if (!(input && input instanceof HTMLElement)) {
+			throw new Error('Expected file input to be an HTMLElement');
+		}
+		expect(document.body.contains(input)).toBe(true);
+
+		// Window regains focus after dialog dismiss without cancel/change
+		window.dispatchEvent(new Event('focus'));
+
+		// Wait for the fallback timeout plus margin
+		await new Promise((resolve) =>
+			setTimeout(resolve, FOCUS_CANCEL_FALLBACK_MS + 50)
+		);
+
+		const result = await promise;
+		expect(result).toBeNull();
+		expect(document.querySelector('input[type="file"]')).toBeNull();
+	});
+
+	test('resolves with file when change event fires within the focus fallback window', async () => {
+		withHappyDom();
+		const openable = browserOpenable();
+		const promise = openable.pickFile();
+
+		const input = document.querySelector('input[type="file"]');
+		expect(input).toBeInstanceOf(HTMLElement);
+		if (!(input && input instanceof HTMLElement)) {
+			throw new Error('Expected file input to be an HTMLElement');
+		}
+
+		const fakeFile = new FakeFile(
+			'flowchart\nA -> B',
+			'test.kira'
+		) as unknown as File;
+		attachMockFiles(input, fakeFile);
+
+		// Focus fires first (as happens in some browsers)
+		window.dispatchEvent(new Event('focus'));
+
+		// Change fires shortly after focus before FOCUS_CANCEL_FALLBACK_MS
+		input.dispatchEvent(new Event('change'));
+
+		// Wait past the fallback timeout
+		await new Promise((resolve) =>
+			setTimeout(resolve, FOCUS_CANCEL_FALLBACK_MS + 50)
+		);
+
+		const result = await promise;
+		expect(result).toBe(fakeFile);
+		expect(document.querySelector('input[type="file"]')).toBeNull();
 	});
 });

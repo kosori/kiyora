@@ -163,10 +163,12 @@ export function openKira(options: {
 	});
 }
 
+export const FOCUS_CANCEL_FALLBACK_MS = 300;
+
 /**
- * The real browser Openable: a transient hidden `<input type="file">`
- * that advertises `.kira`, resolves with the chosen `File`, or `null`
- * when the user cancels.
+ * The real browser Openable: a hidden `<input type="file" accept=".kira">`
+ * added to the DOM, clicked programmatically, and resolved once when the user
+ * selects a file or cancels the dialog.
  *
  * The input is created on demand, appended to the body, and removed
  * after each pick so it never lingers in the DOM.
@@ -183,17 +185,43 @@ export function browserOpenable(): Openable {
 				input.type = 'file';
 				input.accept = `.${FILENAME_EXTENSION}`;
 				input.style.display = 'none';
-				input.addEventListener('change', () => {
-					const file = input.files?.[0] ?? null;
+
+				let isResolved = false;
+				let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+				const onFocus = () => {
+					timeoutId = setTimeout(() => {
+						complete(null);
+					}, FOCUS_CANCEL_FALLBACK_MS);
+				};
+
+				const complete = (file: File | null) => {
+					if (isResolved) {
+						return;
+					}
+					isResolved = true;
+					if (timeoutId !== undefined) {
+						clearTimeout(timeoutId);
+					}
+					if (typeof window !== 'undefined') {
+						window.removeEventListener('focus', onFocus);
+					}
 					input.remove();
 					resolve(file);
+				};
+
+				input.addEventListener('change', () => {
+					complete(input.files?.[0] ?? null);
 				});
-				// `cancel` does not always fire in every browser, but where
-				// it does it is the closest signal we have to a true no-op.
 				input.addEventListener('cancel', () => {
-					input.remove();
-					resolve(null);
+					complete(null);
 				});
+
+				// Fallback for browsers that do not fire `cancel`
+				if (typeof window !== 'undefined') {
+					window.addEventListener('focus', onFocus, { once: true });
+				}
+
 				document.body.append(input);
 				input.click();
 			});
