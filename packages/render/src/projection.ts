@@ -73,8 +73,25 @@ export function escapeText(value: string): string {
 		.replaceAll('"', '&quot;');
 }
 
+declare const URL: {
+	new (
+		url: string,
+		base?: string
+	): {
+		protocol: string;
+	};
+};
+
 export function isSafeUrl(value: string): boolean {
-	return !/^\s*javascript\s*:/i.test(value);
+	try {
+		const url = new URL(value);
+		// Allow standard web links and mailto. Reject javascript:, data:, vbscript:, etc.
+		return ['http:', 'https:', 'mailto:'].includes(url.protocol);
+	} catch {
+		// If URL parsing fails, fallback to checking if it's a relative path or fragment.
+		// A relative path/fragment shouldn't start with a scheme-like pattern.
+		return !/^\s*[a-zA-Z][a-zA-Z\d+\-.]*\s*:/.test(value);
+	}
 }
 
 const BADGE_FONT_SIZE = 11;
