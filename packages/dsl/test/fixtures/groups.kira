@@ -1,5 +1,0 @@
-group Storage { Cache [cylinder] }
-group Web {
-  Frontend
-  group Auth { Login }
-}

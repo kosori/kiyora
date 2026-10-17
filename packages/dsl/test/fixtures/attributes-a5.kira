@@ -1,6 +1,0 @@
-title Attributes A5
-Web [link: "https://kiyora.dev", icon: globe]
-Docs [url: "https://kiyora.dev/docs"]
-Database [icon: database, width: 140, score: 95]
-Web -> Docs [flow]
-Docs -> Database [width: 5, value: 10]

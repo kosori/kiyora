@@ -1,4 +1,0 @@
-Cache [red]
-Cache -> DB
-DB [cylinder, green]
-DB -> Queue: enqueue
