@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["!!**/public"]
+    "includes": ["!!**/public", "!!**/node_modules", "!!**/.agents"]
   },
   "formatter": {
     "enabled": true
