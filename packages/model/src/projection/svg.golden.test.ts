@@ -37,7 +37,7 @@ const rectangle = () => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'blue', fillStyle: 'tint', stroke: 'ink', strokeWidth: 2 },
+  style: { fill: 'blue', fillStyle: 'pastel', stroke: 'ink', strokeWidth: 2 },
   w: 120,
   x: 0,
   y: 0,
@@ -70,7 +70,7 @@ const board = (): Board =>
         id: 'filled',
         style: {
           fill: 'green',
-          fillStyle: 'solid',
+          fillStyle: 'bold',
           stroke: 'green',
           strokeWidth: 2,
         },
@@ -82,7 +82,7 @@ const board = (): Board =>
         id: 'outlined',
         style: {
           fill: 'red',
-          fillStyle: 'none',
+          fillStyle: 'outline',
           stroke: 'red',
           strokeWidth: 1,
         },
@@ -97,7 +97,7 @@ const board = (): Board =>
         opacity: 0.5,
         style: {
           fill: 'violet',
-          fillStyle: 'solid',
+          fillStyle: 'bold',
           stroke: 'violet',
           strokeWidth: 4,
         },

@@ -33,7 +33,11 @@ export {
 } from './paint/paint';
 export {
   type FillStyle,
+  FOREGROUND,
+  FOREGROUND_ENTRY,
+  type Foreground,
   fillStyleSchema,
+  foregroundSchema,
   PALETTE,
   type PaletteColour,
   type PaletteEntry,

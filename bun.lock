@@ -65,6 +65,7 @@
       "name": "@kiyora/model",
       "version": "0.1.0",
       "dependencies": {
+        "@kiyora/dsl": "*",
         "zod": "4.6.7",
       },
       "devDependencies": {

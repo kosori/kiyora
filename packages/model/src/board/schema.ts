@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   fillStyleSchema,
+  foregroundSchema,
   paletteColourSchema,
   themeSchema,
 } from '../paint/palette';
@@ -12,7 +13,7 @@ export const SCHEMA_VERSION = 1;
 export const styleSchema = z.object({
   fill: paletteColourSchema,
   fillStyle: fillStyleSchema,
-  stroke: paletteColourSchema,
+  stroke: z.union([paletteColourSchema, foregroundSchema]),
   strokeWidth: z.number().nonnegative(),
 });
 

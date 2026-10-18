@@ -15,7 +15,7 @@ const shape = (overrides: Record<string, unknown> = {}) => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'blue', fillStyle: 'tint', stroke: 'ink', strokeWidth: 2 },
+  style: { fill: 'blue', fillStyle: 'pastel', stroke: 'ink', strokeWidth: 2 },
   w: 120,
   x: 0,
   y: 0,
@@ -41,7 +41,7 @@ describe('the board', () => {
 
     expect(parsed.shapes[0]?.style).toEqual({
       fill: 'blue',
-      fillStyle: 'tint',
+      fillStyle: 'pastel',
       stroke: 'ink',
       strokeWidth: 2,
     });

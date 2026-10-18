@@ -9,7 +9,7 @@ const rectangle = (overrides: Partial<FigureShape> = {}): FigureShape => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'blue', fillStyle: 'tint', stroke: 'ink', strokeWidth: 2 },
+  style: { fill: 'blue', fillStyle: 'pastel', stroke: 'ink', strokeWidth: 2 },
   w: 120,
   x: 0,
   y: 0,
