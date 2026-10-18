@@ -30,9 +30,10 @@ Runs at `http://localhost:3000`. A normal Next.js server, deliberately **not** a
 ## Tests
 
 ```sh
-bun run test --filter=@kiyora/web     # Vitest, jsdom
 bun run test:e2e                      # Playwright, from the repo root
 ```
+
+This app has **no unit test runner**. Everything it owns is proven in a browser, at the seam where the user is: geometry and colour come from `@kiyora/model`, so there is nothing here worth testing in isolation, and a jsdom test of the glue would assert an implementation detail rather than a behaviour.
 
 End to end runs on port **4319** with `reuseExistingServer: false`, and a global setup asserts the served page carries this app's build marker — so a stray server on another port is a loud failure rather than a silent pass.
 
