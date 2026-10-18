@@ -1,0 +1,43 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [
+      {
+        "id": "storage",
+        "label": "Storage",
+        "span": {
+          "end": {
+            "column": 34,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 34,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
+        "group": "storage",
+        "shape": "cylinder"
+      }
+    ]
+  }
+}

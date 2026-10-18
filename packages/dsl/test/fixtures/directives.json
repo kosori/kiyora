@@ -1,0 +1,40 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "Checkout Flow",
+    "direction": "left",
+    "edges": [],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 5,
+            "line": 11
+          },
+          "start": {
+            "column": 1,
+            "line": 11
+          }
+        },
+        "shape": "rectangle",
+        "fill": "pastel"
+      }
+    ],
+    "icons": "inside",
+    "kanban": true,
+    "legend": [
+      {
+        "swatch": "green",
+        "label": "ready"
+      },
+      {
+        "swatch": "red",
+        "label": "blocked"
+      }
+    ]
+  }
+}

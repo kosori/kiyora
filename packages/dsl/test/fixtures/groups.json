@@ -1,0 +1,102 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [
+      {
+        "id": "storage",
+        "label": "Storage",
+        "span": {
+          "end": {
+            "column": 34,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      },
+      {
+        "id": "web",
+        "label": "Web",
+        "span": {
+          "end": {
+            "column": 11,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      },
+      {
+        "id": "auth",
+        "label": "Auth",
+        "span": {
+          "end": {
+            "column": 20,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
+        "parent": "web"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 34,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
+        "group": "storage",
+        "shape": "cylinder"
+      },
+      {
+        "id": "frontend",
+        "label": "Frontend",
+        "span": {
+          "end": {
+            "column": 8,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "group": "web"
+      },
+      {
+        "id": "login",
+        "label": "Login",
+        "span": {
+          "end": {
+            "column": 20,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
+        "group": "auth"
+      }
+    ]
+  }
+}

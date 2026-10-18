@@ -1,0 +1,42 @@
+{
+  "diagnostics": [
+    {
+      "code": "unknown-shape",
+      "message": "unknown shape \"blob\"",
+      "severity": "warning",
+      "span": {
+        "end": {
+          "column": 14,
+          "line": 1
+        },
+        "start": {
+          "column": 11,
+          "line": 1
+        }
+      }
+    }
+  ],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "a",
+        "label": "A",
+        "span": {
+          "end": {
+            "column": 15,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      }
+    ]
+  }
+}

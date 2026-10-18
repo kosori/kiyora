@@ -1,0 +1,86 @@
+{
+  "diagnostics": [
+    {
+      "code": "self-edge",
+      "message": "self-edges are not drawn",
+      "severity": "error",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 1
+        },
+        "start": {
+          "column": 1,
+          "line": 1
+        }
+      }
+    },
+    {
+      "code": "self-edge",
+      "message": "self-edges are not drawn",
+      "severity": "error",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 3
+        },
+        "start": {
+          "column": 1,
+          "line": 3
+        }
+      }
+    }
+  ],
+  "diagram": {
+    "direction": "right",
+    "edges": [
+      {
+        "from": "a",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "to": "b"
+      }
+    ],
+    "groups": [],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "a",
+        "label": "A",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        }
+      },
+      {
+        "id": "b",
+        "label": "B",
+        "span": {
+          "end": {
+            "column": 6,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      }
+    ],
+    "title": ""
+  }
+}

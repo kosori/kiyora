@@ -1,0 +1,304 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "direction": "right",
+    "edges": [
+      {
+        "from": "browser",
+        "span": {
+          "end": {
+            "column": 23,
+            "line": 24
+          },
+          "start": {
+            "column": 1,
+            "line": 24
+          }
+        },
+        "to": "cdn",
+        "label": "request"
+      },
+      {
+        "from": "mobile",
+        "span": {
+          "end": {
+            "column": 22,
+            "line": 25
+          },
+          "start": {
+            "column": 1,
+            "line": 25
+          }
+        },
+        "to": "cdn",
+        "label": "request"
+      },
+      {
+        "from": "cdn",
+        "span": {
+          "end": {
+            "column": 33,
+            "line": 26
+          },
+          "start": {
+            "column": 1,
+            "line": 26
+          }
+        },
+        "to": "load-balancer",
+        "label": "cache miss",
+        "dashed": true
+      },
+      {
+        "from": "load-balancer",
+        "span": {
+          "end": {
+            "column": 35,
+            "line": 27
+          },
+          "start": {
+            "column": 1,
+            "line": 27
+          }
+        },
+        "to": "api",
+        "label": "read"
+      },
+      {
+        "from": "api",
+        "span": {
+          "end": {
+            "column": 35,
+            "line": 27
+          },
+          "start": {
+            "column": 1,
+            "line": 27
+          }
+        },
+        "to": "cache",
+        "label": "read"
+      },
+      {
+        "from": "cache",
+        "span": {
+          "end": {
+            "column": 25,
+            "line": 28
+          },
+          "start": {
+            "column": 1,
+            "line": 28
+          }
+        },
+        "to": "database",
+        "label": "miss",
+        "dashed": true
+      },
+      {
+        "from": "api",
+        "span": {
+          "end": {
+            "column": 21,
+            "line": 29
+          },
+          "start": {
+            "column": 1,
+            "line": 29
+          }
+        },
+        "to": "queue",
+        "label": "enqueue"
+      }
+    ],
+    "groups": [
+      {
+        "id": "clients",
+        "label": "Clients",
+        "span": {
+          "end": {
+            "column": 15,
+            "line": 7
+          },
+          "start": {
+            "column": 1,
+            "line": 7
+          }
+        }
+      },
+      {
+        "id": "edge",
+        "label": "Edge",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 12
+          },
+          "start": {
+            "column": 1,
+            "line": 12
+          }
+        }
+      },
+      {
+        "id": "backend",
+        "label": "Backend",
+        "span": {
+          "end": {
+            "column": 15,
+            "line": 17
+          },
+          "start": {
+            "column": 1,
+            "line": 17
+          }
+        }
+      }
+    ],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "browser",
+        "label": "Browser",
+        "span": {
+          "end": {
+            "column": 28,
+            "line": 8
+          },
+          "start": {
+            "column": 1,
+            "line": 8
+          }
+        },
+        "group": "clients",
+        "shape": "rectangle",
+        "color": "blue",
+        "corner": "rounded"
+      },
+      {
+        "id": "mobile",
+        "label": "Mobile",
+        "span": {
+          "end": {
+            "column": 18,
+            "line": 9
+          },
+          "start": {
+            "column": 1,
+            "line": 9
+          }
+        },
+        "group": "clients",
+        "shape": "rectangle",
+        "color": "teal"
+      },
+      {
+        "id": "cdn",
+        "label": "CDN",
+        "span": {
+          "end": {
+            "column": 26,
+            "line": 13
+          },
+          "start": {
+            "column": 1,
+            "line": 13
+          }
+        },
+        "group": "edge",
+        "shape": "cloud",
+        "color": "gray",
+        "fill": "outline"
+      },
+      {
+        "id": "load-balancer",
+        "label": "Load Balancer",
+        "span": {
+          "end": {
+            "column": 31,
+            "line": 14
+          },
+          "start": {
+            "column": 1,
+            "line": 14
+          }
+        },
+        "group": "edge",
+        "shape": "cylinder",
+        "color": "green",
+        "fill": "bold"
+      },
+      {
+        "id": "api",
+        "label": "API",
+        "span": {
+          "end": {
+            "column": 29,
+            "line": 18
+          },
+          "start": {
+            "column": 1,
+            "line": 18
+          }
+        },
+        "group": "backend",
+        "shape": "component",
+        "color": "orange",
+        "fill": "bold"
+      },
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 21,
+            "line": 19
+          },
+          "start": {
+            "column": 1,
+            "line": 19
+          }
+        },
+        "group": "backend",
+        "shape": "cylinder",
+        "color": "red"
+      },
+      {
+        "id": "database",
+        "label": "Database",
+        "span": {
+          "end": {
+            "column": 21,
+            "line": 20
+          },
+          "start": {
+            "column": 1,
+            "line": 20
+          }
+        },
+        "group": "backend",
+        "shape": "cylinder",
+        "color": "yellow"
+      },
+      {
+        "id": "queue",
+        "label": "Queue",
+        "span": {
+          "end": {
+            "column": 21,
+            "line": 21
+          },
+          "start": {
+            "column": 1,
+            "line": 21
+          }
+        },
+        "group": "backend",
+        "shape": "queue",
+        "color": "violet"
+      }
+    ],
+    "title": "Request pipeline",
+    "icons": "badge"
+  }
+}
