@@ -1,6 +1,25 @@
 {
   "name": "kiyora",
   "private": true,
+  "description": "An offline whiteboard for diagrams, notes and slides.",
+  "keywords": [
+    "whiteboard",
+    "diagrams",
+    "canvas",
+    "svg",
+    "offline",
+    "kiyora"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://codingcodax.dev"
+  },
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*",
@@ -9,15 +28,20 @@
   "scripts": {
     "build": "turbo run build",
     "check": "ultracite check",
-    "check-types": "turbo run check-types",
+    "check-budgets": "bun scripts/check-budgets.ts",
+    "check-types": "turbo run check-types check-types:root",
+    "check-types:root": "tsc --noEmit",
     "dev": "turbo run dev",
-    "fix": "ultracite fix"
+    "fix": "ultracite fix",
+    "test": "turbo run test && vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@types/node": "26.4.1",
     "turbo": "^2.11.9",
     "typescript": "7.0.2",
-    "ultracite": "8.0.1"
+    "ultracite": "8.0.1",
+    "vitest": "5.0.5"
   },
   "engines": {
     "node": ">=24"

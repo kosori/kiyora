@@ -1,0 +1,10 @@
+{
+  "extends": "./tooling/typescript/base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.ts", "vitest.config.ts"]
+}
