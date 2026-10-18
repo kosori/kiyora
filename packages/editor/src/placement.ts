@@ -1,10 +1,5 @@
 import type { FigureKind, FigureShape, Shape, Style } from '@kiyora/model';
-
-/** A point in board units. */
-export type Point = {
-  x: number;
-  y: number;
-};
+import type { Point } from './camera';
 
 /** An axis-aligned box in board units. */
 export type Box = {

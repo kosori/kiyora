@@ -1,7 +1,14 @@
 import type { FigureKind, Style } from '@kiyora/model';
 
-/** A tool the rail offers: `select`, or a figure kind that places one when the canvas is dragged. */
-export type Tool = 'select' | FigureKind;
+/**
+ * What the pointer does on the canvas: `select` picks and moves, `hand` grabs
+ * the board itself, and a figure kind places one when the canvas is dragged.
+ */
+export type Tool = 'hand' | 'select' | FigureKind;
+
+/** Whether `tool` places a figure, rather than selecting or panning. */
+export const isFigureTool = (tool: Tool): tool is FigureKind =>
+  tool !== 'hand' && tool !== 'select';
 
 /**
  * The style the first shape wears, and the one place the next shape's style

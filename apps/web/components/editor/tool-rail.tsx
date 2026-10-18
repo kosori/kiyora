@@ -28,7 +28,7 @@ const RAIL: readonly RailEntry[] = [
 export const ToolRail = () => (
   <div
     aria-label='Tools'
-    className='flex flex-col gap-1 border-border border-r bg-background p-2'
+    className='absolute top-3 left-3 z-10 flex flex-col gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'
     role='toolbar'
   >
     {RAIL.map((entry) => (

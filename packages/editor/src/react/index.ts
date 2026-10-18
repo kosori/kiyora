@@ -3,3 +3,4 @@
 export { EditorProvider } from './editor-provider';
 export { useBoard, useEditor } from './use-board';
 export { useTool } from './use-tool';
+export { useView } from './use-view';

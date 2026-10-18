@@ -1,7 +1,12 @@
 'use client';
 
-import type { Placement, Point } from '@kiyora/editor';
-import { useBoard, useEditor, useTool } from '@kiyora/editor/react';
+import {
+  isFigureTool,
+  type Placement,
+  type Point,
+  toWorld,
+} from '@kiyora/editor';
+import { useEditor, useView } from '@kiyora/editor/react';
 import type { Camera } from '@kiyora/model';
 import {
   type PointerEvent as ReactPointerEvent,
@@ -9,37 +14,36 @@ import {
   useRef,
 } from 'react';
 
-/**
- * Where a pointer event lands on the board: the canvas rect takes it into the
- * canvas, and the camera takes it onto the board.
- */
+/** Where a pointer event lands on the board: the canvas rect, then the camera. */
 const boardPoint = (
-  event: ReactPointerEvent<SVGSVGElement>,
+  event: ReactPointerEvent<HTMLElement>,
   camera: Camera
 ): Point => {
-  const rect = event.currentTarget.getBoundingClientRect();
+  const box = event.currentTarget.getBoundingClientRect();
 
-  return {
-    x: camera.x + (event.clientX - rect.left) / camera.zoom,
-    y: camera.y + (event.clientY - rect.top) / camera.zoom,
-  };
+  return toWorld(camera, {
+    x: event.clientX - box.left,
+    y: event.clientY - box.top,
+  });
 };
 
 type PlacementHandlers = {
-  onPointerDown: (event: ReactPointerEvent<SVGSVGElement>) => void;
-  onPointerUp: (event: ReactPointerEvent<SVGSVGElement>) => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
 };
 
-/** Canvas drag handling: a gesture with a shape tool places exactly one shape. */
+/**
+ * Canvas drag handling: a gesture with a figure tool places exactly one shape.
+ * Every other tool leaves the pointer alone for the camera and the selection.
+ */
 export const usePlacement = (): PlacementHandlers => {
   const editor = useEditor();
-  const tool = useTool();
-  const { camera } = useBoard();
+  const { camera, tool } = useView();
   const start = useRef<Point | null>(null);
 
   const onPointerDown = useCallback(
-    (event: ReactPointerEvent<SVGSVGElement>) => {
-      if (tool === 'select') {
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (!isFigureTool(tool)) {
         return;
       }
       start.current = boardPoint(event, camera);
@@ -49,7 +53,7 @@ export const usePlacement = (): PlacementHandlers => {
   );
 
   const onPointerUp = useCallback(
-    (event: ReactPointerEvent<SVGSVGElement>) => {
+    (event: ReactPointerEvent<HTMLElement>) => {
       const from = start.current;
       start.current = null;
       if (from === null) {

@@ -2,7 +2,11 @@
 
 import { useBoard } from '@kiyora/editor/react';
 import { type Paint, paintBoard } from '@kiyora/model';
-import type { ReactNode } from 'react';
+import { cn } from 'cn';
+import { type ReactNode, useMemo } from 'react';
+import { CameraControls } from './camera-controls';
+import { DotGrid } from './dot-grid';
+import { useCameraSurface } from './use-camera-surface';
 import { usePlacement } from './use-placement';
 
 const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
@@ -17,27 +21,63 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
       />
     ))}
     {paint.children.map((child, index) => (
-      <PaintPaths key={`child-${index}`} paint={child} />
+      <PaintPaths key={child.shapeId ?? `child-${index}`} paint={child} />
     ))}
   </>
 );
 
-/** Paints the board. Every coordinate, colour and width comes from the walker. */
+/**
+ * Paints the board through the camera. Every coordinate, colour and width comes
+ * from the walker; the camera only decides where the board sits on screen. The
+ * paint is server-rendered, and `data-ready` announces the moment the canvas has
+ * measured itself — the precondition for any camera action.
+ *
+ * The placement handlers sit on the wrapper rather than the canvas so the
+ * camera's own pointer plumbing on the `<svg>` is untouched; a pointer event
+ * bubbles from the canvas to here, and each tool's handlers ignore the other's.
+ */
 export const BoardCanvas = () => {
   const board = useBoard();
-  const paint = paintBoard(board, { theme: board.settings.theme });
+  const surface = useCameraSurface();
   const placement = usePlacement();
+  const paint = useMemo(
+    () => paintBoard(board, { theme: board.settings.theme }),
+    [board]
+  );
+  const { camera } = surface.view;
 
   return (
-    <svg
-      aria-label='Board'
-      className='h-full w-full'
-      data-testid='canvas'
-      role='img'
-      xmlns='http://www.w3.org/2000/svg'
-      {...placement}
-    >
-      <PaintPaths paint={paint} />
-    </svg>
+    <div className='relative h-full w-full' {...placement}>
+      <svg
+        aria-label='Board'
+        className={cn(
+          'h-full w-full touch-none',
+          surface.hand ? 'cursor-grab' : 'cursor-default'
+        )}
+        data-ready={surface.ready ? 'true' : undefined}
+        data-testid='canvas'
+        ref={surface.ref}
+        role='img'
+        xmlns='http://www.w3.org/2000/svg'
+        {...surface.handlers}
+      >
+        <DotGrid camera={camera} theme={board.settings.theme} />
+        <g
+          data-testid='board'
+          transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
+        >
+          <PaintPaths paint={paint} />
+        </g>
+      </svg>
+      <CameraControls
+        fit={surface.actions.fit}
+        reset={surface.actions.reset}
+        toggleTool={surface.actions.toggleTool}
+        tool={surface.view.tool}
+        zoom={camera.zoom}
+        zoomIn={surface.actions.zoomIn}
+        zoomOut={surface.actions.zoomOut}
+      />
+    </div>
   );
 };

@@ -92,3 +92,42 @@ describe('painting a board', () => {
     expect(onDark.children[0]?.paths[0]?.fill).toBe('#8ce99a');
   });
 });
+
+describe('naming the shape a paint came from', () => {
+  it('names each painted node after its shape, in paint order', () => {
+    const paint = paintBoard(
+      board([shape({ id: 'first', x: 0 }), shape({ id: 'second', x: 200 })]),
+      light
+    );
+
+    expect(paint.children.map((child) => child.shapeId)).toEqual([
+      'first',
+      'second',
+    ]);
+  });
+
+  it('names the same shape after the paint order changes, so a renderer follows identity', () => {
+    const paint = paintBoard(
+      board([shape({ id: 'second', x: 200 }), shape({ id: 'first', x: 0 })]),
+      light
+    );
+
+    expect(paint.children.map((child) => child.shapeId)).toEqual([
+      'second',
+      'first',
+    ]);
+  });
+
+  it('names a painted node without losing any of its paint', () => {
+    const paint = paintBoard(board([shape({ id: 'lone' })]), light);
+
+    expect(paint.children[0]?.shapeId).toBe('lone');
+    expect(paint.children[0]?.paths[0]?.d).toBe(
+      'M 0 0 L 100 0 L 100 60 L 0 60 Z'
+    );
+  });
+
+  it('leaves the board node unnamed, because it came from no shape', () => {
+    expect(paintBoard(board([shape()]), light).shapeId).toBeUndefined();
+  });
+});

@@ -1,4 +1,4 @@
-import type { Shape } from '../board/schema';
+import type { Board, Shape } from '../board/schema';
 import { formatNumber } from '../format';
 
 /** A point in board coordinates. */
@@ -69,3 +69,11 @@ export const boundsOfShapes = (shapes: readonly Shape[]): Bounds | null => {
   const bottom = Math.max(...boxes.map((box) => box.y + box.h));
   return { h: bottom - y, w: right - x, x, y };
 };
+
+/**
+ * The board's extent: the box that holds everything it draws, or `null` when it
+ * draws nothing. Published so both the artifact's crop and the camera's fit read
+ * the same value instead of each deriving one.
+ */
+export const boardBounds = (board: Board): Bounds | null =>
+  boundsOfShapes(board.shapes);

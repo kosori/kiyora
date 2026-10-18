@@ -1,5 +1,18 @@
 import { expect, type Page, test } from '@playwright/test';
 
+/**
+ * The board is server-rendered, so its paint is on screen before React is
+ * listening. Every gesture test opens through this, which waits for the surface
+ * to say it can act.
+ */
+const open = async (page: Page): Promise<void> => {
+  await page.goto('/');
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
+};
+
 /** The canvas's place on the screen, so board coordinates can be dragged to exactly. */
 const canvasBox = async (page: Page) => {
   const box = await page.getByTestId('canvas').boundingBox();
@@ -13,7 +26,7 @@ const canvasBox = async (page: Page) => {
 
 /** The topmost painted path: the shape a gesture just placed. */
 const placedShape = (page: Page) =>
-  page.getByTestId('canvas').locator('path').last();
+  page.getByTestId('board').locator('path').last();
 
 const railButton = (page: Page, label: string) =>
   page.getByRole('button', { name: label });
@@ -29,31 +42,8 @@ const drag = async (
   await page.mouse.up();
 };
 
-/**
- * Waits until the client owns the page, and leaves the select tool active. The
- * window listener that runs the keymap arrives with hydration, so a press that
- * lands before it is simply lost: the press and its effect are retried together.
- */
-const waitForClient = async (page: Page) => {
-  await expect(async () => {
-    await page.keyboard.press('r');
-    await expect(railButton(page, 'Rectangle')).toHaveAttribute(
-      'aria-pressed',
-      'true',
-      { timeout: 500 }
-    );
-  }).toPass({ timeout: 10_000 });
-
-  await page.keyboard.press('v');
-  await expect(railButton(page, 'Select')).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  );
-};
-
 test('a key selects a tool, and the rail marks it', async ({ page }) => {
-  await page.goto('/');
-  await waitForClient(page);
+  await open(page);
 
   await page.keyboard.press('r');
 
@@ -71,8 +61,7 @@ test('a key selects a tool, and the rail marks it', async ({ page }) => {
 });
 
 test('clicking the rail selects a tool', async ({ page }) => {
-  await page.goto('/');
-  await waitForClient(page);
+  await open(page);
 
   await railButton(page, 'Rectangle').click();
 
@@ -92,9 +81,8 @@ test('clicking the rail selects a tool', async ({ page }) => {
 test('a drag places a rectangle the size dragged, where the drag ended', async ({
   page,
 }) => {
-  await page.goto('/');
+  await open(page);
   const box = await canvasBox(page);
-  await waitForClient(page);
 
   await page.keyboard.press('r');
   await drag(
@@ -112,9 +100,8 @@ test('a drag places a rectangle the size dragged, where the drag ended', async (
 test('a click places a default-sized rectangle at the click', async ({
   page,
 }) => {
-  await page.goto('/');
+  await open(page);
   const box = await canvasBox(page);
-  await waitForClient(page);
 
   await page.keyboard.press('r');
   await page.mouse.click(box.x + 400, box.y + 300);
@@ -128,9 +115,8 @@ test('a click places a default-sized rectangle at the click', async ({
 test('the tool returns to select after placing, so a second drag draws nothing', async ({
   page,
 }) => {
-  await page.goto('/');
+  await open(page);
   const box = await canvasBox(page);
-  await waitForClient(page);
 
   await page.keyboard.press('r');
   await drag(
@@ -151,9 +137,8 @@ test('the tool returns to select after placing, so a second drag draws nothing',
 });
 
 test('the last used style applies to the next shape', async ({ page }) => {
-  await page.goto('/');
+  await open(page);
   const box = await canvasBox(page);
-  await waitForClient(page);
 
   await page.keyboard.press('r');
   await drag(
@@ -183,8 +168,7 @@ test('the last used style applies to the next shape', async ({ page }) => {
 });
 
 test('the shortcut reference lists the keys that work', async ({ page }) => {
-  await page.goto('/');
-  await waitForClient(page);
+  await open(page);
 
   await page.keyboard.press('?');
 
@@ -196,5 +180,29 @@ test('the shortcut reference lists the keys that work', async ({ page }) => {
   await expect(rows.filter({ hasText: 'Rectangle' })).toContainText('R');
   await expect(rows.filter({ hasText: 'Keyboard shortcuts' })).toContainText(
     '?'
+  );
+});
+
+test('a drag lands on the board behind the camera, not on the canvas', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.move(box.x + 600, box.y + 300);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(box.x + 700, box.y + 350, { steps: 5 });
+  await page.mouse.up({ button: 'middle' });
+
+  await page.keyboard.press('r');
+  await drag(
+    page,
+    { x: box.x + 200, y: box.y + 150 },
+    { x: box.x + 400, y: box.y + 300 }
+  );
+
+  await expect(placedShape(page)).toHaveAttribute(
+    'd',
+    'M 100 100 L 300 100 L 300 250 L 100 250 Z'
   );
 });

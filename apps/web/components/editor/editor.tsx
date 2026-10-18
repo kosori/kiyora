@@ -9,7 +9,11 @@ import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
 import { useShortcuts } from './use-shortcuts';
 
-/** The editor route: it owns the engine and paints the board through the adapter. */
+/**
+ * The editor route: it owns the engine and paints the board through the adapter.
+ * The rail and the camera cluster float over the canvas, so the board keeps the
+ * whole surface and the camera's coordinates stay the canvas's own.
+ */
 export const Editor = () => {
   const [editor] = useState(() => createEditor(starterBoard()));
   const [shortcuts, setShortcuts] = useState(false);
@@ -22,11 +26,9 @@ export const Editor = () => {
 
   return (
     <EditorProvider editor={editor}>
-      <div className='flex h-full'>
+      <div className='relative h-full'>
+        <BoardCanvas />
         <ToolRail />
-        <div className='relative min-w-0 flex-1'>
-          <BoardCanvas />
-        </div>
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
     </EditorProvider>

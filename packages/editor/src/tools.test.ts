@@ -35,10 +35,10 @@ describe('the tools', () => {
     expect(createEditor(board()).getTool()).toBe('select');
   });
 
-  it('publishes the active tool to every subscriber', () => {
+  it('publishes the active tool to every view subscriber', () => {
     const editor = createEditor(board());
     const seen: Tool[] = [];
-    editor.subscribe(() => seen.push(editor.getTool()));
+    editor.subscribeView(() => seen.push(editor.getTool()));
 
     editor.setTool('rectangle');
 
@@ -100,6 +100,17 @@ describe('the tools', () => {
     editor.placeShape(click(100, 100));
 
     expect(editor.getBoard()).toBe(afterOne);
+  });
+
+  it('places nothing with the hand tool, so panning cannot draw', () => {
+    const editor = createEditor(board());
+    editor.setTool('hand');
+
+    const before = editor.getBoard();
+
+    editor.placeShape(click(400, 300));
+
+    expect(editor.getBoard()).toBe(before);
   });
 
   it('publishes a placed shape to every subscriber', () => {
