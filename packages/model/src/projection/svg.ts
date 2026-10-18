@@ -1,6 +1,6 @@
 import type { Board } from '../board/schema';
 import { formatNumber } from '../format';
-import { boundsOfShapes } from '../paint/figures';
+import { boardBounds } from '../paint/figures';
 import {
   type Paint,
   type PaintContext,
@@ -41,7 +41,7 @@ const markup = (paint: Paint, depth: number): string[] => {
 };
 
 const viewBox = (board: Board): string => {
-  const bounds = boundsOfShapes(board.shapes);
+  const bounds = boardBounds(board);
 
   return bounds === null
     ? '0 0 0 0'

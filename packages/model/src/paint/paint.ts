@@ -20,6 +20,12 @@ export type PaintPath = {
 export type Paint = {
   paths: PaintPath[];
   children: Paint[];
+  /**
+   * The shape this node came from. A renderer keys its elements by this rather
+   * than by array position, so a repaint follows identity. The board's own node
+   * carries none, because the board is not a shape.
+   */
+  shapeId?: string;
 };
 
 /** What a board cannot carry: the canvas it is painted on. */
@@ -55,9 +61,11 @@ const figurePainters = {
   (shape: FigureShape, context: PaintContext) => Paint
 >;
 
-/** The paint for one shape: its own paths, then its children's. */
-export const paintShape = (shape: Shape, context: PaintContext): Paint =>
-  figurePainters[shape.kind](shape, context);
+/** The paint for one shape: its own paths, then its children's, named by its id. */
+export const paintShape = (shape: Shape, context: PaintContext): Paint => ({
+  ...figurePainters[shape.kind](shape, context),
+  shapeId: shape.id,
+});
 
 /** The paint for one board: one child per shape, in paint order. */
 export const paintBoard = (board: Board, context: PaintContext): Paint => ({

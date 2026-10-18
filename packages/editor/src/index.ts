@@ -1,2 +1,25 @@
 // The engine: the store, the gestures, the history, the hit-testing, the persistence.
-export { createEditor, type Editor } from './store';
+export {
+  clampZoom,
+  FIT_PADDING,
+  fitCamera,
+  GRID_BASE_STEP,
+  gridSpacing,
+  gridStep,
+  MAX_ZOOM,
+  MIN_GRID_SPACING,
+  MIN_ZOOM,
+  type Point,
+  panBy,
+  resetCamera,
+  stepZoom,
+  toScreen,
+  toWorld,
+  type Viewport,
+  viewCentre,
+  wheelZoom,
+  ZOOM_STEP,
+  zoomAt,
+  zoomBy,
+} from './camera';
+export { createEditor, type Editor, type Tool, type View } from './store';

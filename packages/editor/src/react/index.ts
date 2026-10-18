@@ -2,3 +2,4 @@
 // subscription hook. Every gesture stays in the DOM-free engine behind it.
 export { EditorProvider } from './editor-provider';
 export { useBoard, useEditor } from './use-board';
+export { useView } from './use-view';
