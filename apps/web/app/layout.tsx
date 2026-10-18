@@ -17,14 +17,10 @@ export const metadata: Metadata = {
   title: 'Kiyora',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html className={cn(geistSans.variable, geistMono.variable)} lang='en'>
-      <body>{children}</body>
-    </html>
-  );
-}
+const Layout = ({ children }: LayoutProps<'/'>) => (
+  <html className={cn(geistSans.variable, geistMono.variable)} lang='en'>
+    <body>{children}</body>
+  </html>
+);
+
+export default Layout;
