@@ -17,29 +17,10 @@ export {
   shapeSchema,
   slideSchema,
   styleSchema,
-} from './board/schema.js';
+} from './board/schema';
 export {
   type BoardIssue,
   BoardRejection,
   boardIssues,
   parseBoard,
-} from './board/validate.js';
-export {
-  type Paint,
-  type PaintContext,
-  type PaintPath,
-  paintBoard,
-  paintShape,
-} from './paint/paint.js';
-export {
-  type FillStyle,
-  fillStyleSchema,
-  PALETTE,
-  type PaletteColour,
-  type PaletteEntry,
-  paintColour,
-  paletteColourSchema,
-  type Theme,
-  themeSchema,
-} from './paint/palette.js';
-export { projectBoard } from './projection/svg.js';
+} from './board/validate';
