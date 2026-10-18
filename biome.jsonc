@@ -69,7 +69,7 @@
   "overrides": [
     {
       // A package's entry is its declared public surface, not an accidental barrel.
-      "includes": ["packages/*/src/index.ts"],
+      "includes": ["packages/*/src/index.ts", "packages/*/src/react/index.ts"],
       "linter": {
         "rules": {
           "performance": {

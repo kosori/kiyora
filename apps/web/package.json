@@ -17,7 +17,7 @@
   "scripts": {
     "build": "next build",
     "check-types": "next typegen && tsc --noEmit",
-    "dev": "next dev --port 3000",
+    "dev": "next dev",
     "start": "next start"
   },
   "dependencies": {
@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@kiyora/typescript": "*",
+    "@playwright/test": "1.64.1",
     "@types/node": "26.4.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

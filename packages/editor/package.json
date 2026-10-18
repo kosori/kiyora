@@ -16,17 +16,26 @@
   "sideEffects": false,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
     "check-types": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@kiyora/model": "*"
+  },
   "devDependencies": {
     "@kiyora/typescript": "*",
     "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "react": "19.2.8",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8"
   }
 }

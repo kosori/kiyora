@@ -33,10 +33,12 @@
     "check-types:root": "tsc --noEmit",
     "dev": "turbo run dev",
     "fix": "ultracite fix",
-    "test": "turbo run test && vitest run"
+    "test": "turbo run test && vitest run",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.64.1",
     "@types/node": "26.4.1",
     "turbo": "^2.11.9",
     "typescript": "7.0.2",

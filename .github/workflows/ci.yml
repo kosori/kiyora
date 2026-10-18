@@ -36,6 +36,15 @@ jobs:
       - uses: ./.github/actions/setup
       - run: bun run test
 
+  test-e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
+
   check-budgets:
     name: Size budget
     runs-on: ubuntu-latest
