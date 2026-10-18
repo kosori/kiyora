@@ -42,3 +42,4 @@ export {
   type Theme,
   themeSchema,
 } from './paint/palette';
+export { projectBoard } from './projection/svg';
