@@ -1,0 +1,4 @@
+{
+  "extends": "@kiyora/typescript/library.json",
+  "include": ["src/**/*.ts"]
+}

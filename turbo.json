@@ -8,6 +8,7 @@
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
     },
     "//#check": {},
+    "//#check-types:root": {},
     "//#fix": {
       "cache": false
     },
@@ -17,6 +18,7 @@
     "dev": {
       "cache": false,
       "persistent": true
-    }
+    },
+    "test": {}
   }
 }

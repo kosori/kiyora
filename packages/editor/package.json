@@ -1,0 +1,32 @@
+{
+  "name": "@kiyora/editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The engine: the store, the gestures, the history, the hit-testing, the persistence.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosori/kiyora.git",
+    "directory": "packages/editor"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Alexis Guzman",
+    "url": "https://codingcodax.dev"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@kiyora/typescript": "*",
+    "@types/node": "26.4.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}
