@@ -1,17 +1,22 @@
 {
   "name": "kiyora",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo run build",
+    "check": "ultracite check",
+    "check-types": "turbo run check-types",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "fix": "ultracite fix"
   },
   "devDependencies": {
-    "prettier": "3.9.6",
+    "@biomejs/biome": "2.5.15",
     "turbo": "^2.11.9",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "ultracite": "8.0.1"
   },
   "engines": {
     "node": ">=24"
@@ -21,9 +26,5 @@
       "name": "bun",
       "version": "1.4.3"
     }
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  }
 }
