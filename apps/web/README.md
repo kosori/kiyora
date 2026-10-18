@@ -1,39 +1,39 @@
-# @kiyora/web
+# `@kiyora/web`
 
-Next.js app for Kiyora.
-
-## Getting Started
-
-Run the development server from the repo root:
+The app: the canvas, the chrome around it, and the tests that prove the product.
 
 ```sh
-turbo dev --filter=@kiyora/web
+bun run dev --filter=@kiyora/web
 ```
 
-Or from this directory:
+Runs at `http://localhost:3000`. A normal Next.js server, deliberately **not** a static export — auth, an assistant proxy and MCP all need server routes later. See [ADR-0004](../../docs/adr/0004-offline-by-construction.md).
+
+## What it owns
+
+| Area | Responsibility |
+| --- | --- |
+| `app/` | Routes, layout, theme tokens, the font faces |
+| canvas host | Mounts the React adapter, wires gestures, keyboard and the camera |
+| tool rail, inspector | Selection and style surfaces |
+| menus, panels | Board file, export, slides, the shortcut dialog, the status bar |
+| export | The PNG raster path, which needs a canvas and therefore lives here |
+| `assets/fonts`, `scripts/subset-fonts.ts` | The vendored TTFs and the woff2 cut |
+| `lib/` | Glue with no home in a package |
+
+## Boundaries
+
+- **Composes, does not compute.** No geometry, no colour maths, no text position. Those come from `@kiyora/model`.
+- Everything needing a DOM lives here — measuring, rasterizing, clipboard, file pickers — behind an interface `model` or `editor` accepts.
+- **No request leaves this app** except for its own assets. A test enforces it.
+- Vendored `components/ui/**` is shadcn on Base UI, and is exempt from the file size budget, like `packages/dsl/src`.
+
+## Tests
 
 ```sh
-bun dev
+bun run test --filter=@kiyora/web     # Vitest, jsdom
+bun run test:e2e                      # Playwright, from the repo root
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+End to end runs on port **4319** with `reuseExistingServer: false`, and a global setup asserts the served page carries this app's build marker — so a stray server on another port is a loud failure rather than a silent pass.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-## UI
-
-UI components come from [shadcn/ui](https://ui.shadcn.com/) on top of [Base UI](https://base-ui.com/). Add new components with:
-
-```sh
-bunx --bun shadcn@latest add <component>
-```
-
-Components live in `components/ui` and are imported with the `~/` alias, for example `~/components/ui/button`.
-
-Icons come from [`@tabler/icons-react`](https://tabler.io/icons) (`iconLibrary: "tabler"` in `components.json`).
-
-Theming tokens live in `app/globals.css`.
-
-## Fonts
-
-Fonts are loaded with [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) from local Geist files in `app/fonts`.
+The e2e suite is where a capability is proven, per the table in [docs/product/v1.md](../../docs/product/v1.md). Assertions are on paint and behaviour: a test that counts elements proves nothing.
