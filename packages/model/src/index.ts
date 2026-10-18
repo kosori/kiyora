@@ -24,3 +24,21 @@ export {
   boardIssues,
   parseBoard,
 } from './board/validate';
+export {
+  type Paint,
+  type PaintContext,
+  type PaintPath,
+  paintBoard,
+  paintShape,
+} from './paint/paint';
+export {
+  type FillStyle,
+  fillStyleSchema,
+  PALETTE,
+  type PaletteColour,
+  type PaletteEntry,
+  paintColour,
+  paletteColourSchema,
+  type Theme,
+  themeSchema,
+} from './paint/palette';
