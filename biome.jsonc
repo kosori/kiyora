@@ -8,11 +8,14 @@
   "files": {
     // packages/dsl/src is vendored (ADR-0005) and kept as it was from history,
     // so it is neither reformatted nor linted here.
+    // `goldens` holds committed SVG artifacts, compared byte for byte; linting
+    // or reformatting them would break the comparison.
     "includes": [
       "!!**/public",
       "!!**/node_modules",
       "!!**/.agents",
-      "!!packages/dsl/src"
+      "!!packages/dsl/src",
+      "!!**/goldens"
     ]
   },
   "formatter": {
@@ -63,6 +66,19 @@
       "jsxQuoteStyle": "single"
     }
   },
+  "overrides": [
+    {
+      // A package's entry is its declared public surface, not an accidental barrel.
+      "includes": ["packages/*/src/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    }
+  ],
   "extends": [
     "ultracite/biome/core",
     "ultracite/biome/react",
