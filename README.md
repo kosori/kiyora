@@ -6,8 +6,11 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `web`: a [Next.js](https://nextjs.org/) app using [shadcn/ui](https://ui.shadcn.com/) with the [Base UI](https://base-ui.com/) primitives
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- `@kiyora/web`: a [Next.js](https://nextjs.org/) app using [shadcn/ui](https://ui.shadcn.com/) with the [Base UI](https://base-ui.com/) primitives
+
+### Tooling
+
+- `@kiyora/typescript`: `tsconfig.json`s used throughout the monorepo
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 
@@ -30,7 +33,7 @@ turbo build
 You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
 
 ```sh
-turbo build --filter=web
+turbo build --filter=@kiyora/web
 ```
 
 ### Develop
@@ -44,7 +47,7 @@ turbo dev
 You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
 
 ```sh
-turbo dev --filter=web
+turbo dev --filter=@kiyora/web
 ```
 
 ### Remote Caching

@@ -1,4 +1,4 @@
-# web
+# @kiyora/web
 
 Next.js app for Kiyora.
 
@@ -7,7 +7,7 @@ Next.js app for Kiyora.
 Run the development server from the repo root:
 
 ```sh
-turbo dev --filter=web
+turbo dev --filter=@kiyora/web
 ```
 
 Or from this directory:
