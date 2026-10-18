@@ -1,19 +1,20 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
-interface ButtonProps {
+type ButtonProps = {
+  appName: string;
   children: ReactNode;
   className?: string;
-  appName: string;
-}
+};
 
 export const Button = ({ children, className, appName }: ButtonProps) => {
+  const handleClick = () => {
+    console.log(`Hello from your ${appName} app!`);
+  };
+
   return (
-    <button
-      className={className}
-      onClick={() => alert(`Hello from your ${appName} app!`)}
-    >
+    <button className={className} onClick={handleClick} type='button'>
       {children}
     </button>
   );
