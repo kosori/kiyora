@@ -1,4 +1,11 @@
-import type { FigureShape, FrameShape, Shape, Style } from '@kiyora/model';
+import {
+  DEFAULT_TEXT_STYLE,
+  type FigureShape,
+  type FrameShape,
+  type Shape,
+  type Style,
+  type TextShape,
+} from '@kiyora/model';
 import type { Point } from './camera';
 import type { Placeable } from './tools';
 
@@ -62,7 +69,8 @@ export const nextShapeId = (
 /**
  * The shape a placement asks for: `kind`, in the gesture's box, wearing `style`.
  * A frame is authored plain and clipping, with a box its own to keep — nothing
- * a later member does resizes it.
+ * a later member does resizes it. A text shape starts empty and wears the
+ * default text style, so it can be typed into the moment it lands.
  */
 export const shapeFromPlacement = (
   kind: Placeable,
@@ -89,6 +97,18 @@ export const shapeFromPlacement = (
     };
 
     return frame;
+  }
+
+  if (kind === 'text') {
+    const text: TextShape = {
+      ...base,
+      ...placementBox(placement),
+      kind: 'text',
+      text: '',
+      textStyle: DEFAULT_TEXT_STYLE,
+    };
+
+    return text;
   }
 
   const figure: FigureShape = {

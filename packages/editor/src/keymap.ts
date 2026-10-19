@@ -118,6 +118,7 @@ const nudgeBinding = (
 export const KEYMAP: readonly Binding[] = [
   { command: { kind: 'tool', tool: 'select' }, key: 'v' },
   { command: { kind: 'tool', tool: 'rectangle' }, key: 'r' },
+  { command: { kind: 'tool', tool: 'text' }, key: 't' },
   { command: { kind: 'tool', tool: 'frame' }, key: 'f' },
   { command: { action: 'pan', kind: 'camera' }, key: 'space' },
   { command: { action: 'zoom-in', kind: 'camera' }, key: '=' },
@@ -158,6 +159,11 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     commands: [{ kind: 'tool', tool: 'rectangle' }],
     group: 'Tools',
     label: 'Rectangle',
+  },
+  {
+    commands: [{ kind: 'tool', tool: 'text' }],
+    group: 'Tools',
+    label: 'Text',
   },
   {
     commands: [{ kind: 'tool', tool: 'frame' }],

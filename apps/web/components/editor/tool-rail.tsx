@@ -5,6 +5,7 @@ import {
   IconFrame,
   IconPointer,
   IconRectangle,
+  IconTypography,
   type TablerIcon,
 } from '@tabler/icons-react';
 import { ShapePicker } from './shape-picker';
@@ -24,6 +25,7 @@ export type RailEntry = {
 const RAIL: readonly RailEntry[] = [
   { icon: IconPointer, label: 'Select', tool: 'select' },
   { icon: IconRectangle, label: 'Rectangle', tool: 'rectangle' },
+  { icon: IconTypography, label: 'Text', tool: 'text' },
   { icon: IconFrame, label: 'Frame', tool: 'frame' },
 ];
 

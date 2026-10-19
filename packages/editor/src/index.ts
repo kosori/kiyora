@@ -134,8 +134,10 @@ export {
 export {
   DEFAULT_STYLE,
   isFigureTool,
+  isShapeTool,
   type Placeable,
   placesShape,
+  type ShapeTool,
   type Tool,
 } from './tools';
 export {

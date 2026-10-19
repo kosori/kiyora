@@ -6,6 +6,7 @@ import {
   paletteColourSchema,
   themeSchema,
 } from '../paint/palette';
+import { textStyleSchema } from '../text/style';
 
 /** The board's schema version. A migration bumps it. */
 export const SCHEMA_VERSION = 1;
@@ -57,6 +58,7 @@ export const shapeBaseSchema = z.object({
   rotation: z.number(),
   style: styleSchema,
   text: z.string().optional(),
+  textStyle: textStyleSchema.optional(),
   w: z.number(),
   x: z.number(),
   y: z.number(),
@@ -109,10 +111,16 @@ export const frameSchema = shapeBaseSchema.extend({
 /** A frame. */
 export type FrameShape = z.infer<typeof frameSchema>;
 
+const textSchema = shapeBaseSchema.extend({ kind: z.literal('text') });
+
+/** A text shape: words that belong to nothing else. */
+export type TextShape = z.infer<typeof textSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
   frameSchema,
+  textSchema,
 ]);
 
 /** One item on the board. */

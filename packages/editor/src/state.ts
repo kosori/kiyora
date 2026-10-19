@@ -1,4 +1,11 @@
-import type { Board, Bounds, Camera, Shape, Style } from '@kiyora/model';
+import type {
+  Board,
+  Bounds,
+  Camera,
+  Shape,
+  Style,
+  TextStyle,
+} from '@kiyora/model';
 import type { Point } from './camera';
 import type { HandleKind } from './geometry/handles';
 import type { GestureModifiers } from './modifiers';
@@ -99,11 +106,14 @@ export type Editor = {
    */
   setStyle: (style: Style) => void;
   /**
-   * Places the active tool's shape in `placement`'s box, wearing the last used
-   * style, and returns the tool to select. With a tool that places nothing —
-   * select or hand — it does nothing.
+   * Places the active shape tool's shape in `placement`'s box, wearing the last
+   * used style, and returns it so a caller can begin editing a text shape at
+   * once, or `null` for a tool that places nothing.
    */
-  placeShape: (placement: Placement) => void;
+  placeShape: (placement: Placement) => Shape | null;
+  /** Replaces one shape's label, or its text style. Each is one board change. */
+  setText: (id: string, text: string) => void;
+  setTextStyle: (id: string, textStyle: TextStyle) => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */

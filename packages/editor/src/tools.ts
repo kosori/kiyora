@@ -1,22 +1,32 @@
 import type { FigureKind, Style } from '@kiyora/model';
 
 /**
+ * What a shape tool places: a figure from the vocabulary, or a text shape for
+ * words that belong to nothing else.
+ */
+export type ShapeTool = FigureKind | 'text';
+
+/**
  * What the pointer does on the canvas: `select` picks and moves, `hand` grabs
  * the board itself, `frame` draws a region that holds other shapes, and a
- * figure kind places one when the canvas is dragged.
+ * shape tool — a figure or text — places one when the canvas is dragged.
  */
-export type Tool = 'hand' | 'select' | 'frame' | FigureKind;
+export type Tool = 'hand' | 'select' | 'frame' | ShapeTool;
 
-/** What a tool places on the board: a figure, or a frame. */
-export type Placeable = 'frame' | FigureKind;
+/** What a tool places on the board: a figure, a text shape, or a frame. */
+export type Placeable = 'frame' | ShapeTool;
 
-/** Whether `tool` places a figure, rather than selecting, panning or framing. */
-export const isFigureTool = (tool: Tool): tool is FigureKind =>
+/** Whether `tool` places a shape, rather than selecting, panning or framing. */
+export const isShapeTool = (tool: Tool): tool is ShapeTool =>
   tool !== 'hand' && tool !== 'select' && tool !== 'frame';
 
 /** Whether `tool` places a shape on the canvas at all. */
 export const placesShape = (tool: Tool): tool is Placeable =>
-  tool === 'frame' || isFigureTool(tool);
+  tool === 'frame' || isShapeTool(tool);
+
+/** Whether `tool` places a figure, rather than a text shape or nothing. */
+export const isFigureTool = (tool: Tool): tool is FigureKind =>
+  isShapeTool(tool) && tool !== 'text';
 
 /**
  * The style the first shape wears, and the one place the next shape's style

@@ -13,29 +13,17 @@ import {
   selectedShapes,
   selectionBounds,
 } from './selection';
+import {
+  replaceShapes,
+  setShapeText,
+  setShapeTextStyle,
+  snapshotShapes,
+} from './shape-edit';
 import type { Drag, Editor, Gesture, MoveDrag, View } from './state';
 import { DEFAULT_STYLE, placesShape } from './tools';
 import { angleAt, resizeSelection, rotateSelection } from './transform';
 
 export type { Drag, Editor, Gesture, View } from './state';
-
-/** The board with the named shapes swapped for their replacements. */
-const replaceShapes = (
-  board: Board,
-  replacements: ReadonlyMap<string, Shape>
-): Board => {
-  if (replacements.size === 0) {
-    return board;
-  }
-  return {
-    ...board,
-    shapes: board.shapes.map((shape) => replacements.get(shape.id) ?? shape),
-  };
-};
-
-/** The before-picture of a set of shapes, keyed by id. */
-const snapshot = (shapes: readonly Shape[]): ReadonlyMap<string, Shape> =>
-  new Map(shapes.map((shape) => [shape.id, shape]));
 
 /** The signed turn between two angles, always the short way round. */
 const shortestDelta = (delta: number): number => {
@@ -66,6 +54,15 @@ export const createEditor = (board: Board): Editor => {
     for (const listener of set) {
       listener();
     }
+  };
+
+  /** Adopts `next` as the board and publishes it, unless it is the same board. */
+  const publishChange = (next: Board): void => {
+    if (next === current) {
+      return;
+    }
+    current = next;
+    publish(listeners);
   };
 
   const setView = (next: View): void => {
@@ -144,14 +141,12 @@ export const createEditor = (board: Board): Editor => {
     for (const [id, position] of move.originals) {
       offsets.set(id, position);
     }
-    current = offsetShapes(current, offsets);
-    publish(listeners);
+    publishChange(offsetShapes(current, offsets));
   };
 
   /** Puts every shape back where a resize or a rotate found it. */
   const restoreShapes = (originals: ReadonlyMap<string, Shape>): void => {
-    current = replaceShapes(current, originals);
-    publish(listeners);
+    publishChange(replaceShapes(current, originals));
   };
 
   /** Opens a resize on `handle`, which keeps the box it started on. */
@@ -160,7 +155,7 @@ export const createEditor = (board: Board): Editor => {
       bounds,
       handle,
       kind: 'resize',
-      originals: snapshot(selectedShapes(current, selection)),
+      originals: snapshotShapes(selectedShapes(current, selection)),
     };
     publishGesture();
   };
@@ -171,7 +166,7 @@ export const createEditor = (board: Board): Editor => {
     drag = {
       centre,
       kind: 'rotate',
-      originals: snapshot(selectedShapes(current, selection)),
+      originals: snapshotShapes(selectedShapes(current, selection)),
       start: angleAt(centre, point),
     };
     publishGesture();
@@ -231,18 +226,18 @@ export const createEditor = (board: Board): Editor => {
       for (const [id, position] of offsets) {
         offsets.set(id, { x: position.x + dx, y: position.y + dy });
       }
-      current = offsetShapes(current, offsets);
-      publish(listeners);
+      publishChange(offsetShapes(current, offsets));
     },
     placeShape: (placement) => {
       const { tool } = view;
       if (!placesShape(tool)) {
-        return;
+        return null;
       }
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
       current = addShape(current, shape);
       setView({ ...view, tool: 'select' });
       publish(listeners);
+      return shape;
     },
     pointerDown: (point, additive) => {
       if (beginHandle(point)) {
@@ -368,6 +363,9 @@ export const createEditor = (board: Board): Editor => {
     setStyle: (next) => {
       style = next;
     },
+    setText: (id, text) => publishChange(setShapeText(current, id, text)),
+    setTextStyle: (id, textStyle) =>
+      publishChange(setShapeTextStyle(current, id, textStyle)),
     setTool: (tool) => {
       setView({ ...view, tool });
     },

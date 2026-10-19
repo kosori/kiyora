@@ -3,11 +3,14 @@
 import { useBoard } from '@kiyora/editor/react';
 import { type Paint, paintBoard } from '@kiyora/model';
 import { cn } from 'cn';
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { createTextMeasurer } from '~/lib/text-measurer';
 import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
 import { Marquee } from './marquee';
 import { SelectionFrame } from './selection-frame';
+import { TextEditor } from './text-editor';
+import { TextLayer } from './text-layer';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
 import { useShortcuts } from './use-shortcuts';
@@ -33,6 +36,7 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => {
           strokeWidth={path.strokeWidth}
         />
       ))}
+      <TextLayer paint={paint} />
       {paint.clip === undefined || paint.shapeId === undefined ? (
         children
       ) : (
@@ -58,17 +62,25 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => {
  * the canvas to here, and each tool's handlers ignore the other's. The selection
  * frame and the marquee ride inside the camera's group, so they hug the board
  * wherever the camera takes it.
+ *
+ * Text is measured by the app's canvas measurer and painted by the walker like
+ * every other coordinate, so `apps/web` never wraps or places a word itself. A
+ * double click on a shape opens the label overlay here, on the canvas.
  */
 export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
   const surface = useCameraSurface();
-  const pointer = useBoardPointer(surface.hand);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const openEditor = useCallback((id: string) => setEditingId(id), []);
+  const closeEditor = useCallback(() => setEditingId(null), []);
+  const pointer = useBoardPointer(surface.hand, openEditor);
+  const measure = useMemo(() => createTextMeasurer(), []);
 
   useShortcuts(onShowShortcuts, surface.intent);
 
   const paint = useMemo(
-    () => paintBoard(board, { theme: board.settings.theme }),
-    [board]
+    () => paintBoard(board, { measure, theme: board.settings.theme }),
+    [board, measure]
   );
   const { camera } = surface.view;
 
@@ -97,6 +109,9 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           <Marquee />
         </g>
       </svg>
+      {editingId === null ? null : (
+        <TextEditor onDone={closeEditor} shapeId={editingId} />
+      )}
       <CameraControls
         fit={surface.actions.fit}
         reset={surface.actions.reset}
