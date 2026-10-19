@@ -3,7 +3,13 @@ import {
   createAutosave,
   createEditor,
 } from '@kiyora/editor';
-import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
+import {
+  type Board,
+  parseBoard,
+  parseBoardFile,
+  SCHEMA_VERSION,
+  serializeBoard,
+} from '@kiyora/model';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const board = (title: string, camera = { x: 0, y: 0, zoom: 1 }): Board =>
@@ -170,5 +176,41 @@ describe('autosave', () => {
     await vi.advanceTimersByTimeAsync(100);
 
     expect(writes).toEqual([]);
+  });
+});
+
+describe('what autosave stores', () => {
+  it('is a board file, so the store and the file hold one shape', async () => {
+    vi.useFakeTimers();
+    const saved = board('Stored', { x: 3, y: 4, zoom: 2 });
+    const editor = createEditor(saved);
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ delay: 50, editor, storage });
+
+    await autosave.flush();
+
+    expect(parseBoardFile(writes.at(0) ?? '')).toEqual(saved);
+  });
+
+  it('serialises through the board file, not a second path of its own', async () => {
+    vi.useFakeTimers();
+    const scrambled: Board = {
+      camera: { x: 0, y: 0, zoom: 1 },
+      createdAt: 1_700_000_000_000,
+      deck: [],
+      id: 'board-1',
+      schemaVersion: SCHEMA_VERSION,
+      settings: { theme: 'light' },
+      shapes: [],
+      title: 'Scrambled',
+      updatedAt: 1_700_000_000_000,
+    };
+    const editor = createEditor(scrambled);
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ delay: 50, editor, storage });
+
+    await autosave.flush();
+
+    expect(writes.at(0)).toBe(serializeBoard(scrambled));
   });
 });
