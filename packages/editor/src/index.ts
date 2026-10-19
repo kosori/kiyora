@@ -44,11 +44,25 @@ export {
   type AutosaveOptions,
   createAutosave,
 } from './persistence/autosave';
-export { loadBoard, restoreBoard } from './persistence/board';
+export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
+export {
+  type CorruptReason,
+  faultOf,
+  StorageError,
+  type StorageFault,
+} from './persistence/faults';
+export {
+  createPresence,
+  type Presence,
+  type PresenceChannel,
+  type PresenceMessage,
+} from './persistence/presence';
 export {
   BOARD_KEY,
   type BoardStorage,
+  QUARANTINE_KEY,
   type SaveStatus,
+  SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
 export { createEditor, type Editor, type View } from './store';
