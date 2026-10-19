@@ -236,6 +236,47 @@ test('arrows nudge by a pixel and a grid step', async ({ page }) => {
   );
 });
 
+test('an undeclared modified key does nothing, so the keymap stays the only declaration', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+
+  await page.keyboard.press('Alt+ArrowRight');
+  await page.keyboard.press('Control+ArrowDown');
+  await page.keyboard.press('Alt+ArrowUp');
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 300 80 L 300 220 L 80 220 Z'
+  );
+});
+
+test('the shortcut reference lists the nudge keys the keymap declares', async ({
+  page,
+}) => {
+  await open(page);
+  await page.keyboard.press('?');
+
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await expect(dialog).toBeVisible();
+
+  const rows = dialog.locator('li');
+
+  await expect(rows.filter({ hasText: 'Nudge by a pixel' })).toContainText('↑');
+  await expect(rows.filter({ hasText: 'Nudge by a grid step' })).toContainText(
+    'SHIFT + ↑'
+  );
+  await expect(rows.filter({ hasText: 'Nudge by a grid step' })).toContainText(
+    'SHIFT + →'
+  );
+  await expect(rows.filter({ hasText: 'Cancel a gesture' })).toContainText(
+    'ESC'
+  );
+});
+
 test('Escape cancels a drag and restores the positions', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);

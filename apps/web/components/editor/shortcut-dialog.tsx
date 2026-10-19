@@ -65,9 +65,16 @@ export const ShortcutDialog = ({ onOpenChange, open }: Props) => {
             {rows.map((row) => (
               <li className='flex items-center gap-8' key={row.label}>
                 <span className='flex-1'>{row.label}</span>
-                <kbd className='rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs'>
-                  {row.key.toUpperCase()}
-                </kbd>
+                <span className='flex gap-1'>
+                  {row.keys.map((key) => (
+                    <kbd
+                      className='rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs'
+                      key={key}
+                    >
+                      {key.toUpperCase()}
+                    </kbd>
+                  ))}
+                </span>
               </li>
             ))}
           </ul>
