@@ -137,7 +137,7 @@ test('a connector carries a label, typed on the canvas', async ({ page }) => {
   const editor = page.getByTestId('text-editor');
   await expect(editor).toBeVisible();
   await page.keyboard.type('links');
-  await page.keyboard.press('Escape');
+  await editor.blur();
 
   await expect(
     page.getByTestId('board').locator('text', { hasText: 'links' })
