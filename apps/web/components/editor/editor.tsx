@@ -6,10 +6,12 @@ import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
 import { CrashProbe } from './crash-probe';
+import { DeckPanel } from './deck-panel';
 import { PanelBoundary } from './error-boundary';
 import { FileControls } from './file-controls';
 import { HistoryControls } from './history-controls';
 import { Inspector } from './inspector';
+import { PresentOverlay } from './present-overlay';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
@@ -53,7 +55,13 @@ export const Editor = () => {
             <Inspector />
           </CrashProbe>
         </PanelBoundary>
+        <PanelBoundary label='Deck'>
+          <CrashProbe name='deck'>
+            <DeckPanel />
+          </CrashProbe>
+        </PanelBoundary>
       </div>
+      <PresentOverlay />
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
     </EditorProvider>
   );

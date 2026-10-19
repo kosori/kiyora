@@ -1,3 +1,4 @@
+import { PRESENT_BINDINGS, PRESENT_ROWS } from './present-keys';
 import type { Tool } from './tools';
 
 /**
@@ -18,7 +19,13 @@ export type Command =
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
   | { kind: 'cancel-gesture' }
   | { kind: 'undo' }
-  | { kind: 'redo' };
+  | { kind: 'redo' }
+  | { kind: 'present' }
+  | { kind: 'present-next' }
+  | { kind: 'present-previous' }
+  | { kind: 'present-exit' }
+  | { kind: 'present-notes' }
+  | { kind: 'present-timer' };
 
 /** A stable name for a command, so the keymap and the reference can join. */
 export const commandId = (command: Command): string => {
@@ -40,6 +47,16 @@ export const commandId = (command: Command): string => {
  * the other way there, rather than by spelling the combination into the key.
  */
 export type ModifierRule = 'required' | 'forbidden' | 'ignored';
+
+/**
+ * When a binding applies: while editing the board, or while presenting it. The
+ * two share one keymap, so a key pressed while presenting cannot run an editing
+ * command behind the slide, and the reference is generated from both.
+ */
+export const KEY_MODES = ['edit', 'present'] as const;
+
+/** When a binding applies. */
+export type KeyMode = (typeof KEY_MODES)[number];
 
 /** The modifiers a binding constrains. An omitted one takes the default below. */
 export type Modifiers = {
@@ -71,6 +88,8 @@ const rulesFor = (binding: Binding): Required<Modifiers> => ({
 export type Binding = {
   command: Command;
   key: string;
+  /** When the binding applies. Omitted means editing, so the edit keymap stays as it was. */
+  mode?: KeyMode;
   modifiers?: Modifiers;
 };
 
@@ -140,6 +159,7 @@ export const KEYMAP: readonly Binding[] = [
   },
   ...ARROWS.map((arrow) => nudgeBinding(arrow, false)),
   ...ARROWS.map((arrow) => nudgeBinding(arrow, true)),
+  ...PRESENT_BINDINGS,
 ];
 
 /** One line of the reference: the copy, and the commands it names. */
@@ -233,6 +253,7 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     group: 'Help',
     label: 'Keyboard shortcuts',
   },
+  ...PRESENT_ROWS,
 ];
 
 /** One line the dialog shows: its copy, and the keys the keymap runs it with. */
@@ -249,6 +270,8 @@ const KEY_NAMES: Readonly<Record<string, string>> = {
   arrowright: '→',
   arrowup: '↑',
   escape: 'Esc',
+  pagedown: 'PgDn',
+  pageup: 'PgUp',
   space: 'Space',
 };
 
@@ -256,6 +279,10 @@ const KEY_NAMES: Readonly<Record<string, string>> = {
 const bindingFor = (command: Command): Binding | null =>
   KEYMAP.find((binding) => commandId(binding.command) === commandId(command)) ??
   null;
+
+/** Every binding `command` is declared as, in keymap order, so a key with aliases shows them all. */
+const bindingsFor = (command: Command): Binding[] =>
+  KEYMAP.filter((binding) => commandId(binding.command) === commandId(command));
 
 /**
  * How a binding reads in the reference: the modifiers it requires, then its key,
@@ -292,11 +319,9 @@ export const shortcutReference = (): ReferenceRow[] => {
   const rows: ReferenceRow[] = [];
 
   for (const row of SHORTCUT_ROWS) {
-    const keys = row.commands.flatMap((command) => {
-      const binding = bindingFor(command);
-
-      return binding === null ? [] : [bindingLabel(binding)];
-    });
+    const keys = row.commands.flatMap((command) =>
+      bindingsFor(command).map((binding) => bindingLabel(binding))
+    );
 
     if (keys.length > 0) {
       rows.push({ group: row.group, keys, label: row.label });
@@ -323,11 +348,16 @@ export type Chord = {
   /** The platform command key: meta on macOS, control elsewhere. */
   command?: boolean;
   key: string;
+  /** When the key was pressed. Omitted means editing. */
+  mode?: KeyMode;
   shift?: boolean;
 };
 
-/** Whether `chord` is the key event `binding` answers. */
+/** Whether `chord` is the key event `binding` answers, in `chord`'s mode. */
 export const matchBinding = (binding: Binding, chord: Chord): boolean => {
+  if ((binding.mode ?? 'edit') !== (chord.mode ?? 'edit')) {
+    return false;
+  }
   if (binding.key !== keyToken(chord.key)) {
     return false;
   }
