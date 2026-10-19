@@ -5,13 +5,16 @@ import {
   serializeBoard,
 } from '@kiyora/model';
 
-/** The file a board is saved under: its title, slugged, with the board extension. */
-export const boardFileName = (title: string): string => {
+/** The file a board is saved under: its title, slugged, with the given extension. */
+export const boardFileName = (
+  title: string,
+  extension = BOARD_FILE_EXTENSION
+): string => {
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return `${slug || 'board'}${BOARD_FILE_EXTENSION}`;
+  return `${slug || 'board'}${extension}`;
 };
 
 /** Writes `board` out as one `.kyr.json` download, the board's own bytes. */

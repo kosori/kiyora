@@ -2,19 +2,29 @@
 
 import { restoreBoard } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
-import { type ChangeEvent, useCallback, useRef, useState } from 'react';
+import {
+  type ChangeEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button } from '~/components/ui/button';
 import { openBoardFile, saveBoardFile } from '~/lib/board-file';
+import { saveBoardSvg } from '~/lib/board-svg';
+import { createTextMeasurer } from '~/lib/text-measurer';
 
 /**
- * The board as a file: save the open board, or open one in its place. A refused
- * file names what was wrong and leaves the open board exactly where it was.
+ * The board as a file: save the open board, open one in its place, or take it
+ * out as an SVG. A refused file names what was wrong and leaves the open board
+ * exactly where it was; a refused export names why it could not be written.
  */
 export const FileControls = () => {
   const editor = useEditor();
   const board = useBoard();
   const { camera } = useView();
   const input = useRef<HTMLInputElement>(null);
+  const measure = useMemo(() => createTextMeasurer(), []);
   const [error, setError] = useState<string | null>(null);
 
   const open = useCallback(
@@ -36,6 +46,15 @@ export const FileControls = () => {
   const save = useCallback(() => {
     saveBoardFile({ ...board, camera });
   }, [board, camera]);
+
+  const exportSvg = useCallback(() => {
+    try {
+      saveBoardSvg(board, { measure, theme: board.settings.theme });
+      setError(null);
+    } catch (thrown) {
+      setError(thrown instanceof Error ? thrown.message : String(thrown));
+    }
+  }, [board, measure]);
 
   const pick = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -66,6 +85,14 @@ export const FileControls = () => {
           variant='ghost'
         >
           Save file
+        </Button>
+        <Button
+          data-testid='export-svg'
+          onClick={exportSvg}
+          size='sm'
+          variant='ghost'
+        >
+          Export SVG
         </Button>
       </div>
       <input
