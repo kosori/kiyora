@@ -1,20 +1,29 @@
-import type { Board, Style } from '@kiyora/model';
+import type { Board, Bounds, Style } from '@kiyora/model';
 import type { Point } from './camera';
+import {
+  replaceShapes,
+  restyleShapes,
+  shortestDelta,
+  snapshotShapes,
+  translateShapes,
+} from './edits';
+import { type HandleKind, handleAt } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
-import { createHistory } from './history/stack';
+import { createTransactions } from './history/transaction';
 import { shapeFromPlacement } from './placement';
 import {
   normaliseSelection,
   offsetShapes,
   type Selection,
   selectedShapes,
+  selectionBounds,
 } from './selection';
-import type { Drag, Editor, Gesture, MoveDrag, View } from './state';
+import type { Drag, Editor, Gesture, View } from './state';
 import { DEFAULT_STYLE, isFigureTool } from './tools';
+import { angleAt, resizeSelection, rotateSelection } from './transform';
 
 export type { Drag, Editor, Gesture, Restyle, View } from './state';
-
 /** An engine over `board`, holding it and publishing each replacement. */
 export const createEditor = (board: Board): Editor => {
   let current = board;
@@ -24,8 +33,7 @@ export const createEditor = (board: Board): Editor => {
   let drag: Drag | null = null;
   let cachedDrag: Drag | null = null;
   let cachedGesture: Gesture = { kind: 'idle' };
-  const history = createHistory();
-  let nudgeRun: { before: Board; key: string } | null = null;
+  const transactions = createTransactions();
   const listeners = new Set<() => void>();
   const viewListeners = new Set<() => void>();
   const selectionListeners = new Set<() => void>();
@@ -46,28 +54,6 @@ export const createEditor = (board: Board): Editor => {
     publish(gestureListeners);
   };
 
-  /**
-   * Records `before` as one history entry, unless the gesture left the board
-   * untouched. Committing is the notification: a control reads whether undo is
-   * possible from it, so a stale button cannot survive a gesture.
-   */
-  const commit = (before: Board): void => {
-    if (before === current) {
-      return;
-    }
-    history.commit(before);
-  };
-
-  /** Records the open run of nudges as one entry, and closes it. */
-  const flushNudge = (): void => {
-    if (nudgeRun === null) {
-      return;
-    }
-    const run = nudgeRun;
-    nudgeRun = null;
-    commit(run.before);
-  };
-
   /** Drops an open gesture without restoring it, so history can replace the board. */
   const abandonGesture = (): void => {
     if (drag === null) {
@@ -75,6 +61,17 @@ export const createEditor = (board: Board): Editor => {
     }
     drag = null;
     publishGesture();
+  };
+
+  /** Opens the board `next` replaces, keeping the selection honest and repainting. */
+  const restore = (next: Board | null): void => {
+    if (next === null) {
+      return;
+    }
+    abandonGesture();
+    current = next;
+    commitSelection(selection);
+    publish(listeners);
   };
 
   /**
@@ -90,7 +87,11 @@ export const createEditor = (board: Board): Editor => {
           ? { kind: 'idle' }
           : drag.kind === 'move'
             ? { kind: 'move' }
-            : { box: drag.box, kind: 'marquee' };
+            : drag.kind === 'marquee'
+              ? { box: drag.box, kind: 'marquee' }
+              : drag.kind === 'resize'
+                ? { handle: drag.handle, kind: 'resize' }
+                : { kind: 'rotate' };
     }
     return cachedGesture;
   };
@@ -104,14 +105,10 @@ export const createEditor = (board: Board): Editor => {
     if (same) {
       return;
     }
-    flushNudge();
+    transactions.endNudgeRun();
     selection = ids;
     publish(selectionListeners);
   };
-
-  const positionsOf = (
-    shapes: readonly { id: string; x: number; y: number }[]
-  ) => new Map(shapes.map((shape) => [shape.id, { x: shape.x, y: shape.y }]));
 
   /** Opens a move over the current selection, if it holds anything. */
   const beginMove = (point: Point): void => {
@@ -130,20 +127,58 @@ export const createEditor = (board: Board): Editor => {
       before: current,
       kind: 'move',
       origin: { x: left, y: top },
-      originals: positionsOf(shapes),
+      originals: new Map(
+        shapes.map((shape) => [shape.id, { x: shape.x, y: shape.y }])
+      ),
       start: point,
     };
     publishGesture();
   };
 
-  /** Puts every moved shape back where the gesture found it. */
-  const restoreMove = (move: MoveDrag): void => {
-    const offsets = new Map<string, Point>();
-    for (const [id, position] of move.originals) {
-      offsets.set(id, position);
+  /** Opens a resize on `handle`, which keeps the box it started on. */
+  const beginResize = (bounds: Bounds, handle: HandleKind): void => {
+    drag = {
+      before: current,
+      bounds,
+      handle,
+      kind: 'resize',
+      originals: snapshotShapes(selectedShapes(current, selection)),
+    };
+    publishGesture();
+  };
+
+  /** Opens a rotate about the selection centre, starting from the pointer's angle. */
+  const beginRotate = (bounds: Bounds, point: Point): void => {
+    const centre = { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 };
+    drag = {
+      before: current,
+      centre,
+      kind: 'rotate',
+      originals: snapshotShapes(selectedShapes(current, selection)),
+      start: angleAt(centre, point),
+    };
+    publishGesture();
+  };
+
+  /** Opens a resize or a rotate when the pointer lands on a handle of the selection. */
+  const beginHandle = (point: Point): boolean => {
+    if (view.tool !== 'select' || selection.length === 0) {
+      return false;
     }
-    current = offsetShapes(current, offsets);
-    publish(listeners);
+    const bounds = selectionBounds(current, selection);
+    if (bounds === null) {
+      return false;
+    }
+    const handle = handleAt(bounds, point, view.camera.zoom);
+    if (handle === null) {
+      return false;
+    }
+    if (handle === 'rotate') {
+      beginRotate(bounds, point);
+    } else {
+      beginResize(bounds, handle);
+    }
+    return true;
   };
 
   return {
@@ -155,40 +190,33 @@ export const createEditor = (board: Board): Editor => {
       drag = null;
       if (open.kind === 'move') {
         if (open.applied.x !== 0 || open.applied.y !== 0) {
-          restoreMove(open);
+          current = offsetShapes(current, open.originals);
+          publish(listeners);
         }
-      } else {
+      } else if (open.kind === 'marquee') {
         commitSelection(open.base);
+      } else {
+        current = replaceShapes(current, open.originals);
+        publish(listeners);
       }
       publishGesture();
     },
     endNudgeRun: () => {
-      flushNudge();
+      transactions.endNudgeRun();
     },
     getBoard: () => current,
     getGesture: gestureNow,
-    getHistory: () => history.getState(),
+    getHistory: () => transactions.getState(),
     getSelection: () => selection,
     getStyle: () => style,
     getTool: () => view.tool,
     getView: () => view,
     nudge: (dx, dy) => {
-      const shapes = selectedShapes(current, selection);
-      if (shapes.length === 0) {
+      if (selectedShapes(current, selection).length === 0) {
         return;
       }
-      const key = selection.join('\u0000');
-      if (nudgeRun !== null && nudgeRun.key !== key) {
-        flushNudge();
-      }
-      if (nudgeRun === null) {
-        nudgeRun = { before: current, key };
-      }
-      const offsets = positionsOf(shapes);
-      for (const [id, position] of offsets) {
-        offsets.set(id, { x: position.x + dx, y: position.y + dy });
-      }
-      current = offsetShapes(current, offsets);
+      transactions.noteNudge(current);
+      current = translateShapes(current, selection, dx, dy);
       publish(listeners);
     },
     placeShape: (placement) => {
@@ -196,16 +224,19 @@ export const createEditor = (board: Board): Editor => {
       if (!isFigureTool(tool)) {
         return;
       }
-      flushNudge();
+      transactions.endNudgeRun();
       const before = current;
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
       current = { ...current, shapes: [...current.shapes, shape] };
       setView({ ...view, tool: 'select' });
-      commit(before);
+      transactions.commit(before, current);
       publish(listeners);
     },
     pointerDown: (point, additive) => {
-      flushNudge();
+      transactions.endNudgeRun();
+      if (beginHandle(point)) {
+        return;
+      }
       const hit = shapeAt(current.shapes, point);
       if (hit === null) {
         drag = {
@@ -234,13 +265,37 @@ export const createEditor = (board: Board): Editor => {
         beginMove(point);
       }
     },
-    pointerMove: (point, bypassSnap) => {
+    pointerMove: (point, bypassSnap, shift) => {
       if (drag === null) {
         return;
       }
       if (drag.kind === 'marquee') {
         drag = { ...drag, box: boxBetween(drag.from, point) };
         publishGesture();
+        return;
+      }
+      if (drag.kind === 'resize') {
+        const replacements = resizeSelection(
+          [...drag.originals.values()],
+          drag.bounds,
+          drag.handle,
+          point,
+          { fromCentre: bypassSnap, keepRatio: shift ?? false, snap: true }
+        );
+        current = replaceShapes(current, replacements);
+        publish(listeners);
+        return;
+      }
+      if (drag.kind === 'rotate') {
+        const delta = shortestDelta(angleAt(drag.centre, point) - drag.start);
+        const replacements = rotateSelection(
+          [...drag.originals.values()],
+          drag.centre,
+          delta,
+          shift ?? false
+        );
+        current = replaceShapes(current, replacements);
+        publish(listeners);
         return;
       }
       let dx = point.x - drag.start.x;
@@ -268,7 +323,7 @@ export const createEditor = (board: Board): Editor => {
       if (drag.kind !== 'marquee') {
         const { before } = drag;
         drag = null;
-        commit(before);
+        transactions.commit(before, current);
         publishGesture();
         return;
       }
@@ -281,56 +336,24 @@ export const createEditor = (board: Board): Editor => {
       publishGesture();
     },
     redo: () => {
-      flushNudge();
-      abandonGesture();
-      const next = history.redo(current);
-      if (next === null) {
-        return;
-      }
-      current = next;
-      commitSelection(selection);
-      publish(listeners);
+      restore(transactions.redo(current));
     },
     restyle: (change) => {
-      const shapes = selectedShapes(current, selection);
-      if (shapes.length === 0) {
-        return;
-      }
-      flushNudge();
+      transactions.endNudgeRun();
       const before = current;
-      const selected = new Set(shapes.map((one) => one.id));
-      let restyled: Style | null = null;
-      current = {
-        ...current,
-        shapes: current.shapes.map((one) => {
-          if (!selected.has(one.id)) {
-            return one;
-          }
-          const next = {
-            ...one,
-            ...(change.opacity === undefined
-              ? {}
-              : { opacity: change.opacity }),
-            style:
-              change.style === undefined
-                ? one.style
-                : { ...one.style, ...change.style },
-          };
-          restyled ??= next.style;
-          return next;
-        }),
-      };
-      if (restyled !== null) {
-        style = restyled;
+      const { board, next } = restyleShapes(current, selection, change);
+      current = board;
+      if (next !== null) {
+        style = next;
       }
-      commit(before);
+      transactions.commit(before, current);
       publish(listeners);
     },
     setBoard: (next) => {
-      flushNudge();
+      transactions.endNudgeRun();
       current = next;
       commitSelection(selection);
-      history.clear();
+      transactions.clear();
       publish(listeners);
     },
     setCamera: (camera) => {
@@ -357,7 +380,7 @@ export const createEditor = (board: Board): Editor => {
         gestureListeners.delete(listener);
       };
     },
-    subscribeHistory: (listener) => history.subscribe(listener),
+    subscribeHistory: (listener) => transactions.subscribe(listener),
     subscribeSelection: (listener) => {
       selectionListeners.add(listener);
       return () => {
@@ -371,15 +394,7 @@ export const createEditor = (board: Board): Editor => {
       };
     },
     undo: () => {
-      flushNudge();
-      abandonGesture();
-      const previous = history.undo(current);
-      if (previous === null) {
-        return;
-      }
-      current = previous;
-      commitSelection(selection);
-      publish(listeners);
+      restore(transactions.undo(current));
     },
   };
 };

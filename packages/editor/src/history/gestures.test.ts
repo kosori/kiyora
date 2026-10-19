@@ -192,6 +192,53 @@ describe('the history a gesture leaves behind', () => {
   });
 });
 
+describe('resize and rotate gestures', () => {
+  it('records a resize as one entry, and undo puts the box back', () => {
+    const editor = createEditor(board([rectangle({ id: 'a', x: 0, y: 0 })]));
+    editor.setSelection(['a']);
+
+    editor.pointerDown({ x: 100, y: 60 }, false);
+    editor.pointerMove({ x: 140, y: 100 }, false);
+    editor.pointerMove({ x: 160, y: 120 }, false);
+    editor.pointerUp();
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({ h: 120, w: 160 });
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({ h: 60, w: 100 });
+    expect(editor.getHistory().canUndo).toBe(false);
+  });
+
+  it('records a rotate as one entry', () => {
+    const editor = createEditor(board([rectangle({ id: 'a', x: 0, y: 0 })]));
+    editor.setSelection(['a']);
+
+    editor.pointerDown({ x: 50, y: -22 }, false);
+    editor.pointerMove({ x: 100, y: 30 }, false);
+    editor.pointerUp();
+
+    expect(editor.getBoard().shapes[0]?.rotation).not.toBe(0);
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]?.rotation).toBe(0);
+    expect(editor.getHistory().canUndo).toBe(false);
+  });
+
+  it('leaves nothing behind when a resize is cancelled', () => {
+    const editor = createEditor(board([rectangle({ id: 'a', x: 0, y: 0 })]));
+    editor.setSelection(['a']);
+
+    editor.pointerDown({ x: 100, y: 60 }, false);
+    editor.pointerMove({ x: 160, y: 120 }, false);
+    editor.cancelGesture();
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({ h: 60, w: 100 });
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
+  });
+});
+
 describe('history and the camera', () => {
   it('never records a pan, and leaves the board untouched', () => {
     const editor = createEditor(board([rectangle({ id: 'a' })]));

@@ -23,6 +23,24 @@ export {
   zoomBy,
 } from './camera';
 export {
+  HANDLE_REACH,
+  HANDLE_SIZE,
+  HANDLES,
+  type Handle,
+  type HandleKind,
+  type HandleSigns,
+  handleAt,
+  handlePositions,
+  handleSigns,
+  MIN_SIZE,
+  type ResizeModifiers,
+  ROTATE_DISTANCE,
+  ROTATION_SNAP,
+  ROTATION_ZERO,
+  resizeBounds,
+  rotateHandlePosition,
+} from './geometry/handles';
+export {
   boxBetween,
   boxesIntersect,
   containsPoint,
@@ -63,11 +81,25 @@ export {
   type AutosaveOptions,
   createAutosave,
 } from './persistence/autosave';
-export { loadBoard, restoreBoard } from './persistence/board';
+export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
+export {
+  type CorruptReason,
+  faultOf,
+  StorageError,
+  type StorageFault,
+} from './persistence/faults';
+export {
+  createPresence,
+  type Presence,
+  type PresenceChannel,
+  type PresenceMessage,
+} from './persistence/presence';
 export {
   BOARD_KEY,
   type BoardStorage,
+  QUARANTINE_KEY,
   type SaveStatus,
+  SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
 export {
@@ -86,3 +118,10 @@ export {
   type View,
 } from './store';
 export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+export {
+  angleAt,
+  type Replacements,
+  resizeSelection,
+  rotateSelection,
+  settleRotation,
+} from './transform';

@@ -1,9 +1,16 @@
-import type { Board, Bounds, Camera, Style } from '@kiyora/model';
+import type { Board, Bounds, Camera, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
+import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
 import type { Placement } from './placement';
 import type { Selection } from './selection';
 import type { Tool } from './tools';
+
+/**
+ * The engine's vocabulary: the view, the gesture a pointer is in the middle of,
+ * and the engine's own surface. It lives beside `createEditor` so the store
+ * file holds only the behaviour, and every type here is the store's contract.
+ */
 
 /**
  * Display state: where the board is looked at from, and what the pointer does.
@@ -23,7 +30,9 @@ export type View = {
 export type Gesture =
   | { kind: 'idle' }
   | { kind: 'move' }
-  | { kind: 'marquee'; box: Bounds };
+  | { kind: 'marquee'; box: Bounds }
+  | { kind: 'resize'; handle: HandleKind }
+  | { kind: 'rotate' };
 
 /** The open move: the board it began on, where the pointer went down, and the positions it moved from. */
 export type MoveDrag = {
@@ -44,8 +53,26 @@ export type MarqueeDrag = {
   kind: 'marquee';
 };
 
-/** The open gesture, whichever kind it is. */
-export type Drag = MoveDrag | MarqueeDrag;
+/** The open resize: the board it began on, the handle grabbed, and the before-picture. */
+export type ResizeDrag = {
+  before: Board;
+  bounds: Bounds;
+  handle: HandleKind;
+  kind: 'resize';
+  originals: ReadonlyMap<string, Shape>;
+};
+
+/** The open rotate: the board it began on, where the pointer started, and the before-picture. */
+export type RotateDrag = {
+  before: Board;
+  centre: Point;
+  kind: 'rotate';
+  originals: ReadonlyMap<string, Shape>;
+  start: number;
+};
+
+/** A pointer's open gesture, in the shape its own kind needs. */
+export type Drag = MoveDrag | MarqueeDrag | ResizeDrag | RotateDrag;
 
 /**
  * The engine: it holds one board and its view, and publishes each change to its
@@ -93,16 +120,21 @@ export type Editor = {
   /** Subscribes to gesture changes, so a marquee can be drawn. Returns the unsubscribe. */
   subscribeGesture: (listener: () => void) => () => void;
   /**
-   * The pointer going down on the board. On a shape it selects it — adding to
-   * the selection when `additive` — and opens a move; on empty canvas it clears
-   * the selection unless `additive`, and opens a marquee.
+   * The pointer going down on the board. On a handle of the current selection it
+   * opens a resize or a rotate; on a shape it selects it — adding to the
+   * selection when `additive` — and opens a move; on empty canvas it clears the
+   * selection unless `additive`, and opens a marquee.
    */
   pointerDown: (point: Point, additive: boolean) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move
-   * translates the whole selection, snapped to the grid unless `bypassSnap`.
+   * translates the whole selection, snapped to the grid unless `bypassSnap`; a
+   * resize reads `bypassSnap` as alt (grow from the centre) and `shift` as
+   * keep-ratio; a rotate reads `shift` as snap-to-fifteen. A resize is always
+   * snapped, so alt is the centre modifier here rather than the snap bypass of a
+   * move.
    */
-  pointerMove: (point: Point, bypassSnap: boolean) => void;
+  pointerMove: (point: Point, bypassSnap: boolean, shift?: boolean) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */
   pointerUp: () => void;
   /** Escape: a move goes back to the positions it started from, a marquee is dropped. */
