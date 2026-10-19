@@ -76,6 +76,14 @@ export {
   toggleSlideSkipped,
 } from './deck';
 export {
+  exportBoardSvg,
+  SVG_EXPORT_LIMIT_BYTES,
+  SVG_FILE_EXTENSION,
+  type SvgExportOptions,
+  SvgExportRefusal,
+  unsafeSvg,
+} from './export/board-svg';
+export {
   BOARD_FILE_EXTENSION,
   parseBoardFile,
   serializeBoard,
