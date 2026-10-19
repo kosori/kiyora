@@ -7,7 +7,6 @@ import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
-import { useShortcuts } from './use-shortcuts';
 
 /**
  * The editor route: it owns the engine and paints the board through the adapter.
@@ -22,12 +21,10 @@ export const Editor = () => {
     setShortcuts((open) => !open);
   }, []);
 
-  useShortcuts(editor, toggleShortcuts);
-
   return (
     <EditorProvider editor={editor}>
       <div className='relative h-full'>
-        <BoardCanvas />
+        <BoardCanvas onShowShortcuts={toggleShortcuts} />
         <ToolRail />
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />

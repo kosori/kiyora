@@ -119,6 +119,7 @@ test('holding space drags the board, and lets go when space lets go', async ({
   await page.keyboard.up('Space');
 
   expect((await camera(page)).x).toBeCloseTo(-40, 0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
   await page.mouse.move(600, 300);
   await page.mouse.down();
@@ -200,6 +201,23 @@ test('the keyboard zooms about the pointer too', async ({ page }) => {
   await page.keyboard.press('-');
 
   expect((await camera(page)).zoom).toBeCloseTo(1, 3);
+});
+
+test('the shortcut reference lists the keys that pan and zoom', async ({
+  page,
+}) => {
+  await open(page);
+
+  await page.keyboard.press('?');
+
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await expect(dialog).toBeVisible();
+
+  const rows = dialog.locator('li');
+
+  await expect(rows.filter({ hasText: 'Pan' })).toContainText('SPACE');
+  await expect(rows.filter({ hasText: 'Zoom in' })).toContainText('=');
+  await expect(rows.filter({ hasText: 'Zoom out' })).toContainText('-');
 });
 
 test('fit brings the whole board into the view, centred', async ({ page }) => {
