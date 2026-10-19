@@ -126,6 +126,9 @@ export const createEditor = (board: Board): Editor => {
   };
 
   return {
+    beginTextEdit: () => {
+      transactions.beginEdit(current);
+    },
     cancelGesture: () => {
       if (drag === null) {
         return;
@@ -143,8 +146,18 @@ export const createEditor = (board: Board): Editor => {
       }
       publishGesture();
     },
+    cancelTextEdit: () => {
+      const before = transactions.cancelEdit();
+      if (before === null) {
+        return;
+      }
+      restore(before);
+    },
     endNudgeRun: () => {
       transactions.endNudgeRun();
+    },
+    endTextEdit: () => {
+      transactions.endEdit(current);
     },
     getBoard: () => current,
     getGesture: gestureNow,
@@ -171,7 +184,14 @@ export const createEditor = (board: Board): Editor => {
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
       current = addShape(current, shape);
       setView({ ...view, tool: 'select' });
-      transactions.commit(before, current);
+      if (shape.kind === 'text' || shape.kind === 'sticky') {
+        // The label overlay opens on this shape at once, and the words typed
+        // into it are the rest of the same gesture, so the transaction stays
+        // open for them rather than committing the empty shape first.
+        transactions.beginEdit(before);
+      } else {
+        transactions.commit(before, current);
+      }
       publish(listeners);
       return shape;
     },
@@ -314,10 +334,24 @@ export const createEditor = (board: Board): Editor => {
     setStyle: (next) => {
       style = next;
     },
-    setText: (id, text, measure) =>
-      publishChange(setShapeText(current, id, text, measure)),
-    setTextStyle: (id, textStyle) =>
-      publishChange(setShapeTextStyle(current, id, textStyle)),
+    setText: (id, text, measure) => {
+      transactions.endNudgeRun();
+      const editing = transactions.isEditing();
+      const before = current;
+      if (!editing) {
+        transactions.beginEdit(before);
+      }
+      publishChange(setShapeText(current, id, text, measure));
+      if (!editing) {
+        transactions.endEdit(current);
+      }
+    },
+    setTextStyle: (id, textStyle) => {
+      transactions.endNudgeRun();
+      const before = current;
+      publishChange(setShapeTextStyle(current, id, textStyle));
+      transactions.commit(before, current);
+    },
     setTool: (tool) => {
       setView({ ...view, tool });
     },

@@ -116,12 +116,29 @@ export type Editor = {
    */
   placeShape: (placement: Placement) => Shape | null;
   /**
-   * Replaces one shape's label, or its text style. Each is one board change.
-   * A sticky grows to fit its label when a measurer is supplied, so its box
-   * stays the truth a selection, a click and an export all read.
+   * Replaces one shape's label, or its text style. Each is one board change and
+   * one history entry. A sticky grows to fit its label when a measurer is
+   * supplied, so its box stays the truth a selection, a click and an export all
+   * read; the box travels with the words, so one undo puts both back. A write
+   * between `beginTextEdit` and `endTextEdit` joins that edit instead of
+   * committing on its own.
    */
   setText: (id: string, text: string, measure?: Measurer) => void;
   setTextStyle: (id: string, textStyle: TextStyle) => void;
+  /**
+   * Opens the label edit's transaction, so every write between this and
+   * `endTextEdit` is one gesture and one history entry. Joins one already open —
+   * a placed text shape hands its own transaction to the overlay — so a
+   * placement and the label typed into it are not two undos.
+   */
+  beginTextEdit: () => void;
+  /** Commits the open label edit as one entry. Does nothing when none is open. */
+  endTextEdit: () => void;
+  /**
+   * Drops the open label edit and restores the board it began on, pushing
+   * nothing, so Escape costs no undo.
+   */
+  cancelTextEdit: () => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */

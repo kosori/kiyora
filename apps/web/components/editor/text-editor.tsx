@@ -27,9 +27,10 @@ type Props = {
 
 /**
  * The label edit surface: a textarea sitting exactly where the words will be, on
- * the canvas rather than in a dialog. It holds the draft locally and commits the
- * whole label in one store change on blur or Escape, so finishing an edit is one
- * commit — one undo, once history lands — not one per keystroke.
+ * the canvas rather than in a dialog. It holds the draft locally, opens the
+ * store's edit transaction when it appears, and lands the whole label in one
+ * store change on blur, so finishing an edit is one undo — not one per keystroke.
+ * Escape cancels the edit, restoring the words the shape had before it opened.
  */
 export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
   const editor = useEditor();
@@ -40,6 +41,10 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
   const input = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    editor.beginTextEdit();
+  }, [editor]);
+
+  useEffect(() => {
     const element = input.current;
     if (element === null) {
       return;
@@ -48,10 +53,22 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
     element.setSelectionRange(element.value.length, element.value.length);
   }, []);
 
+  /**
+   * Lands the draft as one board change and closes the edit's transaction, so a
+   * finished edit is one undo — the box a sticky grew into travels with the
+   * words, so the note shrinks back too.
+   */
   const commit = useCallback(() => {
     editor.setText(shapeId, value, measure);
+    editor.endTextEdit();
     onDone();
   }, [editor, measure, onDone, shapeId, value]);
+
+  /** Escape: the board goes back to the words it had, and nothing is pushed. */
+  const cancel = useCallback(() => {
+    editor.cancelTextEdit();
+    onDone();
+  }, [editor, onDone]);
 
   const onChange = useCallback(
     (event: ReactChangeEvent<HTMLTextAreaElement>) => {
@@ -64,10 +81,10 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
     (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        commit();
+        cancel();
       }
     },
-    [commit]
+    [cancel]
   );
 
   if (shape === undefined) {
