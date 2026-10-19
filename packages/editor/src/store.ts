@@ -1,5 +1,6 @@
 import type { Board, Bounds, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
+import { addShape, subtreeIds } from './containment';
 import { type HandleKind, handleAt } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
@@ -13,7 +14,7 @@ import {
   selectionBounds,
 } from './selection';
 import type { Drag, Editor, Gesture, MoveDrag, View } from './state';
-import { DEFAULT_STYLE, isFigureTool } from './tools';
+import { DEFAULT_STYLE, placesShape } from './tools';
 import { angleAt, resizeSelection, rotateSelection } from './transform';
 
 export type { Drag, Editor, Gesture, View } from './state';
@@ -117,7 +118,7 @@ export const createEditor = (board: Board): Editor => {
 
   /** Opens a move over the current selection, if it holds anything. */
   const beginMove = (point: Point): void => {
-    const shapes = selectedShapes(current, selection);
+    const shapes = selectedShapes(current, subtreeIds(current, selection));
     if (shapes.length === 0) {
       return;
     }
@@ -222,7 +223,7 @@ export const createEditor = (board: Board): Editor => {
     getTool: () => view.tool,
     getView: () => view,
     nudge: (dx, dy) => {
-      const shapes = selectedShapes(current, selection);
+      const shapes = selectedShapes(current, subtreeIds(current, selection));
       if (shapes.length === 0) {
         return;
       }
@@ -235,11 +236,11 @@ export const createEditor = (board: Board): Editor => {
     },
     placeShape: (placement) => {
       const { tool } = view;
-      if (!isFigureTool(tool)) {
+      if (!placesShape(tool)) {
         return;
       }
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
-      current = { ...current, shapes: [...current.shapes, shape] };
+      current = addShape(current, shape);
       setView({ ...view, tool: 'select' });
       publish(listeners);
     },

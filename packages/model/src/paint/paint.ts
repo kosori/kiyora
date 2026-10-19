@@ -1,5 +1,13 @@
-import type { Board, Dash, FigureShape, Shape, Style } from '../board/schema';
+import type {
+  Board,
+  Dash,
+  FigureShape,
+  FrameShape,
+  Shape,
+  Style,
+} from '../board/schema';
 import { FIGURE_GEOMETRY } from './figure-geometry';
+import { rectanglePath } from './figures';
 import { FILL_ALPHA, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
@@ -22,6 +30,12 @@ export const DASH_PATTERN: Record<Dash, number[] | undefined> = {
 export type Paint = {
   paths: PaintPath[];
   children: Paint[];
+  /**
+   * The path this node's children are clipped to, in board coordinates. A
+   * clipping frame carries it, so its members stay inside the box its author
+   * drew; a node without it paints its children unclipped.
+   */
+  clip?: string;
   /**
    * The shape this node came from. A renderer keys its elements by this rather
    * than by array position, so a repaint follows identity. The board's own node
@@ -62,14 +76,55 @@ const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
   };
 };
 
-/** The paint for one shape: its own paths, then its children's, named by its id. */
-export const paintShape = (shape: Shape, context: PaintContext): Paint => ({
-  ...paintFigure(shape, context),
-  shapeId: shape.id,
+/**
+ * Paints one frame: the box its author drew, and — when it clips — the same box
+ * as the region its members are held inside. The clip is the authored box, so
+ * dropping a member in never resizes the frame to fit it.
+ */
+const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
+  children: [],
+  clip: shape.clip ? rectanglePath(shape) : undefined,
+  paths: [
+    {
+      d: rectanglePath(shape),
+      fill: fillOf(shape.style, context.theme, shape.opacity),
+      stroke: strokeOf(shape.style, context.theme, shape.opacity),
+      strokeWidth: shape.style.strokeWidth,
+    },
+  ],
 });
 
-/** The paint for one board: one child per shape, in paint order. */
-export const paintBoard = (board: Board, context: PaintContext): Paint => ({
-  children: board.shapes.map((shape) => paintShape(shape, context)),
-  paths: [],
-});
+/** The paint for one shape: its own paths, then its children's, named by its id. */
+export const paintShape = (shape: Shape, context: PaintContext): Paint => {
+  const paint =
+    shape.kind === 'frame'
+      ? paintFrame(shape, context)
+      : paintFigure(shape, context);
+
+  return { ...paint, shapeId: shape.id };
+};
+
+/**
+ * The paint for one board: one child per shape, in paint order. A shape whose
+ * `parentId` names a frame is nested inside it, where it follows its frame and
+ * can be clipped by it; a shape with no parent stays at the top level.
+ */
+export const paintBoard = (board: Board, context: PaintContext): Paint => {
+  const nodes = new Map<string, Paint>();
+  const children: Paint[] = [];
+
+  for (const shape of board.shapes) {
+    const node = paintShape(shape, context);
+    nodes.set(shape.id, node);
+
+    const parent =
+      shape.parentId === null ? undefined : nodes.get(shape.parentId);
+    if (parent === undefined) {
+      children.push(node);
+    } else {
+      parent.children.push(node);
+    }
+  }
+
+  return { children, paths: [] };
+};

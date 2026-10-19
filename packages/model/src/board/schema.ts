@@ -1,4 +1,4 @@
-import { CORNERS, SHAPES } from '@kiyora/dsl';
+import { CORNERS, FRAMES, SHAPES } from '@kiyora/dsl';
 import { z } from 'zod';
 import {
   fillStyleSchema,
@@ -81,8 +81,39 @@ const figureSchema = shapeBaseSchema.extend({ kind: figureKindSchema });
 /** A figure: the shapes the vocabulary draws from a name. */
 export type FigureShape = z.infer<typeof figureSchema>;
 
+/**
+ * The variants a frame carries. The device names are the grammar's, taken from
+ * it rather than declared a second time, as ADR-0002 asks. `plain` is the frame
+ * with no device chrome, which is what v1 draws until the device frames land in
+ * v1.5.
+ */
+export const FRAME_VARIANTS = ['plain', ...FRAMES] as const;
+
+/** A frame's variant: `plain`, or one of the device frames the grammar names. */
+export const frameVariantSchema = z.enum(FRAME_VARIANTS);
+
+/** A frame's variant. */
+export type FrameVariant = z.infer<typeof frameVariantSchema>;
+
+/**
+ * A frame: a shape that holds other shapes and can clip them. Its box is
+ * authored, so membership never rewrites it — that is what separates a frame
+ * from a group, whose box is derived.
+ */
+export const frameSchema = shapeBaseSchema.extend({
+  clip: z.boolean(),
+  kind: z.literal('frame'),
+  variant: frameVariantSchema,
+});
+
+/** A frame. */
+export type FrameShape = z.infer<typeof frameSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
-export const shapeSchema = z.discriminatedUnion('kind', [figureSchema]);
+export const shapeSchema = z.discriminatedUnion('kind', [
+  figureSchema,
+  frameSchema,
+]);
 
 /** One item on the board. */
 export type Shape = z.infer<typeof shapeSchema>;

@@ -16,23 +16,36 @@ type Props = {
   onShowShortcuts: () => void;
 };
 
-const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
-  <>
-    {paint.paths.map((path, index) => (
-      <path
-        d={path.d}
-        fill={path.fill}
-        key={`path-${index}`}
-        stroke={path.stroke}
-        strokeDasharray={path.dash?.join(' ')}
-        strokeWidth={path.strokeWidth}
-      />
-    ))}
-    {paint.children.map((child, index) => (
-      <PaintPaths key={child.shapeId ?? `child-${index}`} paint={child} />
-    ))}
-  </>
-);
+const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => {
+  const children = paint.children.map((child, index) => (
+    <PaintPaths key={child.shapeId ?? `child-${index}`} paint={child} />
+  ));
+
+  return (
+    <>
+      {paint.paths.map((path, index) => (
+        <path
+          d={path.d}
+          fill={path.fill}
+          key={`path-${index}`}
+          stroke={path.stroke}
+          strokeDasharray={path.dash?.join(' ')}
+          strokeWidth={path.strokeWidth}
+        />
+      ))}
+      {paint.clip === undefined || paint.shapeId === undefined ? (
+        children
+      ) : (
+        <>
+          <clipPath id={`clip-${paint.shapeId}`}>
+            <path d={paint.clip} />
+          </clipPath>
+          <g clipPath={`url(#clip-${paint.shapeId})`}>{children}</g>
+        </>
+      )}
+    </>
+  );
+};
 
 /**
  * Paints the board through the camera. Every coordinate, colour and width comes

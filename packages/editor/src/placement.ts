@@ -1,5 +1,6 @@
-import type { FigureKind, FigureShape, Shape, Style } from '@kiyora/model';
+import type { FigureShape, FrameShape, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
+import type { Placeable } from './tools';
 
 /** An axis-aligned box in board units. */
 export type Box = {
@@ -18,21 +19,27 @@ export type Placement = {
 /** The size a click places a shape, in board units. */
 export const DEFAULT_SHAPE_SIZE = { h: 100, w: 160 } as const;
 
+/** The size a click places a frame: a region worth holding shapes in. */
+export const DEFAULT_FRAME_SIZE = { h: 360, w: 480 } as const;
+
 /**
  * The box a placement asks for: the rectangle the gesture swept, or, when it
- * never moved, the default size centred on the point. Either way the point the
+ * never moved, the fallback size centred on the point. Either way the point the
  * gesture ended on is a point of the shape the author meant.
  */
-export const placementBox = ({ from, to }: Placement): Box => {
+export const placementBox = (
+  { from, to }: Placement,
+  fallback: { h: number; w: number } = DEFAULT_SHAPE_SIZE
+): Box => {
   const w = Math.abs(to.x - from.x);
   const h = Math.abs(to.y - from.y);
 
   if (w === 0 && h === 0) {
     return {
-      h: DEFAULT_SHAPE_SIZE.h,
-      w: DEFAULT_SHAPE_SIZE.w,
-      x: from.x - DEFAULT_SHAPE_SIZE.w / 2,
-      y: from.y - DEFAULT_SHAPE_SIZE.h / 2,
+      h: fallback.h,
+      w: fallback.w,
+      x: from.x - fallback.w / 2,
+      y: from.y - fallback.h / 2,
     };
   }
 
@@ -41,7 +48,7 @@ export const placementBox = ({ from, to }: Placement): Box => {
 
 /** The first id of `kind` that `existing` does not already hold. */
 export const nextShapeId = (
-  kind: FigureKind,
+  kind: Placeable,
   existing: readonly Shape[]
 ): string => {
   const used = new Set(existing.map((shape) => shape.id));
@@ -52,19 +59,43 @@ export const nextShapeId = (
   return `${kind}-${n}`;
 };
 
-/** The shape a placement asks for: `kind`, in the gesture's box, wearing `style`. */
+/**
+ * The shape a placement asks for: `kind`, in the gesture's box, wearing `style`.
+ * A frame is authored plain and clipping, with a box its own to keep — nothing
+ * a later member does resizes it.
+ */
 export const shapeFromPlacement = (
-  kind: FigureKind,
+  kind: Placeable,
   placement: Placement,
   style: Style,
   existing: readonly Shape[]
-): FigureShape => ({
-  ...placementBox(placement),
-  id: nextShapeId(kind, existing),
-  kind,
-  locked: false,
-  opacity: 1,
-  parentId: null,
-  rotation: 0,
-  style,
-});
+): Shape => {
+  const base = {
+    id: nextShapeId(kind, existing),
+    locked: false,
+    opacity: 1,
+    parentId: null,
+    rotation: 0,
+    style,
+  };
+
+  if (kind === 'frame') {
+    const frame: FrameShape = {
+      ...base,
+      ...placementBox(placement, DEFAULT_FRAME_SIZE),
+      clip: true,
+      kind,
+      variant: 'plain',
+    };
+
+    return frame;
+  }
+
+  const figure: FigureShape = {
+    ...base,
+    ...placementBox(placement),
+    kind,
+  };
+
+  return figure;
+};

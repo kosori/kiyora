@@ -10,7 +10,7 @@ import {
   rotateSelection,
   settleRotation,
 } from '@kiyora/editor';
-import type { Shape } from '@kiyora/model';
+import type { FigureShape, Shape } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const style = {
@@ -22,7 +22,7 @@ const style = {
   strokeWidth: 2,
 } as const;
 
-const rectangle = (overrides: Partial<Shape> = {}): Shape => ({
+const rectangle = (overrides: Partial<FigureShape> = {}): Shape => ({
   h: 140,
   id: 'r',
   kind: 'rectangle',

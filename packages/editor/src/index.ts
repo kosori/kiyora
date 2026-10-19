@@ -23,6 +23,16 @@ export {
   zoomBy,
 } from './camera';
 export {
+  addShape,
+  frameAround,
+  frameIds,
+  isFrame,
+  memberIds,
+  parentFrame,
+  setMembership,
+  subtreeIds,
+} from './containment';
+export {
   HANDLE_REACH,
   HANDLE_SIZE,
   HANDLES,
@@ -96,6 +106,7 @@ export {
   SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
+export { DEFAULT_FRAME_SIZE, DEFAULT_SHAPE_SIZE } from './placement';
 export type { Restyle } from './restyle';
 export {
   normaliseSelection,
@@ -111,7 +122,13 @@ export {
   type Gesture,
   type View,
 } from './store';
-export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+export {
+  DEFAULT_STYLE,
+  isFigureTool,
+  type Placeable,
+  placesShape,
+  type Tool,
+} from './tools';
 export {
   angleAt,
   type Replacements,
