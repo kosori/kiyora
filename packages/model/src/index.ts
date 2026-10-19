@@ -18,6 +18,7 @@ export {
   shapeSchema,
   slideSchema,
   styleSchema,
+  type TextShape,
 } from './board/schema';
 export {
   type BoardIssue,
@@ -54,3 +55,36 @@ export {
   themeSchema,
 } from './paint/palette';
 export { projectBoard } from './projection/svg';
+export { CODE_FONT_FAMILY, fontFamilyOf, TEXT_FONT_FAMILY } from './text/font';
+export {
+  type PaintText,
+  TEXT_ASCENT,
+  TEXT_LINE_HEIGHT,
+  TEXT_PADDING,
+  type TextAnchor,
+  textAnchorOf,
+  textOf,
+} from './text/layout';
+export {
+  parseRuns,
+  type Run,
+  sameRunStyle,
+  sanitizeHref,
+} from './text/markdown';
+export {
+  DEFAULT_TEXT_STYLE,
+  TEXT_ALIGNS,
+  TEXT_SIZE_PRESETS,
+  TEXT_SIZES,
+  TEXT_VALIGNS,
+  type TextAlign,
+  type TextStyle,
+  type TextVerticalAlign,
+  textStyleSchema,
+} from './text/style';
+export {
+  type MeasureRun,
+  type Measurer,
+  type TextLine,
+  wrapRuns,
+} from './text/wrap';

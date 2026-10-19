@@ -1,9 +1,10 @@
 'use client';
 
-import { type Point, toWorld } from '@kiyora/editor';
+import { type Point, shapeAt, toWorld } from '@kiyora/editor';
 import { useEditor, useView } from '@kiyora/editor/react';
 import type { Camera } from '@kiyora/model';
 import {
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useRef,
@@ -13,6 +14,7 @@ import { usePlacement } from './use-placement';
 type ElementPointerEvent = ReactPointerEvent<HTMLElement>;
 
 type Handlers = {
+  onDoubleClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onPointerCancel: (event: ElementPointerEvent) => void;
   onPointerDown: (event: ElementPointerEvent) => void;
   onPointerMove: (event: ElementPointerEvent) => void;
@@ -20,7 +22,10 @@ type Handlers = {
 };
 
 /** Where a pointer event lands on the board: the surface rect, then the camera. */
-const boardPoint = (event: ElementPointerEvent, camera: Camera): Point => {
+const boardPoint = (
+  event: ReactMouseEvent<HTMLElement>,
+  camera: Camera
+): Point => {
   const box = event.currentTarget.getBoundingClientRect();
 
   return toWorld(camera, {
@@ -30,18 +35,22 @@ const boardPoint = (event: ElementPointerEvent, camera: Camera): Point => {
 };
 
 /**
- * The pointer on the canvas, split by tool: a figure tool places, the select
+ * The pointer on the canvas, split by tool: a shape tool places, the select
  * tool picks and moves. A drag of the select tool becomes a move when it starts
  * on a shape and a marquee when it starts on empty canvas, so the engine owns
- * that decision and the surface only forwards where the pointer is.
+ * that decision and the surface only forwards where the pointer is. A double
+ * click on a shape opens its label for editing, on the canvas.
  *
  * `panning` is true while space is held or the hand tool is up; the camera is
  * driving then, and the selection must not fight it for the same drag.
  */
-export const useBoardPointer = (panning: boolean): Handlers => {
+export const useBoardPointer = (
+  panning: boolean,
+  onEditShape: (id: string) => void
+): Handlers => {
   const editor = useEditor();
   const { camera, tool } = useView();
-  const placement = usePlacement();
+  const placement = usePlacement(onEditShape);
   const selecting = useRef<boolean>(false);
 
   const onPointerDown = useCallback(
@@ -98,5 +107,24 @@ export const useBoardPointer = (panning: boolean): Handlers => {
     [editor]
   );
 
-  return { onPointerCancel, onPointerDown, onPointerMove, onPointerUp };
+  const onDoubleClick = useCallback(
+    (event: ReactMouseEvent<HTMLElement>) => {
+      if (panning || tool !== 'select' || event.button !== 0) {
+        return;
+      }
+      const hit = shapeAt(editor.getBoard().shapes, boardPoint(event, camera));
+      if (hit !== null) {
+        onEditShape(hit.id);
+      }
+    },
+    [camera, editor, onEditShape, panning, tool]
+  );
+
+  return {
+    onDoubleClick,
+    onPointerCancel,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+  };
 };

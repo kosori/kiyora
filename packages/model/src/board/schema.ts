@@ -6,6 +6,7 @@ import {
   paletteColourSchema,
   themeSchema,
 } from '../paint/palette';
+import { textStyleSchema } from '../text/style';
 
 /** The board's schema version. A migration bumps it. */
 export const SCHEMA_VERSION = 1;
@@ -31,6 +32,7 @@ export const shapeBaseSchema = z.object({
   rotation: z.number(),
   style: styleSchema,
   text: z.string().optional(),
+  textStyle: textStyleSchema.optional(),
   w: z.number(),
   x: z.number(),
   y: z.number(),
@@ -55,8 +57,16 @@ const figureSchema = shapeBaseSchema.extend({ kind: figureKindSchema });
 /** A figure: the shapes the vocabulary draws from a name. */
 export type FigureShape = z.infer<typeof figureSchema>;
 
+const textSchema = shapeBaseSchema.extend({ kind: z.literal('text') });
+
+/** A text shape: words that belong to nothing else. */
+export type TextShape = z.infer<typeof textSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
-export const shapeSchema = z.discriminatedUnion('kind', [figureSchema]);
+export const shapeSchema = z.discriminatedUnion('kind', [
+  figureSchema,
+  textSchema,
+]);
 
 /** One item on the board. */
 export type Shape = z.infer<typeof shapeSchema>;

@@ -1,5 +1,6 @@
-import type { FigureKind, FigureShape, Shape, Style } from '@kiyora/model';
+import { DEFAULT_TEXT_STYLE, type Shape, type Style } from '@kiyora/model';
 import type { Point } from './camera';
+import type { ShapeTool } from './tools';
 
 /** An axis-aligned box in board units. */
 export type Box = {
@@ -41,7 +42,7 @@ export const placementBox = ({ from, to }: Placement): Box => {
 
 /** The first id of `kind` that `existing` does not already hold. */
 export const nextShapeId = (
-  kind: FigureKind,
+  kind: ShapeTool,
   existing: readonly Shape[]
 ): string => {
   const used = new Set(existing.map((shape) => shape.id));
@@ -52,19 +53,30 @@ export const nextShapeId = (
   return `${kind}-${n}`;
 };
 
-/** The shape a placement asks for: `kind`, in the gesture's box, wearing `style`. */
+/**
+ * The shape a placement asks for: `kind`, in the gesture's box, wearing `style`.
+ * A text shape starts empty and wears the default text style, so it can be
+ * typed into the moment it lands.
+ */
 export const shapeFromPlacement = (
-  kind: FigureKind,
+  kind: ShapeTool,
   placement: Placement,
   style: Style,
   existing: readonly Shape[]
-): FigureShape => ({
-  ...placementBox(placement),
-  id: nextShapeId(kind, existing),
-  kind,
-  locked: false,
-  opacity: 1,
-  parentId: null,
-  rotation: 0,
-  style,
-});
+): Shape => {
+  const base = {
+    ...placementBox(placement),
+    id: nextShapeId(kind, existing),
+    locked: false,
+    opacity: 1,
+    parentId: null,
+    rotation: 0,
+    style,
+  };
+
+  if (kind === 'text') {
+    return { ...base, kind: 'text', text: '', textStyle: DEFAULT_TEXT_STYLE };
+  }
+
+  return { ...base, kind };
+};

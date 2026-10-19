@@ -4,6 +4,7 @@ import type { Tool } from '@kiyora/editor';
 import {
   IconPointer,
   IconRectangle,
+  IconTypography,
   type TablerIcon,
 } from '@tabler/icons-react';
 import { ShapePicker } from './shape-picker';
@@ -19,10 +20,11 @@ export type RailEntry = {
   tool: Tool;
 };
 
-/** The tools the rail offers. Select and rectangle until the vocabulary lands. */
+/** The tools the rail offers: select, a rectangle, text, and the picker beyond. */
 const RAIL: readonly RailEntry[] = [
   { icon: IconPointer, label: 'Select', tool: 'select' },
   { icon: IconRectangle, label: 'Rectangle', tool: 'rectangle' },
+  { icon: IconTypography, label: 'Text', tool: 'text' },
 ];
 
 /** The tool rail: every button names its tool, and the active one reads as pressed. */

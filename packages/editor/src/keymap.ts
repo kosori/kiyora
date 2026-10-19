@@ -61,6 +61,7 @@ export const keyToken = (key: string): string => {
 export const KEYMAP: readonly Binding[] = [
   { command: { kind: 'tool', tool: 'select' }, key: 'v' },
   { command: { kind: 'tool', tool: 'rectangle' }, key: 'r' },
+  { command: { kind: 'tool', tool: 'text' }, key: 't' },
   { command: { action: 'pan', kind: 'camera' }, key: 'space' },
   { command: { action: 'zoom-in', kind: 'camera' }, key: '=' },
   { command: { action: 'zoom-out', kind: 'camera' }, key: '-' },
@@ -89,6 +90,11 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     command: { kind: 'tool', tool: 'rectangle' },
     group: 'Tools',
     label: 'Rectangle',
+  },
+  {
+    command: { kind: 'tool', tool: 'text' },
+    group: 'Tools',
+    label: 'Text',
   },
   {
     command: { action: 'pan', kind: 'camera' },

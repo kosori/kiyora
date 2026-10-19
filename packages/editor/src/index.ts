@@ -73,4 +73,10 @@ export {
   type Gesture,
   type View,
 } from './store';
-export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+export {
+  DEFAULT_STYLE,
+  isFigureTool,
+  isShapeTool,
+  type ShapeTool,
+  type Tool,
+} from './tools';

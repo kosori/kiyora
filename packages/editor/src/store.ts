@@ -1,4 +1,11 @@
-import type { Board, Bounds, Camera, Style } from '@kiyora/model';
+import type {
+  Board,
+  Bounds,
+  Camera,
+  Shape,
+  Style,
+  TextStyle,
+} from '@kiyora/model';
 import type { Point } from './camera';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
@@ -9,7 +16,8 @@ import {
   type Selection,
   selectedShapes,
 } from './selection';
-import { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+import { setShapeText, setShapeTextStyle } from './shape-edit';
+import { DEFAULT_STYLE, isShapeTool, type Tool } from './tools';
 
 /**
  * Display state: where the board is looked at from, and what the pointer does.
@@ -77,12 +85,11 @@ export type Editor = {
    * the subscription it needs when it lands.
    */
   setStyle: (style: Style) => void;
-  /**
-   * Places the active tool's shape in `placement`'s box, wearing the last used
-   * style, and returns the tool to select. With a tool that places nothing —
-   * select or hand — it does nothing.
-   */
-  placeShape: (placement: Placement) => void;
+  /** Places the active shape tool's shape in `placement`'s box, and returns it or `null`. */
+  placeShape: (placement: Placement) => Shape | null;
+  /** Replaces one shape's label, or its text style. Each is one board change. */
+  setText: (id: string, text: string) => void;
+  setTextStyle: (id: string, textStyle: TextStyle) => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */
@@ -248,13 +255,14 @@ export const createEditor = (board: Board): Editor => {
     },
     placeShape: (placement) => {
       const { tool } = view;
-      if (!isFigureTool(tool)) {
-        return;
+      if (!isShapeTool(tool)) {
+        return null;
       }
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
       current = { ...current, shapes: [...current.shapes, shape] };
       setView({ ...view, tool: 'select' });
       publish(listeners);
+      return shape;
     },
     pointerDown: (point, additive) => {
       const hit = shapeAt(current.shapes, point);
@@ -342,6 +350,22 @@ export const createEditor = (board: Board): Editor => {
     },
     setStyle: (next) => {
       style = next;
+    },
+    setText: (id, text) => {
+      const next = setShapeText(current, id, text);
+      if (next === current) {
+        return;
+      }
+      current = next;
+      publish(listeners);
+    },
+    setTextStyle: (id, textStyle) => {
+      const next = setShapeTextStyle(current, id, textStyle);
+      if (next === current) {
+        return;
+      }
+      current = next;
+      publish(listeners);
     },
     setTool: (tool) => {
       setView({ ...view, tool });
