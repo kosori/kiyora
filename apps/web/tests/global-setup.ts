@@ -1,7 +1,6 @@
 import { expect, request } from '@playwright/test';
 import { BUILD_MARKER } from '../app/build-marker';
-
-const BASE_URL = 'http://localhost:4319';
+import { E2E_BASE_URL } from './e2e-server';
 
 /**
  * The end-to-end run must prove which application it tested. This asserts the
@@ -9,7 +8,7 @@ const BASE_URL = 'http://localhost:4319';
  * the port fails loudly instead of passing silently.
  */
 export default async () => {
-  const context = await request.newContext({ baseURL: BASE_URL });
+  const context = await request.newContext({ baseURL: E2E_BASE_URL });
   const response = await context.get('/');
 
   expect(response.ok()).toBe(true);
