@@ -112,7 +112,11 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
         </g>
       </svg>
       {editingId === null ? null : (
-        <TextEditor onDone={closeEditor} shapeId={editingId} />
+        <TextEditor
+          measure={measure}
+          onDone={closeEditor}
+          shapeId={editingId}
+        />
       )}
       <CameraControls
         fit={surface.actions.fit}

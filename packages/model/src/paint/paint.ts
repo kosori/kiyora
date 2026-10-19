@@ -4,6 +4,7 @@ import type {
   FigureShape,
   FrameShape,
   Shape,
+  StickyShape,
   Style,
 } from '../board/schema';
 import { type PaintText, textOf } from '../text/layout';
@@ -101,6 +102,30 @@ const overlayPath = (
       };
 };
 
+/** One box-shaped shape's path: the box its author drew, styled by the palette. */
+const boxPath = (shape: Shape, context: PaintContext): PaintPath => {
+  const dash = DASH_PATTERN[shape.style.dash];
+
+  return {
+    d: rectanglePath(shape),
+    ...(dash === undefined ? {} : { dash }),
+    fill: fillOf(shape.style, context.theme, shape.opacity),
+    stroke: strokeOf(shape.style, context.theme, shape.opacity),
+    strokeWidth: shape.style.strokeWidth,
+  };
+};
+
+/** One box-shaped shape's paint: the box, then the hand-drawn overlay over it. */
+const paintBox = (shape: Shape, context: PaintContext): PaintPath[] => {
+  const clean = boxPath(shape, context);
+  const overlay =
+    clean.stroke === undefined
+      ? null
+      : overlayPath(shape, 0, clean.d, clean.stroke);
+
+  return overlay === null ? [clean] : [clean, overlay];
+};
+
 /** Paints one figure: every path its geometry names, styled by the palette. */
 const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
   const dash = DASH_PATTERN[shape.style.dash];
@@ -128,29 +153,25 @@ const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
 };
 
 /**
+ * Paints one sticky: its note box, in the note colour, behind its centred
+ * label. The box is the authored one — a label is wrapped into it and grown
+ * before it is stored, so the paint walker draws the note's own truth.
+ */
+const paintSticky = (shape: StickyShape, context: PaintContext): Paint => ({
+  children: [],
+  paths: paintBox(shape, context),
+});
+
+/**
  * Paints one frame: the box its author drew, and — when it clips — the same box
  * as the region its members are held inside. The clip is the authored box, so
  * dropping a member in never resizes the frame to fit it.
  */
-const paintFrame = (shape: FrameShape, context: PaintContext): Paint => {
-  const box = rectanglePath(shape);
-  const stroke = strokeOf(shape.style, context.theme, shape.opacity);
-  const overlay = overlayPath(shape, 0, box, stroke);
-
-  return {
-    children: [],
-    clip: shape.clip ? box : undefined,
-    paths: [
-      {
-        d: box,
-        fill: fillOf(shape.style, context.theme, shape.opacity),
-        stroke,
-        strokeWidth: shape.style.strokeWidth,
-      },
-      ...(overlay === null ? [] : [overlay]),
-    ],
-  };
-};
+const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
+  children: [],
+  clip: shape.clip ? rectanglePath(shape) : undefined,
+  paths: paintBox(shape, context),
+});
 
 /**
  * The label a shape carries, in the foreground ink so its glyphs are never the
@@ -175,9 +196,11 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
   const figure =
     shape.kind === 'frame'
       ? paintFrame(shape, context)
-      : shape.kind === 'text'
-        ? { children: [], paths: [] }
-        : paintFigure(shape, context);
+      : shape.kind === 'sticky'
+        ? paintSticky(shape, context)
+        : shape.kind === 'text'
+          ? { children: [], paths: [] }
+          : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {
