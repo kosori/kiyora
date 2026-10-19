@@ -108,6 +108,24 @@ describe('projecting connectors to SVG', () => {
     expect(inks.filter((path) => /fill="#1e1e1e"/.test(path))).toHaveLength(1);
   });
 
+  it('draws the route with the same overlay the canvas gets, so the two agree', () => {
+    const source = board([
+      rectangle('left', 0, 0),
+      rectangle('right', 300, 40),
+      connector(),
+    ]);
+    const node = paintBoard(source, light).children.find(
+      (child) => child.shapeId === 'connector-1'
+    );
+    const ribbon = node?.paths.find((path) => path.overlay)?.d;
+    const svg = projectBoard(source, light);
+
+    expect(ribbon).toBeDefined();
+    expect(ribbon?.length).toBeGreaterThan(0);
+    expect(svg).toContain(`data-wobble="true"`);
+    expect(svg).toContain(`d="${ribbon}"`);
+  });
+
   it('draws the label as visible text, never the invisible `none`', () => {
     const svg = projectBoard(
       board([
