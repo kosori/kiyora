@@ -134,6 +134,18 @@ test('the editor with a shape selected reports no accessibility violations', asy
   expect(await audit(page)).toEqual([]);
 });
 
+test('the label editor reports no accessibility violations', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  await page.keyboard.press('t');
+  await page.mouse.click(box.x + 300, box.y + 220);
+  await expect(page.getByTestId('text-editor')).toBeVisible();
+
+  expect(await audit(page)).toEqual([]);
+});
+
 test('the shape picker reports no accessibility violations', async ({
   page,
 }) => {
