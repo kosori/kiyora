@@ -1,8 +1,11 @@
 import {
+  DEFAULT_STICKY_SIZE,
   DEFAULT_TEXT_STYLE,
   type FigureShape,
   type FrameShape,
+  NOTE_STYLE,
   type Shape,
+  type StickyShape,
   type Style,
   type TextShape,
 } from '@kiyora/model';
@@ -70,7 +73,9 @@ export const nextShapeId = (
  * The shape a placement asks for: `kind`, in the gesture's box, wearing `style`.
  * A frame is authored plain and clipping, with a box its own to keep — nothing
  * a later member does resizes it. A text shape starts empty and wears the
- * default text style, so it can be typed into the moment it lands.
+ * default text style, so it can be typed into the moment it lands. A sticky is
+ * born in the note colour with centred text, its own kind's style rather than
+ * the last used one, because the note colour is what makes a note.
  */
 export const shapeFromPlacement = (
   kind: Placeable,
@@ -109,6 +114,19 @@ export const shapeFromPlacement = (
     };
 
     return text;
+  }
+
+  if (kind === 'sticky') {
+    const sticky: StickyShape = {
+      ...base,
+      ...placementBox(placement, DEFAULT_STICKY_SIZE),
+      kind: 'sticky',
+      style: NOTE_STYLE,
+      text: '',
+      textStyle: DEFAULT_TEXT_STYLE,
+    };
+
+    return sticky;
   }
 
   const figure: FigureShape = {

@@ -2,6 +2,7 @@ import type {
   Board,
   Bounds,
   Camera,
+  Measurer,
   Shape,
   Style,
   TextStyle,
@@ -114,8 +115,12 @@ export type Editor = {
    * once, or `null` for a tool that places nothing.
    */
   placeShape: (placement: Placement) => Shape | null;
-  /** Replaces one shape's label, or its text style. Each is one board change. */
-  setText: (id: string, text: string) => void;
+  /**
+   * Replaces one shape's label, or its text style. Each is one board change.
+   * A sticky grows to fit its label when a measurer is supplied, so its box
+   * stays the truth a selection, a click and an export all read.
+   */
+  setText: (id: string, text: string, measure?: Measurer) => void;
   setTextStyle: (id: string, textStyle: TextStyle) => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
