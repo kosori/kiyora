@@ -7,6 +7,7 @@ import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
 import { CrashProbe } from './crash-probe';
 import { PanelBoundary } from './error-boundary';
+import { FileControls } from './file-controls';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
@@ -36,6 +37,7 @@ export const Editor = () => {
             <ToolRail />
           </CrashProbe>
         </PanelBoundary>
+        <FileControls />
         <PanelBoundary label='Status'>
           <CrashProbe name='status'>
             <SaveIndicator {...health} />

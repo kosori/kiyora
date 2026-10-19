@@ -6,8 +6,11 @@ import { cn } from 'cn';
 import { type ReactNode, useMemo } from 'react';
 import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
+import { Marquee } from './marquee';
+import { SelectionFrame } from './selection-frame';
+import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
-import { usePlacement } from './use-placement';
+import { useSelectionKeys } from './use-selection-keys';
 import { useShortcuts } from './use-shortcuts';
 
 type Props = {
@@ -37,16 +40,19 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
  * paint is server-rendered, and `data-ready` announces the moment the canvas has
  * measured itself — the precondition for any camera action.
  *
- * The placement handlers sit on the wrapper rather than the canvas so the
- * camera's own pointer plumbing on the `<svg>` is untouched; a pointer event
- * bubbles from the canvas to here, and each tool's handlers ignore the other's.
+ * The pointer handlers sit on the wrapper rather than the canvas so the camera's
+ * own pointer plumbing on the `<svg>` is untouched; a pointer event bubbles from
+ * the canvas to here, and each tool's handlers ignore the other's. The selection
+ * frame and the marquee ride inside the camera's group, so they hug the board
+ * wherever the camera takes it.
  */
 export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
   const surface = useCameraSurface();
-  const placement = usePlacement();
+  const pointer = useBoardPointer(surface.hand);
 
   useShortcuts(onShowShortcuts, surface.intent);
+  useSelectionKeys();
 
   const paint = useMemo(
     () => paintBoard(board, { theme: board.settings.theme }),
@@ -55,7 +61,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const { camera } = surface.view;
 
   return (
-    <div className='relative h-full w-full' {...placement}>
+    <div className='relative h-full w-full' {...pointer}>
       <svg
         aria-label='Board'
         className={cn(
@@ -75,6 +81,8 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
         >
           <PaintPaths paint={paint} />
+          <SelectionFrame />
+          <Marquee />
         </g>
       </svg>
       <CameraControls
