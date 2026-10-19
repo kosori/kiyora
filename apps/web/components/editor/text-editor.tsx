@@ -4,6 +4,8 @@ import { toScreen } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
 import {
   DEFAULT_TEXT_STYLE,
+  fitSticky,
+  type Measurer,
   TEXT_FONT_FAMILY,
   TEXT_LINE_HEIGHT,
   TEXT_PADDING,
@@ -19,6 +21,8 @@ type Props = {
   shapeId: string;
   /** Called when the edit finishes, so the overlay can close. */
   onDone: () => void;
+  /** The app's measurer, so a sticky grows to match the words it is given. */
+  measure: Measurer;
 };
 
 /**
@@ -27,7 +31,7 @@ type Props = {
  * whole label in one store change on blur or Escape, so finishing an edit is one
  * commit — one undo, once history lands — not one per keystroke.
  */
-export const TextEditor = ({ shapeId, onDone }: Props) => {
+export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
   const editor = useEditor();
   const board = useBoard();
   const { camera } = useView();
@@ -45,9 +49,9 @@ export const TextEditor = ({ shapeId, onDone }: Props) => {
   }, []);
 
   const commit = useCallback(() => {
-    editor.setText(shapeId, value);
+    editor.setText(shapeId, value, measure);
     onDone();
-  }, [editor, onDone, shapeId, value]);
+  }, [editor, measure, onDone, shapeId, value]);
 
   const onChange = useCallback(
     (event: ReactChangeEvent<HTMLTextAreaElement>) => {
@@ -71,6 +75,10 @@ export const TextEditor = ({ shapeId, onDone }: Props) => {
   }
 
   const style = shape.textStyle ?? DEFAULT_TEXT_STYLE;
+  const box =
+    shape.kind === 'sticky'
+      ? fitSticky({ ...shape, text: value }, measure)
+      : shape;
   const at = toScreen(camera, { x: shape.x, y: shape.y });
 
   return (
@@ -85,7 +93,7 @@ export const TextEditor = ({ shapeId, onDone }: Props) => {
       style={{
         fontFamily: TEXT_FONT_FAMILY,
         fontSize: style.size * camera.zoom,
-        height: shape.h * camera.zoom,
+        height: box.h * camera.zoom,
         left: at.x,
         lineHeight: TEXT_LINE_HEIGHT,
         padding: TEXT_PADDING * camera.zoom,
