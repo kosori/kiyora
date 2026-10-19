@@ -1,12 +1,14 @@
 import type { Board, Style } from '@kiyora/model';
 import type { Point } from './camera';
 import { addShape, subtreeIds } from './containment';
+import { createDeckCommands } from './deck-commands';
 import { resizeModifiers } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { gestureOf, handleDrag, moveDrag } from './gesture';
 import { createTransactions } from './history/transaction';
 import { shapeFromPlacement } from './placement';
+import { createPresent } from './present';
 import { restyledBoard } from './restyle';
 import {
   normaliseSelection,
@@ -30,7 +32,7 @@ import {
   shortestDelta,
 } from './transform';
 
-export type { Drag, Editor, Gesture, View } from './state';
+export type { Drag, Editor, Gesture, PresentState, View } from './state';
 
 /** An engine over `board`, holding it and publishing each replacement. */
 export const createEditor = (board: Board): Editor => {
@@ -125,7 +127,31 @@ export const createEditor = (board: Board): Editor => {
     return true;
   };
 
+  /**
+   * Applies one board edit as one gesture: the board moves, the history records
+   * it once, and the subscribers are woken so autosave saves it.
+   */
+  const changeBoard = (next: Board): void => {
+    if (next === current) {
+      return;
+    }
+    transactions.endNudgeRun();
+    const before = current;
+    current = next;
+    transactions.commit(before, current);
+    publish(listeners);
+  };
+
+  const present = createPresent(() => current);
+  const deck = createDeckCommands({
+    board: () => current,
+    change: changeBoard,
+    style: () => style,
+  });
+
   return {
+    addSlide: deck.addSlide,
+    addSlideFromTemplate: deck.addSlideFromTemplate,
     cancelGesture: () => {
       if (drag === null) {
         return;
@@ -143,16 +169,21 @@ export const createEditor = (board: Board): Editor => {
       }
       publishGesture();
     },
+    deleteSlide: deck.deleteSlide,
+    duplicateSlide: deck.duplicateSlide,
     endNudgeRun: () => {
       transactions.endNudgeRun();
     },
     getBoard: () => current,
     getGesture: gestureNow,
     getHistory: () => transactions.getState(),
+    getPresent: present.getState,
     getSelection: () => selection,
     getStyle: () => style,
     getTool: () => view.tool,
     getView: () => view,
+    moveSlide: deck.moveSlide,
+    nextSlide: present.next,
     nudge: (dx, dy) => {
       const ids = subtreeIds(current, selection);
       if (selectedShapes(current, ids).length === 0) {
@@ -282,6 +313,7 @@ export const createEditor = (board: Board): Editor => {
       commitSelection(next);
       publishGesture();
     },
+    previousSlide: present.previous,
     redo: () => {
       restore(transactions.redo(current));
     },
@@ -294,7 +326,9 @@ export const createEditor = (board: Board): Editor => {
       }
       const { board: nextBoard, style: nextStyle } = result;
       current = nextBoard;
-      style = nextStyle;
+      if (nextStyle !== undefined) {
+        style = nextStyle;
+      }
       transactions.commit(before, current);
       publish(listeners);
     },
@@ -311,6 +345,7 @@ export const createEditor = (board: Board): Editor => {
     setSelection: (ids) => {
       commitSelection(ids);
     },
+    setSlideNotes: deck.setSlideNotes,
     setStyle: (next) => {
       style = next;
     },
@@ -321,6 +356,8 @@ export const createEditor = (board: Board): Editor => {
     setTool: (tool) => {
       setView({ ...view, tool });
     },
+    startPresent: present.start,
+    stopPresent: present.stop,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => {
@@ -334,6 +371,7 @@ export const createEditor = (board: Board): Editor => {
       };
     },
     subscribeHistory: (listener) => transactions.subscribe(listener),
+    subscribePresent: present.subscribe,
     subscribeSelection: (listener) => {
       selectionListeners.add(listener);
       return () => {
@@ -346,6 +384,9 @@ export const createEditor = (board: Board): Editor => {
         viewListeners.delete(listener);
       };
     },
+    toggleNotes: present.toggleNotes,
+    toggleSlideSkip: deck.toggleSlideSkip,
+    toggleTimer: present.toggleTimer,
     undo: () => {
       restore(transactions.undo(current));
     },

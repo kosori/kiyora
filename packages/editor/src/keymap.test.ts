@@ -5,6 +5,7 @@ import {
   CAMERA_ACTIONS,
   type Chord,
   type Command,
+  KEY_MODES,
   KEYMAP,
   matchBinding,
   resolveKey,
@@ -25,6 +26,7 @@ const chordOf = (binding: Binding): Chord => ({
   alt: binding.modifiers?.alt === 'required',
   command: binding.modifiers?.command === 'required',
   key: binding.key,
+  mode: binding.mode,
   shift: binding.modifiers?.shift === 'required',
 });
 
@@ -91,18 +93,20 @@ describe('the keymap', () => {
     }
   });
 
-  it('resolves each key and modifier combination to at most one command, so two bindings cannot fight over one chord', () => {
+  it('resolves each key and modifier combination to at most one command per mode, so two bindings cannot fight over one chord', () => {
     const flags = [false, true] as const;
 
-    for (const key of new Set(KEYMAP.map((binding) => binding.key))) {
-      for (const shift of flags) {
-        for (const alt of flags) {
-          for (const command of flags) {
-            const matched = KEYMAP.filter((binding) =>
-              matchBinding(binding, { alt, command, key, shift })
-            );
+    for (const mode of KEY_MODES) {
+      for (const key of new Set(KEYMAP.map((binding) => binding.key))) {
+        for (const shift of flags) {
+          for (const alt of flags) {
+            for (const command of flags) {
+              const matched = KEYMAP.filter((binding) =>
+                matchBinding(binding, { alt, command, key, mode, shift })
+              );
 
-            expect(matched.length).toBeLessThanOrEqual(1);
+              expect(matched.length).toBeLessThanOrEqual(1);
+            }
           }
         }
       }
@@ -219,6 +223,62 @@ describe('undo and redo keys', () => {
     ]);
     expect(rows.find((row) => row.label === 'Redo')?.keys).toEqual([
       'Ctrl + Shift + Z',
+    ]);
+  });
+});
+
+describe('the presenting keys', () => {
+  it('navigates and leaves while presenting, so a slide show needs no pointer', () => {
+    expect(resolveKey({ key: 'ArrowRight', mode: 'present' })).toEqual({
+      kind: 'present-next',
+    });
+    expect(resolveKey({ key: ' ', mode: 'present' })).toEqual({
+      kind: 'present-next',
+    });
+    expect(resolveKey({ key: 'ArrowLeft', mode: 'present' })).toEqual({
+      kind: 'present-previous',
+    });
+    expect(resolveKey({ key: 'Escape', mode: 'present' })).toEqual({
+      kind: 'present-exit',
+    });
+  });
+
+  it('leaves the editing meaning of those keys alone, because a mode is what differs', () => {
+    expect(resolveKey({ key: 'ArrowRight' })).toEqual(nudge(1, 0, false));
+    expect(resolveKey({ key: ' ' })).toEqual({ action: 'pan', kind: 'camera' });
+    expect(resolveKey({ key: 'Escape' })).toEqual({ kind: 'cancel-gesture' });
+    expect(resolveKey({ key: 'p' })).toEqual({ kind: 'present' });
+  });
+
+  it('honours no editing key while presenting, so the board cannot change behind a slide', () => {
+    expect(resolveKey({ key: 'v', mode: 'present' })).toBeNull();
+    expect(resolveKey({ key: 'r', mode: 'present' })).toBeNull();
+    expect(resolveKey({ command: true, key: 'z', mode: 'present' })).toBeNull();
+  });
+
+  it('lists every presenting key in the reference, read from the keymap', () => {
+    const rows = shortcutReference();
+
+    expect(rows.find((row) => row.label === 'Present')?.keys).toEqual(['P']);
+    expect(rows.find((row) => row.label === 'Next slide')?.keys).toEqual([
+      '→',
+      '↓',
+      'Space',
+      'PgDn',
+    ]);
+    expect(rows.find((row) => row.label === 'Previous slide')?.keys).toEqual([
+      '←',
+      '↑',
+      'PgUp',
+    ]);
+    expect(rows.find((row) => row.label === 'Toggle notes')?.keys).toEqual([
+      'N',
+    ]);
+    expect(rows.find((row) => row.label === 'Toggle timer')?.keys).toEqual([
+      'T',
+    ]);
+    expect(rows.find((row) => row.label === 'Leave presenting')?.keys).toEqual([
+      'Esc',
     ]);
   });
 });

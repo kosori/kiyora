@@ -1,56 +1,22 @@
 'use client';
 
 import { useBoard } from '@kiyora/editor/react';
-import { type Paint, paintBoard } from '@kiyora/model';
+import { paintBoard } from '@kiyora/model';
 import { cn } from 'cn';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
 import { Marquee } from './marquee';
+import { PaintNode } from './paint-node';
 import { SelectionFrame } from './selection-frame';
 import { TextEditor } from './text-editor';
-import { TextLayer } from './text-layer';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
 import { useShortcuts } from './use-shortcuts';
 
 type Props = {
   onShowShortcuts: () => void;
-};
-
-const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => {
-  const children = paint.children.map((child, index) => (
-    <PaintPaths key={child.shapeId ?? `child-${index}`} paint={child} />
-  ));
-
-  return (
-    <>
-      {paint.paths.map((path, index) => (
-        <path
-          d={path.d}
-          data-wobble={path.overlay === true ? 'true' : undefined}
-          fill={path.fill}
-          fillOpacity={path.fillOpacity}
-          key={`path-${index}`}
-          stroke={path.stroke}
-          strokeDasharray={path.dash?.join(' ')}
-          strokeWidth={path.strokeWidth}
-        />
-      ))}
-      <TextLayer paint={paint} />
-      {paint.clip === undefined || paint.shapeId === undefined ? (
-        children
-      ) : (
-        <>
-          <clipPath id={`clip-${paint.shapeId}`}>
-            <path d={paint.clip} />
-          </clipPath>
-          <g clipPath={`url(#clip-${paint.shapeId})`}>{children}</g>
-        </>
-      )}
-    </>
-  );
 };
 
 /**
@@ -106,7 +72,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           data-testid='board'
           transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
         >
-          <PaintPaths paint={paint} />
+          <PaintNode paint={paint} />
           <SelectionFrame />
           <Marquee />
         </g>

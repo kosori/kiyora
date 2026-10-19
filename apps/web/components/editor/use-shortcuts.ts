@@ -31,6 +31,10 @@ const isTyping = (target: EventTarget | null): boolean =>
  * the keymap decides the modifiers, and a camera key is handed to the surface,
  * which owns the pointer anchor. A nudge runs its step here: the keymap says a
  * shifted arrow is coarse, the grid says how far that is.
+ *
+ * The same listener serves presenting: the chord carries the mode the board is
+ * in, so the keymap hands back a presenting command while a slide is up and the
+ * editing bindings behind it stay unrun.
  */
 export const useShortcuts = (
   onShowShortcuts: () => void,
@@ -48,6 +52,7 @@ export const useShortcuts = (
         alt: event.altKey,
         command: event.metaKey || event.ctrlKey,
         key: event.key,
+        mode: editor.getPresent().active ? 'present' : 'edit',
         shift: event.shiftKey,
       });
       if (command === null) {
@@ -89,6 +94,39 @@ export const useShortcuts = (
         return;
       }
 
+      if (command.kind === 'present') {
+        editor.startPresent();
+        return;
+      }
+
+      if (command.kind === 'present-next') {
+        event.preventDefault();
+        editor.nextSlide();
+        return;
+      }
+
+      if (command.kind === 'present-previous') {
+        event.preventDefault();
+        editor.previousSlide();
+        return;
+      }
+
+      if (command.kind === 'present-exit') {
+        event.preventDefault();
+        editor.stopPresent();
+        return;
+      }
+
+      if (command.kind === 'present-notes') {
+        editor.toggleNotes();
+        return;
+      }
+
+      if (command.kind === 'present-timer') {
+        editor.toggleTimer();
+        return;
+      }
+
       onShowShortcuts();
     };
 
@@ -97,6 +135,7 @@ export const useShortcuts = (
         alt: event.altKey,
         command: event.metaKey || event.ctrlKey,
         key: event.key,
+        mode: editor.getPresent().active ? 'present' : 'edit',
         shift: event.shiftKey,
       });
       if (command?.kind === 'nudge') {
