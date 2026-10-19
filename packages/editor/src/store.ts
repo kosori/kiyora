@@ -3,6 +3,7 @@ import type { Point } from './camera';
 import { editConnector } from './connectors';
 import { addShape, subtreeIds } from './containment';
 import { createDeckCommands } from './deck-commands';
+import { createEditCommands } from './edit-commands';
 import { resizeModifiers } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
@@ -19,7 +20,7 @@ import {
   sameIds,
   selectedShapes,
 } from './selection';
-import { replaceShapes, translateShapes, withoutSelection } from './shape-edit';
+import { replaceShapes, translateShapes } from './shape-edit';
 import type { Drag, Editor, Gesture, View } from './state';
 import { subscriptionOf } from './subscription';
 import { DEFAULT_STYLE, placesShape } from './tools';
@@ -146,6 +147,12 @@ export const createEditor = (board: Board): Editor => {
     change: changeBoard,
     style: () => style,
   });
+  const commands = createEditCommands({
+    board: () => current,
+    change: changeBoard,
+    select: commitSelection,
+    selection: () => selection,
+  });
   const label = createLabelEdit({
     board: () => current,
     change: changeBoard,
@@ -177,15 +184,11 @@ export const createEditor = (board: Board): Editor => {
     cancelTextEdit: () => {
       restore(label.cancel());
     },
-    deleteSelection: () => {
-      const next = withoutSelection(current, subtreeIds(current, selection));
-      if (next === current) {
-        return;
-      }
-      commitSelection([]);
-      changeBoard(next);
-    },
+    copy: commands.copy,
+    cut: commands.cut,
+    deleteSelection: commands.deleteSelection,
     deleteSlide: deck.deleteSlide,
+    duplicate: commands.duplicate,
     duplicateSlide: deck.duplicateSlide,
     endNudgeRun: transactions.endNudgeRun,
     endTextEdit: label.end,
@@ -207,6 +210,7 @@ export const createEditor = (board: Board): Editor => {
       transactions.noteNudge(current);
       publishChange(translateShapes(current, ids, dx, dy));
     },
+    paste: commands.paste,
     placeShape: (placement) => {
       const { tool } = view;
       if (!placesShape(tool)) {
