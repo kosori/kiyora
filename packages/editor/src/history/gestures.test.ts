@@ -296,6 +296,19 @@ describe('the label edit gesture', () => {
     expect(editor.getBoard().shapes).toHaveLength(0);
     expect(editor.getHistory().canUndo).toBe(false);
   });
+
+  it('cancels a just-placed shape with its label, because the placement is that gesture', () => {
+    const editor = createEditor(board([]));
+    editor.setTool('text');
+
+    editor.placeShape({ from: { x: 10, y: 10 }, to: { x: 10, y: 10 } });
+    editor.beginTextEdit();
+    editor.setText('text-1', 'Hello');
+    editor.cancelTextEdit();
+
+    expect(editor.getBoard().shapes).toHaveLength(0);
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
+  });
 });
 
 describe('resize and rotate gestures', () => {
