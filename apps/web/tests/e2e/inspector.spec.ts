@@ -29,7 +29,7 @@ const starterShape = (page: Page) =>
   page.getByTestId('board').locator('path').first();
 
 const secondShape = (page: Page) =>
-  page.getByTestId('board').locator('path').nth(1);
+  page.getByTestId('board').locator('path:not([data-wobble])').nth(1);
 
 const selectStarter = async (page: Page): Promise<void> => {
   const box = await canvasBox(page);

@@ -174,7 +174,7 @@ test('a drag moves the whole selection, keeping relative positions', async ({
     'M 120 120 L 340 120 L 340 260 L 120 260 Z'
   );
   await expect(
-    page.getByTestId('board').locator('path').nth(1)
+    page.getByTestId('board').locator('path:not([data-wobble])').nth(1)
   ).toHaveAttribute('d', 'M 440 120 L 540 120 L 540 220 L 440 220 Z');
 });
 

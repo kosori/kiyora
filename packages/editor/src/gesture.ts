@@ -99,6 +99,11 @@ export const handleDrag = (
   if (tool !== 'select' || selection.length === 0) {
     return null;
   }
+  if (
+    selectedShapes(board, selection).some((shape) => shape.kind === 'connector')
+  ) {
+    return null;
+  }
   const bounds = selectionBounds(board, selection);
   if (bounds === null) {
     return null;

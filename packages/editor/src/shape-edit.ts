@@ -2,9 +2,17 @@ import {
   type Board,
   fitSticky,
   type Measurer,
+  moveConnector,
   type Shape,
   type TextStyle,
 } from '@kiyora/model';
+import { removeShapes } from './connectors';
+
+/** The board without the named shapes, or the same board when there is nothing to remove. */
+export const withoutSelection = (
+  board: Board,
+  ids: readonly string[]
+): Board => (ids.length === 0 ? board : removeShapes(board, ids));
 
 /** The board with the named shapes swapped for their replacements. */
 export const replaceShapes = (
@@ -19,6 +27,16 @@ export const replaceShapes = (
     shapes: board.shapes.map((shape) => replacements.get(shape.id) ?? shape),
   };
 };
+
+/**
+ * One shape moved by a delta. A connector carries its authored footprint and its
+ * free ends; an end bound to a shape stays with that shape, which is what makes
+ * a bound connector re-route with no repair pass.
+ */
+export const movedShape = (shape: Shape, dx: number, dy: number): Shape =>
+  shape.kind === 'connector'
+    ? moveConnector(shape, dx, dy)
+    : { ...shape, x: shape.x + dx, y: shape.y + dy };
 
 /** The before-picture of a set of shapes, keyed by id. */
 export const snapshotShapes = (
@@ -87,9 +105,7 @@ export const translateShapes = (
   return {
     ...board,
     shapes: board.shapes.map((shape) =>
-      moved.has(shape.id)
-        ? { ...shape, x: shape.x + dx, y: shape.y + dy }
-        : shape
+      moved.has(shape.id) ? movedShape(shape, dx, dy) : shape
     ),
   };
 };
