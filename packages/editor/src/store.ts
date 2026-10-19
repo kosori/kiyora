@@ -1,5 +1,6 @@
 import type { Board, Style } from '@kiyora/model';
 import type { Point } from './camera';
+import { editConnector } from './connectors';
 import { addShape, subtreeIds } from './containment';
 import { createDeckCommands } from './deck-commands';
 import { resizeModifiers } from './geometry/handles';
@@ -22,8 +23,10 @@ import {
   setShapeText,
   setShapeTextStyle,
   translateShapes,
+  withoutSelection,
 } from './shape-edit';
 import type { Drag, Editor, Gesture, View } from './state';
+import { subscriptionOf } from './subscription';
 import { DEFAULT_STYLE, placesShape } from './tools';
 import {
   angleAt,
@@ -169,11 +172,21 @@ export const createEditor = (board: Board): Editor => {
       }
       publishGesture();
     },
+    deleteSelection: () => {
+      const before = current;
+      const next = withoutSelection(current, subtreeIds(current, selection));
+      if (next === before) {
+        return;
+      }
+      transactions.endNudgeRun();
+      current = next;
+      transactions.commit(before, next);
+      commitSelection([]);
+      publish(listeners);
+    },
     deleteSlide: deck.deleteSlide,
     duplicateSlide: deck.duplicateSlide,
-    endNudgeRun: () => {
-      transactions.endNudgeRun();
-    },
+    endNudgeRun: transactions.endNudgeRun,
     getBoard: () => current,
     getGesture: gestureNow,
     getHistory: () => transactions.getState(),
@@ -342,6 +355,17 @@ export const createEditor = (board: Board): Editor => {
     setCamera: (camera) => {
       setView({ ...view, camera });
     },
+    setConnector: (id, edit) => {
+      transactions.endNudgeRun();
+      const before = current;
+      const next = editConnector(current, id, edit);
+      if (next === before) {
+        return;
+      }
+      current = next;
+      transactions.commit(before, current);
+      publish(listeners);
+    },
     setSelection: (ids) => {
       commitSelection(ids);
     },
@@ -358,32 +382,12 @@ export const createEditor = (board: Board): Editor => {
     },
     startPresent: present.start,
     stopPresent: present.stop,
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    subscribeGesture: (listener) => {
-      gestureListeners.add(listener);
-      return () => {
-        gestureListeners.delete(listener);
-      };
-    },
-    subscribeHistory: (listener) => transactions.subscribe(listener),
+    subscribe: subscriptionOf(listeners),
+    subscribeGesture: subscriptionOf(gestureListeners),
+    subscribeHistory: transactions.subscribe,
     subscribePresent: present.subscribe,
-    subscribeSelection: (listener) => {
-      selectionListeners.add(listener);
-      return () => {
-        selectionListeners.delete(listener);
-      };
-    },
-    subscribeView: (listener) => {
-      viewListeners.add(listener);
-      return () => {
-        viewListeners.delete(listener);
-      };
-    },
+    subscribeSelection: subscriptionOf(selectionListeners),
+    subscribeView: subscriptionOf(viewListeners),
     toggleNotes: present.toggleNotes,
     toggleSlideSkip: deck.toggleSlideSkip,
     toggleTimer: present.toggleTimer,

@@ -43,6 +43,9 @@ export const SelectionFrame = () => {
   const size = HANDLE_SIZE / camera.zoom;
   const positions = handlePositions(bounds);
   const rotate = rotateHandlePosition(bounds, camera.zoom);
+  const resizable = !board.shapes.some(
+    (shape) => selection.includes(shape.id) && shape.kind === 'connector'
+  );
 
   return (
     <g data-testid='selection'>
@@ -58,50 +61,54 @@ export const SelectionFrame = () => {
         x={bounds.x}
         y={bounds.y}
       />
-      <line
-        pointerEvents='none'
-        stroke={colour}
-        strokeWidth={1.5}
-        vectorEffect='non-scaling-stroke'
-        x1={bounds.x + bounds.w / 2}
-        x2={rotate.x}
-        y1={bounds.y}
-        y2={rotate.y}
-      />
-      {HANDLES.map((kind) => {
-        const point = positions[kind];
+      {resizable ? (
+        <>
+          <line
+            pointerEvents='none'
+            stroke={colour}
+            strokeWidth={1.5}
+            vectorEffect='non-scaling-stroke'
+            x1={bounds.x + bounds.w / 2}
+            x2={rotate.x}
+            y1={bounds.y}
+            y2={rotate.y}
+          />
+          {HANDLES.map((kind) => {
+            const point = positions[kind];
 
-        return (
-          <rect
-            data-handle={kind}
-            data-testid={`handle-${kind}`}
+            return (
+              <rect
+                data-handle={kind}
+                data-testid={`handle-${kind}`}
+                fill={colour}
+                height={size}
+                key={kind}
+                pointerEvents='all'
+                stroke={colour}
+                strokeWidth={1}
+                style={{ cursor: CURSORS[kind] }}
+                vectorEffect='non-scaling-stroke'
+                width={size}
+                x={point.x - size / 2}
+                y={point.y - size / 2}
+              />
+            );
+          })}
+          <circle
+            cx={rotate.x}
+            cy={rotate.y}
+            data-handle='rotate'
+            data-testid='handle-rotate'
             fill={colour}
-            height={size}
-            key={kind}
             pointerEvents='all'
+            r={size / 2}
             stroke={colour}
             strokeWidth={1}
-            style={{ cursor: CURSORS[kind] }}
+            style={{ cursor: 'grab' }}
             vectorEffect='non-scaling-stroke'
-            width={size}
-            x={point.x - size / 2}
-            y={point.y - size / 2}
           />
-        );
-      })}
-      <circle
-        cx={rotate.x}
-        cy={rotate.y}
-        data-handle='rotate'
-        data-testid='handle-rotate'
-        fill={colour}
-        pointerEvents='all'
-        r={size / 2}
-        stroke={colour}
-        strokeWidth={1}
-        style={{ cursor: 'grab' }}
-        vectorEffect='non-scaling-stroke'
-      />
+        </>
+      ) : null}
     </g>
   );
 };

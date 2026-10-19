@@ -1,5 +1,6 @@
 import type { Board, Shape } from '../board/schema';
 import { formatNumber } from '../format';
+import { connectorBounds } from './connector-route';
 
 /** A point in board coordinates. */
 export type Point = {
@@ -57,12 +58,20 @@ export const boundsOf = (shape: Shape): Bounds => {
   return { h: Math.max(...ys) - y, w: Math.max(...xs) - x, x, y };
 };
 
-/** The box that holds every shape on the board, or `null` when there are none. */
+/**
+ * The box a shape paints into against the board it is drawn with. A connector's
+ * box is derived from the ends it resolves — the stored one is only its
+ * fallback footprint — so selection and the artifact never read a stale box.
+ */
+export const shapeBounds = (shape: Shape, shapes: readonly Shape[]): Bounds =>
+  shape.kind === 'connector' ? connectorBounds(shape, shapes) : boundsOf(shape);
+
+/** The box that holds everything a set of shapes draws, or `null` when there are none. */
 export const boundsOfShapes = (shapes: readonly Shape[]): Bounds | null => {
   if (shapes.length === 0) {
     return null;
   }
-  const boxes = shapes.map(boundsOf);
+  const boxes = shapes.map((shape) => shapeBounds(shape, shapes));
   const x = Math.min(...boxes.map((box) => box.x));
   const y = Math.min(...boxes.map((box) => box.y));
   const right = Math.max(...boxes.map((box) => box.x + box.w));

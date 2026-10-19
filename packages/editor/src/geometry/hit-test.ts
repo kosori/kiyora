@@ -1,4 +1,10 @@
-import { type Bounds, boundsOf, type Shape } from '@kiyora/model';
+import {
+  type Bounds,
+  CONNECTOR_REACH,
+  connectorAt,
+  type Shape,
+  shapeBounds,
+} from '@kiyora/model';
 import type { Point } from '../camera';
 
 /**
@@ -28,7 +34,8 @@ export const containsPoint = (shape: Shape, point: Point): boolean => {
 /**
  * The topmost shape under `point`, or `null` in empty space. The last shape
  * painted is the one in front, so the search runs back to front. A locked shape
- * is never picked.
+ * is never picked. A connector is picked near its line rather than by its box,
+ * so a click lands on the line where a person sees it.
  */
 export const shapeAt = (
   shapes: readonly Shape[],
@@ -36,7 +43,14 @@ export const shapeAt = (
 ): Shape | null => {
   for (let index = shapes.length - 1; index >= 0; index -= 1) {
     const shape = shapes[index];
-    if (shape !== undefined && !shape.locked && containsPoint(shape, point)) {
+    if (shape === undefined || shape.locked) {
+      continue;
+    }
+    const hit =
+      shape.kind === 'connector'
+        ? connectorAt(shape, shapes, point, CONNECTOR_REACH)
+        : containsPoint(shape, point);
+    if (hit) {
       return shape;
     }
   }
@@ -62,5 +76,5 @@ export const boxesIntersect = (a: Bounds, b: Bounds): boolean =>
  */
 export const shapesInBox = (shapes: readonly Shape[], box: Bounds): Shape[] =>
   shapes.filter(
-    (shape) => !shape.locked && boxesIntersect(boundsOf(shape), box)
+    (shape) => !shape.locked && boxesIntersect(shapeBounds(shape, shapes), box)
   );

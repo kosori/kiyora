@@ -2,6 +2,7 @@
 
 import type { Tool } from '@kiyora/editor';
 import {
+  IconArrowUpRight,
   IconFrame,
   IconNote,
   IconPointer,
@@ -27,6 +28,7 @@ const RAIL: readonly RailEntry[] = [
   { icon: IconPointer, label: 'Select', tool: 'select' },
   { icon: IconRectangle, label: 'Rectangle', tool: 'rectangle' },
   { icon: IconTypography, label: 'Text', tool: 'text' },
+  { icon: IconArrowUpRight, label: 'Connector', tool: 'connector' },
   { icon: IconNote, label: 'Sticky', tool: 'sticky' },
   { icon: IconFrame, label: 'Frame', tool: 'frame' },
 ];
