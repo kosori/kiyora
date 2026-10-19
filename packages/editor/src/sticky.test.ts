@@ -168,3 +168,22 @@ describe('a sticky grows with its label', () => {
     expect(member?.parentId).toBe('frame-1');
   });
 });
+
+describe('undoing a sticky\u2019s label edit', () => {
+  it('puts the box back as well as the words, so a grown note shrinks back', () => {
+    const editor = createEditor(board([sticky()]));
+    const before = editor.getBoard();
+
+    editor.beginTextEdit();
+    editor.setText('sticky-1', LONG, fake);
+    editor.endTextEdit();
+
+    expect((editor.getBoard().shapes[0] as StickyShape).h).toBeGreaterThan(160);
+
+    editor.undo();
+
+    expect(editor.getBoard()).toBe(before);
+    expect((editor.getBoard().shapes[0] as StickyShape).h).toBe(160);
+    expect(editor.getBoard().shapes[0]?.text).toBe('');
+  });
+});

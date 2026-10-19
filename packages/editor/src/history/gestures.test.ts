@@ -199,6 +199,118 @@ describe('the history a gesture leaves behind', () => {
   });
 });
 
+describe('the label edit gesture', () => {
+  const labelled = (text?: string) => board([rectangle({ id: 'a', text })]);
+
+  it('records a finished edit as one entry, and undo brings the old label back', () => {
+    const editor = createEditor(labelled('Old'));
+
+    editor.beginTextEdit();
+    editor.setText('a', 'New');
+    editor.endTextEdit();
+
+    expect(editor.getBoard().shapes[0]?.text).toBe('New');
+    expect(editor.getHistory().canUndo).toBe(true);
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]?.text).toBe('Old');
+    expect(editor.getHistory()).toEqual({ canRedo: true, canUndo: false });
+  });
+
+  it('collapses every write of one edit into one entry', () => {
+    const editor = createEditor(labelled('Old'));
+
+    editor.beginTextEdit();
+    editor.setText('a', 'N');
+    editor.setText('a', 'Ne');
+    editor.setText('a', 'New');
+    editor.endTextEdit();
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]?.text).toBe('Old');
+    expect(editor.getHistory().canUndo).toBe(false);
+  });
+
+  it('restores the old label when an edit is cancelled, and pushes nothing', () => {
+    const editor = createEditor(labelled('Old'));
+
+    editor.beginTextEdit();
+    editor.setText('a', 'New');
+    editor.cancelTextEdit();
+
+    expect(editor.getBoard().shapes[0]?.text).toBe('Old');
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
+  });
+
+  it('records a write outside an open edit as its own entry', () => {
+    const editor = createEditor(labelled('Old'));
+
+    editor.setText('a', 'New');
+
+    expect(editor.getHistory().canUndo).toBe(true);
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]?.text).toBe('Old');
+  });
+
+  it('records a text style change as one entry', () => {
+    const editor = createEditor(labelled('Old'));
+    const [original] = editor.getBoard().shapes;
+
+    editor.setTextStyle('a', { align: 'right', size: 32, valign: 'top' });
+
+    expect(editor.getHistory().canUndo).toBe(true);
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]).toEqual(original);
+  });
+
+  it('keeps a text placement and the label typed into it as one entry', () => {
+    const editor = createEditor(board([]));
+    editor.setTool('text');
+
+    editor.placeShape({ from: { x: 10, y: 10 }, to: { x: 10, y: 10 } });
+    editor.beginTextEdit();
+    editor.setText('text-1', 'Hello');
+    editor.endTextEdit();
+
+    expect(editor.getBoard().shapes[0]?.text).toBe('Hello');
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes).toHaveLength(0);
+    expect(editor.getHistory()).toEqual({ canRedo: true, canUndo: false });
+  });
+
+  it('records a text placement alone as one entry, before its overlay is finished', () => {
+    const editor = createEditor(board([]));
+    editor.setTool('text');
+
+    editor.placeShape({ from: { x: 10, y: 10 }, to: { x: 10, y: 10 } });
+    editor.undo();
+
+    expect(editor.getBoard().shapes).toHaveLength(0);
+    expect(editor.getHistory().canUndo).toBe(false);
+  });
+
+  it('cancels a just-placed shape with its label, because the placement is that gesture', () => {
+    const editor = createEditor(board([]));
+    editor.setTool('text');
+
+    editor.placeShape({ from: { x: 10, y: 10 }, to: { x: 10, y: 10 } });
+    editor.beginTextEdit();
+    editor.setText('text-1', 'Hello');
+    editor.cancelTextEdit();
+
+    expect(editor.getBoard().shapes).toHaveLength(0);
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
+  });
+});
+
 describe('resize and rotate gestures', () => {
   it('records a resize as one entry, and undo puts the box back', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 0, y: 0 })]));
