@@ -1,6 +1,12 @@
 'use client';
 
-import { CAMERA_ACTIONS, type CameraAction, resolveKey } from '@kiyora/editor';
+import {
+  CAMERA_ACTIONS,
+  type CameraAction,
+  GRID,
+  NUDGE_STEP,
+  resolveKey,
+} from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
 import { useEffect } from 'react';
 
@@ -22,7 +28,9 @@ const isTyping = (target: EventTarget | null): boolean =>
 /**
  * The one module that listens for keys. Every window keydown and keyup is
  * resolved through the keymap, so the bindings and the reference cannot drift;
- * a camera key is handed to the surface, which owns the pointer anchor.
+ * the keymap decides the modifiers, and a camera key is handed to the surface,
+ * which owns the pointer anchor. A nudge runs its step here: the keymap says a
+ * shifted arrow is coarse, the grid says how far that is.
  */
 export const useShortcuts = (
   onShowShortcuts: () => void,
@@ -32,16 +40,16 @@ export const useShortcuts = (
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        isTyping(event.target)
-      ) {
+      if (isTyping(event.target)) {
         return;
       }
 
-      const command = resolveKey(event.key);
+      const command = resolveKey({
+        alt: event.altKey,
+        command: event.metaKey || event.ctrlKey,
+        key: event.key,
+        shift: event.shiftKey,
+      });
       if (command === null) {
         return;
       }
@@ -57,11 +65,28 @@ export const useShortcuts = (
         return;
       }
 
+      if (command.kind === 'nudge') {
+        event.preventDefault();
+        const step = command.coarse ? GRID : NUDGE_STEP;
+        editor.nudge(command.dx * step, command.dy * step);
+        return;
+      }
+
+      if (command.kind === 'cancel-gesture') {
+        editor.cancelGesture();
+        return;
+      }
+
       onShowShortcuts();
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
-      const command = resolveKey(event.key);
+      const command = resolveKey({
+        alt: event.altKey,
+        command: event.metaKey || event.ctrlKey,
+        key: event.key,
+        shift: event.shiftKey,
+      });
       if (command?.kind === 'camera') {
         camera.run(command.action, 'up');
       }

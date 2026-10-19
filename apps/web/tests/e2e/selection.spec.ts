@@ -236,6 +236,47 @@ test('arrows nudge by a pixel and a grid step', async ({ page }) => {
   );
 });
 
+test('an undeclared modified key does nothing, so the keymap stays the only declaration', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+
+  await page.keyboard.press('Alt+ArrowRight');
+  await page.keyboard.press('Control+ArrowDown');
+  await page.keyboard.press('Alt+ArrowUp');
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 300 80 L 300 220 L 80 220 Z'
+  );
+});
+
+test('the shortcut reference lists the nudge keys the keymap declares', async ({
+  page,
+}) => {
+  await open(page);
+  await page.keyboard.press('?');
+
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await expect(dialog).toBeVisible();
+
+  const rows = dialog.locator('li');
+
+  await expect(rows.filter({ hasText: 'Nudge by a pixel' })).toContainText('↑');
+  await expect(rows.filter({ hasText: 'Nudge by a grid step' })).toContainText(
+    'SHIFT + ↑'
+  );
+  await expect(rows.filter({ hasText: 'Nudge by a grid step' })).toContainText(
+    'SHIFT + →'
+  );
+  await expect(rows.filter({ hasText: 'Cancel a gesture' })).toContainText(
+    'ESC'
+  );
+});
+
 test('Escape cancels a drag and restores the positions', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);
@@ -282,4 +323,147 @@ test('a click lands where the shape appears, under a moved and zoomed camera', a
   await expect(frame(page)).toHaveAttribute('y', '80');
   await expect(frame(page)).toHaveAttribute('width', '220');
   await expect(frame(page)).toHaveAttribute('height', '140');
+});
+
+test('selecting draws the eight handles and the rotate handle', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+
+  await expect(page.getByTestId('handle-se')).toHaveAttribute('x', '296');
+  await expect(page.getByTestId('handle-se')).toHaveAttribute('y', '216');
+  await expect(page.getByTestId('handle-e')).toHaveAttribute('y', '146');
+  await expect(page.getByTestId('handle-rotate')).toHaveAttribute('cx', '190');
+  await expect(page.getByTestId('handle-rotate')).toHaveAttribute('cy', '58');
+});
+
+test('dragging a corner handle resizes the shape', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 220 },
+    { x: box.x + 360, y: box.y + 304 }
+  );
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 360 80 L 360 304 L 80 304 Z'
+  );
+});
+
+test('dragging an edge handle moves only that edge', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 150 },
+    { x: box.x + 360, y: box.y + 150 }
+  );
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 360 80 L 360 220 L 80 220 Z'
+  );
+});
+
+test('a corner drag cannot invert or vanish the shape', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 220 },
+    { x: box.x + 84, y: box.y + 84 }
+  );
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 88 80 L 88 88 L 80 88 Z'
+  );
+});
+
+test('alt resizes the shape from its centre', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await page.keyboard.down('Alt');
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 220 },
+    { x: box.x + 360, y: box.y + 216 }
+  );
+  await page.keyboard.up('Alt');
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 20 84 L 360 84 L 360 216 L 20 216 Z'
+  );
+});
+
+test('shift preserves the shape ratio while resizing', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await page.keyboard.down('Shift');
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 220 },
+    { x: box.x + 520, y: box.y + 360 }
+  );
+  await page.keyboard.up('Shift');
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 520 80 L 520 360 L 80 360 Z'
+  );
+});
+
+test('dragging the rotate handle turns the shape', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await drag(
+    page,
+    { x: box.x + 190, y: box.y + 58 },
+    { x: box.x + 290, y: box.y + 150 }
+  );
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 260 40 L 260 260 L 120 260 L 120 40 Z'
+  );
+});
+
+test('a rotation can be returned to zero', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await drag(
+    page,
+    { x: box.x + 190, y: box.y + 58 },
+    { x: box.x + 290, y: box.y + 150 }
+  );
+  await drag(
+    page,
+    { x: box.x + 190, y: box.y + 18 },
+    { x: box.x + 98, y: box.y + 150 }
+  );
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 300 80 L 300 220 L 80 220 Z'
+  );
 });

@@ -1,120 +1,50 @@
-import type { Board, Bounds, Camera, Style } from '@kiyora/model';
+import type { Board, Bounds, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
 import { addShape, subtreeIds } from './containment';
+import { type HandleKind, handleAt } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
-import { type Placement, shapeFromPlacement } from './placement';
+import { shapeFromPlacement } from './placement';
 import {
   normaliseSelection,
   offsetShapes,
   type Selection,
   selectedShapes,
+  selectionBounds,
 } from './selection';
-import { DEFAULT_STYLE, placesShape, type Tool } from './tools';
+import type { Drag, Editor, Gesture, MoveDrag, View } from './state';
+import { DEFAULT_STYLE, placesShape } from './tools';
+import { angleAt, resizeSelection, rotateSelection } from './transform';
 
-/**
- * Display state: where the board is looked at from, and what the pointer does.
- * It lives beside the document rather than in it, so navigating is never a
- * change to the board, never a history entry, and never a save.
- */
-export type View = {
-  camera: Camera;
-  tool: Tool;
+export type { Drag, Editor, Gesture, View } from './state';
+
+/** The board with the named shapes swapped for their replacements. */
+const replaceShapes = (
+  board: Board,
+  replacements: ReadonlyMap<string, Shape>
+): Board => {
+  if (replacements.size === 0) {
+    return board;
+  }
+  return {
+    ...board,
+    shapes: board.shapes.map((shape) => replacements.get(shape.id) ?? shape),
+  };
 };
 
-/**
- * What a pointer is doing on the board. A gesture lives only while it is open:
- * a move carries the positions to put back, and a marquee carries the box to
- * draw. Neither is in the document, and neither survives the pointer lifting.
- */
-export type Gesture =
-  | { kind: 'idle' }
-  | { kind: 'move' }
-  | { kind: 'marquee'; box: Bounds };
+/** The before-picture of a set of shapes, keyed by id. */
+const snapshot = (shapes: readonly Shape[]): ReadonlyMap<string, Shape> =>
+  new Map(shapes.map((shape) => [shape.id, shape]));
 
-/** The open move: where the pointer went down, and the positions it moved from. */
-type MoveDrag = {
-  applied: Point;
-  kind: 'move';
-  originals: ReadonlyMap<string, Point>;
-  origin: Point;
-  start: Point;
-};
-
-/** The open marquee: where it began, what was selected before it, and its box. */
-type MarqueeDrag = {
-  additive: boolean;
-  base: Selection;
-  box: Bounds;
-  from: Point;
-  kind: 'marquee';
-};
-
-type Drag = MoveDrag | MarqueeDrag;
-
-/**
- * The engine: it holds one board and its view, and publishes each change to its
- * own subscribers. Nothing here touches the DOM, so a gesture, a command or a
- * migration is proven without a browser.
- */
-export type Editor = {
-  /** The board as it stands. The same reference until something changes it. */
-  getBoard: () => Board;
-  /** Replaces the board and notifies every board subscriber. */
-  setBoard: (board: Board) => void;
-  /** Where the board is looked at from, and what the pointer does. */
-  getView: () => View;
-  /** The active tool: `getView().tool`, for a surface that only reads the tool. */
-  getTool: () => Tool;
-  /** Moves the view. The board and the board's subscribers are untouched. */
-  setCamera: (camera: Camera) => void;
-  /** Changes what the pointer does. The board's subscribers are untouched. */
-  setTool: (tool: Tool) => void;
-  /** The style the next shape wears: the last used one, or the default. */
-  getStyle: () => Style;
-  /**
-   * Records the style the next shape wears, so the picker's default and the
-   * next shape read one value. Nothing observes it yet — the inspector brings
-   * the subscription it needs when it lands.
-   */
-  setStyle: (style: Style) => void;
-  /**
-   * Places the active tool's shape in `placement`'s box, wearing the last used
-   * style, and returns the tool to select. With a tool that places nothing —
-   * select or hand — it does nothing.
-   */
-  placeShape: (placement: Placement) => void;
-  /** Subscribes to board changes. Returns the unsubscribe. */
-  subscribe: (listener: () => void) => () => void;
-  /** Subscribes to view changes. Returns the unsubscribe. */
-  subscribeView: (listener: () => void) => () => void;
-  /** The ids of the selected shapes, in paint order. */
-  getSelection: () => Selection;
-  /** Replaces the selection, keeping only ids the board holds. */
-  setSelection: (ids: Selection) => void;
-  /** Subscribes to selection changes. Returns the unsubscribe. */
-  subscribeSelection: (listener: () => void) => () => void;
-  /** What the pointer is doing now: idle, moving, or sweeping a marquee. */
-  getGesture: () => Gesture;
-  /** Subscribes to gesture changes, so a marquee can be drawn. Returns the unsubscribe. */
-  subscribeGesture: (listener: () => void) => () => void;
-  /**
-   * The pointer going down on the board. On a shape it selects it — adding to
-   * the selection when `additive` — and opens a move; on empty canvas it clears
-   * the selection unless `additive`, and opens a marquee.
-   */
-  pointerDown: (point: Point, additive: boolean) => void;
-  /**
-   * The pointer moving with a gesture open. A marquee redraws its box; a move
-   * translates the whole selection, snapped to the grid unless `bypassSnap`.
-   */
-  pointerMove: (point: Point, bypassSnap: boolean) => void;
-  /** The pointer lifting: a marquee selects what it covers, a move stays put. */
-  pointerUp: () => void;
-  /** Escape: a move goes back to the positions it started from, a marquee is dropped. */
-  cancelGesture: () => void;
-  /** Moves every selected shape by the same delta, so relative positions hold. */
-  nudge: (dx: number, dy: number) => void;
+/** The signed turn between two angles, always the short way round. */
+const shortestDelta = (delta: number): number => {
+  if (delta > 180) {
+    return delta - 360;
+  }
+  if (delta < -180) {
+    return delta + 360;
+  }
+  return delta;
 };
 
 /** An engine over `board`, holding it and publishing each replacement. */
@@ -159,7 +89,11 @@ export const createEditor = (board: Board): Editor => {
           ? { kind: 'idle' }
           : drag.kind === 'move'
             ? { kind: 'move' }
-            : { box: drag.box, kind: 'marquee' };
+            : drag.kind === 'marquee'
+              ? { box: drag.box, kind: 'marquee' }
+              : drag.kind === 'resize'
+                ? { handle: drag.handle, kind: 'resize' }
+                : { kind: 'rotate' };
     }
     return cachedGesture;
   };
@@ -213,6 +147,56 @@ export const createEditor = (board: Board): Editor => {
     publish(listeners);
   };
 
+  /** Puts every shape back where a resize or a rotate found it. */
+  const restoreShapes = (originals: ReadonlyMap<string, Shape>): void => {
+    current = replaceShapes(current, originals);
+    publish(listeners);
+  };
+
+  /** Opens a resize on `handle`, which keeps the box it started on. */
+  const beginResize = (bounds: Bounds, handle: HandleKind): void => {
+    drag = {
+      bounds,
+      handle,
+      kind: 'resize',
+      originals: snapshot(selectedShapes(current, selection)),
+    };
+    publishGesture();
+  };
+
+  /** Opens a rotate about the selection centre, starting from the pointer's angle. */
+  const beginRotate = (bounds: Bounds, point: Point): void => {
+    const centre = { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 };
+    drag = {
+      centre,
+      kind: 'rotate',
+      originals: snapshot(selectedShapes(current, selection)),
+      start: angleAt(centre, point),
+    };
+    publishGesture();
+  };
+
+  /** Opens a resize or a rotate when the pointer lands on a handle of the selection. */
+  const beginHandle = (point: Point): boolean => {
+    if (view.tool !== 'select' || selection.length === 0) {
+      return false;
+    }
+    const bounds = selectionBounds(current, selection);
+    if (bounds === null) {
+      return false;
+    }
+    const handle = handleAt(bounds, point, view.camera.zoom);
+    if (handle === null) {
+      return false;
+    }
+    if (handle === 'rotate') {
+      beginRotate(bounds, point);
+    } else {
+      beginResize(bounds, handle);
+    }
+    return true;
+  };
+
   return {
     cancelGesture: () => {
       if (drag === null) {
@@ -224,8 +208,10 @@ export const createEditor = (board: Board): Editor => {
         if (open.applied.x !== 0 || open.applied.y !== 0) {
           restoreMove(open);
         }
-      } else {
+      } else if (open.kind === 'marquee') {
         commitSelection(open.base);
+      } else {
+        restoreShapes(open.originals);
       }
       publishGesture();
     },
@@ -258,6 +244,9 @@ export const createEditor = (board: Board): Editor => {
       publish(listeners);
     },
     pointerDown: (point, additive) => {
+      if (beginHandle(point)) {
+        return;
+      }
       const hit = shapeAt(current.shapes, point);
       if (hit === null) {
         drag = {
@@ -286,13 +275,37 @@ export const createEditor = (board: Board): Editor => {
         beginMove(point);
       }
     },
-    pointerMove: (point, bypassSnap) => {
+    pointerMove: (point, bypassSnap, shift) => {
       if (drag === null) {
         return;
       }
       if (drag.kind === 'marquee') {
         drag = { ...drag, box: boxBetween(drag.from, point) };
         publishGesture();
+        return;
+      }
+      if (drag.kind === 'resize') {
+        const replacements = resizeSelection(
+          [...drag.originals.values()],
+          drag.bounds,
+          drag.handle,
+          point,
+          { fromCentre: bypassSnap, keepRatio: shift ?? false, snap: true }
+        );
+        current = replaceShapes(current, replacements);
+        publish(listeners);
+        return;
+      }
+      if (drag.kind === 'rotate') {
+        const delta = shortestDelta(angleAt(drag.centre, point) - drag.start);
+        const replacements = rotateSelection(
+          [...drag.originals.values()],
+          drag.centre,
+          delta,
+          shift ?? false
+        );
+        current = replaceShapes(current, replacements);
+        publish(listeners);
         return;
       }
       let dx = point.x - drag.start.x;
