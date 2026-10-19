@@ -5,6 +5,7 @@ import { EditorProvider } from '@kiyora/editor/react';
 import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
+import { FileControls } from './file-controls';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
@@ -29,6 +30,7 @@ export const Editor = () => {
       <div className='relative h-full'>
         <BoardCanvas onShowShortcuts={toggleShortcuts} />
         <ToolRail />
+        <FileControls />
         <SaveIndicator status={status} />
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />

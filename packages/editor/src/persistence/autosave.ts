@@ -1,3 +1,4 @@
+import { serializeBoard } from '@kiyora/model';
 import type { Editor } from '../store';
 import type { BoardStorage, SaveStatus } from './storage';
 
@@ -55,13 +56,14 @@ export const createAutosave = ({
   };
 
   /**
-   * The bytes to write. The camera comes from the view, not from the board: the
-   * view is the one that moves, and the board's copy is only the snapshot the
-   * previous save left behind.
+   * The bytes to write: the board file, so what autosave stores and what a file
+   * save stores are one shape. The camera comes from the view, not from the
+   * board: the view is the one that moves, and the board's copy is only the
+   * snapshot the previous save left behind.
    */
   const snapshot = (): string => {
     const board = editor.getBoard();
-    return JSON.stringify({ ...board, camera: editor.getView().camera });
+    return serializeBoard({ ...board, camera: editor.getView().camera });
   };
 
   const write = async (): Promise<void> => {

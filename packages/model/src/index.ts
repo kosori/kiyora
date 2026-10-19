@@ -25,6 +25,11 @@ export {
   boardIssues,
   parseBoard,
 } from './board/validate';
+export {
+  BOARD_FILE_EXTENSION,
+  parseBoardFile,
+  serializeBoard,
+} from './file/board-file';
 export { type Bounds, boardBounds } from './paint/figures';
 export {
   type Paint,
