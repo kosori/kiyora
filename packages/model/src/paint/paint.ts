@@ -179,7 +179,10 @@ const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
  * Paints one connector: the line and a head at each end that asks for one, in
  * the stroke's own colour and dash, plus its label. The path comes from the
  * board the connector is painted with, so a bound end follows its shape with no
- * repair pass and the artifact sees exactly what the canvas draws.
+ * repair pass and the artifact sees exactly what the canvas draws. The line
+ * carries the hand-drawn overlay like a box does; because paint order is array
+ * order, the ribbon goes between the line and the heads, so the arrowheads keep
+ * their ink.
  */
 const paintConnector = (
   shape: ConnectorShape,
@@ -188,13 +191,23 @@ const paintConnector = (
 ): Paint => {
   const stroke = strokeOf(shape.style, context.theme, shape.opacity);
   const dash = DASH_PATTERN[shape.style.dash];
-  const paths = connectorInk(shape, shapes).map((part) => ({
-    d: part.d,
-    ...(part.head === true || dash === undefined ? {} : { dash }),
-    fill: part.filled === true ? stroke : 'none',
-    stroke,
-    strokeWidth: shape.style.strokeWidth,
-  }));
+  const paths: PaintPath[] = [];
+  connectorInk(shape, shapes).forEach((part, index) => {
+    paths.push({
+      d: part.d,
+      ...(part.head === true || dash === undefined ? {} : { dash }),
+      fill: part.filled === true ? stroke : 'none',
+      stroke,
+      strokeWidth: shape.style.strokeWidth,
+    });
+
+    if (index === 0) {
+      const ribbon = overlayPath(shape, 0, part.d, stroke);
+      if (ribbon !== null) {
+        paths.push(ribbon);
+      }
+    }
+  });
   const text = connectorLabel(
     shape,
     shapes,
