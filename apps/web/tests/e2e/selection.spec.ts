@@ -277,6 +277,26 @@ test('the shortcut reference lists the nudge keys the keymap declares', async ({
   );
 });
 
+test('the shortcut reference names the pointer modifiers, including alt’s resize meaning', async ({
+  page,
+}) => {
+  await open(page);
+  await page.keyboard.press('?');
+
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await expect(dialog).toBeVisible();
+
+  const rows = dialog.locator('li');
+
+  await expect(rows.filter({ hasText: 'Bypass the grid snap' })).toContainText(
+    'ALT'
+  );
+  await expect(rows.filter({ hasText: 'Grow from the centre' })).toContainText(
+    'ALT'
+  );
+  await expect(rows.filter({ hasText: 'Constrain' })).toContainText('SHIFT');
+});
+
 test('Escape cancels a drag and restores the positions', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);
@@ -407,6 +427,46 @@ test('alt resizes the shape from its centre', async ({ page }) => {
   await expect(starterShape(page)).toHaveAttribute(
     'd',
     'M 20 84 L 360 84 L 360 216 L 20 216 Z'
+  );
+});
+
+test('alt bypasses the snap for a resize, so a resized edge can leave the grid', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await page.keyboard.down('Alt');
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 220 },
+    { x: box.x + 363, y: box.y + 219 }
+  );
+  await page.keyboard.up('Alt');
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 17 81 L 363 81 L 363 219 L 17 219 Z'
+  );
+});
+
+test('a resize without the bypass lands the dragged edge on the grid', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await drag(
+    page,
+    { x: box.x + 300, y: box.y + 220 },
+    { x: box.x + 363, y: box.y + 219 }
+  );
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'd',
+    'M 80 80 L 360 80 L 360 216 L 80 216 Z'
   );
 });
 
