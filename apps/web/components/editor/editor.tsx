@@ -7,6 +7,7 @@ import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
+import { useSelectionKeys } from './use-selection-keys';
 import { useShortcuts } from './use-shortcuts';
 
 /**
@@ -23,6 +24,7 @@ export const Editor = () => {
   }, []);
 
   useShortcuts(editor, toggleShortcuts);
+  useSelectionKeys(editor);
 
   return (
     <EditorProvider editor={editor}>
