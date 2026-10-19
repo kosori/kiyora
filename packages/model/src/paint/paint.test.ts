@@ -19,7 +19,14 @@ const shape = (overrides: Record<string, unknown> = {}) => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'green', fillStyle: 'bold', stroke: 'green', strokeWidth: 2 },
+  style: {
+    corner: 'sharp',
+    dash: 'solid',
+    fill: 'green',
+    fillStyle: 'bold',
+    stroke: 'green',
+    strokeWidth: 2,
+  },
   w: 100,
   x: 0,
   y: 0,
@@ -59,6 +66,8 @@ describe('painting a board', () => {
       board([
         shape({
           style: {
+            corner: 'sharp',
+            dash: 'solid',
             fill: 'red',
             fillStyle: 'outline',
             stroke: 'red',
