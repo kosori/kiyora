@@ -22,6 +22,9 @@ test-results/
 # Turbo
 .turbo
 
+# Font subsetting cache (scripts/subset-font.ts)
+.cache
+
 # Vercel
 .vercel
 

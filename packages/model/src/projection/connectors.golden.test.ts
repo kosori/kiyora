@@ -102,7 +102,7 @@ describe('projecting connectors to SVG', () => {
       ]),
       light
     );
-    const inks = paths(svg);
+    const inks = paths(svg).filter((path) => !/data-wobble/.test(path));
 
     expect(inks.some((path) => /stroke="#1e1e1e"/.test(path))).toBe(true);
     expect(inks.filter((path) => /fill="#1e1e1e"/.test(path))).toHaveLength(1);

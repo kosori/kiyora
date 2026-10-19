@@ -7,6 +7,12 @@ const open = async (page: Page): Promise<void> => {
     'data-ready',
     'true'
   );
+  // The measurer wraps in the hand-drawn face; wait for it so a sticky grows by
+  // the metrics it will be painted with, not the fallback's wider ones.
+  await page.evaluate(async () => {
+    await document.fonts.load("16px 'Balsamiq Sans Neue'");
+    await document.fonts.ready;
+  });
 };
 
 /** The canvas's place on the screen, so board coordinates can be exact. */
@@ -23,10 +29,11 @@ const canvasBox = async (page: Page) => {
 const board = (page: Page) => page.getByTestId('board');
 
 /** The topmost painted path: the sticky a gesture just placed. */
-const stickyPath = (page: Page) => board(page).locator('path').last();
+const stickyPath = (page: Page) =>
+  board(page).locator('path:not([data-wobble])').last();
 
 const LONG =
-  'Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday';
+  'Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday, and after that send the summary to everyone who could not make it and file the follow-ups in the board';
 
 /** The height a rectangle path spans, read from its own coordinates. */
 const pathHeight = (d: string): number => {
@@ -101,7 +108,7 @@ test('a sticky growing inside a frame does not resize the frame', async ({
     { x: box.x + 500, y: box.y + 400 }
   );
 
-  const framePath = board(page).locator('path').nth(1);
+  const framePath = board(page).locator('path:not([data-wobble])').nth(1);
   const frameBefore = await framePath.getAttribute('d');
 
   await page.keyboard.press('s');
