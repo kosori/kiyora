@@ -2,8 +2,16 @@ import {
   type BoardStorage,
   createAutosave,
   createEditor,
+  type Presence,
+  StorageError,
 } from '@kiyora/editor';
-import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
+import {
+  type Board,
+  parseBoard,
+  parseBoardFile,
+  SCHEMA_VERSION,
+  serializeBoard,
+} from '@kiyora/model';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const board = (title: string, camera = { x: 0, y: 0, zoom: 1 }): Board =>
@@ -25,7 +33,9 @@ const memoryStorage = () => {
   const writes: string[] = [];
 
   const storage: BoardStorage = {
+    quarantine: () => Promise.resolve(),
     read: () => Promise.resolve(held),
+    snapshot: () => Promise.resolve(),
     write: (value) => {
       writes.push(value);
       held = value;
@@ -38,6 +48,30 @@ const memoryStorage = () => {
 
 const readBack = (value: string | undefined): Board =>
   parseBoard(JSON.parse(value ?? 'null'));
+
+/** A presence whose primacy a test can flip, standing in for the tab handshake. */
+const presenceAt = () => {
+  let primary = true;
+  const listeners = new Set<() => void>();
+  const presence: Presence = {
+    isPrimary: () => primary,
+    leader: () => null,
+    leave: () => undefined,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+  const setPrimary = (next: boolean): void => {
+    primary = next;
+    for (const listener of listeners) {
+      listener();
+    }
+  };
+  return { presence, setPrimary };
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -139,7 +173,9 @@ describe('autosave', () => {
     let accept: (value: string) => Promise<void> = () =>
       Promise.reject(new Error('quota'));
     const storage: BoardStorage = {
+      quarantine: () => Promise.resolve(),
       read: () => Promise.resolve(held),
+      snapshot: () => Promise.resolve(),
       write: (value) => accept(value),
     };
     const autosave = createAutosave({ delay: 50, editor, storage });
@@ -170,5 +206,87 @@ describe('autosave', () => {
     await vi.advanceTimersByTimeAsync(100);
 
     expect(writes).toEqual([]);
+  });
+
+  it('records the typed fault behind a failed write and clears it once one lands', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(board('First'));
+    let accept: () => Promise<void> = () =>
+      Promise.reject(new StorageError({ kind: 'quota' }));
+    const storage: BoardStorage = {
+      quarantine: () => Promise.resolve(),
+      read: () => Promise.resolve(null),
+      snapshot: () => Promise.resolve(),
+      write: () => accept(),
+    };
+    const autosave = createAutosave({ delay: 50, editor, storage });
+
+    editor.setBoard(board('Second'));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(autosave.getFault()).toEqual({ kind: 'quota' });
+    expect(autosave.getStatus()).toBe('unsaved');
+
+    accept = () => Promise.resolve();
+    editor.setBoard(board('Third'));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(autosave.getFault()).toBeNull();
+  });
+
+  it('writes nothing while another tab holds the board, then takes over', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(board('First'));
+    const { storage, writes } = memoryStorage();
+    const { presence, setPrimary } = presenceAt();
+    createAutosave({ delay: 50, editor, presence, storage });
+
+    setPrimary(false);
+    editor.setBoard(board('Second'));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(writes).toEqual([]);
+
+    setPrimary(true);
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(writes).toHaveLength(1);
+    expect(readBack(writes.at(0)).title).toBe('Second');
+  });
+});
+
+describe('what autosave stores', () => {
+  it('is a board file, so the store and the file hold one shape', async () => {
+    vi.useFakeTimers();
+    const saved = board('Stored', { x: 3, y: 4, zoom: 2 });
+    const editor = createEditor(saved);
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ delay: 50, editor, storage });
+
+    await autosave.flush();
+
+    expect(parseBoardFile(writes.at(0) ?? '')).toEqual(saved);
+  });
+
+  it('serialises through the board file, not a second path of its own', async () => {
+    vi.useFakeTimers();
+    const scrambled: Board = {
+      camera: { x: 0, y: 0, zoom: 1 },
+      createdAt: 1_700_000_000_000,
+      deck: [],
+      id: 'board-1',
+      schemaVersion: SCHEMA_VERSION,
+      settings: { theme: 'light' },
+      shapes: [],
+      title: 'Scrambled',
+      updatedAt: 1_700_000_000_000,
+    };
+    const editor = createEditor(scrambled);
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ delay: 50, editor, storage });
+
+    await autosave.flush();
+
+    expect(writes.at(0)).toBe(serializeBoard(scrambled));
   });
 });

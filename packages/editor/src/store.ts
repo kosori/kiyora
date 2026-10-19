@@ -3,6 +3,7 @@ import type { Point } from './camera';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { type Placement, shapeFromPlacement } from './placement';
+import { type Restyle, restyledBoard } from './restyle';
 import {
   normaliseSelection,
   offsetShapes,
@@ -120,15 +121,6 @@ export type Editor = {
    * wears. With an empty selection it does nothing.
    */
   restyle: (change: Restyle) => void;
-};
-
-/**
- * One style change the inspector makes: part of a shape's style, and the
- * opacity that lives on the shape rather than in the palette.
- */
-export type Restyle = {
-  opacity?: number;
-  style?: Partial<Style>;
 };
 
 /** An engine over `board`, holding it and publishing each replacement. */
@@ -345,35 +337,13 @@ export const createEditor = (board: Board): Editor => {
       publishGesture();
     },
     restyle: (change) => {
-      const shapes = selectedShapes(current, selection);
-      if (shapes.length === 0) {
+      const result = restyledBoard(current, selection, change);
+      if (result === null) {
         return;
       }
-      const selected = new Set(shapes.map((one) => one.id));
-      let restyled: Style | null = null;
-      current = {
-        ...current,
-        shapes: current.shapes.map((one) => {
-          if (!selected.has(one.id)) {
-            return one;
-          }
-          const next = {
-            ...one,
-            ...(change.opacity === undefined
-              ? {}
-              : { opacity: change.opacity }),
-            style:
-              change.style === undefined
-                ? one.style
-                : { ...one.style, ...change.style },
-          };
-          restyled ??= next.style;
-          return next;
-        }),
-      };
-      if (restyled !== null) {
-        style = restyled;
-      }
+      const { board, style: nextStyle } = result;
+      current = board;
+      style = nextStyle;
       publish(listeners);
     },
     setBoard: (next) => {

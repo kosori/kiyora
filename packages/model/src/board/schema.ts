@@ -30,10 +30,14 @@ export const dashSchema = z.enum(DASHES);
 /** A stroke pattern. */
 export type Dash = z.infer<typeof dashSchema>;
 
-/** How a shape's outline and interior are styled, resolved from the palette. */
+/**
+ * How a shape's outline and interior are styled, resolved from the palette.
+ * Corner and dash default, so a board saved before they existed still reads:
+ * the version 0 to 1 migration only has to stamp the version marker.
+ */
 export const styleSchema = z.object({
-  corner: cornerSchema,
-  dash: dashSchema,
+  corner: cornerSchema.default('sharp'),
+  dash: dashSchema.default('solid'),
   fill: paletteColourSchema,
   fillStyle: fillStyleSchema,
   stroke: z.union([paletteColourSchema, foregroundSchema]),

@@ -5,6 +5,9 @@ import { EditorProvider } from '@kiyora/editor/react';
 import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
+import { CrashProbe } from './crash-probe';
+import { PanelBoundary } from './error-boundary';
+import { FileControls } from './file-controls';
 import { Inspector } from './inspector';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
@@ -14,12 +17,13 @@ import { useAutosave } from './use-autosave';
 /**
  * The editor route: it owns the engine and paints the board through the adapter.
  * The rail and the inspector are columns, and the canvas owns the space between
- * them, so the board's coordinates are the canvas's own.
+ * them, so the board's coordinates are the canvas's own. Each panel sits behind
+ * its own boundary, so a panel that throws cannot take the board.
  */
 export const Editor = () => {
   const [editor] = useState(() => createEditor(starterBoard()));
   const [shortcuts, setShortcuts] = useState(false);
-  const status = useAutosave(editor);
+  const health = useAutosave(editor);
 
   const toggleShortcuts = useCallback(() => {
     setShortcuts((open) => !open);
@@ -28,12 +32,25 @@ export const Editor = () => {
   return (
     <EditorProvider editor={editor}>
       <div className='flex h-full'>
-        <ToolRail />
+        <PanelBoundary label='Tools'>
+          <CrashProbe name='tools'>
+            <ToolRail />
+          </CrashProbe>
+        </PanelBoundary>
         <div className='relative h-full min-w-0 flex-1'>
           <BoardCanvas onShowShortcuts={toggleShortcuts} />
-          <SaveIndicator status={status} />
+          <FileControls />
+          <PanelBoundary label='Status'>
+            <CrashProbe name='status'>
+              <SaveIndicator {...health} />
+            </CrashProbe>
+          </PanelBoundary>
         </div>
-        <Inspector />
+        <PanelBoundary label='Inspector'>
+          <CrashProbe name='inspector'>
+            <Inspector />
+          </CrashProbe>
+        </PanelBoundary>
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
     </EditorProvider>
