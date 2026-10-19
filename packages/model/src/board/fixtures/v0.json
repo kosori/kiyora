@@ -1,0 +1,30 @@
+{
+  "title": "Legacy",
+  "id": "board-1",
+  "createdAt": 1700000000000,
+  "updatedAt": 1700000000000,
+  "camera": { "x": 0, "y": 0, "zoom": 1 },
+  "settings": { "theme": "light" },
+  "shapes": [
+    {
+      "id": "shape-1",
+      "kind": "rectangle",
+      "parentId": null,
+      "x": 8,
+      "y": 8,
+      "w": 120,
+      "h": 80,
+      "rotation": 0,
+      "opacity": 1,
+      "locked": false,
+      "style": {
+        "fill": "blue",
+        "fillStyle": "pastel",
+        "stroke": "ink",
+        "strokeWidth": 2
+      },
+      "text": "Ship it"
+    }
+  ],
+  "deck": []
+}
