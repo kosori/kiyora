@@ -11,12 +11,17 @@ import type { Measurer } from '../text/wrap';
 import { FIGURE_GEOMETRY } from './figure-geometry';
 import { rectanglePath } from './figures';
 import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
+import { deriveWobbleSeed, WOBBLE_OPACITY, wobblePath } from './wobble';
 
 /** One path a renderer draws, in board coordinates. */
 export type PaintPath = {
   d: string;
   dash?: number[];
   fill?: string;
+  /** The alpha a hand-drawn overlay's ribbon paints at, so the clean stroke reads through. */
+  fillOpacity?: number;
+  /** True when this path is the hand-drawn overlay traced over a shape's clean geometry. */
+  overlay?: true;
   stroke?: string;
   strokeWidth?: number;
 };
@@ -67,23 +72,59 @@ const fillOf = (style: Style, theme: Theme, opacity: number): string => {
 const strokeOf = (style: Style, theme: Theme, opacity: number): string =>
   paintColour(style.stroke, theme, opacity);
 
+/**
+ * The hand-drawn overlay over one clean path, or `null` when the path is too
+ * degenerate to trace. The ribbon is drawn in the shape's own stroke colour and
+ * is wide enough to cover the clean line beneath it. It is seeded by the shape's
+ * id and the path's place in its geometry, so two identically shaped figures do
+ * not look stamped, and the seed never moves with the shape.
+ */
+const overlayPath = (
+  shape: Shape,
+  index: number,
+  d: string,
+  stroke: string
+): PaintPath | null => {
+  const traced = wobblePath(
+    d,
+    deriveWobbleSeed(`${shape.id}:${index}`),
+    shape.style.strokeWidth
+  );
+
+  return traced === null
+    ? null
+    : {
+        d: traced,
+        fill: stroke,
+        fillOpacity: WOBBLE_OPACITY,
+        overlay: true,
+      };
+};
+
 /** Paints one figure: every path its geometry names, styled by the palette. */
 const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
   const dash = DASH_PATTERN[shape.style.dash];
+  const fill = fillOf(shape.style, context.theme, shape.opacity);
+  const stroke = strokeOf(shape.style, context.theme, shape.opacity);
+  const clean: PaintPath[] = [];
+  const overlay: PaintPath[] = [];
 
-  return {
-    children: [],
-    paths: FIGURE_GEOMETRY[shape.kind](shape).map((ink) => ({
+  FIGURE_GEOMETRY[shape.kind](shape).forEach((ink, index) => {
+    clean.push({
       d: ink.d,
       ...(dash === undefined ? {} : { dash }),
-      fill:
-        ink.filled === false
-          ? 'none'
-          : fillOf(shape.style, context.theme, shape.opacity),
-      stroke: strokeOf(shape.style, context.theme, shape.opacity),
+      fill: ink.filled === false ? 'none' : fill,
+      stroke,
       strokeWidth: shape.style.strokeWidth,
-    })),
-  };
+    });
+
+    const traced = overlayPath(shape, index, ink.d, stroke);
+    if (traced !== null) {
+      overlay.push(traced);
+    }
+  });
+
+  return { children: [], paths: [...clean, ...overlay] };
 };
 
 /**
@@ -91,18 +132,25 @@ const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
  * as the region its members are held inside. The clip is the authored box, so
  * dropping a member in never resizes the frame to fit it.
  */
-const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
-  children: [],
-  clip: shape.clip ? rectanglePath(shape) : undefined,
-  paths: [
-    {
-      d: rectanglePath(shape),
-      fill: fillOf(shape.style, context.theme, shape.opacity),
-      stroke: strokeOf(shape.style, context.theme, shape.opacity),
-      strokeWidth: shape.style.strokeWidth,
-    },
-  ],
-});
+const paintFrame = (shape: FrameShape, context: PaintContext): Paint => {
+  const box = rectanglePath(shape);
+  const stroke = strokeOf(shape.style, context.theme, shape.opacity);
+  const overlay = overlayPath(shape, 0, box, stroke);
+
+  return {
+    children: [],
+    clip: shape.clip ? box : undefined,
+    paths: [
+      {
+        d: box,
+        fill: fillOf(shape.style, context.theme, shape.opacity),
+        stroke,
+        strokeWidth: shape.style.strokeWidth,
+      },
+      ...(overlay === null ? [] : [overlay]),
+    ],
+  };
+};
 
 /**
  * The label a shape carries, in the foreground ink so its glyphs are never the

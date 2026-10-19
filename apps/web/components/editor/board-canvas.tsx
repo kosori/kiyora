@@ -29,7 +29,9 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => {
       {paint.paths.map((path, index) => (
         <path
           d={path.d}
+          data-wobble={path.overlay === true ? 'true' : undefined}
           fill={path.fill}
+          fillOpacity={path.fillOpacity}
           key={`path-${index}`}
           stroke={path.stroke}
           strokeDasharray={path.dash?.join(' ')}

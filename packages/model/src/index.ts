@@ -79,6 +79,12 @@ export {
   type Theme,
   themeSchema,
 } from './paint/palette';
+export {
+  deriveWobbleSeed,
+  WOBBLE_OPACITY,
+  type WobblePoint,
+  wobblePath,
+} from './paint/wobble';
 export { projectBoard } from './projection/svg';
 export { CODE_FONT_FAMILY, fontFamilyOf, TEXT_FONT_FAMILY } from './text/font';
 export {

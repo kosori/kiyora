@@ -2,6 +2,29 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/*
+ * The Kiyora hand-drawn face. `model` names `Balsamiq Sans Neue` for every
+ * shape and diagram label; these declarations resolve that name to the woff2
+ * subsets vendored under `public/fonts`, so no request leaves for the typeface.
+ * `public/fonts/OFL.txt` ships the licence beside the bytes, and
+ * `scripts/subset-font.ts` cuts the subsets so a future weight is one command.
+ */
+@font-face {
+  font-family: 'Balsamiq Sans Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/balsamiq-sans-neue-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Balsamiq Sans Neue';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/balsamiq-sans-neue-bold.woff2') format('woff2');
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
