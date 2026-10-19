@@ -150,3 +150,25 @@
     @apply font-sans;
   }
 }
+
+/*
+ * A person who has asked their system not to animate things is shown neither a
+ * transition nor the hand-drawn ribbon. The ribbon is a static distortion, but
+ * it reads as a hand-drawn shimmer, so it is not drawn and the clean geometry
+ * beneath it carries every shape. An export is built by `model` from the board
+ * alone, so a saved file keeps the hand-drawn look.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  path[data-wobble='true'] {
+    display: none;
+  }
+}
