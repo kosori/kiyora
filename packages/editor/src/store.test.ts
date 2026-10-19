@@ -15,6 +15,43 @@ const board = (title: string): Board =>
     updatedAt: 1_700_000_000_000,
   });
 
+const style = {
+  corner: 'sharp',
+  dash: 'solid',
+  fill: 'blue',
+  fillStyle: 'pastel',
+  stroke: 'ink',
+  strokeWidth: 2,
+} as const;
+
+const shape = (id: string, x: number) => ({
+  h: 60,
+  id,
+  kind: 'rectangle',
+  locked: false,
+  opacity: 1,
+  parentId: null,
+  rotation: 0,
+  style,
+  w: 100,
+  x,
+  y: 0,
+});
+
+/** A board with two shapes, so a change can be shown to reach a whole selection. */
+const twoShapes = (): Board =>
+  parseBoard({
+    camera: { x: 0, y: 0, zoom: 1 },
+    createdAt: 1_700_000_000_000,
+    deck: [],
+    id: 'board-2',
+    schemaVersion: SCHEMA_VERSION,
+    settings: { theme: 'light' },
+    shapes: [shape('one', 0), shape('two', 200)],
+    title: 'Two',
+    updatedAt: 1_700_000_000_000,
+  });
+
 describe('the editor', () => {
   it('holds the board it was created with', () => {
     const editor = createEditor(board('First'));
@@ -126,5 +163,76 @@ describe('the view', () => {
     editor.setTool('hand');
 
     expect(views).toHaveLength(2);
+  });
+});
+
+describe('restyling the selection', () => {
+  it('applies one change to every selected shape', () => {
+    const editor = createEditor(twoShapes());
+    editor.setSelection(['one', 'two']);
+
+    editor.restyle({ style: { fill: 'red', fillStyle: 'bold' } });
+
+    for (const one of editor.getBoard().shapes) {
+      expect(one.style).toMatchObject({ fill: 'red', fillStyle: 'bold' });
+    }
+  });
+
+  it('sets the opacity of every selected shape, since opacity is not the palette\u2019s', () => {
+    const editor = createEditor(twoShapes());
+    editor.setSelection(['one', 'two']);
+
+    editor.restyle({ opacity: 0.5 });
+
+    expect(editor.getBoard().shapes.map((one) => one.opacity)).toEqual([
+      0.5, 0.5,
+    ]);
+  });
+
+  it('touches only the selection, leaving the rest of the board alone', () => {
+    const editor = createEditor(twoShapes());
+    editor.setSelection(['two']);
+
+    editor.restyle({ style: { fill: 'red' } });
+
+    expect(editor.getBoard().shapes[0]?.style.fill).toBe('blue');
+    expect(editor.getBoard().shapes[1]?.style.fill).toBe('red');
+  });
+
+  it('publishes exactly one board change, so history sees one entry', () => {
+    const editor = createEditor(twoShapes());
+    editor.setSelection(['one']);
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.restyle({ opacity: 0.5, style: { strokeWidth: 4 } });
+
+    expect(seen).toHaveLength(1);
+  });
+
+  it('leaves the board alone, and publishes nothing, with an empty selection', () => {
+    const editor = createEditor(twoShapes());
+    const before = editor.getBoard();
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.restyle({ style: { fill: 'red' } });
+
+    expect(editor.getBoard()).toBe(before);
+    expect(seen).toEqual([]);
+  });
+
+  it('wears the restyled style on the next shape placed, so a board stays one colour', () => {
+    const editor = createEditor(twoShapes());
+    editor.setSelection(['one']);
+
+    editor.restyle({ style: { corner: 'rounded', fill: 'red' } });
+    editor.setTool('rectangle');
+    editor.placeShape({ from: { x: 500, y: 500 }, to: { x: 500, y: 500 } });
+
+    expect(editor.getBoard().shapes.at(-1)?.style).toMatchObject({
+      corner: 'rounded',
+      fill: 'red',
+    });
   });
 });

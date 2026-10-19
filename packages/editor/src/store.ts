@@ -73,8 +73,7 @@ export type Editor = {
   getStyle: () => Style;
   /**
    * Records the style the next shape wears, so the picker's default and the
-   * next shape read one value. Nothing observes it yet — the inspector brings
-   * the subscription it needs when it lands.
+   * next shape read one value. The inspector also writes it, through `restyle`.
    */
   setStyle: (style: Style) => void;
   /**
@@ -114,6 +113,22 @@ export type Editor = {
   cancelGesture: () => void;
   /** Moves every selected shape by the same delta, so relative positions hold. */
   nudge: (dx: number, dy: number) => void;
+  /**
+   * Restyles every selected shape in one board write: a style patch, an
+   * opacity, or both. One call is one change, so it becomes one history entry
+   * the moment history lands. The restyled style becomes the one the next shape
+   * wears. With an empty selection it does nothing.
+   */
+  restyle: (change: Restyle) => void;
+};
+
+/**
+ * One style change the inspector makes: part of a shape's style, and the
+ * opacity that lives on the shape rather than in the palette.
+ */
+export type Restyle = {
+  opacity?: number;
+  style?: Partial<Style>;
 };
 
 /** An engine over `board`, holding it and publishing each replacement. */
@@ -328,6 +343,38 @@ export const createEditor = (board: Board): Editor => {
       drag = null;
       commitSelection(next);
       publishGesture();
+    },
+    restyle: (change) => {
+      const shapes = selectedShapes(current, selection);
+      if (shapes.length === 0) {
+        return;
+      }
+      const selected = new Set(shapes.map((one) => one.id));
+      let restyled: Style | null = null;
+      current = {
+        ...current,
+        shapes: current.shapes.map((one) => {
+          if (!selected.has(one.id)) {
+            return one;
+          }
+          const next = {
+            ...one,
+            ...(change.opacity === undefined
+              ? {}
+              : { opacity: change.opacity }),
+            style:
+              change.style === undefined
+                ? one.style
+                : { ...one.style, ...change.style },
+          };
+          restyled ??= next.style;
+          return next;
+        }),
+      };
+      if (restyled !== null) {
+        style = restyled;
+      }
+      publish(listeners);
     },
     setBoard: (next) => {
       current = next;

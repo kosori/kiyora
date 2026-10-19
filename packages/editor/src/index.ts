@@ -71,6 +71,7 @@ export {
   createEditor,
   type Editor,
   type Gesture,
+  type Restyle,
   type View,
 } from './store';
 export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
