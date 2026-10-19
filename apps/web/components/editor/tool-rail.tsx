@@ -2,6 +2,7 @@
 
 import type { Tool } from '@kiyora/editor';
 import {
+  IconFrame,
   IconPointer,
   IconRectangle,
   type TablerIcon,
@@ -19,10 +20,11 @@ export type RailEntry = {
   tool: Tool;
 };
 
-/** The tools the rail offers. Select and rectangle until the vocabulary lands. */
+/** The tools the rail offers. The picker carries the rest of the vocabulary. */
 const RAIL: readonly RailEntry[] = [
   { icon: IconPointer, label: 'Select', tool: 'select' },
   { icon: IconRectangle, label: 'Rectangle', tool: 'rectangle' },
+  { icon: IconFrame, label: 'Frame', tool: 'frame' },
 ];
 
 /** The tool rail: every button names its tool, and the active one reads as pressed. */

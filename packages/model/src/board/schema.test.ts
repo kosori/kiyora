@@ -1,3 +1,4 @@
+import { FRAMES } from '@kiyora/dsl';
 import {
   type Board,
   BoardRejection,
@@ -19,6 +20,15 @@ const shape = (overrides: Record<string, unknown> = {}) => ({
   w: 120,
   x: 0,
   y: 0,
+  ...overrides,
+});
+
+/** A frame: the same base as any shape, plus a variant and whether it clips. */
+const frameShape = (overrides: Record<string, unknown> = {}) => ({
+  ...shape(),
+  clip: true,
+  kind: 'frame',
+  variant: 'plain',
   ...overrides,
 });
 
@@ -85,6 +95,36 @@ describe('the board', () => {
     );
 
     expect(parsed.shapes[0]).toEqual(shape());
+  });
+});
+
+describe('a frame', () => {
+  it('is a shape that keeps the box it was authored with, its variant and whether it clips', () => {
+    const authored = frameShape({ h: 400, w: 600, x: 40, y: 60 });
+
+    expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+      authored
+    );
+  });
+
+  it('accepts every variant the grammar names, so the model keeps no second list', () => {
+    const issues = boardIssues(
+      board({
+        shapes: FRAMES.map((variant, index) =>
+          frameShape({ id: `frame-${index}`, variant })
+        ),
+      })
+    );
+
+    expect(issues).toEqual([]);
+  });
+
+  it('rejects a variant the grammar does not name', () => {
+    const issues = boardIssues(
+      board({ shapes: [frameShape({ variant: 'paper' })] })
+    );
+
+    expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.variant']);
   });
 });
 

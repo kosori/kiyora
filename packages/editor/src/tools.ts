@@ -2,13 +2,21 @@ import type { FigureKind, Style } from '@kiyora/model';
 
 /**
  * What the pointer does on the canvas: `select` picks and moves, `hand` grabs
- * the board itself, and a figure kind places one when the canvas is dragged.
+ * the board itself, `frame` draws a region that holds other shapes, and a
+ * figure kind places one when the canvas is dragged.
  */
-export type Tool = 'hand' | 'select' | FigureKind;
+export type Tool = 'hand' | 'select' | 'frame' | FigureKind;
 
-/** Whether `tool` places a figure, rather than selecting or panning. */
+/** What a tool places on the board: a figure, or a frame. */
+export type Placeable = 'frame' | FigureKind;
+
+/** Whether `tool` places a figure, rather than selecting, panning or framing. */
 export const isFigureTool = (tool: Tool): tool is FigureKind =>
-  tool !== 'hand' && tool !== 'select';
+  tool !== 'hand' && tool !== 'select' && tool !== 'frame';
+
+/** Whether `tool` places a shape on the canvas at all. */
+export const placesShape = (tool: Tool): tool is Placeable =>
+  tool === 'frame' || isFigureTool(tool);
 
 /**
  * The style the first shape wears, and the one place the next shape's style

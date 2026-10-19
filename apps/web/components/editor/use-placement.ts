@@ -1,9 +1,9 @@
 'use client';
 
 import {
-  isFigureTool,
   type Placement,
   type Point,
+  placesShape,
   toWorld,
 } from '@kiyora/editor';
 import { useEditor, useView } from '@kiyora/editor/react';
@@ -43,7 +43,7 @@ export const usePlacement = (): PlacementHandlers => {
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
-      if (!isFigureTool(tool)) {
+      if (!placesShape(tool)) {
         return;
       }
       start.current = boardPoint(event, camera);

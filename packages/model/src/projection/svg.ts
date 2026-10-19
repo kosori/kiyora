@@ -33,10 +33,25 @@ const attributes = (path: PaintPath): string => {
 
 const markup = (paint: Paint, depth: number): string[] => {
   const indent = INDENT.repeat(depth);
+  const paths = paint.paths.map(
+    (path) => `${indent}<path${attributes(path)}/>`
+  );
+  const children = paint.children.flatMap((child) => markup(child, depth + 1));
+
+  if (paint.clip === undefined || paint.shapeId === undefined) {
+    return [...paths, ...children];
+  }
+
+  const id = `clip-${paint.shapeId}`;
 
   return [
-    ...paint.paths.map((path) => `${indent}<path${attributes(path)}/>`),
-    ...paint.children.flatMap((child) => markup(child, depth + 1)),
+    ...paths,
+    `${indent}<clipPath id="${id}">`,
+    `${indent}${INDENT}<path d="${paint.clip}"/>`,
+    `${indent}</clipPath>`,
+    `${indent}<g clip-path="url(#${id})">`,
+    ...children,
+    `${indent}</g>`,
   ];
 };
 

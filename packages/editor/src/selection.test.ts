@@ -11,6 +11,7 @@ import {
 } from '@kiyora/editor';
 import {
   type Board,
+  type FigureShape,
   parseBoard,
   SCHEMA_VERSION,
   type Shape,
@@ -24,7 +25,7 @@ const style = {
   strokeWidth: 2,
 } as const;
 
-const rectangle = (overrides: Partial<Shape> = {}): Shape => ({
+const rectangle = (overrides: Partial<FigureShape> = {}): Shape => ({
   h: 60,
   id: 'rectangle-1',
   kind: 'rectangle',

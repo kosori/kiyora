@@ -23,6 +23,16 @@ export {
   zoomBy,
 } from './camera';
 export {
+  addShape,
+  frameAround,
+  frameIds,
+  isFrame,
+  memberIds,
+  parentFrame,
+  setMembership,
+  subtreeIds,
+} from './containment';
+export {
   boxBetween,
   boxesIntersect,
   containsPoint,
@@ -59,6 +69,7 @@ export {
   type SaveStatus,
 } from './persistence/storage';
 export type { Placement } from './placement';
+export { DEFAULT_FRAME_SIZE, DEFAULT_SHAPE_SIZE } from './placement';
 export {
   normaliseSelection,
   type Offsets,
@@ -73,4 +84,10 @@ export {
   type Gesture,
   type View,
 } from './store';
-export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+export {
+  DEFAULT_STYLE,
+  isFigureTool,
+  type Placeable,
+  placesShape,
+  type Tool,
+} from './tools';
