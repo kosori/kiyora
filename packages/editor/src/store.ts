@@ -1,5 +1,6 @@
 import type { Board, Style } from '@kiyora/model';
 import type { Point } from './camera';
+import { editConnector, removeShapes } from './connectors';
 import { addShape, subtreeIds } from './containment';
 import { resizeModifiers } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
@@ -142,6 +143,22 @@ export const createEditor = (board: Board): Editor => {
         publishChange(replaceShapes(current, open.originals));
       }
       publishGesture();
+    },
+    deleteSelection: () => {
+      const ids = subtreeIds(current, selection);
+      if (ids.length === 0) {
+        return;
+      }
+      transactions.endNudgeRun();
+      const before = current;
+      const next = removeShapes(current, ids);
+      if (next === before) {
+        return;
+      }
+      current = next;
+      transactions.commit(before, current);
+      commitSelection([]);
+      publish(listeners);
     },
     endNudgeRun: () => {
       transactions.endNudgeRun();
@@ -307,6 +324,17 @@ export const createEditor = (board: Board): Editor => {
     },
     setCamera: (camera) => {
       setView({ ...view, camera });
+    },
+    setConnector: (id, edit) => {
+      transactions.endNudgeRun();
+      const before = current;
+      const next = editConnector(current, id, edit);
+      if (next === before) {
+        return;
+      }
+      current = next;
+      transactions.commit(before, current);
+      publish(listeners);
     },
     setSelection: (ids) => {
       commitSelection(ids);

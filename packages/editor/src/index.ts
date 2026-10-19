@@ -23,6 +23,11 @@ export {
   zoomBy,
 } from './camera';
 export {
+  type ConnectorEdit,
+  editConnector,
+  removeShapes,
+} from './connectors';
+export {
   addShape,
   frameAround,
   frameIds,

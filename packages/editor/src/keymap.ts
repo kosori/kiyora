@@ -17,6 +17,7 @@ export type Command =
   | { kind: 'camera'; action: CameraAction }
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
   | { kind: 'cancel-gesture' }
+  | { kind: 'delete' }
   | { kind: 'undo' }
   | { kind: 'redo' };
 
@@ -121,12 +122,15 @@ export const KEYMAP: readonly Binding[] = [
   { command: { kind: 'tool', tool: 'select' }, key: 'v' },
   { command: { kind: 'tool', tool: 'rectangle' }, key: 'r' },
   { command: { kind: 'tool', tool: 'text' }, key: 't' },
+  { command: { kind: 'tool', tool: 'connector' }, key: 'c' },
   { command: { kind: 'tool', tool: 'frame' }, key: 'f' },
   { command: { action: 'pan', kind: 'camera' }, key: 'space' },
   { command: { action: 'zoom-in', kind: 'camera' }, key: '=' },
   { command: { action: 'zoom-out', kind: 'camera' }, key: '-' },
   { command: { kind: 'show-shortcuts' }, key: '?' },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
+  { command: { kind: 'delete' }, key: 'delete' },
+  { command: { kind: 'delete' }, key: 'backspace' },
   {
     command: { kind: 'undo' },
     key: 'z',
@@ -178,6 +182,11 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     label: 'Text',
   },
   {
+    commands: [{ kind: 'tool', tool: 'connector' }],
+    group: 'Tools',
+    label: 'Connector',
+  },
+  {
     commands: [{ kind: 'tool', tool: 'frame' }],
     group: 'Tools',
     label: 'Frame',
@@ -211,6 +220,11 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     commands: [{ kind: 'cancel-gesture' }],
     group: 'Selection',
     label: 'Cancel a gesture',
+  },
+  {
+    commands: [{ kind: 'delete' }],
+    group: 'Selection',
+    label: 'Delete',
   },
   {
     commands: [{ kind: 'undo' }],
@@ -251,6 +265,10 @@ const bindingFor = (command: Command): Binding | null =>
   KEYMAP.find((binding) => commandId(binding.command) === commandId(command)) ??
   null;
 
+/** Every binding that runs `command`, so a command with two keys shows both. */
+const bindingsFor = (command: Command): Binding[] =>
+  KEYMAP.filter((binding) => commandId(binding.command) === commandId(command));
+
 /**
  * How a binding reads in the reference: the modifiers it requires, then its key,
  * so a binding that differs by a modifier shows that modifier rather than a row
@@ -286,11 +304,9 @@ export const shortcutReference = (): ReferenceRow[] => {
   const rows: ReferenceRow[] = [];
 
   for (const row of SHORTCUT_ROWS) {
-    const keys = row.commands.flatMap((command) => {
-      const binding = bindingFor(command);
-
-      return binding === null ? [] : [bindingLabel(binding)];
-    });
+    const keys = row.commands.flatMap((command) =>
+      bindingsFor(command).map(bindingLabel)
+    );
 
     if (keys.length > 0) {
       rows.push({ group: row.group, keys, label: row.label });

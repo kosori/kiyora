@@ -4,6 +4,7 @@ import {
   boundsOfShapes,
   type Shape,
 } from '@kiyora/model';
+import { movedShape } from './shape-edit';
 
 /** The ids of the shapes currently selected, in paint order. Display state, never in the document. */
 export type Selection = readonly string[];
@@ -47,7 +48,9 @@ export const offsetShapes = (board: Board, offsets: Offsets): Board => {
     ...board,
     shapes: board.shapes.map((shape) => {
       const offset = offsets.get(shape.id);
-      return offset === undefined ? shape : { ...shape, ...offset };
+      return offset === undefined
+        ? shape
+        : movedShape(shape, offset.x - shape.x, offset.y - shape.y);
     }),
   };
 };

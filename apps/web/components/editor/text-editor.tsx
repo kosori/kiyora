@@ -3,6 +3,7 @@
 import { toScreen } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
 import {
+  connectorLabelPoint,
   DEFAULT_TEXT_STYLE,
   TEXT_FONT_FAMILY,
   TEXT_LINE_HEIGHT,
@@ -71,7 +72,14 @@ export const TextEditor = ({ shapeId, onDone }: Props) => {
   }
 
   const style = shape.textStyle ?? DEFAULT_TEXT_STYLE;
-  const at = toScreen(camera, { x: shape.x, y: shape.y });
+  const label = shape.kind === 'connector';
+  const at = label
+    ? toScreen(camera, connectorLabelPoint(shape, board.shapes))
+    : toScreen(camera, { x: shape.x, y: shape.y });
+  const width = (label ? 160 : shape.w) * camera.zoom;
+  const height =
+    (label ? style.size * TEXT_LINE_HEIGHT + TEXT_PADDING : shape.h) *
+    camera.zoom;
 
   return (
     <textarea
@@ -85,13 +93,13 @@ export const TextEditor = ({ shapeId, onDone }: Props) => {
       style={{
         fontFamily: TEXT_FONT_FAMILY,
         fontSize: style.size * camera.zoom,
-        height: shape.h * camera.zoom,
-        left: at.x,
+        height,
+        left: label ? at.x - width / 2 : at.x,
         lineHeight: TEXT_LINE_HEIGHT,
         padding: TEXT_PADDING * camera.zoom,
-        textAlign: style.align,
-        top: at.y,
-        width: shape.w * camera.zoom,
+        textAlign: label ? 'center' : style.align,
+        top: label ? at.y - height / 2 : at.y,
+        width,
       }}
       value={value}
     />

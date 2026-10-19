@@ -1,5 +1,7 @@
 import {
+  type ConnectorShape,
   DEFAULT_TEXT_STYLE,
+  type Endpoint,
   type FigureShape,
   type FrameShape,
   type Shape,
@@ -7,6 +9,7 @@ import {
   type TextShape,
 } from '@kiyora/model';
 import type { Point } from './camera';
+import { shapeAt } from './geometry/hit-test';
 import type { Placeable } from './tools';
 
 /** An axis-aligned box in board units. */
@@ -111,6 +114,24 @@ export const shapeFromPlacement = (
     return text;
   }
 
+  if (kind === 'connector') {
+    const { from, to } = placement;
+    const still = from.x === to.x && from.y === to.y;
+    const target = still ? { x: from.x + DEFAULT_SHAPE_SIZE.w, y: from.y } : to;
+    const connector: ConnectorShape = {
+      ...base,
+      ...placementBox({ from, to: target }, DEFAULT_SHAPE_SIZE),
+      end: 'arrow',
+      from: endpointAt(from, existing),
+      kind: 'connector',
+      route: 'straight',
+      start: 'none',
+      to: endpointAt(target, existing),
+    };
+
+    return connector;
+  }
+
   const figure: FigureShape = {
     ...base,
     ...placementBox(placement),
@@ -118,4 +139,18 @@ export const shapeFromPlacement = (
   };
 
   return figure;
+};
+
+/**
+ * The end a connector's drag landed on: bound to the shape under `point` with
+ * no anchor named, so the walker picks the attachment point, or free at the
+ * point when the drag ended on empty canvas — which is how a connector is drawn
+ * before its target exists.
+ */
+const endpointAt = (point: Point, existing: readonly Shape[]): Endpoint => {
+  const hit = shapeAt(existing, point);
+
+  return hit === null
+    ? { kind: 'free', x: point.x, y: point.y }
+    : { kind: 'bound', shapeId: hit.id };
 };
