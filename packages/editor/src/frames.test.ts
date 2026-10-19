@@ -4,6 +4,7 @@ import {
   frameAround,
   frameIds,
   memberIds,
+  NO_GESTURE_MODIFIERS,
   setMembership,
   subtreeIds,
 } from '@kiyora/editor';
@@ -215,7 +216,7 @@ describe('moving a frame', () => {
     editor.setSelection(['frame-1']);
 
     editor.pointerDown({ x: 250, y: 150 }, false);
-    editor.pointerMove({ x: 290, y: 190 }, false);
+    editor.pointerMove({ x: 290, y: 190 }, NO_GESTURE_MODIFIERS);
     editor.pointerUp();
 
     const after = editor.getBoard();

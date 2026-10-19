@@ -55,6 +55,10 @@ const board = (shapes: Shape[]): Board =>
     updatedAt: 1_700_000_000_000,
   });
 
+const none = { bypassSnap: false, constrain: false } as const;
+const bypass = { bypassSnap: true, constrain: false } as const;
+const shift = { bypassSnap: false, constrain: true } as const;
+
 describe('hit-testing a painted shape', () => {
   it('finds a point inside the shape and misses one outside it', () => {
     const shape = rectangle({ h: 60, w: 100, x: 0, y: 0 });
@@ -188,7 +192,7 @@ describe('moving the selection', () => {
     editor.setSelection(['a', 'b']);
 
     editor.pointerDown({ x: 20, y: 20 }, false);
-    editor.pointerMove({ x: 36, y: 36 }, false);
+    editor.pointerMove({ x: 36, y: 36 }, none);
 
     const [a, b] = editor.getBoard().shapes;
 
@@ -200,7 +204,7 @@ describe('moving the selection', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
 
     editor.pointerDown({ x: 100, y: 100 }, false);
-    editor.pointerMove({ x: 105, y: 105 }, false);
+    editor.pointerMove({ x: 105, y: 105 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ x: 88, y: 88 });
   });
@@ -209,7 +213,7 @@ describe('moving the selection', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
 
     editor.pointerDown({ x: 100, y: 100 }, false);
-    editor.pointerMove({ x: 105, y: 105 }, true);
+    editor.pointerMove({ x: 105, y: 105 }, bypass);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ x: 85, y: 85 });
   });
@@ -218,7 +222,7 @@ describe('moving the selection', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
 
     editor.pointerDown({ x: 100, y: 100 }, false);
-    editor.pointerMove({ x: 140, y: 100 }, false);
+    editor.pointerMove({ x: 140, y: 100 }, none);
     editor.pointerUp();
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ x: 120, y: 80 });
@@ -229,7 +233,7 @@ describe('moving the selection', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
 
     editor.pointerDown({ x: 100, y: 100 }, false);
-    editor.pointerMove({ x: 200, y: 200 }, false);
+    editor.pointerMove({ x: 200, y: 200 }, none);
     editor.cancelGesture();
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ x: 80, y: 80 });
@@ -244,7 +248,7 @@ describe('moving the selection', () => {
     });
 
     editor.pointerDown({ x: 100, y: 100 }, false);
-    editor.pointerMove({ x: 140, y: 100 }, false);
+    editor.pointerMove({ x: 140, y: 100 }, none);
 
     expect(repaints).toBe(1);
   });
@@ -270,7 +274,7 @@ describe('a marquee on empty canvas', () => {
     );
 
     editor.pointerDown({ x: -40, y: -40 }, false);
-    editor.pointerMove({ x: 320, y: 200 }, false);
+    editor.pointerMove({ x: 320, y: 200 }, none);
 
     expect(editor.getGesture()).toEqual({
       box: { h: 240, w: 360, x: -40, y: -40 },
@@ -293,7 +297,7 @@ describe('a marquee on empty canvas', () => {
     editor.setSelection(['b']);
 
     editor.pointerDown({ x: -40, y: -40 }, true);
-    editor.pointerMove({ x: 200, y: 200 }, true);
+    editor.pointerMove({ x: 200, y: 200 }, bypass);
     editor.pointerUp();
 
     expect(editor.getSelection()).toEqual(['a', 'b']);
@@ -304,7 +308,7 @@ describe('a marquee on empty canvas', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 400, y: 400 }, false);
-    editor.pointerMove({ x: 500, y: 500 }, false);
+    editor.pointerMove({ x: 500, y: 500 }, none);
     editor.cancelGesture();
 
     expect(editor.getSelection()).toEqual(['a']);
@@ -373,7 +377,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 220 }, false);
-    editor.pointerMove({ x: 360, y: 304 }, false);
+    editor.pointerMove({ x: 360, y: 304 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
       h: 224,
@@ -388,7 +392,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 150 }, false);
-    editor.pointerMove({ x: 360, y: 500 }, false);
+    editor.pointerMove({ x: 360, y: 500 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
       h: 140,
@@ -403,7 +407,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 220 }, false);
-    editor.pointerMove({ x: 84, y: 84 }, false);
+    editor.pointerMove({ x: 84, y: 84 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
       h: 8,
@@ -418,7 +422,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 220 }, false);
-    editor.pointerMove({ x: 360, y: 216 }, true);
+    editor.pointerMove({ x: 360, y: 216 }, bypass);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
       h: 132,
@@ -433,9 +437,39 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 220 }, false);
-    editor.pointerMove({ x: 520, y: 360 }, false, true);
+    editor.pointerMove({ x: 520, y: 360 }, shift);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ h: 280, w: 440 });
+  });
+
+  it('leaves the grid when alt is held, so a resize can bypass the snap too', () => {
+    const editor = createEditor(board([starter()]));
+    editor.setSelection(['a']);
+
+    editor.pointerDown({ x: 300, y: 220 }, false);
+    editor.pointerMove({ x: 363, y: 219 }, bypass);
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({
+      h: 138,
+      w: 346,
+      x: 17,
+      y: 81,
+    });
+  });
+
+  it('lands the resized edge on the grid without the bypass', () => {
+    const editor = createEditor(board([starter()]));
+    editor.setSelection(['a']);
+
+    editor.pointerDown({ x: 300, y: 220 }, false);
+    editor.pointerMove({ x: 363, y: 219 }, none);
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({
+      h: 136,
+      w: 280,
+      x: 80,
+      y: 80,
+    });
   });
 
   it('keeps the resize when the pointer lifts', () => {
@@ -443,7 +477,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 220 }, false);
-    editor.pointerMove({ x: 360, y: 304 }, false);
+    editor.pointerMove({ x: 360, y: 304 }, none);
     editor.pointerUp();
 
     expect(editor.getGesture()).toEqual({ kind: 'idle' });
@@ -455,7 +489,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 220 }, false);
-    editor.pointerMove({ x: 360, y: 304 }, false);
+    editor.pointerMove({ x: 360, y: 304 }, none);
     editor.cancelGesture();
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
@@ -474,7 +508,7 @@ describe('resizing a selection from a handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 100, y: 100 }, false);
-    editor.pointerMove({ x: 48, y: 152 }, false);
+    editor.pointerMove({ x: 48, y: 152 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
       h: 52,
@@ -503,7 +537,7 @@ describe('rotating a selection from the rotate handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 290, y: 150 }, false);
+    editor.pointerMove({ x: 290, y: 150 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ rotation: 90 });
   });
@@ -513,7 +547,7 @@ describe('rotating a selection from the rotate handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 224.2, y: 56 }, false, true);
+    editor.pointerMove({ x: 224.2, y: 56 }, shift);
 
     expect(editor.getBoard().shapes[0]?.rotation).toBe(15);
   });
@@ -523,11 +557,11 @@ describe('rotating a selection from the rotate handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 290, y: 150 }, false);
+    editor.pointerMove({ x: 290, y: 150 }, none);
     editor.pointerUp();
 
     editor.pointerDown({ x: 190, y: 18 }, false);
-    editor.pointerMove({ x: 98, y: 150 }, false);
+    editor.pointerMove({ x: 98, y: 150 }, none);
 
     expect(editor.getBoard().shapes[0]?.rotation).toBe(0);
   });
@@ -537,7 +571,7 @@ describe('rotating a selection from the rotate handle', () => {
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 290, y: 150 }, false);
+    editor.pointerMove({ x: 290, y: 150 }, none);
     editor.cancelGesture();
 
     expect(editor.getBoard().shapes[0]?.rotation).toBe(0);

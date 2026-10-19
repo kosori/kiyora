@@ -1,6 +1,7 @@
 import type { Board, Bounds, Camera, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
 import type { HandleKind } from './geometry/handles';
+import type { GestureModifiers } from './modifiers';
 import type { Placement } from './placement';
 import type { Restyle } from './restyle';
 import type { Selection } from './selection';
@@ -125,14 +126,13 @@ export type Editor = {
    */
   pointerDown: (point: Point, additive: boolean) => void;
   /**
-   * The pointer moving with a gesture open. A marquee redraws its box; a move
-   * translates the whole selection, snapped to the grid unless `bypassSnap`; a
-   * resize reads `bypassSnap` as alt (grow from the centre) and `shift` as
-   * keep-ratio; a rotate reads `shift` as snap-to-fifteen. A resize is always
-   * snapped, so alt is the centre modifier here rather than the snap bypass of a
-   * move.
+   * The pointer moving with a gesture open. A marquee redraws its box; a move,
+   * a resize and a rotate each read the one `modifiers` value. Alt bypasses the
+   * grid snap wherever a gesture snaps — a move and a resize — and, the named
+   * collision, grows a resize from its centre; shift keeps a resize's ratio and
+   * snaps a rotation to fifteen. See `modifiers.ts`.
    */
-  pointerMove: (point: Point, bypassSnap: boolean, shift?: boolean) => void;
+  pointerMove: (point: Point, modifiers: GestureModifiers) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */
   pointerUp: () => void;
   /** Escape: a move goes back to the positions it started from, a marquee is dropped. */

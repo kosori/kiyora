@@ -1,7 +1,7 @@
 import type { Board, Bounds, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
 import { addShape, subtreeIds } from './containment';
-import { type HandleKind, handleAt } from './geometry/handles';
+import { type HandleKind, handleAt, resizeModifiers } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { shapeFromPlacement } from './placement';
@@ -276,7 +276,7 @@ export const createEditor = (board: Board): Editor => {
         beginMove(point);
       }
     },
-    pointerMove: (point, bypassSnap, shift) => {
+    pointerMove: (point, modifiers) => {
       if (drag === null) {
         return;
       }
@@ -291,7 +291,7 @@ export const createEditor = (board: Board): Editor => {
           drag.bounds,
           drag.handle,
           point,
-          { fromCentre: bypassSnap, keepRatio: shift ?? false, snap: true }
+          resizeModifiers(modifiers)
         );
         current = replaceShapes(current, replacements);
         publish(listeners);
@@ -303,7 +303,7 @@ export const createEditor = (board: Board): Editor => {
           [...drag.originals.values()],
           drag.centre,
           delta,
-          shift ?? false
+          modifiers
         );
         current = replaceShapes(current, replacements);
         publish(listeners);
@@ -311,7 +311,7 @@ export const createEditor = (board: Board): Editor => {
       }
       let dx = point.x - drag.start.x;
       let dy = point.y - drag.start.y;
-      if (!bypassSnap) {
+      if (!modifiers.bypassSnap) {
         dx = snapTranslation(dx, drag.origin.x);
         dy = snapTranslation(dy, drag.origin.y);
       }

@@ -1,6 +1,10 @@
 'use client';
 
-import { type ReferenceRow, shortcutReference } from '@kiyora/editor';
+import {
+  GESTURE_REFERENCE,
+  type ReferenceRow,
+  shortcutReference,
+} from '@kiyora/editor';
 import { useCallback, useEffect, useRef } from 'react';
 
 type Props = {
@@ -8,11 +12,15 @@ type Props = {
   open: boolean;
 };
 
-/** The reference's rows, in sections, in the order the keymap declares them. */
+/**
+ * The reference's rows, in sections, in the order the keymap declares them. The
+ * pointer gestures' modifiers follow the keymap's rows, so the dialog teaches
+ * what alt and shift do to a drag as well as to a key.
+ */
 const groupRows = (): Map<string, ReferenceRow[]> => {
   const groups = new Map<string, ReferenceRow[]>();
 
-  for (const row of shortcutReference()) {
+  for (const row of [...shortcutReference(), ...GESTURE_REFERENCE]) {
     const rows = groups.get(row.group) ?? [];
     rows.push(row);
     groups.set(row.group, rows);

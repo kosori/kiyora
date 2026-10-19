@@ -4,6 +4,7 @@ import {
   handleAt,
   handlePositions,
   MIN_SIZE,
+  NO_GESTURE_MODIFIERS,
   resizeBounds,
   resizeSelection,
   rotateHandlePosition,
@@ -257,7 +258,7 @@ describe('rotating a selection', () => {
       [rectangle()],
       { x: 190, y: 150 },
       90,
-      false
+      NO_GESTURE_MODIFIERS
     ).get('r');
 
     expect(next).toMatchObject({ rotation: 90, x: 80, y: 80 });
@@ -271,7 +272,7 @@ describe('rotating a selection', () => {
       ],
       { x: 150, y: 50 },
       180,
-      false
+      NO_GESTURE_MODIFIERS
     );
 
     expect(next.get('a')).toMatchObject({ rotation: 180, x: 200, y: 0 });

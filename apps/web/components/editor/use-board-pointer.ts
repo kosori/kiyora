@@ -1,6 +1,6 @@
 'use client';
 
-import { type Point, toWorld } from '@kiyora/editor';
+import { gestureModifiers, type Point, toWorld } from '@kiyora/editor';
 import { useEditor, useView } from '@kiyora/editor/react';
 import type { Camera } from '@kiyora/model';
 import {
@@ -65,11 +65,7 @@ export const useBoardPointer = (panning: boolean): Handlers => {
       if (!selecting.current) {
         return;
       }
-      editor.pointerMove(
-        boardPoint(event, camera),
-        event.altKey,
-        event.shiftKey
-      );
+      editor.pointerMove(boardPoint(event, camera), gestureModifiers(event));
     },
     [camera, editor]
   );

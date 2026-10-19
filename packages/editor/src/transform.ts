@@ -10,6 +10,7 @@ import {
   resizeBounds,
 } from './geometry/handles';
 import { snapValue } from './geometry/snap';
+import type { GestureModifiers } from './modifiers';
 
 /**
  * Applying a resize or a rotation to the shapes a selection holds. The box the
@@ -149,7 +150,9 @@ const resizeOne = (
 /**
  * Every selected shape sized to `handle`'s drag. One shape keeps its own frame;
  * a group scales from the selection box, so a turned member is approximated by
- * scaling its box rather than deforming it.
+ * scaling its box rather than deforming it. `modifiers` is the resolved
+ * behaviour; the store turns the gesture vocabulary into it with
+ * `resizeModifiers`.
  */
 export const resizeSelection = (
   shapes: readonly Shape[],
@@ -208,13 +211,14 @@ export const resizeSelection = (
 /**
  * Every selected shape turned by `delta` about the selection centre. A shape's
  * own box turns about its centre; a group's members also orbit the selection,
- * so the whole selection reads as one turned thing.
+ * so the whole selection reads as one turned thing. The gesture reads one
+ * modifiers value, and shift is the constraint that snaps the rotation.
  */
 export const rotateSelection = (
   shapes: readonly Shape[],
   origin: Point,
   delta: number,
-  snap: boolean
+  modifiers: GestureModifiers
 ): Replacements => {
   const next: Replacements = new Map();
 
@@ -222,7 +226,7 @@ export const rotateSelection = (
     const centre = turn(centreOf(shape), origin, delta);
     next.set(shape.id, {
       ...shape,
-      rotation: settleRotation(shape.rotation + delta, snap),
+      rotation: settleRotation(shape.rotation + delta, modifiers.constrain),
       x: clean(centre.x - shape.w / 2),
       y: clean(centre.y - shape.h / 2),
     });

@@ -48,6 +48,7 @@ export {
   ROTATION_SNAP,
   ROTATION_ZERO,
   resizeBounds,
+  resizeModifiers,
   rotateHandlePosition,
 } from './geometry/handles';
 export {
@@ -79,6 +80,14 @@ export {
   type ShortcutRow,
   shortcutReference,
 } from './keymap';
+export {
+  GESTURE_REFERENCE,
+  type GestureModifiers,
+  type GestureReferenceRow,
+  gestureModifiers,
+  type ModifierSource,
+  NO_GESTURE_MODIFIERS,
+} from './modifiers';
 export {
   AUTOSAVE_DELAY,
   type Autosave,

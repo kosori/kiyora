@@ -1,5 +1,6 @@
 import type { Bounds } from '@kiyora/model';
 import type { Point } from '../camera';
+import type { GestureModifiers } from '../modifiers';
 import { GRID } from './snap';
 
 /**
@@ -94,12 +95,26 @@ export const handleAt = (
   return near(rotateHandlePosition(bounds, zoom)) ? 'rotate' : null;
 };
 
-/** How a resize reads its modifiers: from the centre, keeping the ratio, snapped. */
+/** How a resize reads its resolved behaviour: from the centre, keeping the ratio, snapped. */
 export type ResizeModifiers = {
   fromCentre: boolean;
   keepRatio: boolean;
   snap: boolean;
 };
+
+/**
+ * How a resize resolves the gesture vocabulary: alt bypasses the grid and, the
+ * named collision, grows the box from its centre; shift keeps the ratio. The
+ * one place those two meanings are read, so a resize and a move cannot disagree
+ * about what a key does.
+ */
+export const resizeModifiers = (
+  modifiers: GestureModifiers
+): ResizeModifiers => ({
+  fromCentre: modifiers.bypassSnap,
+  keepRatio: modifiers.constrain,
+  snap: !modifiers.bypassSnap,
+});
 
 const snapped = (value: number, snap: boolean): number =>
   snap ? Math.round(value / GRID) * GRID : value;
