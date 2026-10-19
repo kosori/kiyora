@@ -44,6 +44,7 @@ export {
   SCHEMA_VERSION,
   type Shape,
   type Slide,
+  type StickyShape,
   type Style,
   settingsSchema,
   shapeBaseSchema,
@@ -117,6 +118,12 @@ export {
   type Theme,
   themeSchema,
 } from './paint/palette';
+export {
+  DEFAULT_STICKY_SIZE,
+  fitSticky,
+  NOTE_COLOUR,
+  NOTE_STYLE,
+} from './paint/sticky';
 export { projectBoard } from './projection/svg';
 export { CODE_FONT_FAMILY, fontFamilyOf, TEXT_FONT_FAMILY } from './text/font';
 export {

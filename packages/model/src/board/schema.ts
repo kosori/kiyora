@@ -201,12 +201,23 @@ export const connectorSchema = shapeBaseSchema.extend({
 /** A connector. */
 export type ConnectorShape = z.infer<typeof connectorSchema>;
 
+/**
+ * A sticky: a coloured note with centred text that grows with its content. It
+ * carries no extra field — its note colour is its style, and its grown box is
+ * authored when a label is committed — so it is a shape kind, not a figure.
+ */
+const stickySchema = shapeBaseSchema.extend({ kind: z.literal('sticky') });
+
+/** A sticky: a coloured note that grows with its label. */
+export type StickyShape = z.infer<typeof stickySchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
   frameSchema,
   textSchema,
   connectorSchema,
+  stickySchema,
 ]);
 
 /** One item on the board. */

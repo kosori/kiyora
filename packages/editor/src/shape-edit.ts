@@ -1,5 +1,11 @@
-import type { Board, Shape, TextStyle } from '@kiyora/model';
-import { moveConnector } from '@kiyora/model';
+import {
+  type Board,
+  fitSticky,
+  type Measurer,
+  moveConnector,
+  type Shape,
+  type TextStyle,
+} from '@kiyora/model';
 
 /** The board with the named shapes swapped for their replacements. */
 export const replaceShapes = (
@@ -55,11 +61,21 @@ const withShape = (
   return changed ? { ...board, shapes } : board;
 };
 
-/** Sets one shape's label, returning the same board when it did not change. */
-export const setShapeText = (board: Board, id: string, text: string): Board =>
-  withShape(board, id, (shape) =>
-    shape.text === text ? shape : { ...shape, text }
-  );
+/**
+ * Sets one shape's label, returning the same board when it did not change. A
+ * sticky additionally grows to fit its label when a measurer is supplied, so
+ * the note's own box carries the change and nothing else on the board moves.
+ */
+export const setShapeText = (
+  board: Board,
+  id: string,
+  text: string,
+  measure?: Measurer
+): Board =>
+  withShape(board, id, (shape) => {
+    const labelled = shape.text === text ? shape : { ...shape, text };
+    return labelled.kind === 'sticky' ? fitSticky(labelled, measure) : labelled;
+  });
 
 /** Sets one shape's text style, returning the same board when it did not change. */
 export const setShapeTextStyle = (

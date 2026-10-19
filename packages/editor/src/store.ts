@@ -342,7 +342,8 @@ export const createEditor = (board: Board): Editor => {
     setStyle: (next) => {
       style = next;
     },
-    setText: (id, text) => publishChange(setShapeText(current, id, text)),
+    setText: (id, text, measure) =>
+      publishChange(setShapeText(current, id, text, measure)),
     setTextStyle: (id, textStyle) =>
       publishChange(setShapeTextStyle(current, id, textStyle)),
     setTool: (tool) => {

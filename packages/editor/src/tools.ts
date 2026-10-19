@@ -2,15 +2,16 @@ import type { FigureKind, Style } from '@kiyora/model';
 
 /**
  * What a shape tool places: a figure from the vocabulary, a text shape for
- * words that belong to nothing else, or a connector between two ends.
+ * words that belong to nothing else, a connector between two ends, or a sticky
+ * note.
  */
-export type ShapeTool = FigureKind | 'text' | 'connector';
+export type ShapeTool = FigureKind | 'text' | 'connector' | 'sticky';
 
 /**
  * What the pointer does on the canvas: `select` picks and moves, `hand` grabs
  * the board itself, `frame` draws a region that holds other shapes, and a
- * shape tool — a figure, text or a connector — places one when the canvas is
- * dragged.
+ * shape tool — a figure, text, a connector or a sticky — places one when the
+ * canvas is dragged.
  */
 export type Tool = 'hand' | 'select' | 'frame' | ShapeTool;
 
@@ -25,9 +26,12 @@ export const isShapeTool = (tool: Tool): tool is ShapeTool =>
 export const placesShape = (tool: Tool): tool is Placeable =>
   tool === 'frame' || isShapeTool(tool);
 
-/** Whether `tool` places a figure, rather than text, a connector or nothing. */
+/** Whether `tool` places a figure, rather than text, a connector, a sticky or nothing. */
 export const isFigureTool = (tool: Tool): tool is FigureKind =>
-  isShapeTool(tool) && tool !== 'text' && tool !== 'connector';
+  isShapeTool(tool) &&
+  tool !== 'text' &&
+  tool !== 'connector' &&
+  tool !== 'sticky';
 
 /**
  * The style the first shape wears, and the one place the next shape's style

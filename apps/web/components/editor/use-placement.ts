@@ -35,8 +35,8 @@ type PlacementHandlers = {
 /**
  * Canvas drag handling: a gesture with a shape tool places exactly one shape.
  * Every other tool leaves the pointer alone for the camera and the selection.
- * A placed text shape is handed back through `onPlaced`, so it can be typed into
- * the moment it lands.
+ * A placed text shape or sticky is handed back through `onPlaced`, so it can be
+ * typed into the moment it lands.
  */
 export const usePlacement = (
   onPlaced?: (id: string) => void
@@ -65,7 +65,10 @@ export const usePlacement = (
       }
       const placement: Placement = { from, to: boardPoint(event, camera) };
       const placed = editor.placeShape(placement);
-      if (placed !== null && placed.kind === 'text') {
+      if (
+        placed !== null &&
+        (placed.kind === 'text' || placed.kind === 'sticky')
+      ) {
         onPlaced?.(placed.id);
       }
     },
