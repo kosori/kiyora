@@ -74,7 +74,11 @@ export const useBoardPointer = (
       if (!selecting.current) {
         return;
       }
-      editor.pointerMove(boardPoint(event, camera), event.altKey);
+      editor.pointerMove(
+        boardPoint(event, camera),
+        event.altKey,
+        event.shiftKey
+      );
     },
     [camera, editor]
   );
