@@ -11,30 +11,17 @@ import {
   selectedShapes,
   selectionBounds,
 } from './selection';
-import { setShapeText, setShapeTextStyle } from './shape-edit';
+import {
+  replaceShapes,
+  setShapeText,
+  setShapeTextStyle,
+  snapshotShapes,
+} from './shape-edit';
 import type { Drag, Editor, Gesture, MoveDrag, View } from './state';
 import { DEFAULT_STYLE, isShapeTool } from './tools';
 import { angleAt, resizeSelection, rotateSelection } from './transform';
 
 export type { Drag, Editor, Gesture, View } from './state';
-
-/** The board with the named shapes swapped for their replacements. */
-const replaceShapes = (
-  board: Board,
-  replacements: ReadonlyMap<string, Shape>
-): Board => {
-  if (replacements.size === 0) {
-    return board;
-  }
-  return {
-    ...board,
-    shapes: board.shapes.map((shape) => replacements.get(shape.id) ?? shape),
-  };
-};
-
-/** The before-picture of a set of shapes, keyed by id. */
-const snapshot = (shapes: readonly Shape[]): ReadonlyMap<string, Shape> =>
-  new Map(shapes.map((shape) => [shape.id, shape]));
 
 /** The signed turn between two angles, always the short way round. */
 const shortestDelta = (delta: number): number => {
@@ -159,7 +146,7 @@ export const createEditor = (board: Board): Editor => {
       bounds,
       handle,
       kind: 'resize',
-      originals: snapshot(selectedShapes(current, selection)),
+      originals: snapshotShapes(selectedShapes(current, selection)),
     };
     publishGesture();
   };
@@ -170,7 +157,7 @@ export const createEditor = (board: Board): Editor => {
     drag = {
       centre,
       kind: 'rotate',
-      originals: snapshot(selectedShapes(current, selection)),
+      originals: snapshotShapes(selectedShapes(current, selection)),
       start: angleAt(centre, point),
     };
     publishGesture();

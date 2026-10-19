@@ -1,5 +1,25 @@
 import type { Board, Shape, TextStyle } from '@kiyora/model';
 
+/** The board with the named shapes swapped for their replacements. */
+export const replaceShapes = (
+  board: Board,
+  replacements: ReadonlyMap<string, Shape>
+): Board => {
+  if (replacements.size === 0) {
+    return board;
+  }
+  return {
+    ...board,
+    shapes: board.shapes.map((shape) => replacements.get(shape.id) ?? shape),
+  };
+};
+
+/** The before-picture of a set of shapes, keyed by id. */
+export const snapshotShapes = (
+  shapes: readonly Shape[]
+): ReadonlyMap<string, Shape> =>
+  new Map(shapes.map((shape) => [shape.id, shape]));
+
 /**
  * Replaces the shape `id` names with whatever `update` returns, or the same
  * board when nothing changed. A label edit is therefore one board change, which
