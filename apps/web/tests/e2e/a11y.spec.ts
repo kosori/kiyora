@@ -33,6 +33,36 @@ const canvasBox = async (page: Page) => {
 const starterShape = (page: Page) =>
   page.getByTestId('board').locator('path').first();
 
+const drag = async (
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number }
+) => {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 8 });
+  await page.mouse.up();
+};
+
+/** Draw a second rectangle, then join the two with a connector. */
+const joinTwoShapes = async (
+  page: Page,
+  box: { x: number; y: number }
+): Promise<void> => {
+  await page.keyboard.press('r');
+  await drag(
+    page,
+    { x: box.x + 500, y: box.y + 80 },
+    { x: box.x + 600, y: box.y + 180 }
+  );
+  await page.keyboard.press('c');
+  await drag(
+    page,
+    { x: box.x + 200, y: box.y + 150 },
+    { x: box.x + 550, y: box.y + 130 }
+  );
+};
+
 /** Every violation axe reports on the current screen, named so a failure reads. */
 const audit = async (page: Page): Promise<string[]> => {
   const results = await new AxeBuilder({ page }).analyze();
@@ -114,6 +144,19 @@ test('the shape picker reports no accessibility violations', async ({
   expect(await audit(page)).toEqual([]);
 });
 
+test('a selected connector reports no accessibility violations', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  await joinTwoShapes(page, box);
+
+  await page.mouse.click(box.x + 400, box.y + 140);
+  await expect(page.getByTestId('connector-controls')).toBeVisible();
+
+  expect(await audit(page)).toEqual([]);
+});
+
 test('the shortcut dialog reports no accessibility violations', async ({
   page,
 }) => {
@@ -181,6 +224,7 @@ test('every rail tool is selectable from the keyboard', async ({ page }) => {
   await press('Select');
   await press('Rectangle');
   await press('Text');
+  await press('Connector');
   await press('Sticky');
   await press('Frame');
 });
