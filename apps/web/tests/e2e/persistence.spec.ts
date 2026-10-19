@@ -208,7 +208,7 @@ test('a pan alone is flushed as the tab hides, so the view comes back', async ({
     'true'
   );
 
-  expect(await camera(page)).toEqual(left);
+  await expect.poll(() => camera(page)).toEqual(left);
 });
 
 test('a board is saved and read back without IndexedDB, through the fallback', async ({
