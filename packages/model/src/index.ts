@@ -5,6 +5,7 @@ export {
   boardSchema,
   type Camera,
   cameraSchema,
+  FIGURE_KINDS,
   type FigureKind,
   type FigureShape,
   figureKindSchema,

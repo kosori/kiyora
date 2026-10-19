@@ -103,9 +103,21 @@ describe('rejecting a board', () => {
   });
 
   it('names the kind when the vocabulary does not know it', () => {
-    const issues = boardIssues(board({ shapes: [shape({ kind: 'hexagon' })] }));
+    const issues = boardIssues(
+      board({ shapes: [shape({ kind: 'squiggle' })] })
+    );
 
     expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.kind']);
+  });
+
+  it('accepts every figure the grammar names, not just a rectangle', () => {
+    const issues = boardIssues(
+      board({
+        shapes: [shape({ kind: 'hexagon' }), shape({ id: 'b', kind: 'cloud' })],
+      })
+    );
+
+    expect(issues).toEqual([]);
   });
 
   it('names every missing part of a board', () => {
