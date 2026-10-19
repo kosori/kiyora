@@ -34,8 +34,13 @@ const pathHeight = (d: string): number => {
   return Math.max(...ys) - Math.min(...ys);
 };
 
+/**
+ * Long enough to outgrow a note's 160-unit box in the vendored font, where the
+ * first sentence alone still fits: twelve wrapped lines, so the growth the undo
+ * has to take back really happens.
+ */
 const LONG =
-  'Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday';
+  'Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday. Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday.';
 
 /** The point inside the starter board's rectangle, which is its own label box. */
 const RECTANGLE = { x: 190, y: 150 };
@@ -144,9 +149,9 @@ test('undoing a note\u2019s label puts its box back, so the note shrinks again',
   await again.fill(LONG);
   await again.blur();
 
-  expect(pathHeight((await note().getAttribute('d')) ?? '')).toBeGreaterThan(
-    pathHeight(small)
-  );
+  const grown = pathHeight((await note().getAttribute('d')) ?? '');
+
+  expect(grown).toBeGreaterThan(pathHeight(small) + 50);
 
   await page.getByTestId('undo').click();
 
