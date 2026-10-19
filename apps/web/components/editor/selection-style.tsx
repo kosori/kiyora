@@ -18,6 +18,7 @@ import { ColourField } from './colour-field';
 import { OptionButtons } from './option-buttons';
 import { PaletteSwatches } from './palette-swatches';
 import { StyleSlider } from './style-slider';
+import { TextStyleControls } from './text-style-controls';
 
 type Props = {
   shape: Shape;
@@ -148,6 +149,7 @@ export const SelectionStyle = ({ shape, theme }: Props) => {
           value={Math.round(shape.opacity * 100)}
         />
       </section>
+      <TextStyleControls shape={shape} />
     </div>
   );
 };

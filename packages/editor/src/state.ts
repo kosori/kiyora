@@ -161,9 +161,10 @@ export type Editor = {
   endNudgeRun: () => void;
   /**
    * Restyles every selected shape in one board write: a style patch, an
-   * opacity, or both. One call is one gesture, so it is one history entry. The
-   * restyled style becomes the one the next shape wears. With an empty
-   * selection it does nothing.
+   * opacity, a text-style patch, or any combination. One call is one gesture,
+   * so it is one history entry. A restyled style becomes the one the next shape
+   * wears; a text-only change leaves it alone. With an empty selection it does
+   * nothing.
    */
   restyle: (change: Restyle) => void;
   /** Whether undo and redo are possible, as a value a control can read. */
