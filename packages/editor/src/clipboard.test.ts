@@ -177,6 +177,25 @@ describe('cutting, copying and pasting', () => {
     expect(original?.to).toEqual({ kind: 'bound', shapeId: 'b' });
   });
 
+  it('brings a connector whose two ends are in the copied set, even when it is not selected', () => {
+    const editor = createEditor(
+      board([rectangle({ id: 'a' }), rectangle({ id: 'b', x: 300 })])
+    );
+    editor.setTool('connector');
+    editor.placeShape({ from: { x: 50, y: 30 }, to: { x: 350, y: 30 } });
+    editor.setSelection(['a', 'b']);
+
+    editor.copy();
+    editor.paste();
+
+    const after = editor.getBoard();
+    const copy = after.shapes.find(
+      (shape): shape is ConnectorShape => shape.id === 'connector-2'
+    );
+    expect(copy?.from).toEqual({ kind: 'bound', shapeId: 'rectangle-1' });
+    expect(copy?.to).toEqual({ kind: 'bound', shapeId: 'rectangle-2' });
+  });
+
   it('records a paste as one undo, not one entry per shape', () => {
     const editor = createEditor(
       board([rectangle({ id: 'a' }), rectangle({ id: 'b', x: 200 })])

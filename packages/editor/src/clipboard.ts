@@ -32,17 +32,33 @@ const mintId = (kind: Shape['kind'], used: Set<string>): string => {
   return id;
 };
 
+/** Whether `endpoint` is bound to one of `wanted`. */
+const boundTo = (wanted: ReadonlySet<string>, endpoint: Endpoint): boolean =>
+  endpoint.kind === 'bound' && wanted.has(endpoint.shapeId);
+
 /**
  * `ids` and everything held inside them, as a fragment. A frame arrives with
- * its members, found through the containment helper rather than a second walk;
- * a shape whose parent is not part of the fragment is re-rooted, so a pasted
- * copy never names a parent the copy does not have.
+ * its members, found through the containment helper rather than a second walk,
+ * and a connector whose two ends both land on copied shapes comes too, even
+ * when it was not selected — so a connector between two copied shapes stays
+ * between the two copies. A shape whose parent is not part of the fragment is
+ * re-rooted, so a pasted copy never names a parent the copy does not have.
  */
 export const copyFragment = (
   board: Board,
   ids: readonly string[]
 ): Clipboard => {
   const wanted = new Set(subtreeIds(board, ids));
+  for (const shape of board.shapes) {
+    if (
+      shape.kind === 'connector' &&
+      !wanted.has(shape.id) &&
+      boundTo(wanted, shape.from) &&
+      boundTo(wanted, shape.to)
+    ) {
+      wanted.add(shape.id);
+    }
+  }
 
   return {
     shapes: board.shapes
