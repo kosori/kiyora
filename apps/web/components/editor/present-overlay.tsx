@@ -29,6 +29,7 @@ export const PresentOverlay = () => {
   const present = usePresent();
   const measure = useMemo(() => createTextMeasurer(), []);
   const root = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<Element | null>(null);
   const [seconds, setSeconds] = useState(0);
 
   const onExit = useCallback(() => editor.stopPresent(), [editor]);
@@ -40,6 +41,60 @@ export const PresentOverlay = () => {
     () => paintBoard(board, { measure, theme: board.settings.theme }),
     [board, measure]
   );
+
+  /**
+   * Presenting takes focus and gives it back. The overlay is modal, so focus
+   * moves to it on open and returns to whatever opened it on close; Escape is a
+   * keymap binding, so leaving is always one key, never a trap. Tab cycles
+   * inside the overlay rather than escaping to the chrome behind it.
+   */
+  useEffect(() => {
+    if (!present.active) {
+      return;
+    }
+    previousFocus.current = document.activeElement;
+    root.current?.focus();
+
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') {
+        return;
+      }
+      const element = root.current;
+      if (element === null) {
+        return;
+      }
+      const focusables = [
+        ...element.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ),
+      ];
+      const first = focusables.at(0);
+      const last = focusables.at(-1);
+      if (first === undefined || last === undefined) {
+        event.preventDefault();
+        return;
+      }
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === element)) {
+        event.preventDefault();
+        last.focus();
+        return;
+      }
+      if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onTab);
+
+    return () => {
+      document.removeEventListener('keydown', onTab);
+      const before = previousFocus.current;
+      if (before instanceof HTMLElement && before.isConnected) {
+        before.focus();
+      }
+    };
+  }, [present.active]);
 
   useEffect(() => {
     if (!present.active) {
@@ -84,10 +139,11 @@ export const PresentOverlay = () => {
     <div
       aria-label='Presenting'
       aria-modal='true'
-      className='fixed inset-0 z-50 flex flex-col bg-background text-foreground'
+      className='fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none'
       data-testid='present-overlay'
       ref={root}
       role='dialog'
+      tabIndex={-1}
     >
       <svg
         aria-label='Slide'

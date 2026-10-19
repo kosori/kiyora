@@ -119,7 +119,7 @@ One gesture produces exactly one history entry.
 
 - A drag opens a transaction and commits once on pointer-up; thirty pointer moves are one undo.
 - Consecutive nudge keys coalesce until the run stops or the selection changes.
-- A text edit commits on blur or Escape.
+- A text edit opens a transaction when the overlay appears and commits once on blur.
 - Escape restores the transaction's before-picture and pushes nothing.
 - History is bounded at 200 entries and lives in memory. Autosave covers the document, so a persisted history would only add a second format to migrate.
 - Redo clears on any new gesture.

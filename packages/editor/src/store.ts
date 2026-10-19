@@ -9,6 +9,7 @@ import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { gestureOf, handleDrag, moveDrag } from './gesture';
 import { createTransactions } from './history/transaction';
+import { createLabelEdit } from './label-edit';
 import { shapeFromPlacement } from './placement';
 import { createPresent } from './present';
 import { restyledBoard } from './restyle';
@@ -19,12 +20,7 @@ import {
   sameIds,
   selectedShapes,
 } from './selection';
-import {
-  replaceShapes,
-  setShapeText,
-  setShapeTextStyle,
-  translateShapes,
-} from './shape-edit';
+import { replaceShapes, translateShapes } from './shape-edit';
 import type { Drag, Editor, Gesture, View } from './state';
 import { subscriptionOf } from './subscription';
 import { DEFAULT_STYLE, placesShape } from './tools';
@@ -157,10 +153,17 @@ export const createEditor = (board: Board): Editor => {
     select: commitSelection,
     selection: () => selection,
   });
+  const label = createLabelEdit({
+    board: () => current,
+    change: changeBoard,
+    publish: publishChange,
+    transactions,
+  });
 
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    beginTextEdit: label.begin,
     cancelGesture: () => {
       if (drag === null) {
         return;
@@ -178,6 +181,9 @@ export const createEditor = (board: Board): Editor => {
       }
       publishGesture();
     },
+    cancelTextEdit: () => {
+      restore(label.cancel());
+    },
     copy: commands.copy,
     cut: commands.cut,
     deleteSelection: commands.deleteSelection,
@@ -185,6 +191,7 @@ export const createEditor = (board: Board): Editor => {
     duplicate: commands.duplicate,
     duplicateSlide: deck.duplicateSlide,
     endNudgeRun: transactions.endNudgeRun,
+    endTextEdit: label.end,
     getBoard: () => current,
     getGesture: gestureNow,
     getHistory: () => transactions.getState(),
@@ -214,7 +221,7 @@ export const createEditor = (board: Board): Editor => {
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
       current = addShape(current, shape);
       setView({ ...view, tool: 'select' });
-      transactions.commit(before, current);
+      label.place(before, shape, current);
       publish(listeners);
       return shape;
     },
@@ -355,15 +362,7 @@ export const createEditor = (board: Board): Editor => {
       setView({ ...view, camera });
     },
     setConnector: (id, edit) => {
-      transactions.endNudgeRun();
-      const before = current;
-      const next = editConnector(current, id, edit);
-      if (next === before) {
-        return;
-      }
-      current = next;
-      transactions.commit(before, current);
-      publish(listeners);
+      changeBoard(editConnector(current, id, edit));
     },
     setSelection: (ids) => {
       commitSelection(ids);
@@ -372,10 +371,8 @@ export const createEditor = (board: Board): Editor => {
     setStyle: (next) => {
       style = next;
     },
-    setText: (id, text, measure) =>
-      publishChange(setShapeText(current, id, text, measure)),
-    setTextStyle: (id, textStyle) =>
-      publishChange(setShapeTextStyle(current, id, textStyle)),
+    setText: label.setText,
+    setTextStyle: label.setTextStyle,
     setTool: (tool) => {
       setView({ ...view, tool });
     },
