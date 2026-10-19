@@ -75,7 +75,9 @@ export {
   type Command,
   commandId,
   KEY_ALIASES,
+  KEY_MODES,
   KEYMAP,
+  type KeyMode,
   keyToken,
   type ModifierRule,
   type Modifiers,
@@ -135,6 +137,7 @@ export {
   createEditor,
   type Editor,
   type Gesture,
+  type PresentState,
   type View,
 } from './store';
 export {
