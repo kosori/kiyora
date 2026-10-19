@@ -165,8 +165,16 @@ export const resizeSelection = (
 
   const to = resizeBounds(bounds, handle, pointer, modifiers);
   const signs = handleSigns(handle);
-  const scaleX = bounds.w === 0 ? 1 : to.w / bounds.w;
-  const scaleY = bounds.h === 0 ? 1 : to.h / bounds.h;
+  const floor = (scale: number, smallest: number): number =>
+    smallest > 0 ? Math.max(scale, MIN_SIZE / smallest) : scale;
+  const scaleX =
+    bounds.w === 0
+      ? 1
+      : floor(to.w / bounds.w, Math.min(...shapes.map((shape) => shape.w)));
+  const scaleY =
+    bounds.h === 0
+      ? 1
+      : floor(to.h / bounds.h, Math.min(...shapes.map((shape) => shape.h)));
   const centre = { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 };
   const anchorX = modifiers.fromCentre
     ? centre.x

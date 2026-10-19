@@ -213,6 +213,21 @@ describe('resizing a shape', () => {
     expect(next.get('a')).toMatchObject({ w: 200, x: 0 });
     expect(next.get('b')).toMatchObject({ w: 200, x: 400 });
   });
+
+  it('keeps the smallest member of a group above the minimum', () => {
+    const next = resizeSelection(
+      [
+        rectangle({ h: 100, id: 'a', w: 100, x: 0, y: 0 }),
+        rectangle({ h: 20, id: 'b', w: 20, x: 200, y: 0 }),
+      ],
+      { h: 100, w: 220, x: 0, y: 0 },
+      'e',
+      { x: 11, y: 0 },
+      noModifiers
+    );
+
+    expect(next.get('b')?.w).toBe(MIN_SIZE);
+  });
 });
 
 describe('rotating a selection', () => {
