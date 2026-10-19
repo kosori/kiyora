@@ -24,7 +24,12 @@ export {
   boardIssues,
   parseBoard,
 } from './board/validate';
-export { type Bounds, boardBounds } from './paint/figures';
+export {
+  type Bounds,
+  boardBounds,
+  boundsOf,
+  boundsOfShapes,
+} from './paint/figures';
 export {
   type Paint,
   type PaintContext,
