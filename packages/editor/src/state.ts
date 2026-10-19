@@ -8,6 +8,7 @@ import type {
 } from '@kiyora/model';
 import type { Point } from './camera';
 import type { HandleKind } from './geometry/handles';
+import type { HistoryState } from './history/stack';
 import type { GestureModifiers } from './modifiers';
 import type { Placement } from './placement';
 import type { Restyle } from './restyle';
@@ -42,9 +43,10 @@ export type Gesture =
   | { kind: 'resize'; handle: HandleKind }
   | { kind: 'rotate' };
 
-/** The open move: where the pointer went down, and the positions it moved from. */
+/** The open move: the board it began on, where the pointer went down, and the positions it moved from. */
 export type MoveDrag = {
   applied: Point;
+  before: Board;
   kind: 'move';
   originals: ReadonlyMap<string, Point>;
   origin: Point;
@@ -60,16 +62,18 @@ export type MarqueeDrag = {
   kind: 'marquee';
 };
 
-/** The open resize: the handle grabbed, the box it started on, and the before-picture. */
+/** The open resize: the board it began on, the handle grabbed, and the before-picture. */
 export type ResizeDrag = {
+  before: Board;
   bounds: Bounds;
   handle: HandleKind;
   kind: 'resize';
   originals: ReadonlyMap<string, Shape>;
 };
 
-/** The open rotate: where the pointer started, and the before-picture. */
+/** The open rotate: the board it began on, where the pointer started, and the before-picture. */
 export type RotateDrag = {
+  before: Board;
   centre: Point;
   kind: 'rotate';
   originals: ReadonlyMap<string, Shape>;
@@ -101,8 +105,7 @@ export type Editor = {
   getStyle: () => Style;
   /**
    * Records the style the next shape wears, so the picker's default and the
-   * next shape read one value. Nothing observes it yet — the inspector brings
-   * the subscription it needs when it lands.
+   * next shape read one value. The inspector writes it too, through `restyle`.
    */
   setStyle: (style: Style) => void;
   /**
@@ -149,11 +152,21 @@ export type Editor = {
   cancelGesture: () => void;
   /** Moves every selected shape by the same delta, so relative positions hold. */
   nudge: (dx: number, dy: number) => void;
+  /** Ends the open run of nudges, so the next nudge is a fresh history entry. */
+  endNudgeRun: () => void;
   /**
    * Restyles every selected shape in one board write: a style patch, an
-   * opacity, or both. One call is one change, so it becomes one history entry
-   * the moment history lands. The restyled style becomes the one the next shape
-   * wears. With an empty selection it does nothing.
+   * opacity, or both. One call is one gesture, so it is one history entry. The
+   * restyled style becomes the one the next shape wears. With an empty
+   * selection it does nothing.
    */
   restyle: (change: Restyle) => void;
+  /** Whether undo and redo are possible, as a value a control can read. */
+  getHistory: () => HistoryState;
+  /** Subscribes to history-availability changes. Returns the unsubscribe. */
+  subscribeHistory: (listener: () => void) => () => void;
+  /** Undoes the last committed gesture. Does nothing when there is none. */
+  undo: () => void;
+  /** Redoes the last undone gesture. Does nothing when there is none. */
+  redo: () => void;
 };

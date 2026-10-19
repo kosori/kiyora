@@ -57,6 +57,17 @@ export const angleAt = (origin: Point, point: Point): number => {
   return ((degrees % 360) + 360) % 360;
 };
 
+/** The signed turn between two angles, always the short way round. */
+export const shortestDelta = (delta: number): number => {
+  if (delta > 180) {
+    return delta - 360;
+  }
+  if (delta < -180) {
+    return delta + 360;
+  }
+  return delta;
+};
+
 /**
  * The rotation a drag settles on: a fifteen-degree step when shift is held, and
  * exactly zero when it lands within a few degrees of upright, so a bad rotation

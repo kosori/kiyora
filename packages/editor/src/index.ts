@@ -60,6 +60,12 @@ export {
 } from './geometry/hit-test';
 export { GRID, NUDGE_STEP, snapTranslation, snapValue } from './geometry/snap';
 export {
+  createHistory,
+  HISTORY_LIMIT,
+  type History,
+  type HistoryState,
+} from './history/stack';
+export {
   type Binding,
   bindingKey,
   bindingLabel,

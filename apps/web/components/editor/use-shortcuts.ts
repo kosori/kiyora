@@ -77,6 +77,18 @@ export const useShortcuts = (
         return;
       }
 
+      if (command.kind === 'undo') {
+        event.preventDefault();
+        editor.undo();
+        return;
+      }
+
+      if (command.kind === 'redo') {
+        event.preventDefault();
+        editor.redo();
+        return;
+      }
+
       onShowShortcuts();
     };
 
@@ -87,6 +99,10 @@ export const useShortcuts = (
         key: event.key,
         shift: event.shiftKey,
       });
+      if (command?.kind === 'nudge') {
+        editor.endNudgeRun();
+        return;
+      }
       if (command?.kind === 'camera') {
         camera.run(command.action, 'up');
       }

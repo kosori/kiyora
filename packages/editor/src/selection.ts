@@ -34,6 +34,10 @@ export const selectionBounds = (
 /** An absolute position per shape id. */
 export type Offsets = ReadonlyMap<string, { x: number; y: number }>;
 
+/** Whether both id lists say the same thing, in the same order. */
+export const sameIds = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((id, index) => id === b[index]);
+
 /** Moves the named shapes to their offsets, leaving every other shape alone. */
 export const offsetShapes = (board: Board, offsets: Offsets): Board => {
   if (offsets.size === 0) {

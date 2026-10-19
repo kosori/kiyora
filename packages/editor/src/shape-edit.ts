@@ -56,3 +56,24 @@ export const setShapeTextStyle = (
   id: string,
   textStyle: TextStyle
 ): Board => withShape(board, id, (shape) => ({ ...shape, textStyle }));
+
+/** The board with the named shapes moved by `dx`, `dy`, leaving the rest alone. */
+export const translateShapes = (
+  board: Board,
+  ids: readonly string[],
+  dx: number,
+  dy: number
+): Board => {
+  if (ids.length === 0) {
+    return board;
+  }
+  const moved = new Set(ids);
+  return {
+    ...board,
+    shapes: board.shapes.map((shape) =>
+      moved.has(shape.id)
+        ? { ...shape, x: shape.x + dx, y: shape.y + dy }
+        : shape
+    ),
+  };
+};

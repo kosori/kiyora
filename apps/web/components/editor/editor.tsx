@@ -8,6 +8,7 @@ import { BoardCanvas } from './board-canvas';
 import { CrashProbe } from './crash-probe';
 import { PanelBoundary } from './error-boundary';
 import { FileControls } from './file-controls';
+import { HistoryControls } from './history-controls';
 import { Inspector } from './inspector';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
@@ -40,6 +41,7 @@ export const Editor = () => {
         <div className='relative h-full min-w-0 flex-1'>
           <BoardCanvas onShowShortcuts={toggleShortcuts} />
           <FileControls />
+          <HistoryControls />
           <PanelBoundary label='Status'>
             <CrashProbe name='status'>
               <SaveIndicator {...health} />

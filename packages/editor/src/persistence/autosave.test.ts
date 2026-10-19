@@ -134,6 +134,19 @@ describe('autosave', () => {
     expect(readBack(writes.at(0)).camera).toEqual({ x: 40, y: -12, zoom: 2.5 });
   });
 
+  it('does not arm a write for a pan alone, so navigating is free', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(board('First', { x: 5, y: 5, zoom: 1 }));
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ delay: 50, editor, storage });
+
+    editor.setCamera({ x: 40, y: -12, zoom: 2.5 });
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(writes).toEqual([]);
+    expect(autosave.getStatus()).toBe('saved');
+  });
+
   it('says unsaved while the change is pending, then saved once written', async () => {
     vi.useFakeTimers();
     const editor = createEditor(board('First'));
