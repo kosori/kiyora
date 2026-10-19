@@ -34,6 +34,11 @@ type Props = {
  * Text is measured by the app's canvas measurer and painted by the walker like
  * every other coordinate, so `apps/web` never wraps or places a word itself. A
  * double click on a shape opens the label overlay here, on the canvas.
+ *
+ * The board group is unselectable, so a drag that starts on a label's words
+ * begins a gesture rather than a text-selection drag — Chromium cancels that
+ * drag, and the placement never completes. Keeping the text hit-testable rather
+ * than removing it with `pointer-events` leaves a label's link clickable.
  */
 export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
@@ -69,6 +74,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
       >
         <DotGrid camera={camera} theme={board.settings.theme} />
         <g
+          className='select-none'
           data-testid='board'
           transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
         >
