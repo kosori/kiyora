@@ -57,9 +57,11 @@ export const ShortcutDialog = ({ onOpenChange, open }: Props) => {
   return (
     <dialog
       aria-label='Keyboard shortcuts'
-      className='m-auto rounded-lg border border-border bg-background p-6 text-foreground backdrop:bg-foreground/20'
+      className='m-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6 text-foreground outline-none backdrop:bg-foreground/20 focus-visible:ring-3 focus-visible:ring-ring/50'
       onClose={close}
       ref={dialog}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable dialog must be reachable by keyboard, which is what axe's scrollable-region-focusable asks for
+      tabIndex={0}
     >
       <h2 className='mb-4 font-heading font-semibold text-lg'>
         Keyboard shortcuts

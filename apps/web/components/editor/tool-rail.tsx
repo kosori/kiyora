@@ -33,7 +33,7 @@ const RAIL: readonly RailEntry[] = [
 
 /** The tool rail: every button names its tool, and the active one reads as pressed. */
 export const ToolRail = () => (
-  <aside
+  <div
     aria-label='Tools'
     className='flex h-full w-12 shrink-0 flex-col items-center gap-0.5 border-border border-r bg-background p-2'
     role='toolbar'
@@ -42,5 +42,5 @@ export const ToolRail = () => (
       <ToolRailButton entry={entry} key={entry.tool} />
     ))}
     <ShapePicker />
-  </aside>
+  </div>
 );
