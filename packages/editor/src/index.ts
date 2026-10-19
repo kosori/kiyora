@@ -33,13 +33,18 @@ export { GRID, NUDGE_STEP, snapTranslation, snapValue } from './geometry/snap';
 export {
   type Binding,
   bindingKey,
+  bindingLabel,
   CAMERA_ACTIONS,
   type CameraAction,
+  type Chord,
   type Command,
   commandId,
   KEY_ALIASES,
   KEYMAP,
   keyToken,
+  type ModifierRule,
+  type Modifiers,
+  matchBinding,
   type ReferenceRow,
   resolveKey,
   SHORTCUT_ROWS,
@@ -52,11 +57,25 @@ export {
   type AutosaveOptions,
   createAutosave,
 } from './persistence/autosave';
-export { loadBoard, restoreBoard } from './persistence/board';
+export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
+export {
+  type CorruptReason,
+  faultOf,
+  StorageError,
+  type StorageFault,
+} from './persistence/faults';
+export {
+  createPresence,
+  type Presence,
+  type PresenceChannel,
+  type PresenceMessage,
+} from './persistence/presence';
 export {
   BOARD_KEY,
   type BoardStorage,
+  QUARANTINE_KEY,
   type SaveStatus,
+  SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
 export {

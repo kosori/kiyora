@@ -1,4 +1,12 @@
 // The board: one schema, one paint walker, and the pure projection to SVG.
+
+export {
+  MIGRATIONS,
+  type Migration,
+  type MigrationResult,
+  migratePayload,
+  versionOf,
+} from './board/migrations';
 export {
   type Board,
   type BoardSettings,
@@ -26,6 +34,11 @@ export {
   boardIssues,
   parseBoard,
 } from './board/validate';
+export {
+  BOARD_FILE_EXTENSION,
+  parseBoardFile,
+  serializeBoard,
+} from './file/board-file';
 export {
   type Bounds,
   boardBounds,

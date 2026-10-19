@@ -13,7 +13,6 @@ import { TextEditor } from './text-editor';
 import { TextLayer } from './text-layer';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
-import { useSelectionKeys } from './use-selection-keys';
 import { useShortcuts } from './use-shortcuts';
 
 type Props = {
@@ -64,7 +63,6 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const measure = useMemo(() => createTextMeasurer(), []);
 
   useShortcuts(onShowShortcuts, surface.intent);
-  useSelectionKeys();
 
   const paint = useMemo(
     () => paintBoard(board, { measure, theme: board.settings.theme }),

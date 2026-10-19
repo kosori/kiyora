@@ -21,24 +21,39 @@ const board = (title: string, camera = { x: 0, y: 0, zoom: 1 }): Board =>
   });
 
 const holding = (value: string | null): BoardStorage => ({
+  quarantine: () => Promise.resolve(),
   read: () => Promise.resolve(value),
+  snapshot: () => Promise.resolve(),
   write: () => Promise.resolve(),
 });
 
 describe('loading a board', () => {
   it('finds nothing when nothing was ever stored', async () => {
-    expect(await loadBoard(holding(null))).toBeNull();
+    expect(await loadBoard(holding(null))).toEqual({ status: 'empty' });
   });
 
-  it('reads back the board it wrote', async () => {
+  it('reads back the board it wrote, with no migration to report', async () => {
     const stored = board('Kept', { x: 8, y: 9, zoom: 3 });
 
-    expect(await loadBoard(holding(JSON.stringify(stored)))).toEqual(stored);
+    expect(await loadBoard(holding(JSON.stringify(stored)))).toEqual({
+      board: stored,
+      migratedFrom: null,
+      status: 'loaded',
+    });
   });
 
-  it('treats bytes that are not a board as nothing stored', async () => {
-    expect(await loadBoard(holding('{"not":"a board"}'))).toBeNull();
-    expect(await loadBoard(holding('truncated'))).toBeNull();
+  it('reports bytes that are not a board rather than treating them as nothing', async () => {
+    const result = await loadBoard(holding('{"not":"a board"}'));
+    const result2 = await loadBoard(holding('truncated'));
+
+    expect(result).toMatchObject({
+      fault: { kind: 'corrupt', reason: 'damaged' },
+      status: 'fault',
+    });
+    expect(result2).toMatchObject({
+      fault: { kind: 'corrupt', reason: 'damaged' },
+      status: 'fault',
+    });
   });
 });
 
