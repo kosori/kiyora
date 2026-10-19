@@ -15,7 +15,14 @@ const shape = (overrides: Record<string, unknown> = {}) => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'blue', fillStyle: 'pastel', stroke: 'ink', strokeWidth: 2 },
+  style: {
+    corner: 'sharp',
+    dash: 'solid',
+    fill: 'blue',
+    fillStyle: 'pastel',
+    stroke: 'ink',
+    strokeWidth: 2,
+  },
   w: 120,
   x: 0,
   y: 0,
@@ -40,6 +47,8 @@ describe('the board', () => {
     const parsed: Board = parseBoard(board());
 
     expect(parsed.shapes[0]?.style).toEqual({
+      corner: 'sharp',
+      dash: 'solid',
       fill: 'blue',
       fillStyle: 'pastel',
       stroke: 'ink',
@@ -63,6 +72,51 @@ describe('the board', () => {
       'Ship it',
       undefined,
     ]);
+  });
+
+  it('keeps the corners and the dash a shape was authored with', () => {
+    const parsed = parseBoard(
+      board({
+        shapes: [
+          shape({
+            id: 'round-dashed',
+            style: {
+              corner: 'rounded',
+              dash: 'dashed',
+              fill: 'blue',
+              fillStyle: 'pastel',
+              stroke: 'ink',
+              strokeWidth: 2,
+            },
+          }),
+        ],
+      })
+    );
+
+    expect(parsed.shapes[0]?.style).toMatchObject({
+      corner: 'rounded',
+      dash: 'dashed',
+    });
+  });
+
+  it('rejects a corner the grammar does not name, rather than guessing one', () => {
+    const issues = boardIssues(
+      board({
+        shapes: [shape({ style: { ...shape().style, corner: 'bevel' } })],
+      })
+    );
+
+    expect(issues.map((issue) => issue.path)).toEqual([
+      'shapes.0.style.corner',
+    ]);
+  });
+
+  it('rejects a dash outside the stroke patterns on offer', () => {
+    const issues = boardIssues(
+      board({ shapes: [shape({ style: { ...shape().style, dash: 'wavy' } })] })
+    );
+
+    expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.style.dash']);
   });
 
   it('keeps a deck entry: the frame it presents, its notes, and whether it is skipped', () => {

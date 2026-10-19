@@ -56,6 +56,12 @@ const under = (view: Camera, x: number, y: number) => ({
   y: (y - view.y) / view.zoom,
 });
 
+/** A page point in the canvas's own pixels, which is what the camera works in. */
+const localPoint = (
+  box: { x: number; y: number },
+  point: { x: number; y: number }
+) => ({ x: point.x - box.x, y: point.y - box.y });
+
 const gridStep = async (page: Page): Promise<number> => {
   const value = await page.getByTestId('dot-grid').getAttribute('width');
 
@@ -165,18 +171,20 @@ test('the wheel zooms about the pointer, keeping the board point under it', asyn
 }) => {
   await open(page);
 
-  const pointer = { x: 640, y: 360 };
+  const box = await viewport(page);
+  const pointer = { x: box.x + 400, y: box.y + 240 };
+  const onCanvas = localPoint(box, pointer);
   await page.mouse.move(pointer.x, pointer.y);
   const before = await camera(page);
-  const held = under(before, pointer.x, pointer.y);
+  const held = under(before, onCanvas.x, onCanvas.y);
 
   await page.mouse.wheel(0, -100);
 
   const after = await camera(page);
 
   expect(after.zoom).toBeCloseTo(1.2, 3);
-  expect(under(after, pointer.x, pointer.y).x).toBeCloseTo(held.x, 1);
-  expect(under(after, pointer.x, pointer.y).y).toBeCloseTo(held.y, 1);
+  expect(under(after, onCanvas.x, onCanvas.y).x).toBeCloseTo(held.x, 1);
+  expect(under(after, onCanvas.x, onCanvas.y).y).toBeCloseTo(held.y, 1);
   await expect(page.getByTestId('zoom-percentage')).toHaveText('120%');
 
   await page.mouse.wheel(0, 100);
@@ -187,16 +195,18 @@ test('the wheel zooms about the pointer, keeping the board point under it', asyn
 test('the keyboard zooms about the pointer too', async ({ page }) => {
   await open(page);
 
-  const pointer = { x: 320, y: 180 };
+  const box = await viewport(page);
+  const pointer = { x: box.x + 320, y: box.y + 180 };
+  const onCanvas = localPoint(box, pointer);
   await page.mouse.move(pointer.x, pointer.y);
-  const held = under(await camera(page), pointer.x, pointer.y);
+  const held = under(await camera(page), onCanvas.x, onCanvas.y);
 
   await page.keyboard.press('=');
 
   const zoomed = await camera(page);
 
   expect(zoomed.zoom).toBeCloseTo(1.2, 3);
-  expect(under(zoomed, pointer.x, pointer.y).x).toBeCloseTo(held.x, 1);
+  expect(under(zoomed, onCanvas.x, onCanvas.y).x).toBeCloseTo(held.x, 1);
 
   await page.keyboard.press('-');
 

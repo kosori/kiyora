@@ -12,7 +12,12 @@ export {
   type BoardSettings,
   boardSchema,
   type Camera,
+  type Corner,
   cameraSchema,
+  cornerSchema,
+  DASHES,
+  type Dash,
+  dashSchema,
   FIGURE_KINDS,
   type FigureKind,
   type FigureShape,
@@ -52,6 +57,7 @@ export {
   paintShape,
 } from './paint/paint';
 export {
+  FILL_STYLES,
   type FillStyle,
   FOREGROUND,
   FOREGROUND_ENTRY,
@@ -59,6 +65,7 @@ export {
   fillStyleSchema,
   foregroundSchema,
   PALETTE,
+  PALETTE_COLOURS,
   type PaletteColour,
   type PaletteEntry,
   paintColour,

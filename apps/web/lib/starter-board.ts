@@ -23,6 +23,8 @@ export const starterBoard = (): Board =>
         parentId: null,
         rotation: 0,
         style: {
+          corner: 'sharp',
+          dash: 'solid',
           fill: 'green',
           fillStyle: 'bold',
           stroke: 'green',

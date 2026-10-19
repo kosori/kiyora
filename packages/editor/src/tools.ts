@@ -16,6 +16,8 @@ export const isFigureTool = (tool: Tool): tool is FigureKind =>
  * same value as its default, so a board of one colour needs no restyling.
  */
 export const DEFAULT_STYLE: Style = {
+  corner: 'sharp',
+  dash: 'solid',
   fill: 'blue',
   fillStyle: 'pastel',
   stroke: 'ink',

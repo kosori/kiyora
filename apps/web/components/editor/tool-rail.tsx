@@ -27,14 +27,14 @@ const RAIL: readonly RailEntry[] = [
 
 /** The tool rail: every button names its tool, and the active one reads as pressed. */
 export const ToolRail = () => (
-  <div
+  <aside
     aria-label='Tools'
-    className='absolute top-3 left-3 z-10 flex flex-col gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'
+    className='flex h-full w-12 shrink-0 flex-col items-center gap-0.5 border-border border-r bg-background p-2'
     role='toolbar'
   >
     {RAIL.map((entry) => (
       <ToolRailButton entry={entry} key={entry.tool} />
     ))}
     <ShapePicker />
-  </div>
+  </aside>
 );

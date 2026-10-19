@@ -1,4 +1,4 @@
-import { SHAPES } from '@kiyora/dsl';
+import { CORNERS, SHAPES } from '@kiyora/dsl';
 import { z } from 'zod';
 import {
   fillStyleSchema,
@@ -10,8 +10,34 @@ import {
 /** The board's schema version. A migration bumps it. */
 export const SCHEMA_VERSION = 1;
 
-/** How a shape's outline and interior are styled, resolved from the palette. */
+/** How a shape's corners are drawn, taken from the grammar. */
+export const cornerSchema = z.enum(CORNERS);
+
+/** How a shape's corners are drawn. */
+export type Corner = z.infer<typeof cornerSchema>;
+
+/**
+ * The stroke patterns a shape can wear. The grammar names the dashed and dotted
+ * connector routes but no shape stroke, so the palette of patterns lives here —
+ * a token, not a dash array, so only the pattern is authored and the walker
+ * derives the numbers a renderer draws.
+ */
+export const DASHES = ['solid', 'dashed', 'dotted'] as const;
+
+/** A stroke pattern: an unbroken, dashed or dotted outline. */
+export const dashSchema = z.enum(DASHES);
+
+/** A stroke pattern. */
+export type Dash = z.infer<typeof dashSchema>;
+
+/**
+ * How a shape's outline and interior are styled, resolved from the palette.
+ * Corner and dash default, so a board saved before they existed still reads:
+ * the version 0 to 1 migration only has to stamp the version marker.
+ */
 export const styleSchema = z.object({
+  corner: cornerSchema.default('sharp'),
+  dash: dashSchema.default('solid'),
   fill: paletteColourSchema,
   fillStyle: fillStyleSchema,
   stroke: z.union([paletteColourSchema, foregroundSchema]),

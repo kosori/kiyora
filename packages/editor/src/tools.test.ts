@@ -24,6 +24,8 @@ const board = (shapes: Board['shapes'] = []): Board =>
 const click = (x: number, y: number) => ({ from: { x, y }, to: { x, y } });
 
 const red: Style = {
+  corner: 'sharp',
+  dash: 'solid',
   fill: 'red',
   fillStyle: 'bold',
   stroke: 'red',

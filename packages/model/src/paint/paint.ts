@@ -1,13 +1,21 @@
-import type { Board, FigureShape, Shape, Style } from '../board/schema';
+import type { Board, Dash, FigureShape, Shape, Style } from '../board/schema';
 import { FIGURE_GEOMETRY } from './figure-geometry';
 import { FILL_ALPHA, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
 export type PaintPath = {
   d: string;
+  dash?: number[];
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+};
+
+/** The numbers a stroke pattern breaks an outline into; a solid stroke has none. */
+export const DASH_PATTERN: Record<Dash, number[] | undefined> = {
+  dashed: [8, 6],
+  dotted: [2, 6],
+  solid: undefined,
 };
 
 /** The render-ready description of a shape: its own paths, then its children's. */
@@ -36,18 +44,23 @@ const strokeOf = (style: Style, theme: Theme, opacity: number): string =>
   paintColour(style.stroke, theme, opacity);
 
 /** Paints one figure: every path its geometry names, styled by the palette. */
-const paintFigure = (shape: FigureShape, context: PaintContext): Paint => ({
-  children: [],
-  paths: FIGURE_GEOMETRY[shape.kind](shape).map((ink) => ({
-    d: ink.d,
-    fill:
-      ink.filled === false
-        ? 'none'
-        : fillOf(shape.style, context.theme, shape.opacity),
-    stroke: strokeOf(shape.style, context.theme, shape.opacity),
-    strokeWidth: shape.style.strokeWidth,
-  })),
-});
+const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
+  const dash = DASH_PATTERN[shape.style.dash];
+
+  return {
+    children: [],
+    paths: FIGURE_GEOMETRY[shape.kind](shape).map((ink) => ({
+      d: ink.d,
+      ...(dash === undefined ? {} : { dash }),
+      fill:
+        ink.filled === false
+          ? 'none'
+          : fillOf(shape.style, context.theme, shape.opacity),
+      stroke: strokeOf(shape.style, context.theme, shape.opacity),
+      strokeWidth: shape.style.strokeWidth,
+    })),
+  };
+};
 
 /** The paint for one shape: its own paths, then its children's, named by its id. */
 export const paintShape = (shape: Shape, context: PaintContext): Paint => ({

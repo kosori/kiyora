@@ -105,6 +105,7 @@ export {
   SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
+export type { Restyle } from './restyle';
 export {
   normaliseSelection,
   type Offsets,

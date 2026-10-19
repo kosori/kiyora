@@ -24,6 +24,7 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
         fill={path.fill}
         key={`path-${index}`}
         stroke={path.stroke}
+        strokeDasharray={path.dash?.join(' ')}
         strokeWidth={path.strokeWidth}
       />
     ))}
