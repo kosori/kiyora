@@ -4,6 +4,7 @@ import { type HandleKind, handleAt } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { shapeFromPlacement } from './placement';
+import { restyledBoard } from './restyle';
 import {
   normaliseSelection,
   offsetShapes,
@@ -341,6 +342,16 @@ export const createEditor = (board: Board): Editor => {
       drag = null;
       commitSelection(next);
       publishGesture();
+    },
+    restyle: (change) => {
+      const result = restyledBoard(current, selection, change);
+      if (result === null) {
+        return;
+      }
+      const { board: nextBoard, style: nextStyle } = result;
+      current = nextBoard;
+      style = nextStyle;
+      publish(listeners);
     },
     setBoard: (next) => {
       current = next;

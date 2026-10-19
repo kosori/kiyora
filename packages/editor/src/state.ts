@@ -2,6 +2,7 @@ import type { Board, Bounds, Camera, Shape, Style } from '@kiyora/model';
 import type { Point } from './camera';
 import type { HandleKind } from './geometry/handles';
 import type { Placement } from './placement';
+import type { Restyle } from './restyle';
 import type { Selection } from './selection';
 import type { Tool } from './tools';
 
@@ -138,4 +139,11 @@ export type Editor = {
   cancelGesture: () => void;
   /** Moves every selected shape by the same delta, so relative positions hold. */
   nudge: (dx: number, dy: number) => void;
+  /**
+   * Restyles every selected shape in one board write: a style patch, an
+   * opacity, or both. One call is one change, so it becomes one history entry
+   * the moment history lands. The restyled style becomes the one the next shape
+   * wears. With an empty selection it does nothing.
+   */
+  restyle: (change: Restyle) => void;
 };

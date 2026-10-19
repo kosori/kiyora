@@ -14,6 +14,8 @@ import type { Shape } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const style = {
+  corner: 'sharp',
+  dash: 'solid',
   fill: 'blue',
   fillStyle: 'pastel',
   stroke: 'ink',

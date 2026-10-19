@@ -1,5 +1,8 @@
-import { COLORS, FILLS } from '@kiyora/dsl';
+import { COLORS, CORNERS, FILLS } from '@kiyora/dsl';
 import {
+  cornerSchema,
+  DASHES,
+  dashSchema,
   FOREGROUND,
   fillStyleSchema,
   PALETTE,
@@ -22,5 +25,14 @@ describe('the palette', () => {
   it('keeps the foreground outside the palette, so the grammar still names nine colours', () => {
     expect(sorted(COLORS)).not.toContain(FOREGROUND);
     expect(sorted(Object.keys(PALETTE))).not.toContain(FOREGROUND);
+  });
+
+  it('names exactly the grammar corners, so a corner added to either side fails here', () => {
+    expect(sorted(cornerSchema.options)).toEqual(sorted(CORNERS));
+  });
+
+  it('offers the three stroke patterns a provisional stroke needs', () => {
+    expect(sorted(dashSchema.options)).toEqual(sorted(DASHES));
+    expect(sorted(DASHES)).toEqual(['dashed', 'dotted', 'solid']);
   });
 });

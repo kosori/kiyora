@@ -23,6 +23,12 @@ const attributes = (path: PaintPath): string => {
         ? undefined
         : formatNumber(path.strokeWidth),
     ],
+    [
+      'stroke-dasharray',
+      path.dash === undefined
+        ? undefined
+        : path.dash.map(formatNumber).join(' '),
+    ],
   ];
 
   return pairs

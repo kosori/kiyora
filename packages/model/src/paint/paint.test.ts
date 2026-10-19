@@ -19,7 +19,14 @@ const shape = (overrides: Record<string, unknown> = {}) => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'green', fillStyle: 'bold', stroke: 'green', strokeWidth: 2 },
+  style: {
+    corner: 'sharp',
+    dash: 'solid',
+    fill: 'green',
+    fillStyle: 'bold',
+    stroke: 'green',
+    strokeWidth: 2,
+  },
   w: 100,
   x: 0,
   y: 0,
@@ -59,6 +66,8 @@ describe('painting a board', () => {
       board([
         shape({
           style: {
+            corner: 'sharp',
+            dash: 'solid',
             fill: 'red',
             fillStyle: 'outline',
             stroke: 'red',
@@ -90,6 +99,33 @@ describe('painting a board', () => {
 
     expect(onLight.children[0]?.paths[0]?.fill).toBe('#2f9e44');
     expect(onDark.children[0]?.paths[0]?.fill).toBe('#8ce99a');
+  });
+
+  it('breaks a dashed or dotted stroke into its pattern, and leaves a solid one unbroken', () => {
+    const dashed = paintBoard(
+      board([shape({ style: { ...shape().style, dash: 'dashed' } })]),
+      light
+    );
+    const dotted = paintBoard(
+      board([shape({ style: { ...shape().style, dash: 'dotted' } })]),
+      light
+    );
+    const solid = paintBoard(board([shape()]), light);
+
+    expect(dashed.children[0]?.paths[0]?.dash).toEqual([8, 6]);
+    expect(dotted.children[0]?.paths[0]?.dash).toEqual([2, 6]);
+    expect(solid.children[0]?.paths[0]?.dash).toBeUndefined();
+  });
+
+  it('rounds a rectangle\u2019s corners when its style asks, and squares them otherwise', () => {
+    const rounded = paintBoard(
+      board([shape({ style: { ...shape().style, corner: 'rounded' } })]),
+      light
+    ).children[0]?.paths[0]?.d;
+
+    expect(rounded).not.toBe('M 0 0 L 100 0 L 100 60 L 0 60 Z');
+    expect(rounded).toContain('C');
+    expect(rounded?.startsWith('M 9.6 0')).toBe(true);
   });
 });
 

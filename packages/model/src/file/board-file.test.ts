@@ -16,7 +16,14 @@ const shape = (overrides: Record<string, unknown> = {}) => ({
   opacity: 1,
   parentId: null,
   rotation: 0,
-  style: { fill: 'blue', fillStyle: 'pastel', stroke: 'ink', strokeWidth: 2 },
+  style: {
+    corner: 'sharp',
+    dash: 'solid',
+    fill: 'blue',
+    fillStyle: 'pastel',
+    stroke: 'ink',
+    strokeWidth: 2,
+  },
   w: 120,
   x: 0,
   y: 0,
@@ -43,7 +50,7 @@ const board = (overrides: Record<string, unknown> = {}): Board =>
  * a copy of whatever the serializer happens to emit.
  */
 const FIXTURE =
-  '{"camera":{"x":0,"y":0,"zoom":1},"createdAt":1700000000000,"deck":[],"id":"board-1","schemaVersion":1,"settings":{"theme":"light"},"shapes":[{"h":80,"id":"shape-1","locked":false,"opacity":1,"parentId":null,"rotation":0,"style":{"fill":"blue","fillStyle":"pastel","stroke":"ink","strokeWidth":2},"w":120,"x":0,"y":0,"kind":"rectangle"}],"title":"Untitled","updatedAt":1700000000000}';
+  '{"camera":{"x":0,"y":0,"zoom":1},"createdAt":1700000000000,"deck":[],"id":"board-1","schemaVersion":1,"settings":{"theme":"light"},"shapes":[{"h":80,"id":"shape-1","locked":false,"opacity":1,"parentId":null,"rotation":0,"style":{"corner":"sharp","dash":"solid","fill":"blue","fillStyle":"pastel","stroke":"ink","strokeWidth":2},"w":120,"x":0,"y":0,"kind":"rectangle"}],"title":"Untitled","updatedAt":1700000000000}';
 
 describe('the board file', () => {
   it('wears the extension a person can recognise', () => {

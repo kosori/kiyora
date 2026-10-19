@@ -286,7 +286,13 @@ export const BASIC_GEOMETRY = {
       ])
     ),
   ],
-  rectangle: (shape) => [solid(rectanglePath(shape))],
+  rectangle: (shape) => [
+    solid(
+      shape.style.corner === 'rounded'
+        ? roundedRect(shape, Math.min(shape.w, shape.h) * 0.16)
+        : rectanglePath(shape)
+    ),
+  ],
 
   'speech-bubble': (shape) => [
     solid(
