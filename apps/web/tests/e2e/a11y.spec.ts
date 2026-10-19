@@ -209,6 +209,16 @@ test('a storage fault reports no accessibility violations', async ({
   expect(await audit(page)).toEqual([]);
 });
 
+test('a failed panel reports no accessibility violations', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('kiyora:test:crash-panel:tools', '1');
+  });
+  await open(page);
+  await expect(page.getByTestId('panel-error')).toBeVisible();
+
+  expect(await audit(page)).toEqual([]);
+});
+
 test('every rail tool is selectable from the keyboard', async ({ page }) => {
   await open(page);
   const rail = page.getByRole('toolbar', { name: 'Tools' });
