@@ -83,7 +83,7 @@ describe('the keymap', () => {
     expect(resolveKey({ alt: true, key: 'Escape' })).toBeNull();
     expect(resolveKey({ command: true, key: 'Escape' })).toBeNull();
     expect(resolveKey({ alt: true, key: 'v' })).toBeNull();
-    expect(resolveKey({ command: true, key: 'v' })).toBeNull();
+    expect(resolveKey({ command: true, key: 'q' })).toBeNull();
     expect(resolveKey({ key: 'q' })).toBeNull();
   });
 
@@ -223,6 +223,40 @@ describe('undo and redo keys', () => {
     ]);
     expect(rows.find((row) => row.label === 'Redo')?.keys).toEqual([
       'Ctrl + Shift + Z',
+    ]);
+  });
+});
+
+describe('the clipboard keys', () => {
+  it('duplicates, copies, cuts and pastes on the command key', () => {
+    expect(resolveKey({ command: true, key: 'd' })).toEqual({
+      kind: 'duplicate',
+    });
+    expect(resolveKey({ command: true, key: 'c' })).toEqual({ kind: 'copy' });
+    expect(resolveKey({ command: true, key: 'x' })).toEqual({ kind: 'cut' });
+    expect(resolveKey({ command: true, key: 'v' })).toEqual({ kind: 'paste' });
+  });
+
+  it('leaves the bare letters to the tools, so a copy is not a connector', () => {
+    expect(resolveKey({ key: 'c' })).toEqual({
+      kind: 'tool',
+      tool: 'connector',
+    });
+    expect(resolveKey({ key: 'v' })).toEqual({ kind: 'tool', tool: 'select' });
+  });
+
+  it('shows the clipboard keys in the reference, read from the keymap', () => {
+    const rows = shortcutReference();
+
+    expect(rows.find((row) => row.label === 'Copy')?.keys).toEqual([
+      'Ctrl + C',
+    ]);
+    expect(rows.find((row) => row.label === 'Cut')?.keys).toEqual(['Ctrl + X']);
+    expect(rows.find((row) => row.label === 'Paste')?.keys).toEqual([
+      'Ctrl + V',
+    ]);
+    expect(rows.find((row) => row.label === 'Duplicate')?.keys).toEqual([
+      'Ctrl + D',
     ]);
   });
 });

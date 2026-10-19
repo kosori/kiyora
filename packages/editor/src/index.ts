@@ -23,6 +23,14 @@ export {
   zoomBy,
 } from './camera';
 export {
+  type Clipboard,
+  COPY_OFFSET,
+  copyFragment,
+  duplicateShapes,
+  type Paste,
+  pasteFragment,
+} from './clipboard';
+export {
   type ConnectorEdit,
   editConnector,
   removeShapes,
