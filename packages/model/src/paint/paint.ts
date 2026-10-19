@@ -1,11 +1,5 @@
-import type {
-  Board,
-  FigureKind,
-  FigureShape,
-  Shape,
-  Style,
-} from '../board/schema';
-import { rectanglePath } from './figures';
+import type { Board, FigureShape, Shape, Style } from '../board/schema';
+import { FIGURE_GEOMETRY } from './figure-geometry';
 import { FILL_ALPHA, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
@@ -41,29 +35,23 @@ const fillOf = (style: Style, theme: Theme, opacity: number): string => {
 const strokeOf = (style: Style, theme: Theme, opacity: number): string =>
   paintColour(style.stroke, theme, opacity);
 
-const paintRectangle = (shape: FigureShape, context: PaintContext): Paint => ({
+/** Paints one figure: every path its geometry names, styled by the palette. */
+const paintFigure = (shape: FigureShape, context: PaintContext): Paint => ({
   children: [],
-  paths: [
-    {
-      d: rectanglePath(shape),
-      fill: fillOf(shape.style, context.theme, shape.opacity),
-      stroke: strokeOf(shape.style, context.theme, shape.opacity),
-      strokeWidth: shape.style.strokeWidth,
-    },
-  ],
+  paths: FIGURE_GEOMETRY[shape.kind](shape).map((ink) => ({
+    d: ink.d,
+    fill:
+      ink.filled === false
+        ? 'none'
+        : fillOf(shape.style, context.theme, shape.opacity),
+    stroke: strokeOf(shape.style, context.theme, shape.opacity),
+    strokeWidth: shape.style.strokeWidth,
+  })),
 });
-
-/** One painter per figure kind. Adding a kind to the schema breaks this table. */
-const figurePainters = {
-  rectangle: paintRectangle,
-} satisfies Record<
-  FigureKind,
-  (shape: FigureShape, context: PaintContext) => Paint
->;
 
 /** The paint for one shape: its own paths, then its children's, named by its id. */
 export const paintShape = (shape: Shape, context: PaintContext): Paint => ({
-  ...figurePainters[shape.kind](shape, context),
+  ...paintFigure(shape, context),
   shapeId: shape.id,
 });
 
