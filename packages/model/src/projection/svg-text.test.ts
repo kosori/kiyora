@@ -94,6 +94,18 @@ describe('projecting a label to SVG', () => {
     expect(svg).not.toContain('a < b & c');
   });
 
+  it('writes the chosen size and horizontal alignment into the artifact, so an export agrees with the canvas', () => {
+    const svg = projectBoard(
+      board({
+        text: 'Heading',
+        textStyle: { align: 'right', size: 32, valign: 'middle' },
+      }),
+      light
+    );
+
+    expect(svg).toMatch(/<text[^>]*font-size="32"[^>]*text-anchor="end"/);
+  });
+
   it('wraps the same way in the artifact as on the canvas, because both measure through the same one', () => {
     const drawn = board({
       text: 'aaaa bbbb cccc dddd eeee ffff gggg hhhh',
