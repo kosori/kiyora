@@ -4,6 +4,7 @@ export { EditorProvider } from './editor-provider';
 export { useBoard, useEditor } from './use-board';
 export { useGesture } from './use-gesture';
 export { useHistory } from './use-history';
+export { usePresent } from './use-present';
 export { useSelection } from './use-selection';
 export { useTool } from './use-tool';
 export { useView } from './use-view';

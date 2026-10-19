@@ -169,4 +169,49 @@ export type Editor = {
   undo: () => void;
   /** Redoes the last undone gesture. Does nothing when there is none. */
   redo: () => void;
+  /** Presentation: whether it is active, which slide shows, and which overlays are up. */
+  getPresent: () => PresentState;
+  /** Subscribes to presentation changes. Returns the unsubscribe. */
+  subscribePresent: (listener: () => void) => () => void;
+  /** Starts presenting at the first slide presenting plays. Does nothing with none. */
+  startPresent: () => void;
+  /** Leaves presenting and returns to editing. Changes nothing on the board. */
+  stopPresent: () => void;
+  /** Advances one slide, clamped at the last, so a held key cannot run off the deck. */
+  nextSlide: () => void;
+  /** Steps back one slide, clamped at the first. */
+  previousSlide: () => void;
+  /** Shows or hides the notes overlay while presenting. */
+  toggleNotes: () => void;
+  /** Shows or hides the timer overlay while presenting. */
+  toggleTimer: () => void;
+  /** Makes a frame a slide: one board change, one history entry. */
+  addSlide: (frameId: string) => void;
+  /** Plants a template as a new slide: one board change, one history entry. */
+  addSlideFromTemplate: (templateId: string) => void;
+  /** Duplicates a slide with its frame and members: one board change. */
+  duplicateSlide: (frameId: string) => void;
+  /** Deletes a slide and the frame it showed: one board change. */
+  deleteSlide: (frameId: string) => void;
+  /** Moves a slide to deck position `to`: one board change. */
+  moveSlide: (frameId: string, to: number) => void;
+  /** Replaces one slide's notes: one board change, one history entry. */
+  setSlideNotes: (frameId: string, notes: string) => void;
+  /** Skips or unskips one slide: one board change, without deleting the frame. */
+  toggleSlideSkip: (frameId: string) => void;
+};
+
+/**
+ * Presentation: display state, never the board. Presenting reads the deck and
+ * shows one slide at a time; nothing here writes, so a slide show leaves no
+ * history entry and arms no save.
+ */
+export type PresentState = {
+  active: boolean;
+  /** The deck position shown, counted over the slides presenting plays. */
+  index: number;
+  /** Whether the notes overlay is up. */
+  notes: boolean;
+  /** Whether the timer overlay is up. */
+  timer: boolean;
 };

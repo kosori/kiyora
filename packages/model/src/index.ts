@@ -45,6 +45,22 @@ export {
   parseBoard,
 } from './board/validate';
 export {
+  addSlide,
+  DECK_TEMPLATES,
+  type DeckEntry,
+  type DeckTemplate,
+  deckFrames,
+  deleteSlide,
+  duplicateSlide,
+  framesWithoutSlide,
+  insertTemplateSlide,
+  moveSlide,
+  presentedSlides,
+  setSlideNotes,
+  type TemplatePiece,
+  toggleSlideSkipped,
+} from './deck';
+export {
   BOARD_FILE_EXTENSION,
   parseBoardFile,
   serializeBoard,
