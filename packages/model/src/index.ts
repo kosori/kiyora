@@ -8,16 +8,25 @@ export {
   versionOf,
 } from './board/migrations';
 export {
+  type Anchor,
+  anchorSchema,
   type Board,
   type BoardSettings,
   boardSchema,
   type Camera,
+  type ConnectorShape,
   type Corner,
   cameraSchema,
+  connectorSchema,
   cornerSchema,
   DASHES,
   type Dash,
   dashSchema,
+  EDGES,
+  type Edge,
+  type Endpoint,
+  edgeSchema,
+  endpointSchema,
   FIGURE_KINDS,
   type FigureKind,
   type FigureShape,
@@ -27,6 +36,11 @@ export {
   figureKindSchema,
   frameSchema,
   frameVariantSchema,
+  type Head,
+  headSchema,
+  ROUTES,
+  type Route,
+  routeSchema,
   SCHEMA_VERSION,
   type Shape,
   type Slide,
@@ -67,10 +81,34 @@ export {
   serializeBoard,
 } from './file/board-file';
 export {
+  anchorPoint,
+  autoAnchor,
+  detachConnector,
+  moveConnector,
+  type ResolvedConnector,
+  type ResolvedEnd,
+  resolveConnector,
+} from './paint/connector-end';
+export {
+  connectorBounds,
+  connectorLabelPoint,
+  connectorPath,
+  connectorPoints,
+} from './paint/connector-route';
+export {
+  CONNECTOR_REACH,
+  type ConnectorInk,
+  connectorAt,
+  connectorInk,
+  connectorLabel,
+  HEAD_SIZE,
+} from './paint/connectors';
+export {
   type Bounds,
   boardBounds,
   boundsOf,
   boundsOfShapes,
+  shapeBounds,
 } from './paint/figures';
 export {
   type Paint,

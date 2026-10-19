@@ -1,5 +1,6 @@
 import type {
   Board,
+  ConnectorShape,
   Dash,
   FigureShape,
   FrameShape,
@@ -9,6 +10,7 @@ import type {
 } from '../board/schema';
 import { type PaintText, textOf } from '../text/layout';
 import type { Measurer } from '../text/wrap';
+import { connectorInk, connectorLabel } from './connectors';
 import { FIGURE_GEOMETRY } from './figure-geometry';
 import { rectanglePath } from './figures';
 import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
@@ -122,6 +124,39 @@ const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
 });
 
 /**
+ * Paints one connector: the line and a head at each end that asks for one, in
+ * the stroke's own colour and dash, plus its label. The path comes from the
+ * board the connector is painted with, so a bound end follows its shape with no
+ * repair pass and the artifact sees exactly what the canvas draws.
+ */
+const paintConnector = (
+  shape: ConnectorShape,
+  shapes: readonly Shape[],
+  context: PaintContext
+): Paint => {
+  const stroke = strokeOf(shape.style, context.theme, shape.opacity);
+  const dash = DASH_PATTERN[shape.style.dash];
+  const paths = connectorInk(shape, shapes).map((part) => ({
+    d: part.d,
+    ...(part.head === true || dash === undefined ? {} : { dash }),
+    fill: part.filled === true ? stroke : 'none',
+    stroke,
+    strokeWidth: shape.style.strokeWidth,
+  }));
+  const text = connectorLabel(
+    shape,
+    shapes,
+    paintColour(FOREGROUND, context.theme, shape.opacity)
+  );
+
+  return {
+    children: [],
+    paths,
+    ...(text.length === 0 ? {} : { text }),
+  };
+};
+
+/**
  * The label a shape carries, in the foreground ink so its glyphs are never the
  * `none` that once made a Text tool invisible.
  */
@@ -139,8 +174,16 @@ const labelOf = (shape: Shape, context: PaintContext): PaintText[] => {
   );
 };
 
-/** The paint for one shape: its own paths, then its children's, named by its id. */
+/**
+ * The paint for one shape: its own paths, then its children's, named by its id.
+ * A connector cannot be painted from itself — its path is resolved from the
+ * shapes its ends name — so it fails loudly here rather than drawing nothing;
+ * `paintBoard` is the way to paint one.
+ */
 export const paintShape = (shape: Shape, context: PaintContext): Paint => {
+  if (shape.kind === 'connector') {
+    throw new Error('painting a connector needs the board: use paintBoard');
+  }
   const figure =
     shape.kind === 'frame'
       ? paintFrame(shape, context)
@@ -161,14 +204,20 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
 /**
  * The paint for one board: one child per shape, in paint order. A shape whose
  * `parentId` names a frame is nested inside it, where it follows its frame and
- * can be clipped by it; a shape with no parent stays at the top level.
+ * can be clipped by it; a shape with no parent stays at the top level. A
+ * connector is painted against the whole board, because its path is resolved
+ * from the shapes its ends name.
  */
 export const paintBoard = (board: Board, context: PaintContext): Paint => {
   const nodes = new Map<string, Paint>();
   const children: Paint[] = [];
 
   for (const shape of board.shapes) {
-    const node = paintShape(shape, context);
+    const node =
+      shape.kind === 'connector'
+        ? paintConnector(shape, board.shapes, context)
+        : paintShape(shape, context);
+    node.shapeId = shape.id;
     nodes.set(shape.id, node);
 
     const parent =

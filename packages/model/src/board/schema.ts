@@ -1,4 +1,4 @@
-import { CORNERS, FRAMES, SHAPES } from '@kiyora/dsl';
+import { CORNERS, FRAMES, HEADS, SHAPES } from '@kiyora/dsl';
 import { z } from 'zod';
 import {
   fillStyleSchema,
@@ -117,6 +117,91 @@ const textSchema = shapeBaseSchema.extend({ kind: z.literal('text') });
 export type TextShape = z.infer<typeof textSchema>;
 
 /**
+ * The four sides an anchor can name on a shape, in drawing order. There is no
+ * grammar token for a side, so the vocabulary is the schema's, kept small and
+ * the only one a connector's binding can use.
+ */
+export const EDGES = ['top', 'right', 'bottom', 'left'] as const;
+
+/** A side of a shape. */
+export const edgeSchema = z.enum(EDGES);
+
+/** A side of a shape. */
+export type Edge = z.infer<typeof edgeSchema>;
+
+/**
+ * Where on a shape a connector attaches: an edge and a fraction along it, from
+ * 0 to 1. An endpoint may name one to fix a connection to a specific edge, and
+ * omits it when the author does not care — the walker then chooses one that
+ * faces the other end. Fractions are clamped when they resolve, so a stale one
+ * can never place an anchor off its shape.
+ */
+export const anchorSchema = z.object({
+  edge: edgeSchema,
+  fraction: z.number().min(0).max(1),
+});
+
+/** Where on a shape a connector attaches. */
+export type Anchor = z.infer<typeof anchorSchema>;
+
+/**
+ * One end of a connector: bound to a shape — with an anchor the author named,
+ * or none, so the walker picks one — or free at a coordinate. A free end is how
+ * a connector is drawn before its target exists, so the two ends never have to
+ * be created in the same order.
+ */
+export const endpointSchema = z.discriminatedUnion('kind', [
+  z.object({
+    anchor: anchorSchema.optional(),
+    kind: z.literal('bound'),
+    shapeId: z.string().min(1),
+  }),
+  z.object({ kind: z.literal('free'), x: z.number(), y: z.number() }),
+]);
+
+/** One end of a connector. */
+export type Endpoint = z.infer<typeof endpointSchema>;
+
+/** How a connector's line travels between its ends. */
+export const ROUTES = ['straight', 'curved', 'elbow'] as const;
+
+/** How a connector's line travels. */
+export const routeSchema = z.enum(ROUTES);
+
+/** How a connector's line travels. */
+export type Route = z.infer<typeof routeSchema>;
+
+/**
+ * The head a connector wears at one end, taken from the grammar's own list so
+ * the inspector and the parser cannot disagree about what an arrowhead is. A
+ * head is per end: `start` and `end` are chosen independently.
+ */
+export const headSchema = z.enum(HEADS);
+
+/** The head a connector wears at one end. */
+export type Head = z.infer<typeof headSchema>;
+
+/**
+ * A connector: a shape that draws a line between two endpoints and stays
+ * joined to the shapes they name. `x`, `y`, `w` and `h` come from the shape
+ * base, but they are not the connector's geometry: the path is derived from the
+ * endpoints on every paint, which is what lets a bound end follow its shape
+ * with no repair pass. The box is the connector's authored footprint, used as
+ * the fallback line when a bound target cannot be found.
+ */
+export const connectorSchema = shapeBaseSchema.extend({
+  end: headSchema,
+  from: endpointSchema,
+  kind: z.literal('connector'),
+  route: routeSchema,
+  start: headSchema,
+  to: endpointSchema,
+});
+
+/** A connector. */
+export type ConnectorShape = z.infer<typeof connectorSchema>;
+
+/**
  * A sticky: a coloured note with centred text that grows with its content. It
  * carries no extra field — its note colour is its style, and its grown box is
  * authored when a label is committed — so it is a shape kind, not a figure.
@@ -131,6 +216,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
   frameSchema,
   textSchema,
+  connectorSchema,
   stickySchema,
 ]);
 

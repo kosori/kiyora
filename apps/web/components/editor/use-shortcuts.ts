@@ -82,6 +82,12 @@ export const useShortcuts = (
         return;
       }
 
+      if (command.kind === 'delete') {
+        event.preventDefault();
+        editor.deleteSelection();
+        return;
+      }
+
       if (command.kind === 'undo') {
         event.preventDefault();
         editor.undo();

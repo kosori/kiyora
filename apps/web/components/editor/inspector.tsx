@@ -1,11 +1,13 @@
 'use client';
 
 import { useBoard, useSelection } from '@kiyora/editor/react';
+import { ConnectorStyle } from './connector-style';
 import { SelectionStyle } from './selection-style';
 
 /**
- * The right-hand panel: the selection's style, always in view. With nothing
- * selected it says so rather than showing controls that cannot act.
+ * The right-hand panel: the selection's style, always in view, plus a
+ * connector's own route and heads. With nothing selected it says so rather than
+ * showing controls that cannot act.
  */
 export const Inspector = () => {
   const board = useBoard();
@@ -27,7 +29,10 @@ export const Inspector = () => {
           Select a shape to style it.
         </p>
       ) : (
-        <SelectionStyle shape={first} theme={board.settings.theme} />
+        <div className='flex flex-col gap-4'>
+          {first.kind === 'connector' ? <ConnectorStyle shape={first} /> : null}
+          <SelectionStyle shape={first} theme={board.settings.theme} />
+        </div>
       )}
     </aside>
   );

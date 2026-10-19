@@ -20,6 +20,7 @@ export const PaintNode = ({ paint }: { paint: Paint }): ReactNode => {
       {paint.paths.map((path, index) => (
         <path
           d={path.d}
+          data-shape={paint.shapeId}
           fill={path.fill}
           key={`path-${index}`}
           stroke={path.stroke}

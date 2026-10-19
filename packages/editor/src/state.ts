@@ -8,6 +8,7 @@ import type {
   TextStyle,
 } from '@kiyora/model';
 import type { Point } from './camera';
+import type { ConnectorEdit } from './connectors';
 import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
 import type { GestureModifiers } from './modifiers';
@@ -139,6 +140,18 @@ export type Editor = {
    * nothing, so Escape costs no undo.
    */
   cancelTextEdit: () => void;
+  /**
+   * Changes a connector's route or the head at one end. One call is one
+   * gesture, so it is one history entry. A shape that is not a connector, or an
+   * edit that changes nothing, leaves the board alone.
+   */
+  setConnector: (id: string, edit: ConnectorEdit) => void;
+  /**
+   * Deletes the selection and everything it holds. A connector bound to a
+   * deleted shape is kept and its end freed where it attached, so nothing
+   * vanishes silently. One gesture, one history entry.
+   */
+  deleteSelection: () => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */

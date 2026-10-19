@@ -18,6 +18,7 @@ export type Command =
   | { kind: 'camera'; action: CameraAction }
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
   | { kind: 'cancel-gesture' }
+  | { kind: 'delete' }
   | { kind: 'undo' }
   | { kind: 'redo' }
   | { kind: 'present' }
@@ -140,6 +141,7 @@ export const KEYMAP: readonly Binding[] = [
   { command: { kind: 'tool', tool: 'select' }, key: 'v' },
   { command: { kind: 'tool', tool: 'rectangle' }, key: 'r' },
   { command: { kind: 'tool', tool: 'text' }, key: 't' },
+  { command: { kind: 'tool', tool: 'connector' }, key: 'c' },
   { command: { kind: 'tool', tool: 'sticky' }, key: 's' },
   { command: { kind: 'tool', tool: 'frame' }, key: 'f' },
   { command: { action: 'pan', kind: 'camera' }, key: 'space' },
@@ -147,6 +149,8 @@ export const KEYMAP: readonly Binding[] = [
   { command: { action: 'zoom-out', kind: 'camera' }, key: '-' },
   { command: { kind: 'show-shortcuts' }, key: '?' },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
+  { command: { kind: 'delete' }, key: 'delete' },
+  { command: { kind: 'delete' }, key: 'backspace' },
   {
     command: { kind: 'undo' },
     key: 'z',
@@ -197,6 +201,16 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     commands: [{ kind: 'tool', tool: 'text' }],
     group: 'Tools',
     label: 'Text',
+  },
+  {
+    commands: [{ kind: 'tool', tool: 'connector' }],
+    group: 'Tools',
+    label: 'Connector',
+  },
+  {
+    commands: [{ kind: 'delete' }],
+    group: 'Selection',
+    label: 'Delete',
   },
   {
     commands: [{ kind: 'tool', tool: 'sticky' }],
