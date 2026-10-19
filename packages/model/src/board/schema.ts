@@ -1,3 +1,4 @@
+import { SHAPES } from '@kiyora/dsl';
 import { z } from 'zod';
 import {
   fillStyleSchema,
@@ -35,11 +36,19 @@ export const shapeBaseSchema = z.object({
   y: z.number(),
 });
 
-/** The figure kinds, one per shape the vocabulary can draw. */
-export const figureKindSchema = z.enum(['rectangle']);
+/**
+ * The figure kinds: every shape the grammar names, less the ones a dedicated
+ * shape kind owns the semantics of. `sticky` is a note the sticky kind draws —
+ * centred text, its own colour, grown to fit — so it is not a plain figure. The
+ * grammar stays the one source, so the picker and the parser cannot disagree.
+ */
+export const figureKindSchema = z.enum(SHAPES).exclude(['sticky']);
 
 /** A figure kind. */
 export type FigureKind = z.infer<typeof figureKindSchema>;
+
+/** The figure kinds, in the grammar's order, for a picker that shows them all. */
+export const FIGURE_KINDS: readonly FigureKind[] = figureKindSchema.options;
 
 const figureSchema = shapeBaseSchema.extend({ kind: figureKindSchema });
 

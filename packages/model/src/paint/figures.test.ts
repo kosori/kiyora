@@ -1,4 +1,12 @@
-import { type FigureShape, paintShape } from '@kiyora/model';
+import { SHAPES } from '@kiyora/dsl';
+import {
+  type FigureKind,
+  type FigureShape,
+  figureKindSchema,
+  type Paint,
+  type PaintPath,
+  paintShape,
+} from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const rectangle = (overrides: Partial<FigureShape> = {}): FigureShape => ({
@@ -66,4 +74,83 @@ describe('painting a rectangle', () => {
     expect(sides[2]).toBeCloseTo(120, 2);
     expect(sides[3]).toBeCloseTo(80, 2);
   });
+});
+
+const KINDS = [...figureKindSchema.options];
+
+const figure = (kind: FigureKind): FigureShape => ({
+  h: 80,
+  id: `figure-${kind}`,
+  kind,
+  locked: false,
+  opacity: 1,
+  parentId: null,
+  rotation: 0,
+  style: { fill: 'blue', fillStyle: 'bold', stroke: 'ink', strokeWidth: 2 },
+  w: 120,
+  x: 0,
+  y: 0,
+});
+
+const inks = (paint: Paint): PaintPath[] => [
+  ...paint.paths,
+  ...paint.children.flatMap(inks),
+];
+
+const coordinates = (d: string): [number, number][] => {
+  const values = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  const points: [number, number][] = [];
+  for (let index = 0; index + 1 < values.length; index += 2) {
+    points.push([values[index] ?? 0, values[index + 1] ?? 0]);
+  }
+  return points;
+};
+
+const extentOf = (paint: Paint): { h: number; w: number } => {
+  const points = inks(paint).flatMap((path) => coordinates(path.d));
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  return {
+    h: Math.max(...ys) - Math.min(...ys),
+    w: Math.max(...xs) - Math.min(...xs),
+  };
+};
+
+describe('the figure vocabulary', () => {
+  it('offers every grammar shape, less the ones a shape kind owns the semantics of', () => {
+    const ownedByAKind = ['sticky'];
+    const known = new Set<string>(KINDS);
+
+    for (const shape of SHAPES) {
+      expect(
+        known.has(shape) || ownedByAKind.includes(shape),
+        `the grammar names ${shape}, and nothing on the board draws it`
+      ).toBe(true);
+    }
+
+    for (const kind of KINDS) {
+      expect(SHAPES).toContain(kind);
+    }
+  });
+
+  it.each(KINDS)(
+    '%s paints a visible fill or stroke, sized to its box',
+    (kind) => {
+      const paint = paintShape(figure(kind), { theme: 'light' });
+      const drawn = inks(paint);
+
+      const visible = drawn.some(
+        (path) =>
+          (path.fill !== undefined && path.fill !== 'none') ||
+          (path.stroke !== undefined && path.stroke !== 'none')
+      );
+      expect(visible).toBe(true);
+      expect(drawn.some((path) => path.stroke === '#1e1e1e')).toBe(true);
+
+      const extent = extentOf(paint);
+      expect(extent.w).toBeGreaterThan(0);
+      expect(extent.h).toBeGreaterThan(0);
+      expect(Math.max(extent.w / 120, extent.h / 80)).toBeGreaterThan(0.5);
+    }
+  );
 });

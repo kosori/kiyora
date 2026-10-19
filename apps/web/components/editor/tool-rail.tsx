@@ -6,6 +6,7 @@ import {
   IconRectangle,
   type TablerIcon,
 } from '@tabler/icons-react';
+import { ShapePicker } from './shape-picker';
 import { ToolRailButton } from './tool-rail-button';
 
 /**
@@ -34,5 +35,6 @@ export const ToolRail = () => (
     {RAIL.map((entry) => (
       <ToolRailButton entry={entry} key={entry.tool} />
     ))}
+    <ShapePicker />
   </div>
 );

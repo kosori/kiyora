@@ -206,3 +206,85 @@ test('a drag lands on the board behind the camera, not on the canvas', async ({
     'M 100 100 L 300 100 L 300 250 L 100 250 Z'
   );
 });
+
+test('the picker reaches the whole vocabulary without lengthening the rail', async ({
+  page,
+}) => {
+  await open(page);
+
+  await expect(railButton(page, 'Star')).toHaveCount(0);
+
+  await page.getByTestId('shape-picker').click();
+
+  const menu = page.getByTestId('shape-picker-menu');
+  await expect(menu).toBeVisible();
+
+  const names = [
+    'Star',
+    'Cloud',
+    'Cylinder',
+    'Actor',
+    'Brace',
+    'Predefined Process',
+  ];
+
+  await Promise.all(
+    names.map((name) =>
+      expect(menu.getByRole('menuitem', { name })).toBeVisible()
+    )
+  );
+});
+
+test('choosing a kind from the picker places it, painted', async ({ page }) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.getByTestId('shape-picker').click();
+  await page
+    .getByTestId('shape-picker-menu')
+    .getByRole('menuitem', { name: 'Star' })
+    .click();
+
+  await drag(
+    page,
+    { x: box.x + 200, y: box.y + 150 },
+    { x: box.x + 400, y: box.y + 300 }
+  );
+
+  const placed = placedShape(page);
+
+  await expect(placed).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
+  await expect(placed).toHaveAttribute('stroke', '#1e1e1e');
+  await expect(placed).not.toHaveAttribute(
+    'd',
+    'M 200 150 L 400 150 L 400 300 L 200 300 Z'
+  );
+});
+
+test('placing from the picker behaves identically to placing from the rail', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  const from = { x: box.x + 200, y: box.y + 150 };
+  const to = { x: box.x + 400, y: box.y + 300 };
+
+  await railButton(page, 'Rectangle').click();
+  await drag(page, from, to);
+
+  const viaRail = placedShape(page);
+  const railD = await viaRail.getAttribute('d');
+
+  await page.getByTestId('shape-picker').click();
+  await page
+    .getByTestId('shape-picker-menu')
+    .getByRole('menuitem', { name: 'Rectangle' })
+    .click();
+  await drag(page, from, to);
+
+  await expect(placedShape(page)).toHaveAttribute('d', railD ?? '');
+  await expect(placedShape(page)).toHaveAttribute(
+    'fill',
+    'rgba(25, 113, 194, 0.2)'
+  );
+});
