@@ -23,6 +23,14 @@ export {
   zoomBy,
 } from './camera';
 export {
+  boxBetween,
+  boxesIntersect,
+  containsPoint,
+  shapeAt,
+  shapesInBox,
+} from './geometry/hit-test';
+export { GRID, NUDGE_STEP, snapTranslation, snapValue } from './geometry/snap';
+export {
   type Binding,
   bindingKey,
   CAMERA_ACTIONS,
@@ -51,5 +59,18 @@ export {
   type SaveStatus,
 } from './persistence/storage';
 export type { Placement } from './placement';
-export { createEditor, type Editor, type View } from './store';
+export {
+  normaliseSelection,
+  type Offsets,
+  offsetShapes,
+  type Selection,
+  selectedShapes,
+  selectionBounds,
+} from './selection';
+export {
+  createEditor,
+  type Editor,
+  type Gesture,
+  type View,
+} from './store';
 export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
