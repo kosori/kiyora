@@ -1,6 +1,7 @@
 'use client';
 
-import { type Editor, GRID, NUDGE_STEP } from '@kiyora/editor';
+import { GRID, NUDGE_STEP } from '@kiyora/editor';
+import { useEditor } from '@kiyora/editor/react';
 import { useEffect } from 'react';
 
 const TYPING = ['INPUT', 'SELECT', 'TEXTAREA'];
@@ -18,12 +19,15 @@ const isTyping = (target: EventTarget | null): boolean =>
   (target.isContentEditable || TYPING.includes(target.tagName));
 
 /**
- * The board's own keys: the arrows nudge the selection, a shift-arrow by a
- * whole grid step, and Escape cancels a gesture in progress. A pointer drag
- * bypasses the snap with Alt, and the arrows do not, because a nudge is already
- * the fine step.
+ * The board's own keys: the arrows nudge the selection, a shift-arrow by a whole
+ * grid step, and Escape cancels a gesture in progress. They are not in the
+ * keymap yet, so they get their own listener beside the one that reads it; a
+ * pointer drag bypasses the snap with Alt, and the arrows do not, because a
+ * nudge is already the fine step.
  */
-export const useSelectionKeys = (editor: Editor): void => {
+export const useSelectionKeys = (): void => {
+  const editor = useEditor();
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || isTyping(event.target)) {

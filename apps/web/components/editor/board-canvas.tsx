@@ -10,6 +10,12 @@ import { Marquee } from './marquee';
 import { SelectionFrame } from './selection-frame';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
+import { useSelectionKeys } from './use-selection-keys';
+import { useShortcuts } from './use-shortcuts';
+
+type Props = {
+  onShowShortcuts: () => void;
+};
 
 const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
   <>
@@ -40,10 +46,14 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
  * frame and the marquee ride inside the camera's group, so they hug the board
  * wherever the camera takes it.
  */
-export const BoardCanvas = () => {
+export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
   const surface = useCameraSurface();
   const pointer = useBoardPointer(surface.hand);
+
+  useShortcuts(onShowShortcuts, surface.intent);
+  useSelectionKeys();
+
   const paint = useMemo(
     () => paintBoard(board, { theme: board.settings.theme }),
     [board]

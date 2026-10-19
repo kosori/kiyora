@@ -33,9 +33,13 @@ export { GRID, NUDGE_STEP, snapTranslation, snapValue } from './geometry/snap';
 export {
   type Binding,
   bindingKey,
+  CAMERA_ACTIONS,
+  type CameraAction,
   type Command,
   commandId,
+  KEY_ALIASES,
   KEYMAP,
+  keyToken,
   type ReferenceRow,
   resolveKey,
   SHORTCUT_ROWS,
