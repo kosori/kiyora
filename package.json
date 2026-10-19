@@ -33,6 +33,7 @@
     "check-types:root": "tsc --noEmit",
     "dev": "turbo run dev",
     "fix": "ultracite fix",
+    "fonts:subset": "bun scripts/subset-font.ts",
     "test": "turbo run test && vitest run",
     "test:e2e": "playwright test"
   },

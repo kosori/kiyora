@@ -58,7 +58,9 @@ const drawnRectangle = (page: Page) =>
   page.getByTestId('board').locator(`path[d="${drawnPaint.d}"]`);
 
 const starterRectangle = (page: Page) =>
-  page.getByTestId('board').locator(`path[fill="${starterPaint.fill}"]`);
+  page
+    .getByTestId('board')
+    .locator(`path:not([data-wobble])[fill="${starterPaint.fill}"]`);
 
 const drawRectangle = async (page: Page): Promise<void> => {
   const box = await canvasBox(page);
