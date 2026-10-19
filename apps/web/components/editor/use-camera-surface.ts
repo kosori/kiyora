@@ -17,11 +17,11 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-
-const TYPING = ['INPUT', 'SELECT', 'TEXTAREA'];
+import type { CameraIntent } from './use-shortcuts';
 
 type Handlers = {
   onPointerCancel: (event: ReactPointerEvent<SVGSVGElement>) => void;
@@ -43,6 +43,8 @@ export type CameraSurface = {
   actions: Actions;
   hand: boolean;
   handlers: Handlers;
+  /** Runs a keymap-resolved camera key where the pointer is. */
+  intent: CameraIntent;
   /** Whether the canvas has measured itself, which every camera action needs. */
   ready: boolean;
   ref: RefObject<SVGSVGElement | null>;
@@ -59,15 +61,12 @@ const localPoint = (
   return { x: clientX - (box?.left ?? 0), y: clientY - (box?.top ?? 0) };
 };
 
-const isTyping = (target: EventTarget | null): boolean =>
-  target instanceof HTMLElement &&
-  (target.isContentEditable || TYPING.includes(target.tagName));
-
 /**
- * The camera's gestures, bound to the canvas itself: the wheel and the keyboard
- * zoom about the pointer, and a drag pans when the hand tool is up, space is
- * held, or the middle button is down. Every one of them moves the view and leaves
- * the board alone.
+ * The camera's gestures, bound to the canvas itself: the wheel zooms about the
+ * pointer, and a drag pans when the hand tool is up, space is held, or the
+ * middle button is down. The keys that drive the camera are declared in the
+ * keymap and resolved by the app's one key listener; this surface supplies the
+ * anchor they zoom about and the space-held state they set.
  */
 export const useCameraSurface = (): CameraSurface => {
   const editor = useEditor();
@@ -116,42 +115,32 @@ export const useCameraSurface = (): CameraSurface => {
     return () => element.removeEventListener('wheel', onWheel);
   }, [editor]);
 
-  useEffect(() => {
-    const anchor = (): Point =>
-      hasPointer.current ? pointer.current : viewCentre(size.current);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (isTyping(event.target)) {
-        return;
-      }
-      if (event.code === 'Space') {
-        space.current = true;
-        setSpaceHeld(true);
-        event.preventDefault();
-        return;
-      }
-      if (event.key === '=' || event.key === '+') {
-        editor.setCamera(stepZoom(editor.getView().camera, anchor(), 1));
-        event.preventDefault();
-        return;
-      }
-      if (event.key === '-' || event.key === '_') {
-        editor.setCamera(stepZoom(editor.getView().camera, anchor(), -1));
-        event.preventDefault();
-      }
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.code === 'Space') {
-        space.current = false;
-        setSpaceHeld(false);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-    };
-  }, [editor]);
+  const intent = useMemo<CameraIntent>(
+    () => ({
+      run: (action, phase) => {
+        if (action === 'pan') {
+          const held = phase === 'down';
+          space.current = held;
+          setSpaceHeld(held);
+          return;
+        }
+        if (phase === 'up') {
+          return;
+        }
+        const anchor = hasPointer.current
+          ? pointer.current
+          : viewCentre(size.current);
+        editor.setCamera(
+          stepZoom(
+            editor.getView().camera,
+            anchor,
+            action === 'zoom-in' ? 1 : -1
+          )
+        );
+      },
+    }),
+    [editor]
+  );
 
   const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     const panning =
@@ -225,6 +214,7 @@ export const useCameraSurface = (): CameraSurface => {
       onPointerMove,
       onPointerUp: onPointerEnd,
     },
+    intent,
     ready,
     ref,
     view,

@@ -1,5 +1,6 @@
 import {
   bindingKey,
+  CAMERA_ACTIONS,
   KEYMAP,
   resolveKey,
   SHORTCUT_ROWS,
@@ -12,6 +13,14 @@ describe('the keymap', () => {
     expect(resolveKey('v')).toEqual({ kind: 'tool', tool: 'select' });
     expect(resolveKey('r')).toEqual({ kind: 'tool', tool: 'rectangle' });
     expect(resolveKey('?')).toEqual({ kind: 'show-shortcuts' });
+  });
+
+  it('resolves the camera keys, so zooming is declared like every other binding', () => {
+    expect(resolveKey(' ')).toEqual({ action: 'pan', kind: 'camera' });
+    expect(resolveKey('=')).toEqual({ action: 'zoom-in', kind: 'camera' });
+    expect(resolveKey('+')).toEqual({ action: 'zoom-in', kind: 'camera' });
+    expect(resolveKey('-')).toEqual({ action: 'zoom-out', kind: 'camera' });
+    expect(resolveKey('_')).toEqual({ action: 'zoom-out', kind: 'camera' });
   });
 
   it('leaves an unbound key alone, so typing cannot change a tool', () => {
@@ -35,6 +44,22 @@ describe('the keymap', () => {
   it('shows no row the keymap cannot key, so the dialog never teaches a dead shortcut', () => {
     for (const row of SHORTCUT_ROWS) {
       expect(bindingKey(row.command)).not.toBeNull();
+    }
+  });
+
+  it('declares a key for every camera action the surface honours, so a working key cannot stay invisible', () => {
+    for (const action of CAMERA_ACTIONS) {
+      expect(bindingKey({ action, kind: 'camera' })).not.toBeNull();
+    }
+  });
+
+  it('lists every camera action in the reference, so the sheet does not omit the keys that zoom', () => {
+    const rows = shortcutReference();
+
+    for (const action of CAMERA_ACTIONS) {
+      const key = bindingKey({ action, kind: 'camera' });
+
+      expect(rows.some((row) => row.key === key)).toBe(true);
     }
   });
 

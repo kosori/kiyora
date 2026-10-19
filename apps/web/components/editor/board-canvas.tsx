@@ -8,6 +8,11 @@ import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
 import { useCameraSurface } from './use-camera-surface';
 import { usePlacement } from './use-placement';
+import { useShortcuts } from './use-shortcuts';
+
+type Props = {
+  onShowShortcuts: () => void;
+};
 
 const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
   <>
@@ -36,10 +41,13 @@ const PaintPaths = ({ paint }: { paint: Paint }): ReactNode => (
  * camera's own pointer plumbing on the `<svg>` is untouched; a pointer event
  * bubbles from the canvas to here, and each tool's handlers ignore the other's.
  */
-export const BoardCanvas = () => {
+export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
   const surface = useCameraSurface();
   const placement = usePlacement();
+
+  useShortcuts(onShowShortcuts, surface.intent);
+
   const paint = useMemo(
     () => paintBoard(board, { theme: board.settings.theme }),
     [board]
