@@ -34,6 +34,7 @@ export const Editor = () => {
 
   return (
     <EditorProvider editor={editor}>
+      <h1 className='sr-only'>Kiyora</h1>
       <div className='flex h-full'>
         <PanelBoundary label='Tools'>
           <CrashProbe name='tools'>

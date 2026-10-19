@@ -47,12 +47,17 @@ export const ShapePicker = () => {
   const tool = useTool();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<Element | null>(null);
   const active = isFigureTool(tool);
 
   useEffect(() => {
     if (!open) {
       return;
     }
+
+    previousFocus.current = document.activeElement;
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
 
     const onPointerDown = (event: PointerEvent) => {
       const element = root.current;
@@ -72,6 +77,10 @@ export const ShapePicker = () => {
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      const before = previousFocus.current;
+      if (before instanceof HTMLElement && before.isConnected) {
+        before.focus();
+      }
     };
   }, [open]);
 
@@ -106,6 +115,7 @@ export const ShapePicker = () => {
         <div
           className='absolute top-0 left-full z-20 ml-1 grid max-h-96 w-56 grid-cols-2 gap-0.5 overflow-y-auto rounded-lg border border-border bg-background p-1 shadow-md'
           data-testid='shape-picker-menu'
+          ref={menu}
           role='menu'
         >
           {FIGURE_KINDS.map((kind) => (
