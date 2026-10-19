@@ -1,3 +1,4 @@
+import { CLIPBOARD_BINDINGS, CLIPBOARD_ROWS } from './clipboard-keys';
 import { PRESENT_BINDINGS, PRESENT_ROWS } from './present-keys';
 import type { Tool } from './tools';
 
@@ -19,6 +20,10 @@ export type Command =
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
   | { kind: 'cancel-gesture' }
   | { kind: 'delete' }
+  | { kind: 'copy' }
+  | { kind: 'cut' }
+  | { kind: 'paste' }
+  | { kind: 'duplicate' }
   | { kind: 'undo' }
   | { kind: 'redo' }
   | { kind: 'present' }
@@ -151,6 +156,7 @@ export const KEYMAP: readonly Binding[] = [
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
   { command: { kind: 'delete' }, key: 'delete' },
   { command: { kind: 'delete' }, key: 'backspace' },
+  ...CLIPBOARD_BINDINGS,
   {
     command: { kind: 'undo' },
     key: 'z',
@@ -252,6 +258,7 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     group: 'Selection',
     label: 'Cancel a gesture',
   },
+  ...CLIPBOARD_ROWS,
   {
     commands: [{ kind: 'undo' }],
     group: 'History',

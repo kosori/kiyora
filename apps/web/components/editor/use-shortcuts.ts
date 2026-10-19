@@ -88,6 +88,30 @@ export const useShortcuts = (
         return;
       }
 
+      if (command.kind === 'duplicate') {
+        event.preventDefault();
+        editor.duplicate();
+        return;
+      }
+
+      if (command.kind === 'copy') {
+        event.preventDefault();
+        editor.copy();
+        return;
+      }
+
+      if (command.kind === 'cut') {
+        event.preventDefault();
+        editor.cut();
+        return;
+      }
+
+      if (command.kind === 'paste') {
+        event.preventDefault();
+        editor.paste();
+        return;
+      }
+
       if (command.kind === 'undo') {
         event.preventDefault();
         editor.undo();

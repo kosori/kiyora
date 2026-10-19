@@ -3,6 +3,7 @@ import type { Point } from './camera';
 import { editConnector } from './connectors';
 import { addShape, subtreeIds } from './containment';
 import { createDeckCommands } from './deck-commands';
+import { createEditCommands } from './edit-commands';
 import { resizeModifiers } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
@@ -23,7 +24,6 @@ import {
   setShapeText,
   setShapeTextStyle,
   translateShapes,
-  withoutSelection,
 } from './shape-edit';
 import type { Drag, Editor, Gesture, View } from './state';
 import { subscriptionOf } from './subscription';
@@ -151,6 +151,12 @@ export const createEditor = (board: Board): Editor => {
     change: changeBoard,
     style: () => style,
   });
+  const commands = createEditCommands({
+    board: () => current,
+    change: changeBoard,
+    select: commitSelection,
+    selection: () => selection,
+  });
 
   return {
     addSlide: deck.addSlide,
@@ -172,19 +178,11 @@ export const createEditor = (board: Board): Editor => {
       }
       publishGesture();
     },
-    deleteSelection: () => {
-      const before = current;
-      const next = withoutSelection(current, subtreeIds(current, selection));
-      if (next === before) {
-        return;
-      }
-      transactions.endNudgeRun();
-      current = next;
-      transactions.commit(before, next);
-      commitSelection([]);
-      publish(listeners);
-    },
+    copy: commands.copy,
+    cut: commands.cut,
+    deleteSelection: commands.deleteSelection,
     deleteSlide: deck.deleteSlide,
+    duplicate: commands.duplicate,
     duplicateSlide: deck.duplicateSlide,
     endNudgeRun: transactions.endNudgeRun,
     getBoard: () => current,
@@ -205,6 +203,7 @@ export const createEditor = (board: Board): Editor => {
       transactions.noteNudge(current);
       publishChange(translateShapes(current, ids, dx, dy));
     },
+    paste: commands.paste,
     placeShape: (placement) => {
       const { tool } = view;
       if (!placesShape(tool)) {

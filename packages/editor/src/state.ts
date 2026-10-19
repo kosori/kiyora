@@ -135,6 +135,18 @@ export type Editor = {
    * vanishes silently. One gesture, one history entry.
    */
   deleteSelection: () => void;
+  /** Copies the selection to the app's clipboard. Changes nothing on the board. */
+  copy: () => void;
+  /** Copies the selection and deletes it as one gesture, so one undo restores both. */
+  cut: () => void;
+  /** Copies the selection clear of itself. One board change, one history entry. */
+  duplicate: () => void;
+  /**
+   * Puts the clipboard on the board offset clear of what it copies, cascading
+   * further on each repeat so a second paste is not hidden by the first. One
+   * gesture however many shapes it carries, so one undo takes the paste back.
+   */
+  paste: () => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */
