@@ -39,10 +39,9 @@ const base = {
 
 describe('projecting a stroke pattern', () => {
   it('writes the dash pattern an artifact draws, so an export matches the canvas', () => {
-    const svg = projectBoard(
-      board({ ...base, dash: 'dashed' }),
-      { theme: 'light' }
-    );
+    const svg = projectBoard(board({ ...base, dash: 'dashed' }), {
+      theme: 'light',
+    });
 
     expect(svg).toContain('stroke-dasharray="8 6"');
   });

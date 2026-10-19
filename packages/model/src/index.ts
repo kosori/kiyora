@@ -4,8 +4,8 @@ export {
   type BoardSettings,
   boardSchema,
   type Camera,
-  cameraSchema,
   type Corner,
+  cameraSchema,
   cornerSchema,
   DASHES,
   type Dash,
@@ -44,8 +44,8 @@ export {
   paintShape,
 } from './paint/paint';
 export {
-  type FillStyle,
   FILL_STYLES,
+  type FillStyle,
   FOREGROUND,
   FOREGROUND_ENTRY,
   type Foreground,

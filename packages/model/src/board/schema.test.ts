@@ -101,10 +101,14 @@ describe('the board', () => {
 
   it('rejects a corner the grammar does not name, rather than guessing one', () => {
     const issues = boardIssues(
-      board({ shapes: [shape({ style: { ...shape().style, corner: 'bevel' } })] })
+      board({
+        shapes: [shape({ style: { ...shape().style, corner: 'bevel' } })],
+      })
     );
 
-    expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.style.corner']);
+    expect(issues.map((issue) => issue.path)).toEqual([
+      'shapes.0.style.corner',
+    ]);
   });
 
   it('rejects a dash outside the stroke patterns on offer', () => {

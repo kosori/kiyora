@@ -5,6 +5,7 @@ import { EditorProvider } from '@kiyora/editor/react';
 import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
+import { Inspector } from './inspector';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
@@ -12,8 +13,8 @@ import { useAutosave } from './use-autosave';
 
 /**
  * The editor route: it owns the engine and paints the board through the adapter.
- * The rail and the camera cluster float over the canvas, so the board keeps the
- * whole surface and the camera's coordinates stay the canvas's own.
+ * The rail and the inspector are columns, and the canvas owns the space between
+ * them, so the board's coordinates are the canvas's own.
  */
 export const Editor = () => {
   const [editor] = useState(() => createEditor(starterBoard()));
@@ -26,10 +27,13 @@ export const Editor = () => {
 
   return (
     <EditorProvider editor={editor}>
-      <div className='relative h-full'>
-        <BoardCanvas onShowShortcuts={toggleShortcuts} />
+      <div className='flex h-full'>
         <ToolRail />
-        <SaveIndicator status={status} />
+        <div className='relative h-full min-w-0 flex-1'>
+          <BoardCanvas onShowShortcuts={toggleShortcuts} />
+          <SaveIndicator status={status} />
+        </div>
+        <Inspector />
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
     </EditorProvider>
