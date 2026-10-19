@@ -72,7 +72,7 @@ const exportSvg = async (page: Page): Promise<string> => {
   return readFile(await download.path(), 'utf8');
 };
 
-test('the board comes out as one SVG that keeps the hand-drawn strokes, the connector and the label', async ({
+test('the board comes out as one SVG that keeps its clean geometry, the connector and the label', async ({
   page,
 }) => {
   await open(page);
@@ -84,8 +84,6 @@ test('the board comes out as one SVG that keeps the hand-drawn strokes, the conn
   expect(svg).toMatch(
     /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="[\d. -]+">/
   );
-  expect(svg).toContain('data-wobble="true"');
-  expect(svg).toContain('fill-opacity="0.66"');
   expect(svg).toContain('>Export<');
   expect(/<path [^>]*fill="none"[^>]*stroke="[^"]+"/.test(svg)).toBe(true);
 });

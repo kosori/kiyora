@@ -89,20 +89,13 @@ describe('taking the board out as SVG', () => {
     expect(exportBoardSvg(representative(), light)).toBe(golden('board.svg'));
   });
 
-  it('paints the hand-drawn overlay, the connector and the label, not just clean geometry', () => {
+  it('paints the clean geometry, the connector and the label, each exactly once', () => {
     const svg = exportBoardSvg(representative(), light);
-    const overlay = paths(svg).filter((path) =>
-      path.includes('data-wobble="true"')
-    );
     const card = paths(svg).find((path) => path.includes('M 0 0 L 180 0'));
     const label = /<text [^>]*fill="([^"]*)"[^>]*>(.*?)<\/text>/s.exec(svg);
 
+    expect(paths(svg)).toHaveLength(4);
     expect(card).toContain('fill="rgba(25, 113, 194, 0.2)" stroke="#1e1e1e"');
-    expect(overlay.length).toBeGreaterThan(0);
-    for (const path of overlay) {
-      expect(path).toContain('fill-opacity="0.66"');
-      expect(path).not.toContain('fill="none"');
-    }
     expect(svg).toContain('fill="none" stroke="#1e1e1e" stroke-width="2"');
     expect(label?.[1]).not.toBe('none');
     expect(svg).toContain('>Export<');

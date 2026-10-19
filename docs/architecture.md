@@ -89,8 +89,6 @@ type PaintPath = {
   d: string
   fill?: string; stroke?: string; strokeWidth?: number
   dash?: number[]
-  fillOpacity?: number   // the ribbon's alpha, so the clean stroke reads through
-  overlay?: true         // this path is the hand-drawn overlay over a clean one
 }
 
 type Paint = {
@@ -118,11 +116,13 @@ Text metrics need a DOM, and `model` must not have one, so measurement is inject
 
 `editor` injects the same measurer for hit-testing, so a click lands where the text is drawn.
 
-### Wobble
+### Clean geometry
 
-The hand-drawn overlay is a pure, seeded function of the shape, produced inside `paintShape`. Export therefore keeps the hand-drawn look by default — the export is the drawing the user saw. A `clean` flag for true geometry is a later addition.
+Every figure, frame, sticky and connector paints its authored geometry exactly once. Nothing is traced over it, so the canvas and an export carry the same lines, and the seed that once made a shape redraw identically has nothing left to displace.
 
-Reduced motion is the app's decision, not the model's. The walker always produces the overlay; the canvas hides it under `prefers-reduced-motion: reduce`, so the clean geometry beneath it carries every shape. The board is unchanged, and an export — built by `model` from the board alone — keeps the hand-drawn look.
+The hand-drawn character comes from the typeface, which is set on every label and vendored with its licence. Geometry stays exact.
+
+Reduced motion is the app's decision, not the model's. The only motion left to suppress is the chrome's transitions, so `prefers-reduced-motion: reduce` shortens those and does not touch the board, which never moves.
 
 ## Editing
 
@@ -172,7 +172,6 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | --- | --- |
 | Schema, shape union, migrations, serialization | `packages/model/src/board/` |
 | Figure geometry, palette, style resolution | `packages/model/src/paint/` |
-| Wobble | `packages/model/src/paint/wobble.ts` |
 | SVG projection | `packages/model/src/projection/` |
 | SVG export: document, byte cap, safety | `packages/model/src/export/` |
 | Text runs, wrapping, measurement protocol | `packages/model/src/text/` |

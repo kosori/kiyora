@@ -10,8 +10,7 @@ export const SVG_FILE_EXTENSION = '.svg';
  * The most bytes an SVG export may reach. A board that projects past it is
  * refused rather than written out, because a truncated download is worse than
  * no download: the person keeps a file that looks like their board and is not.
- * The walker's hand-drawn overlay is what makes the artifact big, and it stays,
- * so the cap is generous.
+ * A board with many labelled shapes can still reach this, so the cap is generous.
  */
 export const SVG_EXPORT_LIMIT_BYTES = 8 * 1024 * 1024;
 

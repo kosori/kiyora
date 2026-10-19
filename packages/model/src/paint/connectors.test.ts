@@ -5,10 +5,7 @@ import {
   type ConnectorShape,
   connectorInk,
   connectorPath,
-  type Paint,
-  paintBoard,
   parseBoard,
-  projectBoard,
   ROUTES,
   resolveConnector,
   SCHEMA_VERSION,
@@ -231,109 +228,5 @@ describe('heads, chosen per end', () => {
     const ink = connectorInk(connector({ end: 'none', start: 'none' }), shapes);
 
     expect(ink.filter((part) => part.head)).toHaveLength(0);
-  });
-});
-
-const light = { theme: 'light' } as const;
-
-/** A board of two joined shapes plus the connector, in the route asked for. */
-const joined = (route: 'straight' | 'curved' | 'elbow'): Shape[] => [
-  rectangle({ id: 'a', x: 0, y: 0 }),
-  rectangle({ id: 'b', x: 300, y: 0 }),
-  connector({ route }),
-];
-
-/** The painted node of the connector, found by the id it is keyed on. */
-const connectorNode = (
-  shapes: Shape[],
-  id = 'connector-1'
-): Paint | undefined =>
-  paintBoard(board(shapes), light).children.find((node) => node.shapeId === id);
-
-/** The coordinate pairs in a path's `d`, which is all a traced ribbon carries. */
-const coordinates = (d: string): [number, number][] => {
-  const values = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
-  const points: [number, number][] = [];
-  for (let index = 0; index + 1 < values.length; index += 2) {
-    points.push([values[index] ?? 0, values[index + 1] ?? 0]);
-  }
-  return points;
-};
-
-describe('the hand-drawn overlay on a connector', () => {
-  it.each(['straight', 'curved', 'elbow'] as const)(
-    'traces the %s route with a ribbon, so the line reads as drawn',
-    (route) => {
-      const overlays = connectorNode(joined(route))?.paths.filter(
-        (path) => path.overlay
-      );
-
-      expect(overlays).toHaveLength(1);
-      expect(overlays?.[0]?.fill).toBeDefined();
-      expect(overlays?.[0]?.fill).not.toBe('none');
-    }
-  );
-
-  it('draws the ribbon over the line but under the head, so the arrowhead keeps its ink', () => {
-    const paths = connectorNode(joined('straight'))?.paths ?? [];
-    const ribbon = paths.findIndex((path) => path.overlay === true);
-    const head = paths.findIndex(
-      (path) => path.overlay !== true && path.fill !== 'none'
-    );
-
-    expect(paths[0]?.overlay).toBeUndefined();
-    expect(ribbon).toBeGreaterThan(0);
-    expect(head).toBeGreaterThan(ribbon);
-    expect(paths[head]?.d).toContain('Z');
-  });
-
-  it('keeps its pattern when both endpoints move, because the seed is the id', () => {
-    const before = connectorNode(joined('straight'));
-    const moved = joined('straight').map((shape) => ({
-      ...shape,
-      x: shape.x + 200,
-      y: shape.y + 50,
-    }));
-    const after = connectorNode(moved);
-    const ribbon = (node: Paint | undefined): [number, number][] =>
-      coordinates(node?.paths.find((path) => path.overlay)?.d ?? '');
-    const beforeRibbon = ribbon(before);
-    const afterRibbon = ribbon(after);
-
-    expect(beforeRibbon.length).toBeGreaterThan(3);
-    expect(afterRibbon).toHaveLength(beforeRibbon.length);
-    for (let index = 0; index < beforeRibbon.length; index += 1) {
-      expect(
-        (afterRibbon[index]?.[0] ?? 0) - (beforeRibbon[index]?.[0] ?? 0)
-      ).toBeCloseTo(200, 1);
-      expect(
-        (afterRibbon[index]?.[1] ?? 0) - (beforeRibbon[index]?.[1] ?? 0)
-      ).toBeCloseTo(50, 1);
-    }
-  });
-
-  it('draws two identically routed connectors differently, because each is seeded by its own id', () => {
-    const first = connectorNode(joined('straight'));
-    const renamed = joined('straight').map((shape) =>
-      shape.id === 'connector-1' ? { ...shape, id: 'connector-2' } : shape
-    );
-    const second = connectorNode(renamed, 'connector-2');
-
-    expect(first?.paths.find((path) => path.overlay)?.d).toBeDefined();
-    expect(second?.paths.find((path) => path.overlay)?.d).toBeDefined();
-    expect(first?.paths.find((path) => path.overlay)?.d).not.toBe(
-      second?.paths.find((path) => path.overlay)?.d
-    );
-  });
-
-  it('keeps the ribbon in the artifact, so the export is the drawing the user saw', () => {
-    const lone = {
-      ...connector(),
-      from: { kind: 'free' as const, x: 0, y: 0 },
-      to: { kind: 'free' as const, x: 200, y: 100 },
-    };
-    const svg = projectBoard(board([lone]), light);
-
-    expect(svg.match(/data-wobble="true"/g)).toHaveLength(1);
   });
 });

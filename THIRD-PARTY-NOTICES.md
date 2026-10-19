@@ -21,7 +21,6 @@ Where the origin is this repository's own history, see [docs/provenance.md](./do
 | Component | Licence | Used by |
 | --- | --- | --- |
 | `zod` | MIT | `@kiyora/model` — the board schema |
-| `perfect-freehand` | MIT | `@kiyora/model` — the hand-drawn overlay |
 | `react`, `react-dom` | MIT | `@kiyora/editor`, `apps/web` |
 | `next` | MIT | `apps/web` |
 | `tailwindcss` | MIT | `apps/web` |

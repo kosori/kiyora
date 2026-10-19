@@ -37,7 +37,7 @@ const drag = async (
 
 /** Every shape's clean path, so a copy is counted and read by its own geometry. */
 const shapePaths = (page: Page) =>
-  page.getByTestId('board').locator('path[data-shape]:not([data-wobble])');
+  page.getByTestId('board').locator('path[data-shape]');
 
 const ORIGINAL = 'M 80 80 L 300 80 L 300 220 L 80 220 Z';
 /** The original offset by the copy offset — clear of it, not on top of it. */

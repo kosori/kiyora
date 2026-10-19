@@ -164,9 +164,7 @@ test('a corrupt board is set aside, never overwritten by a fresh one', async ({
     )
     .toBe(1);
 
-  const fresh = page
-    .getByTestId('board')
-    .locator('path:not([data-wobble])[fill="#2f9e44"]');
+  const fresh = page.getByTestId('board').locator('path[fill="#2f9e44"]');
   await expect(fresh).toBeVisible();
 });
 
@@ -218,7 +216,7 @@ test('a full disk is reported as quota, and the board stays on screen', async ({
 
   const drawn = page
     .getByTestId('board')
-    .locator('path:not([data-wobble])[fill="rgba(25, 113, 194, 0.2)"]');
+    .locator('path[fill="rgba(25, 113, 194, 0.2)"]');
   await expect(drawn).toHaveAttribute(
     'd',
     'M 200 150 L 400 150 L 400 300 L 200 300 Z'
@@ -265,7 +263,7 @@ test('missing storage is reported as unavailable, and the board still works', as
 
   await expect(status(page)).toHaveAttribute('data-fault', 'unavailable');
   await expect(
-    page.getByTestId('board').locator('path:not([data-wobble])[fill="#2f9e44"]')
+    page.getByTestId('board').locator('path[fill="#2f9e44"]')
   ).toBeVisible();
 });
 
@@ -313,6 +311,6 @@ test('a panel that throws leaves the board intact and says what to do next', asy
   ).toBeVisible();
 
   await expect(
-    page.getByTestId('board').locator('path:not([data-wobble])[fill="#2f9e44"]')
+    page.getByTestId('board').locator('path[fill="#2f9e44"]')
   ).toBeVisible();
 });

@@ -18,10 +18,6 @@ _Avoid_: Element, object, node, item
 The render-ready description of a shape: paths, fills, strokes and text runs. Pure, and the only thing a renderer consumes.
 _Avoid_: Render model, SVG model, draw instructions
 
-**Wobble**:
-The hand-drawn overlay traced along a shape's clean geometry, seeded by the shape's id so it never shifts between renders.
-_Avoid_: Sketch, jitter, rough, hand-drawn mode
-
 **Palette**:
 The nine colours a board may use, and the three fill styles. Any other colour snaps to the nearest palette hue.
 _Avoid_: Theme, swatches, colour set

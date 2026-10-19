@@ -29,8 +29,7 @@ const board = (page: Page) => page.getByTestId('board');
 const labels = (page: Page) => board(page).locator('text');
 
 /** Every clean path, so a shape is read by the geometry it paints. */
-const shapePaths = (page: Page) =>
-  board(page).locator('path[data-shape]:not([data-wobble])');
+const shapePaths = (page: Page) => board(page).locator('path[data-shape]');
 
 const connectorPaths = (page: Page) =>
   board(page).locator('path[data-shape="connector-1"]');

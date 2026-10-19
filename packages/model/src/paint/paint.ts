@@ -14,17 +14,12 @@ import { connectorInk, connectorLabel } from './connectors';
 import { FIGURE_GEOMETRY } from './figure-geometry';
 import { rectanglePath } from './figures';
 import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
-import { deriveWobbleSeed, WOBBLE_OPACITY, wobblePath } from './wobble';
 
 /** One path a renderer draws, in board coordinates. */
 export type PaintPath = {
   d: string;
   dash?: number[];
   fill?: string;
-  /** The alpha a hand-drawn overlay's ribbon paints at, so the clean stroke reads through. */
-  fillOpacity?: number;
-  /** True when this path is the hand-drawn overlay traced over a shape's clean geometry. */
-  overlay?: true;
   stroke?: string;
   strokeWidth?: number;
 };
@@ -75,35 +70,6 @@ const fillOf = (style: Style, theme: Theme, opacity: number): string => {
 const strokeOf = (style: Style, theme: Theme, opacity: number): string =>
   paintColour(style.stroke, theme, opacity);
 
-/**
- * The hand-drawn overlay over one clean path, or `null` when the path is too
- * degenerate to trace. The ribbon is drawn in the shape's own stroke colour and
- * is wide enough to cover the clean line beneath it. It is seeded by the shape's
- * id and the path's place in its geometry, so two identically shaped figures do
- * not look stamped, and the seed never moves with the shape.
- */
-const overlayPath = (
-  shape: Shape,
-  index: number,
-  d: string,
-  stroke: string
-): PaintPath | null => {
-  const traced = wobblePath(
-    d,
-    deriveWobbleSeed(`${shape.id}:${index}`),
-    shape.style.strokeWidth
-  );
-
-  return traced === null
-    ? null
-    : {
-        d: traced,
-        fill: stroke,
-        fillOpacity: WOBBLE_OPACITY,
-        overlay: true,
-      };
-};
-
 /** One box-shaped shape's path: the box its author drew, styled by the palette. */
 const boxPath = (shape: Shape, context: PaintContext): PaintPath => {
   const dash = DASH_PATTERN[shape.style.dash];
@@ -117,41 +83,27 @@ const boxPath = (shape: Shape, context: PaintContext): PaintPath => {
   };
 };
 
-/** One box-shaped shape's paint: the box, then the hand-drawn overlay over it. */
-const paintBox = (shape: Shape, context: PaintContext): PaintPath[] => {
-  const clean = boxPath(shape, context);
-  const overlay =
-    clean.stroke === undefined
-      ? null
-      : overlayPath(shape, 0, clean.d, clean.stroke);
-
-  return overlay === null ? [clean] : [clean, overlay];
-};
+/** One box-shaped shape's paint: its clean box, styled by the palette. */
+const paintBox = (shape: Shape, context: PaintContext): PaintPath[] => [
+  boxPath(shape, context),
+];
 
 /** Paints one figure: every path its geometry names, styled by the palette. */
 const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
   const dash = DASH_PATTERN[shape.style.dash];
   const fill = fillOf(shape.style, context.theme, shape.opacity);
   const stroke = strokeOf(shape.style, context.theme, shape.opacity);
-  const clean: PaintPath[] = [];
-  const overlay: PaintPath[] = [];
-
-  FIGURE_GEOMETRY[shape.kind](shape).forEach((ink, index) => {
-    clean.push({
+  const paths = FIGURE_GEOMETRY[shape.kind](shape).map(
+    (ink): PaintPath => ({
       d: ink.d,
       ...(dash === undefined ? {} : { dash }),
       fill: ink.filled === false ? 'none' : fill,
       stroke,
       strokeWidth: shape.style.strokeWidth,
-    });
+    })
+  );
 
-    const traced = overlayPath(shape, index, ink.d, stroke);
-    if (traced !== null) {
-      overlay.push(traced);
-    }
-  });
-
-  return { children: [], paths: [...clean, ...overlay] };
+  return { children: [], paths };
 };
 
 /**
@@ -179,10 +131,7 @@ const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
  * Paints one connector: the line and a head at each end that asks for one, in
  * the stroke's own colour and dash, plus its label. The path comes from the
  * board the connector is painted with, so a bound end follows its shape with no
- * repair pass and the artifact sees exactly what the canvas draws. The line
- * carries the hand-drawn overlay like a box does; because paint order is array
- * order, the ribbon goes between the line and the heads, so the arrowheads keep
- * their ink.
+ * repair pass and the artifact sees exactly what the canvas draws.
  */
 const paintConnector = (
   shape: ConnectorShape,
@@ -191,23 +140,13 @@ const paintConnector = (
 ): Paint => {
   const stroke = strokeOf(shape.style, context.theme, shape.opacity);
   const dash = DASH_PATTERN[shape.style.dash];
-  const paths: PaintPath[] = [];
-  connectorInk(shape, shapes).forEach((part, index) => {
-    paths.push({
-      d: part.d,
-      ...(part.head === true || dash === undefined ? {} : { dash }),
-      fill: part.filled === true ? stroke : 'none',
-      stroke,
-      strokeWidth: shape.style.strokeWidth,
-    });
-
-    if (index === 0) {
-      const ribbon = overlayPath(shape, 0, part.d, stroke);
-      if (ribbon !== null) {
-        paths.push(ribbon);
-      }
-    }
-  });
+  const paths: PaintPath[] = connectorInk(shape, shapes).map((part) => ({
+    d: part.d,
+    ...(part.head === true || dash === undefined ? {} : { dash }),
+    fill: part.filled === true ? stroke : 'none',
+    stroke,
+    strokeWidth: shape.style.strokeWidth,
+  }));
   const text = connectorLabel(
     shape,
     shapes,

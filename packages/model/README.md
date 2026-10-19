@@ -7,7 +7,7 @@ The board. One schema, one paint walker, and the pure projection to SVG.
 | Area | Responsibility |
 | --- | --- |
 | `board/` | The zod schema, the shape union, validation, migrations, serialization |
-| `paint/` | Figure geometry, the palette and style resolution, and the wobble overlay |
+| `paint/` | Figure geometry, the palette and style resolution |
 | `projection/` | `Paint` to an SVG string |
 | `text/` | Inline markdown runs, wrapping, and the measurement protocol |
 | `file/` | The `.kyr.json` board file |

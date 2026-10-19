@@ -26,7 +26,7 @@ const canvasBox = async (page: Page) => {
 
 /** The topmost painted path: the shape a gesture just placed. */
 const placedShape = (page: Page) =>
-  page.getByTestId('board').locator('path:not([data-wobble])').last();
+  page.getByTestId('board').locator('path').last();
 
 const railButton = (page: Page, label: string) =>
   page.getByRole('button', { name: label });

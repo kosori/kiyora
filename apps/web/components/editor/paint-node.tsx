@@ -21,9 +21,7 @@ export const PaintNode = ({ paint }: { paint: Paint }): ReactNode => {
         <path
           d={path.d}
           data-shape={paint.shapeId}
-          data-wobble={path.overlay === true ? 'true' : undefined}
           fill={path.fill}
-          fillOpacity={path.fillOpacity}
           key={`path-${index}`}
           stroke={path.stroke}
           strokeDasharray={path.dash?.join(' ')}

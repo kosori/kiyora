@@ -152,11 +152,9 @@
 }
 
 /*
- * A person who has asked their system not to animate things is shown neither a
- * transition nor the hand-drawn ribbon. The ribbon is a static distortion, but
- * it reads as a hand-drawn shimmer, so it is not drawn and the clean geometry
- * beneath it carries every shape. An export is built by `model` from the board
- * alone, so a saved file keeps the hand-drawn look.
+ * A person who has asked their system not to animate things gets no transition.
+ * Geometry is drawn once and never moves, so the chrome is the only motion left
+ * to suppress.
  */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -166,9 +164,5 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
-  }
-
-  path[data-wobble='true'] {
-    display: none;
   }
 }

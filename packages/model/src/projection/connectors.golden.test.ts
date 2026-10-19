@@ -93,7 +93,7 @@ describe('projecting connectors to SVG', () => {
     expect(svg).toBe(golden('connectors.svg'));
   });
 
-  it('paints the line as a real stroke and the arrowhead in the same ink', () => {
+  it('paints the line as a real stroke and exactly one filled arrowhead', () => {
     const svg = projectBoard(
       board([
         rectangle('left', 0, 0),
@@ -102,13 +102,14 @@ describe('projecting connectors to SVG', () => {
       ]),
       light
     );
-    const inks = paths(svg).filter((path) => !/data-wobble/.test(path));
+    const inks = paths(svg);
 
+    expect(inks).toHaveLength(4);
     expect(inks.some((path) => /stroke="#1e1e1e"/.test(path))).toBe(true);
     expect(inks.filter((path) => /fill="#1e1e1e"/.test(path))).toHaveLength(1);
   });
 
-  it('draws the route with the same overlay the canvas gets, so the two agree', () => {
+  it('draws the route once: the line and its head, with no second layer over them', () => {
     const source = board([
       rectangle('left', 0, 0),
       rectangle('right', 300, 40),
@@ -117,13 +118,10 @@ describe('projecting connectors to SVG', () => {
     const node = paintBoard(source, light).children.find(
       (child) => child.shapeId === 'connector-1'
     );
-    const ribbon = node?.paths.find((path) => path.overlay)?.d;
     const svg = projectBoard(source, light);
 
-    expect(ribbon).toBeDefined();
-    expect(ribbon?.length).toBeGreaterThan(0);
-    expect(svg).toContain(`data-wobble="true"`);
-    expect(svg).toContain(`d="${ribbon}"`);
+    expect(node?.paths).toHaveLength(2);
+    expect(svg.match(/<path /g)).toHaveLength(4);
   });
 
   it('draws the label as visible text, never the invisible `none`', () => {

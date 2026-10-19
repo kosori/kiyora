@@ -38,23 +38,6 @@ const drag = async (
 const connectorPaths = (page: Page) =>
   page.getByTestId('board').locator('path[data-shape="connector-1"]');
 
-const routeOverlay = (page: Page) =>
-  page
-    .getByTestId('board')
-    .locator('path[data-shape="connector-1"][data-wobble="true"]');
-
-/** Which ink each connector path is, in paint order: the line, its ribbon, then a head. */
-const inkOrder = (page: Page) =>
-  connectorPaths(page).evaluateAll((paths) =>
-    paths.map((path) =>
-      path.getAttribute('data-wobble') === 'true'
-        ? 'ribbon'
-        : path.getAttribute('fill') === 'none'
-          ? 'line'
-          : 'head'
-    )
-  );
-
 const connectorLine = (page: Page) => connectorPaths(page).first();
 
 /** Draws the starter rectangle's partner at `at`, then joins the two. */
@@ -82,24 +65,10 @@ test('a drag joins two shapes with a connector that paints a real line', async (
 
   await joinTwoShapes(page, box);
 
-  await expect(connectorPaths(page)).toHaveCount(3);
+  await expect(connectorPaths(page)).toHaveCount(2);
   await expect(connectorLine(page)).toHaveAttribute('fill', 'none');
   await expect(connectorLine(page)).toHaveAttribute('stroke', '#1e1e1e');
   await expect(connectorLine(page)).toHaveAttribute('d', 'M 300 130 L 500 150');
-});
-
-test('a connector route carries the hand-drawn overlay, and the head paints above it', async ({
-  page,
-}) => {
-  await open(page);
-  const box = await canvasBox(page);
-
-  await joinTwoShapes(page, box);
-
-  await expect(routeOverlay(page)).toHaveCount(1);
-  await expect(routeOverlay(page)).not.toHaveAttribute('fill', 'none');
-  await expect(routeOverlay(page)).toHaveAttribute('fill', /.+/);
-  expect(await inkOrder(page)).toEqual(['line', 'ribbon', 'head']);
 });
 
 test('moving a bound shape re-routes the connector, with no repair pass', async ({
@@ -130,7 +99,7 @@ test('a connector can be drawn before its target exists', async ({ page }) => {
     { x: box.x + 600, y: box.y + 400 }
   );
 
-  await expect(connectorPaths(page)).toHaveCount(3);
+  await expect(connectorPaths(page)).toHaveCount(2);
   await expect(connectorLine(page)).toHaveAttribute('fill', 'none');
   await expect(connectorLine(page)).not.toHaveAttribute('d', '');
 });
@@ -155,7 +124,7 @@ test('the inspector chooses the route and a head per end, independently', async 
 
   await controls.getByTestId('head-start-circle').click();
 
-  await expect(connectorPaths(page)).toHaveCount(4);
+  await expect(connectorPaths(page)).toHaveCount(3);
 });
 
 test('a connector carries a label, typed on the canvas', async ({ page }) => {
@@ -195,6 +164,6 @@ test('deleting a bound shape leaves its connector visible, not vanished', async 
   await expect(
     page.getByTestId('board').locator('path[data-shape="starter-rectangle"]')
   ).toHaveCount(0);
-  await expect(connectorPaths(page)).toHaveCount(3);
+  await expect(connectorPaths(page)).toHaveCount(2);
   await expect(connectorLine(page)).toHaveAttribute('d', 'M 300 220 L 600 400');
 });

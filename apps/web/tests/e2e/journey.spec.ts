@@ -31,9 +31,9 @@ const board = (page: Page) => page.getByTestId('board');
 
 /** A shape's clean geometry, keyed by the id the store minted for it. */
 const clean = (page: Page, id: string) =>
-  board(page).locator(`path[data-shape="${id}"]:not([data-wobble])`);
+  board(page).locator(`path[data-shape="${id}"]`);
 
-/** A connector's own line, before its ribbon and its arrowhead. */
+/** A connector's own line, before its arrowhead. */
 const connectorLine = (page: Page) =>
   board(page).locator('path[data-shape="connector-1"][fill="none"]');
 
@@ -178,7 +178,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
   expect(pixels.width).toBe(Math.round((viewBox[2] ?? 0) * 2));
   expect(pixels.height).toBe(Math.round((viewBox[3] ?? 0) * 2));
   expect(pixels.width).toBeGreaterThan(0);
-  expect(svg).toContain('data-wobble="true"');
+  expect(svg).toContain('stroke="#1e1e1e"');
 
   // Two slides from the deck's templates, then presenting plays them fullscreen.
   await page.getByTestId('png-options').click();

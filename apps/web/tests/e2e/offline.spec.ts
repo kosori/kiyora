@@ -65,10 +65,10 @@ test('the exported board opens as a file with the network off, and shows the boa
   const opened = await context.newPage();
   await opened.goto(`file://${file}`);
 
-  const overlay = opened.locator('path[data-wobble="true"]').first();
-  await expect(overlay).not.toHaveAttribute('fill', 'none');
+  const figure = opened.locator('path').first();
+  await expect(figure).not.toHaveAttribute('fill', 'none');
 
-  const drawn = await overlay.boundingBox();
+  const drawn = await figure.boundingBox();
   expect(drawn?.width ?? 0).toBeGreaterThan(0);
   expect(drawn?.height ?? 0).toBeGreaterThan(0);
   expect(blocked).toEqual([]);

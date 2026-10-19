@@ -27,7 +27,7 @@ const canvasBox = async (page: Page) => {
 const board = (page: Page) => page.getByTestId('board');
 
 /** The board's paint, in document order, so a test can name the path it means. */
-const paths = (page: Page) => board(page).locator('path:not([data-wobble])');
+const paths = (page: Page) => board(page).locator('path');
 
 const drag = async (
   page: Page,

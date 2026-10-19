@@ -29,8 +29,7 @@ const canvasBox = async (page: Page) => {
 const board = (page: Page) => page.getByTestId('board');
 
 /** The topmost painted path: the sticky a gesture just placed. */
-const stickyPath = (page: Page) =>
-  board(page).locator('path:not([data-wobble])').last();
+const stickyPath = (page: Page) => board(page).locator('path').last();
 
 const LONG =
   'Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday, and after that send the summary to everyone who could not make it and file the follow-ups in the board';
@@ -108,7 +107,7 @@ test('a sticky growing inside a frame does not resize the frame', async ({
     { x: box.x + 500, y: box.y + 400 }
   );
 
-  const framePath = board(page).locator('path:not([data-wobble])').nth(1);
+  const framePath = board(page).locator('path').nth(1);
   const frameBefore = await framePath.getAttribute('d');
 
   await page.keyboard.press('s');

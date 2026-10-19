@@ -51,27 +51,3 @@ test('a drawn label is set in the hand-drawn face and painted, not left as no pa
   await expect(line).not.toHaveAttribute('fill', 'none');
   await expect(line).toHaveAttribute('fill', /.+/);
 });
-
-test('a figure is painted with the hand-drawn overlay over its clean geometry', async ({
-  page,
-}) => {
-  await open(page);
-  const box = await canvasBox(page);
-
-  await railButton(page, 'Rectangle').click();
-  await page.mouse.move(box.x + 200, box.y + 150);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 400, box.y + 300);
-  await page.mouse.up();
-
-  const overlay = board(page).locator('path[data-wobble="true"]');
-  const fills = await overlay.evaluateAll((paths) =>
-    paths.map((path) => path.getAttribute('fill'))
-  );
-
-  expect(fills.length).toBeGreaterThan(0);
-  for (const fill of fills) {
-    expect(fill).not.toBe('none');
-    expect(fill).not.toBeNull();
-  }
-});

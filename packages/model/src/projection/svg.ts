@@ -46,13 +46,6 @@ const attributes = (path: PaintPath): string =>
         ? undefined
         : path.dash.map(formatNumber).join(' '),
     ],
-    [
-      'fill-opacity',
-      path.fillOpacity === undefined
-        ? undefined
-        : formatNumber(path.fillOpacity),
-    ],
-    ['data-wobble', path.overlay === true ? 'true' : undefined],
   ]);
 
 const runMarkup = (run: {
