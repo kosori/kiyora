@@ -23,6 +23,24 @@ export {
   zoomBy,
 } from './camera';
 export {
+  HANDLE_REACH,
+  HANDLE_SIZE,
+  HANDLES,
+  type Handle,
+  type HandleKind,
+  type HandleSigns,
+  handleAt,
+  handlePositions,
+  handleSigns,
+  MIN_SIZE,
+  type ResizeModifiers,
+  ROTATE_DISTANCE,
+  ROTATION_SNAP,
+  ROTATION_ZERO,
+  resizeBounds,
+  rotateHandlePosition,
+} from './geometry/handles';
+export {
   boxBetween,
   boxesIntersect,
   containsPoint,
@@ -93,3 +111,10 @@ export {
   type View,
 } from './store';
 export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+export {
+  angleAt,
+  type Replacements,
+  resizeSelection,
+  rotateSelection,
+  settleRotation,
+} from './transform';
