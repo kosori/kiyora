@@ -197,3 +197,28 @@ describe('the keymap', () => {
     ]);
   });
 });
+
+describe('undo and redo keys', () => {
+  it('binds undo to the command key and redo to its shifted form', () => {
+    expect(resolveKey({ command: true, key: 'z' })).toEqual({ kind: 'undo' });
+    expect(resolveKey({ command: true, key: 'z', shift: true })).toEqual({
+      kind: 'redo',
+    });
+  });
+
+  it('leaves a bare z alone, so undo is not the letter that types a shape', () => {
+    expect(resolveKey({ key: 'z' })).toBeNull();
+    expect(resolveKey({ key: 'z', shift: true })).toBeNull();
+  });
+
+  it('shows undo and redo in the reference, with the keys read from the keymap', () => {
+    const rows = shortcutReference();
+
+    expect(rows.find((row) => row.label === 'Undo')?.keys).toEqual([
+      'Ctrl + Z',
+    ]);
+    expect(rows.find((row) => row.label === 'Redo')?.keys).toEqual([
+      'Ctrl + Shift + Z',
+    ]);
+  });
+});

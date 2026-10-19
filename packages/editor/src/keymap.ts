@@ -16,7 +16,9 @@ export type Command =
   | { kind: 'show-shortcuts' }
   | { kind: 'camera'; action: CameraAction }
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
-  | { kind: 'cancel-gesture' };
+  | { kind: 'cancel-gesture' }
+  | { kind: 'undo' }
+  | { kind: 'redo' };
 
 /** A stable name for a command, so the keymap and the reference can join. */
 export const commandId = (command: Command): string => {
@@ -123,6 +125,16 @@ export const KEYMAP: readonly Binding[] = [
   { command: { action: 'zoom-out', kind: 'camera' }, key: '-' },
   { command: { kind: 'show-shortcuts' }, key: '?' },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
+  {
+    command: { kind: 'undo' },
+    key: 'z',
+    modifiers: { command: 'required', shift: 'forbidden' },
+  },
+  {
+    command: { kind: 'redo' },
+    key: 'z',
+    modifiers: { command: 'required', shift: 'required' },
+  },
   ...ARROWS.map((arrow) => nudgeBinding(arrow, false)),
   ...ARROWS.map((arrow) => nudgeBinding(arrow, true)),
 ];
@@ -187,6 +199,16 @@ export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     commands: [{ kind: 'cancel-gesture' }],
     group: 'Selection',
     label: 'Cancel a gesture',
+  },
+  {
+    commands: [{ kind: 'undo' }],
+    group: 'History',
+    label: 'Undo',
+  },
+  {
+    commands: [{ kind: 'redo' }],
+    group: 'History',
+    label: 'Redo',
   },
   {
     commands: [{ kind: 'show-shortcuts' }],

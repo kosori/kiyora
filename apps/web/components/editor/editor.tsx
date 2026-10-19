@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
 import { FileControls } from './file-controls';
+import { HistoryControls } from './history-controls';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
@@ -31,6 +32,7 @@ export const Editor = () => {
         <BoardCanvas onShowShortcuts={toggleShortcuts} />
         <ToolRail />
         <FileControls />
+        <HistoryControls />
         <SaveIndicator status={status} />
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />

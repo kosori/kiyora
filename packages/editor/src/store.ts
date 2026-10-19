@@ -1,120 +1,19 @@
-import type { Board, Bounds, Camera, Style } from '@kiyora/model';
+import type { Board, Style } from '@kiyora/model';
 import type { Point } from './camera';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
-import { type Placement, shapeFromPlacement } from './placement';
+import { createHistory } from './history/stack';
+import { shapeFromPlacement } from './placement';
 import {
   normaliseSelection,
   offsetShapes,
   type Selection,
   selectedShapes,
 } from './selection';
-import { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
+import type { Drag, Editor, Gesture, MoveDrag, View } from './state';
+import { DEFAULT_STYLE, isFigureTool } from './tools';
 
-/**
- * Display state: where the board is looked at from, and what the pointer does.
- * It lives beside the document rather than in it, so navigating is never a
- * change to the board, never a history entry, and never a save.
- */
-export type View = {
-  camera: Camera;
-  tool: Tool;
-};
-
-/**
- * What a pointer is doing on the board. A gesture lives only while it is open:
- * a move carries the positions to put back, and a marquee carries the box to
- * draw. Neither is in the document, and neither survives the pointer lifting.
- */
-export type Gesture =
-  | { kind: 'idle' }
-  | { kind: 'move' }
-  | { kind: 'marquee'; box: Bounds };
-
-/** The open move: where the pointer went down, and the positions it moved from. */
-type MoveDrag = {
-  applied: Point;
-  kind: 'move';
-  originals: ReadonlyMap<string, Point>;
-  origin: Point;
-  start: Point;
-};
-
-/** The open marquee: where it began, what was selected before it, and its box. */
-type MarqueeDrag = {
-  additive: boolean;
-  base: Selection;
-  box: Bounds;
-  from: Point;
-  kind: 'marquee';
-};
-
-type Drag = MoveDrag | MarqueeDrag;
-
-/**
- * The engine: it holds one board and its view, and publishes each change to its
- * own subscribers. Nothing here touches the DOM, so a gesture, a command or a
- * migration is proven without a browser.
- */
-export type Editor = {
-  /** The board as it stands. The same reference until something changes it. */
-  getBoard: () => Board;
-  /** Replaces the board and notifies every board subscriber. */
-  setBoard: (board: Board) => void;
-  /** Where the board is looked at from, and what the pointer does. */
-  getView: () => View;
-  /** The active tool: `getView().tool`, for a surface that only reads the tool. */
-  getTool: () => Tool;
-  /** Moves the view. The board and the board's subscribers are untouched. */
-  setCamera: (camera: Camera) => void;
-  /** Changes what the pointer does. The board's subscribers are untouched. */
-  setTool: (tool: Tool) => void;
-  /** The style the next shape wears: the last used one, or the default. */
-  getStyle: () => Style;
-  /**
-   * Records the style the next shape wears, so the picker's default and the
-   * next shape read one value. Nothing observes it yet — the inspector brings
-   * the subscription it needs when it lands.
-   */
-  setStyle: (style: Style) => void;
-  /**
-   * Places the active tool's shape in `placement`'s box, wearing the last used
-   * style, and returns the tool to select. With a tool that places nothing —
-   * select or hand — it does nothing.
-   */
-  placeShape: (placement: Placement) => void;
-  /** Subscribes to board changes. Returns the unsubscribe. */
-  subscribe: (listener: () => void) => () => void;
-  /** Subscribes to view changes. Returns the unsubscribe. */
-  subscribeView: (listener: () => void) => () => void;
-  /** The ids of the selected shapes, in paint order. */
-  getSelection: () => Selection;
-  /** Replaces the selection, keeping only ids the board holds. */
-  setSelection: (ids: Selection) => void;
-  /** Subscribes to selection changes. Returns the unsubscribe. */
-  subscribeSelection: (listener: () => void) => () => void;
-  /** What the pointer is doing now: idle, moving, or sweeping a marquee. */
-  getGesture: () => Gesture;
-  /** Subscribes to gesture changes, so a marquee can be drawn. Returns the unsubscribe. */
-  subscribeGesture: (listener: () => void) => () => void;
-  /**
-   * The pointer going down on the board. On a shape it selects it — adding to
-   * the selection when `additive` — and opens a move; on empty canvas it clears
-   * the selection unless `additive`, and opens a marquee.
-   */
-  pointerDown: (point: Point, additive: boolean) => void;
-  /**
-   * The pointer moving with a gesture open. A marquee redraws its box; a move
-   * translates the whole selection, snapped to the grid unless `bypassSnap`.
-   */
-  pointerMove: (point: Point, bypassSnap: boolean) => void;
-  /** The pointer lifting: a marquee selects what it covers, a move stays put. */
-  pointerUp: () => void;
-  /** Escape: a move goes back to the positions it started from, a marquee is dropped. */
-  cancelGesture: () => void;
-  /** Moves every selected shape by the same delta, so relative positions hold. */
-  nudge: (dx: number, dy: number) => void;
-};
+export type { Drag, Editor, Gesture, Restyle, View } from './state';
 
 /** An engine over `board`, holding it and publishing each replacement. */
 export const createEditor = (board: Board): Editor => {
@@ -125,6 +24,8 @@ export const createEditor = (board: Board): Editor => {
   let drag: Drag | null = null;
   let cachedDrag: Drag | null = null;
   let cachedGesture: Gesture = { kind: 'idle' };
+  const history = createHistory();
+  let nudgeRun: { before: Board; key: string } | null = null;
   const listeners = new Set<() => void>();
   const viewListeners = new Set<() => void>();
   const selectionListeners = new Set<() => void>();
@@ -143,6 +44,37 @@ export const createEditor = (board: Board): Editor => {
 
   const publishGesture = (): void => {
     publish(gestureListeners);
+  };
+
+  /**
+   * Records `before` as one history entry, unless the gesture left the board
+   * untouched. Committing is the notification: a control reads whether undo is
+   * possible from it, so a stale button cannot survive a gesture.
+   */
+  const commit = (before: Board): void => {
+    if (before === current) {
+      return;
+    }
+    history.commit(before);
+  };
+
+  /** Records the open run of nudges as one entry, and closes it. */
+  const flushNudge = (): void => {
+    if (nudgeRun === null) {
+      return;
+    }
+    const run = nudgeRun;
+    nudgeRun = null;
+    commit(run.before);
+  };
+
+  /** Drops an open gesture without restoring it, so history can replace the board. */
+  const abandonGesture = (): void => {
+    if (drag === null) {
+      return;
+    }
+    drag = null;
+    publishGesture();
   };
 
   /**
@@ -172,6 +104,7 @@ export const createEditor = (board: Board): Editor => {
     if (same) {
       return;
     }
+    flushNudge();
     selection = ids;
     publish(selectionListeners);
   };
@@ -194,6 +127,7 @@ export const createEditor = (board: Board): Editor => {
     }
     drag = {
       applied: { x: 0, y: 0 },
+      before: current,
       kind: 'move',
       origin: { x: left, y: top },
       originals: positionsOf(shapes),
@@ -228,8 +162,12 @@ export const createEditor = (board: Board): Editor => {
       }
       publishGesture();
     },
+    endNudgeRun: () => {
+      flushNudge();
+    },
     getBoard: () => current,
     getGesture: gestureNow,
+    getHistory: () => history.getState(),
     getSelection: () => selection,
     getStyle: () => style,
     getTool: () => view.tool,
@@ -238,6 +176,13 @@ export const createEditor = (board: Board): Editor => {
       const shapes = selectedShapes(current, selection);
       if (shapes.length === 0) {
         return;
+      }
+      const key = selection.join('\u0000');
+      if (nudgeRun !== null && nudgeRun.key !== key) {
+        flushNudge();
+      }
+      if (nudgeRun === null) {
+        nudgeRun = { before: current, key };
       }
       const offsets = positionsOf(shapes);
       for (const [id, position] of offsets) {
@@ -251,12 +196,16 @@ export const createEditor = (board: Board): Editor => {
       if (!isFigureTool(tool)) {
         return;
       }
+      flushNudge();
+      const before = current;
       const shape = shapeFromPlacement(tool, placement, style, current.shapes);
       current = { ...current, shapes: [...current.shapes, shape] };
       setView({ ...view, tool: 'select' });
+      commit(before);
       publish(listeners);
     },
     pointerDown: (point, additive) => {
+      flushNudge();
       const hit = shapeAt(current.shapes, point);
       if (hit === null) {
         drag = {
@@ -317,7 +266,9 @@ export const createEditor = (board: Board): Editor => {
         return;
       }
       if (drag.kind !== 'marquee') {
+        const { before } = drag;
         drag = null;
+        commit(before);
         publishGesture();
         return;
       }
@@ -329,9 +280,57 @@ export const createEditor = (board: Board): Editor => {
       commitSelection(next);
       publishGesture();
     },
-    setBoard: (next) => {
+    redo: () => {
+      flushNudge();
+      abandonGesture();
+      const next = history.redo(current);
+      if (next === null) {
+        return;
+      }
       current = next;
       commitSelection(selection);
+      publish(listeners);
+    },
+    restyle: (change) => {
+      const shapes = selectedShapes(current, selection);
+      if (shapes.length === 0) {
+        return;
+      }
+      flushNudge();
+      const before = current;
+      const selected = new Set(shapes.map((one) => one.id));
+      let restyled: Style | null = null;
+      current = {
+        ...current,
+        shapes: current.shapes.map((one) => {
+          if (!selected.has(one.id)) {
+            return one;
+          }
+          const next = {
+            ...one,
+            ...(change.opacity === undefined
+              ? {}
+              : { opacity: change.opacity }),
+            style:
+              change.style === undefined
+                ? one.style
+                : { ...one.style, ...change.style },
+          };
+          restyled ??= next.style;
+          return next;
+        }),
+      };
+      if (restyled !== null) {
+        style = restyled;
+      }
+      commit(before);
+      publish(listeners);
+    },
+    setBoard: (next) => {
+      flushNudge();
+      current = next;
+      commitSelection(selection);
+      history.clear();
       publish(listeners);
     },
     setCamera: (camera) => {
@@ -358,6 +357,7 @@ export const createEditor = (board: Board): Editor => {
         gestureListeners.delete(listener);
       };
     },
+    subscribeHistory: (listener) => history.subscribe(listener),
     subscribeSelection: (listener) => {
       selectionListeners.add(listener);
       return () => {
@@ -369,6 +369,17 @@ export const createEditor = (board: Board): Editor => {
       return () => {
         viewListeners.delete(listener);
       };
+    },
+    undo: () => {
+      flushNudge();
+      abandonGesture();
+      const previous = history.undo(current);
+      if (previous === null) {
+        return;
+      }
+      current = previous;
+      commitSelection(selection);
+      publish(listeners);
     },
   };
 };

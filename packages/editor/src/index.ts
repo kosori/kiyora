@@ -31,6 +31,12 @@ export {
 } from './geometry/hit-test';
 export { GRID, NUDGE_STEP, snapTranslation, snapValue } from './geometry/snap';
 export {
+  createHistory,
+  HISTORY_LIMIT,
+  type History,
+  type HistoryState,
+} from './history/stack';
+export {
   type Binding,
   bindingKey,
   bindingLabel,
@@ -76,6 +82,7 @@ export {
   createEditor,
   type Editor,
   type Gesture,
+  type Restyle,
   type View,
 } from './store';
 export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
