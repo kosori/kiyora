@@ -101,7 +101,11 @@ export const textOf = (
 
   const lineHeight = style.size * TEXT_LINE_HEIGHT;
   const block = lines.length * lineHeight;
-  const blockTop = topOf(top, height, block, style.valign);
+  // A text shape is top-aligned by nature: it is words that belong to nothing
+  // else, with no box to sit inside, so its vertical alignment is always the
+  // top of its own frame and never the authored `valign` a shape label carries.
+  const valign = shape.kind === 'text' ? 'top' : style.valign;
+  const blockTop = topOf(top, height, block, valign);
   const transform = rotationOf(shape);
 
   return lines.map((line, index) => ({

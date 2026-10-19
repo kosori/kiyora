@@ -333,7 +333,9 @@ export const createEditor = (board: Board): Editor => {
       }
       const { board: nextBoard, style: nextStyle } = result;
       current = nextBoard;
-      style = nextStyle;
+      if (nextStyle !== undefined) {
+        style = nextStyle;
+      }
       transactions.commit(before, current);
       publish(listeners);
     },

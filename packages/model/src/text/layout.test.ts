@@ -116,6 +116,15 @@ describe('placing a label inside its shape', () => {
     );
   });
 
+  it('top-aligns a text shape whatever vertical alignment it carries, because a heading has no box to sit inside', () => {
+    const y = (valign: 'top' | 'middle' | 'bottom') =>
+      label(textShape({ text: 'x', textStyle: textStyle({ valign }) }))[0]?.y;
+
+    expect(y('top')).toBeCloseTo(20.8, 3);
+    expect(y('middle')).toBeCloseTo(20.8, 3);
+    expect(y('bottom')).toBeCloseTo(20.8, 3);
+  });
+
   it('draws a text shape with a label and no paths of its own', () => {
     const paint = paintShape(textShape({ text: 'heading' }), {
       measure: fake,

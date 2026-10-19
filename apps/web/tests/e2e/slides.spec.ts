@@ -144,12 +144,21 @@ test('presenting fills the window, navigates by key and leaves with Escape', asy
 
   const overlay = page.getByTestId('present-overlay');
   await expect(overlay).toBeVisible();
-  expect(await page.evaluate(() => document.fullscreenElement !== null)).toBe(
-    true
-  );
-  const size = await overlay.boundingBox();
-  expect(size?.width).toBe(page.viewportSize()?.width);
-  expect(size?.height).toBe(page.viewportSize()?.height);
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement !== null))
+    .toBe(true);
+  await expect
+    .poll(async () => {
+      const box = await overlay.boundingBox();
+      const viewport = page.viewportSize();
+      return (
+        box !== null &&
+        viewport !== null &&
+        Math.round(box.width) === viewport.width &&
+        Math.round(box.height) === viewport.height
+      );
+    })
+    .toBe(true);
 
   await expect(
     page

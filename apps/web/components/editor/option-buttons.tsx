@@ -12,7 +12,7 @@ type Props<T extends string> = {
   label: string;
   onPick: (value: T) => void;
   options: readonly Option<T>[];
-  selected: T;
+  selected: T | null;
   testId: string;
 };
 
