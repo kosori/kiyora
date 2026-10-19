@@ -13,7 +13,7 @@ Kiyora is an offline whiteboard: one board, in this browser, drawn by hand, with
 ```
 apps/web           the Next.js app: canvas, chrome, panels
 packages/dsl       the source grammar: text to AST with diagnostics
-packages/model     the board: schema, geometry, projection
+packages/model     the board: schema, geometry, paint, projection and export
 packages/editor    the engine: store, gestures, persistence
 tooling/typescript shared tsconfigs
 ```
@@ -85,11 +85,20 @@ There is one walker and two backends, so the canvas and the exporter can never d
 
 ```ts
 // @kiyora/model
+type PaintPath = {
+  d: string
+  fill?: string; stroke?: string; strokeWidth?: number
+  dash?: number[]
+  fillOpacity?: number   // the ribbon's alpha, so the clean stroke reads through
+  overlay?: true         // this path is the hand-drawn overlay over a clean one
+}
+
 type Paint = {
-  paths: { d: string; fill?: string; stroke?: string; strokeWidth?: number; dash?: number[] }[]
-  text:  { runs: Run[]; x: number; y: number; size: number; align: Align }[]
-  defs:  Def[]
+  paths: PaintPath[]
+  text?: PaintText[]     // absent when the shape carries no label
   children: Paint[]
+  clip?: string          // the box a frame clips its members to
+  shapeId?: string       // the shape this node came from; the board's node carries none
 }
 
 function paintShape(shape: Shape, ctx: PaintContext): Paint
@@ -101,17 +110,19 @@ function paintBoard(board: Board, ctx: PaintContext): Paint
 
 Neither the app nor `editor` computes geometry, colour or text position.
 
-`PaintContext` carries only what `model` cannot obtain by itself: the theme and the **measurer**.
+`PaintContext` carries only what `model` cannot obtain by itself: the theme and the **measurer**. A connector cannot be painted from itself — its path is resolved from the shapes its ends name — so `paintBoard` is the way to paint one.
 
 ### The measurer
 
-Text metrics need a DOM, and `model` must not have one, so measurement is injected. The app passes a canvas-2D measurer; tests pass a deterministic fake. Both the canvas and the exporter therefore wrap text identically.
+Text metrics need a DOM, and `model` must not have one, so measurement is injected. The app passes a canvas-2D measurer; tests pass a deterministic fake. Both the canvas and the exporter therefore wrap text identically. A shape that carries a label and reaches the walker with no measurer throws rather than painting nothing.
 
 `editor` injects the same measurer for hit-testing, so a click lands where the text is drawn.
 
 ### Wobble
 
 The hand-drawn overlay is a pure, seeded function of the shape, produced inside `paintShape`. Export therefore keeps the hand-drawn look by default — the export is the drawing the user saw. A `clean` flag for true geometry is a later addition.
+
+Reduced motion is the app's decision, not the model's. The walker always produces the overlay; the canvas hides it under `prefers-reduced-motion: reduce`, so the clean geometry beneath it carries every shape. The board is unchanged, and an export — built by `model` from the board alone — keeps the hand-drawn look.
 
 ## Editing
 
@@ -124,6 +135,15 @@ One gesture produces exactly one history entry.
 - History is bounded at 200 entries and lives in memory. Autosave covers the document, so a persisted history would only add a second format to migrate.
 - Redo clears on any new gesture.
 - Commit notifies subscribers. The toolbar's undo state is read from the notification, never polled.
+
+### The keymap
+
+One keymap declares every binding, and the in-app shortcut reference is generated from it, so the dialog and the handler cannot disagree. Two things live on a binding besides its key and command:
+
+- A **mode** — `edit` or `present`. The two share one keymap, so a key pressed while presenting cannot run an editing command behind the slide.
+- A **modifier rule** per modifier — `required`, `forbidden` or `ignored`. Two bindings on one key differ by declaring the modifier, not by spelling the combination into the key.
+
+Tests fail if a binding has no row in the reference, if a row names a command the keymap cannot key, or if two bindings claim one chord in one mode.
 
 ## Persistence
 
@@ -154,10 +174,12 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | Figure geometry, palette, style resolution | `packages/model/src/paint/` |
 | Wobble | `packages/model/src/paint/wobble.ts` |
 | SVG projection | `packages/model/src/projection/` |
+| SVG export: document, byte cap, safety | `packages/model/src/export/` |
 | Text runs, wrapping, measurement protocol | `packages/model/src/text/` |
 | Board file (`.kyr.json`) | `packages/model/src/file/` |
 | Store, selection, commands | `packages/editor/src/` |
 | Gestures, transactions, history | `packages/editor/src/history/` |
+| Keymap, shortcut reference | `packages/editor/src/keymap.ts` |
 | Hit-testing, snapping | `packages/editor/src/geometry/` |
 | Persistence, autosave, faults | `packages/editor/src/persistence/` |
 | React adapter | `packages/editor/src/react/` |
