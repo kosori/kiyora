@@ -135,30 +135,6 @@ test('the PNG comes out at exactly the scale the panel asks for', async ({
   expect(pngSize(await exportPng(page))).toEqual({ height: 560, width: 880 });
 });
 
-test('the export is the whole board, or just the selection', async ({
-  page,
-}) => {
-  await open(page);
-  const box = await canvasBox(page);
-
-  await chooseEllipse(page);
-  await drag(
-    page,
-    { x: box.x + 400, y: box.y + 304 },
-    { x: box.x + 600, y: box.y + 448 }
-  );
-  await page.mouse.click(box.x + 500, box.y + 376);
-
-  await page.getByTestId('png-options').click();
-  await pick(page, 'png-scale', '1');
-
-  await pick(page, 'png-target', 'selection');
-  expect(pngSize(await exportPng(page))).toEqual({ height: 144, width: 200 });
-
-  await pick(page, 'png-target', 'board');
-  expect(pngSize(await exportPng(page))).toEqual({ height: 368, width: 520 });
-});
-
 /** Places an ellipse clear of the starter rectangle and selects it. */
 const roundShape = async (page: Page): Promise<void> => {
   const box = await canvasBox(page);
@@ -171,6 +147,22 @@ const roundShape = async (page: Page): Promise<void> => {
   );
   await page.mouse.click(box.x + 500, box.y + 376);
 };
+
+test('the export is the whole board, or just the selection', async ({
+  page,
+}) => {
+  await open(page);
+  await roundShape(page);
+
+  await page.getByTestId('png-options').click();
+  await pick(page, 'png-scale', '1');
+
+  await pick(page, 'png-target', 'selection');
+  expect(pngSize(await exportPng(page))).toEqual({ height: 144, width: 200 });
+
+  await pick(page, 'png-target', 'board');
+  expect(pngSize(await exportPng(page))).toEqual({ height: 368, width: 520 });
+});
 
 test('a transparent export has transparent corners and a solid one does not', async ({
   page,
