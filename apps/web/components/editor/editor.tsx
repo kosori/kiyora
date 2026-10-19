@@ -5,8 +5,10 @@ import { EditorProvider } from '@kiyora/editor/react';
 import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
+import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
+import { useAutosave } from './use-autosave';
 import { useShortcuts } from './use-shortcuts';
 
 /**
@@ -17,6 +19,7 @@ import { useShortcuts } from './use-shortcuts';
 export const Editor = () => {
   const [editor] = useState(() => createEditor(starterBoard()));
   const [shortcuts, setShortcuts] = useState(false);
+  const status = useAutosave(editor);
 
   const toggleShortcuts = useCallback(() => {
     setShortcuts((open) => !open);
@@ -29,6 +32,7 @@ export const Editor = () => {
       <div className='relative h-full'>
         <BoardCanvas />
         <ToolRail />
+        <SaveIndicator status={status} />
       </div>
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
     </EditorProvider>

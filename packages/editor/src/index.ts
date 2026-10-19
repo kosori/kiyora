@@ -34,6 +34,18 @@ export {
   type ShortcutRow,
   shortcutReference,
 } from './keymap';
+export {
+  AUTOSAVE_DELAY,
+  type Autosave,
+  type AutosaveOptions,
+  createAutosave,
+} from './persistence/autosave';
+export { loadBoard, restoreBoard } from './persistence/board';
+export {
+  BOARD_KEY,
+  type BoardStorage,
+  type SaveStatus,
+} from './persistence/storage';
 export type { Placement } from './placement';
 export { createEditor, type Editor, type View } from './store';
 export { DEFAULT_STYLE, isFigureTool, type Tool } from './tools';
