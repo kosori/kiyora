@@ -32,7 +32,7 @@ bun run test:e2e         # end to end, Playwright
 bun run check-budgets    # file size budget
 ```
 
-The end-to-end run uses port `4319` and never reuses a running server, so it can only test this app.
+The end-to-end run uses port `4319` — override it with `E2E_PORT` when another checkout holds that port — and never reuses a running server, so it can only test this app.
 
 ## Package boundaries
 
