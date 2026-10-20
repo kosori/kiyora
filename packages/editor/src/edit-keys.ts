@@ -17,6 +17,7 @@ const nudgeBinding = (
   command: { coarse, dx, dy, kind: 'nudge' },
   key,
   modifiers: { shift: coarse ? 'required' : 'forbidden' },
+  preventDefault: true,
 });
 
 /**
@@ -32,22 +33,36 @@ export const EDIT_BINDINGS: readonly Binding[] = [
   { command: { kind: 'tool', tool: 'connector' }, key: 'c' },
   { command: { kind: 'tool', tool: 'sticky' }, key: 's' },
   { command: { kind: 'tool', tool: 'frame' }, key: 'f' },
-  { command: { action: 'pan', kind: 'camera' }, key: 'space' },
-  { command: { action: 'zoom-in', kind: 'camera' }, key: '=' },
-  { command: { action: 'zoom-out', kind: 'camera' }, key: '-' },
+  {
+    command: { action: 'pan', kind: 'camera' },
+    key: 'space',
+    preventDefault: true,
+  },
+  {
+    command: { action: 'zoom-in', kind: 'camera' },
+    key: '=',
+    preventDefault: true,
+  },
+  {
+    command: { action: 'zoom-out', kind: 'camera' },
+    key: '-',
+    preventDefault: true,
+  },
   { command: { kind: 'show-shortcuts' }, key: '?' },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
-  { command: { kind: 'delete' }, key: 'delete' },
-  { command: { kind: 'delete' }, key: 'backspace' },
+  { command: { kind: 'delete' }, key: 'delete', preventDefault: true },
+  { command: { kind: 'delete' }, key: 'backspace', preventDefault: true },
   {
     command: { kind: 'undo' },
     key: 'z',
     modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
   },
   {
     command: { kind: 'redo' },
     key: 'z',
     modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
   },
   ...ARROWS.map((arrow) => nudgeBinding(arrow, false)),
   ...ARROWS.map((arrow) => nudgeBinding(arrow, true)),

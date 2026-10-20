@@ -21,6 +21,11 @@ export type BoardCommands = {
    * so it is one history entry.
    */
   restyle: (change: Restyle) => void;
+  /**
+   * Locks or unlocks every selected shape as one gesture. A selection already
+   * wearing the asked-for lock writes nothing.
+   */
+  setLocked: (locked: boolean) => void;
   /** Replaces the board and notifies every board subscriber. */
   setBoard: (board: Board) => void;
   /**
@@ -77,8 +82,10 @@ export const createBoardCommands = ({
     },
     nudge: (dx, dy) => {
       const board = core.board();
-      const ids = subtreeIds(board, core.selection());
-      if (selectedShapes(board, ids).length === 0) {
+      const ids = selectedShapes(board, subtreeIds(board, core.selection()))
+        .filter((shape) => !shape.locked)
+        .map((shape) => shape.id);
+      if (ids.length === 0) {
         return;
       }
       core.transactions.noteNudge(board);
@@ -130,6 +137,21 @@ export const createBoardCommands = ({
     },
     setConnector: (id, edit) => {
       core.change(editConnector(core.board(), id, edit));
+    },
+    setLocked: (locked) => {
+      const board = core.board();
+      const ids = new Set(core.selection());
+      let changed = false;
+      const shapes = board.shapes.map((shape) => {
+        if (!ids.has(shape.id) || shape.locked === locked) {
+          return shape;
+        }
+        changed = true;
+        return { ...shape, locked };
+      });
+      if (changed) {
+        core.change({ ...board, shapes });
+      }
     },
     undo: () => {
       restore(core.transactions.undo(core.board()));

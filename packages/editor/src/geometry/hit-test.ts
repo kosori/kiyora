@@ -32,16 +32,18 @@ export const containsPoint = (shape: Shape, point: Point): boolean => {
 /**
  * The topmost shape under `point`, or `null` in empty space. The last shape
  * painted is the one in front, so the search runs back to front. A locked shape
- * is never picked. A connector is picked near its line rather than by its box,
- * so a click lands on the line where a person sees it.
+ * is never picked unless `includeLocked` asks for it, which is how the pointer
+ * reaches one to unlock it. A connector is picked near its line rather than by
+ * its box, so a click lands on the line where a person sees it.
  */
 export const shapeAt = (
   shapes: readonly Shape[],
-  point: Point
+  point: Point,
+  includeLocked = false
 ): Shape | null => {
   for (let index = shapes.length - 1; index >= 0; index -= 1) {
     const shape = shapes[index];
-    if (shape === undefined || shape.locked) {
+    if (shape === undefined || (shape.locked && !includeLocked)) {
       continue;
     }
     const hit =

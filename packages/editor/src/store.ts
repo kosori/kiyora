@@ -80,6 +80,7 @@ export const createEditor = (board: Board): Editor => {
       core.setView({ ...core.view(), camera });
     },
     setConnector: edits.setConnector,
+    setLocked: edits.setLocked,
     setSelection: core.select,
     setSlideNotes: deck.setSlideNotes,
     setStyle: core.setStyle,
