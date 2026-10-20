@@ -4,6 +4,7 @@ import {
   type PaintContext,
   parseBoard,
   projectBoard,
+  SCHEMA_VERSION,
 } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
@@ -46,7 +47,7 @@ const board = (shapes: unknown[]): Board =>
     createdAt: 1_700_000_000_000,
     deck: [],
     id: 'board-1',
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     settings: { theme: 'light' },
     shapes,
     title: 'Untitled',

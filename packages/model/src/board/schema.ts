@@ -9,7 +9,7 @@ import {
 import { textStyleSchema } from '../text/style';
 
 /** The board's schema version. A migration bumps it. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** How a shape's corners are drawn, taken from the grammar. */
 export const cornerSchema = z.enum(CORNERS);
@@ -98,6 +98,22 @@ export const frameVariantSchema = z.enum(FRAME_VARIANTS);
 export type FrameVariant = z.infer<typeof frameVariantSchema>;
 
 /**
+ * The diagram code a frame was generated from. The AST is derived at apply time
+ * and never stored, so the source is only the text a person typed, the ids it
+ * last stamped, and whether a hand edit has since made those shapes stale.
+ * Optional: a frame from before the panel existed carries none, and absence is
+ * what an empty panel reads.
+ */
+export const sourceSchema = z.object({
+  generatedIds: z.array(z.string().min(1)),
+  stale: z.boolean(),
+  text: z.string(),
+});
+
+/** The diagram code a frame was generated from. */
+export type Source = z.infer<typeof sourceSchema>;
+
+/**
  * A frame: a shape that holds other shapes and can clip them. Its box is
  * authored, so membership never rewrites it — that is what separates a frame
  * from a group, whose box is derived.
@@ -105,6 +121,7 @@ export type FrameVariant = z.infer<typeof frameVariantSchema>;
 export const frameSchema = shapeBaseSchema.extend({
   clip: z.boolean(),
   kind: z.literal('frame'),
+  source: sourceSchema.optional(),
   variant: frameVariantSchema,
 });
 
@@ -229,6 +246,19 @@ const stickySchema = shapeBaseSchema.extend({
 /** A sticky: a coloured note whose height follows its label until resized. */
 export type StickyShape = z.infer<typeof stickySchema>;
 
+/**
+ * A group: a shape that holds other shapes so they move together. It paints no
+ * ink of its own, and its box is derived from its members rather than read from
+ * the one stored here — the base box exists only so a group is a shape like any
+ * other, and an empty group still has a place to stand.
+ */
+export const groupSchema = shapeBaseSchema.extend({
+  kind: z.literal('group'),
+});
+
+/** A group: shapes that move together, with no ink of their own. */
+export type GroupShape = z.infer<typeof groupSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
@@ -236,6 +266,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   textSchema,
   connectorSchema,
   stickySchema,
+  groupSchema,
 ]);
 
 /** One item on the board. */

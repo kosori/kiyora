@@ -58,6 +58,40 @@ const openFile = async (
   });
 };
 
+/** A board as version 1 wrote it: no source on any frame, and no group kind. */
+const legacy = {
+  camera: { x: 0, y: 0, zoom: 1 },
+  createdAt: 1_700_000_000_000,
+  deck: [],
+  id: 'legacy-board',
+  schemaVersion: 1,
+  settings: { theme: 'light' },
+  shapes: [
+    {
+      h: 150,
+      id: 'legacy-rectangle',
+      kind: 'rectangle',
+      locked: false,
+      opacity: 1,
+      parentId: null,
+      rotation: 0,
+      style: {
+        corner: 'sharp',
+        dash: 'solid',
+        fill: 'blue',
+        fillStyle: 'pastel',
+        stroke: 'ink',
+        strokeWidth: 2,
+      },
+      w: 200,
+      x: 200,
+      y: 150,
+    },
+  ],
+  title: 'Legacy',
+  updatedAt: 1_700_000_000_000,
+};
+
 test('the board is saved as one file, and opening it brings the board back', async ({
   page,
 }) => {
@@ -112,8 +146,52 @@ test('an invalid file is refused, and the board it would replace is left untouch
   await openFile(page, 'board.kyr.json', '{"id":"board-1"}');
   await expect(page.getByTestId('file-error')).toContainText(/shapes/);
 
+  await openFile(
+    page,
+    'future.kyr.json',
+    JSON.stringify({ ...legacy, schemaVersion: 3 })
+  );
+  await expect(page.getByTestId('file-error')).toContainText(/schemaVersion/);
+
   await expect(rectangle(page)).toHaveAttribute('fill', drawn.fill);
 
   const after = await saveFile(page);
   expect(after).toBe(before);
+});
+
+test('a board saved before this build opens, and saves as the newest version', async ({
+  page,
+}) => {
+  await open(page);
+
+  await openFile(page, 'legacy.kyr.json', JSON.stringify(legacy));
+
+  await expect(rectangle(page)).toHaveAttribute('fill', drawn.fill);
+  await expect(rectangle(page)).toHaveAttribute('stroke', drawn.stroke);
+
+  const saved = JSON.parse(await saveFile(page)) as { schemaVersion: number };
+  expect(saved.schemaVersion).toBe(2);
+});
+
+test('a file past the byte cap is refused with a visible fault, not a frozen tab', async ({
+  page,
+}) => {
+  await open(page);
+  await drawRectangle(page);
+  await expect(page.getByTestId('save-status')).toHaveAttribute(
+    'data-state',
+    'saved'
+  );
+  const before = await saveFile(page);
+
+  await page.getByTestId('file-input').setInputFiles({
+    buffer: Buffer.alloc(8 * 1024 * 1024 + 1, 'x'),
+    mimeType: 'application/json',
+    name: 'huge.kyr.json',
+  });
+
+  await expect(page.getByTestId('file-error')).toContainText(
+    /8388608-byte cap/
+  );
+  expect(await saveFile(page)).toBe(before);
 });

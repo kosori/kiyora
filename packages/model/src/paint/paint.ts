@@ -132,6 +132,13 @@ const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
 });
 
 /**
+ * Paints one group: nothing. Its ink belongs to its members, and they paint
+ * through the nesting the walker builds; a group that drew its own box would
+ * put a line on the canvas nobody authored.
+ */
+const paintGroup = (): Paint => ({ children: [], paths: [] });
+
+/**
  * Paints one connector: the line and a head at each end that asks for one, in
  * the stroke's own colour and dash, plus its label. The path comes from the
  * board the connector is painted with, so a bound end follows its shape with no
@@ -197,9 +204,11 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
       ? paintFrame(shape, context)
       : shape.kind === 'sticky'
         ? paintSticky(shape, context)
-        : shape.kind === 'text'
-          ? { children: [], paths: [] }
-          : paintFigure(shape, context);
+        : shape.kind === 'group'
+          ? paintGroup()
+          : shape.kind === 'text'
+            ? { children: [], paths: [] }
+            : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {
