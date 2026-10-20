@@ -182,6 +182,29 @@ describe('a frame', () => {
   });
 });
 
+describe('a sticky', () => {
+  const note = (overrides: Record<string, unknown> = {}) =>
+    shape({ h: 160, kind: 'sticky', w: 160, ...overrides });
+
+  it('is auto when a note saved before the fit flag is read, so an old board still fits', () => {
+    const parsed = parseBoard(board({ shapes: [note()] }));
+
+    expect(parsed.shapes[0]).toMatchObject({ fit: 'auto', kind: 'sticky' });
+  });
+
+  it('keeps the fixed height its author chose', () => {
+    const parsed = parseBoard(board({ shapes: [note({ fit: 'fixed' })] }));
+
+    expect(parsed.shapes[0]).toMatchObject({ fit: 'fixed' });
+  });
+
+  it('rejects a fit the model does not name', () => {
+    const issues = boardIssues(board({ shapes: [note({ fit: 'stretch' })] }));
+
+    expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.fit']);
+  });
+});
+
 describe('rejecting a board', () => {
   it('accepts a board with no issues', () => {
     expect(boardIssues(board())).toEqual([]);

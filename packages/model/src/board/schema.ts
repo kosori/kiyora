@@ -202,13 +202,31 @@ export const connectorSchema = shapeBaseSchema.extend({
 export type ConnectorShape = z.infer<typeof connectorSchema>;
 
 /**
- * A sticky: a coloured note with centred text that grows with its content. It
- * carries no extra field — its note colour is its style, and its grown box is
- * authored when a label is committed — so it is a shape kind, not a figure.
+ * The two ways a note's height is decided: `auto` follows the label it carries,
+ * and `fixed` is the size a person chose when they resized it. A note saved
+ * before the flag existed reads as `auto`, so an old board still fits its words.
  */
-const stickySchema = shapeBaseSchema.extend({ kind: z.literal('sticky') });
+export const STICKY_FITS = ['auto', 'fixed'] as const;
 
-/** A sticky: a coloured note that grows with its label. */
+/** How a sticky's height is decided. */
+export const stickyFitSchema = z.enum(STICKY_FITS);
+
+/** How a sticky's height is decided. */
+export type StickyFit = z.infer<typeof stickyFitSchema>;
+
+/**
+ * A sticky: a coloured note with centred text whose height follows its content
+ * until a person resizes it. It carries the flag that says which of those two
+ * the authored height is, so the fit is legible rather than a guess from a
+ * remembered size — its note colour is its style. It is a shape kind, not a
+ * figure.
+ */
+const stickySchema = shapeBaseSchema.extend({
+  fit: stickyFitSchema.default('auto'),
+  kind: z.literal('sticky'),
+});
+
+/** A sticky: a coloured note whose height follows its label until resized. */
 export type StickyShape = z.infer<typeof stickySchema>;
 
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
