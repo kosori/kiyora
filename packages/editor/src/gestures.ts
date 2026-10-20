@@ -21,9 +21,14 @@ export type Gestures = {
    * The pointer going down on the board. On a handle of the current selection it
    * opens a resize or a rotate; on a shape it selects it — adding to the
    * selection when `additive` — and opens a move; on empty canvas it clears the
-   * selection unless `additive`, and opens a marquee.
+   * selection unless `additive`, and opens a marquee. `includeLocked` reaches a
+   * locked shape, so alt-clicking one selects it for the Inspector to unlock.
    */
-  pointerDown: (point: Point, additive: boolean) => void;
+  pointerDown: (
+    point: Point,
+    additive: boolean,
+    includeLocked?: boolean
+  ) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
    * a resize and a rotate each read the one `modifiers` value.
@@ -107,7 +112,7 @@ export const createGestures = (core: StoreCore): Gestures => {
       publishGesture();
     },
     getGesture: gestureNow,
-    pointerDown: (point, additive) => {
+    pointerDown: (point, additive, includeLocked = false) => {
       core.transactions.endNudgeRun();
       const board = core.board();
       const selection = core.selection();
@@ -115,7 +120,7 @@ export const createGestures = (core: StoreCore): Gestures => {
       if (openDrag(handleDrag(board, selection, tool, camera.zoom, point))) {
         return;
       }
-      const hit = shapeAt(board.shapes, point);
+      const hit = shapeAt(board.shapes, point, includeLocked);
       if (hit === null) {
         drag = {
           additive,
