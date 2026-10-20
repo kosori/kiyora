@@ -83,7 +83,7 @@ describe('the keymap', () => {
     ).toBeNull();
     expect(resolveKey({ alt: true, key: 'Escape' })).toBeNull();
     expect(resolveKey({ command: true, key: 'Escape' })).toBeNull();
-    expect(resolveKey({ alt: true, key: 'v' })).toBeNull();
+    expect(resolveKey({ alt: true, key: 'q' })).toBeNull();
     expect(resolveKey({ command: true, key: 'q' })).toBeNull();
     expect(resolveKey({ key: 'q' })).toBeNull();
   });
@@ -290,6 +290,72 @@ describe('the find key', () => {
     expect(
       shortcutReference().find((row) => row.label === 'Find on board')?.keys
     ).toEqual(['Ctrl + F']);
+  });
+});
+
+describe('the arrange keys', () => {
+  it('resolves the six alignments and the two distributions', () => {
+    expect(resolveKey({ alt: true, key: 'a' })).toEqual({
+      alignment: 'left',
+      kind: 'align',
+    });
+    expect(resolveKey({ alt: true, key: 'h' })).toEqual({
+      alignment: 'center-horizontal',
+      kind: 'align',
+    });
+    expect(resolveKey({ alt: true, key: 'd' })).toEqual({
+      alignment: 'right',
+      kind: 'align',
+    });
+    expect(resolveKey({ alt: true, key: 'w' })).toEqual({
+      alignment: 'top',
+      kind: 'align',
+    });
+    expect(resolveKey({ alt: true, key: 'v' })).toEqual({
+      alignment: 'center-vertical',
+      kind: 'align',
+    });
+    expect(resolveKey({ alt: true, key: 's' })).toEqual({
+      alignment: 'bottom',
+      kind: 'align',
+    });
+    expect(resolveKey({ alt: true, key: 'h', shift: true })).toEqual({
+      axis: 'x',
+      kind: 'distribute',
+    });
+    expect(resolveKey({ alt: true, key: 'v', shift: true })).toEqual({
+      axis: 'y',
+      kind: 'distribute',
+    });
+  });
+
+  it('shows the arrange keys in the reference, read from the keymap', () => {
+    const rows = shortcutReference();
+
+    expect(rows.find((row) => row.label === 'Align left')?.keys).toEqual([
+      'Alt + A',
+    ]);
+    expect(rows.find((row) => row.label === 'Align right')?.keys).toEqual([
+      'Alt + D',
+    ]);
+    expect(rows.find((row) => row.label === 'Align top')?.keys).toEqual([
+      'Alt + W',
+    ]);
+    expect(rows.find((row) => row.label === 'Align bottom')?.keys).toEqual([
+      'Alt + S',
+    ]);
+    expect(
+      rows.find((row) => row.label === 'Align centre horizontally')?.keys
+    ).toEqual(['Alt + H']);
+    expect(
+      rows.find((row) => row.label === 'Align centre vertically')?.keys
+    ).toEqual(['Alt + V']);
+    expect(
+      rows.find((row) => row.label === 'Distribute horizontally')?.keys
+    ).toEqual(['Alt + Shift + H']);
+    expect(
+      rows.find((row) => row.label === 'Distribute vertically')?.keys
+    ).toEqual(['Alt + Shift + V']);
   });
 });
 

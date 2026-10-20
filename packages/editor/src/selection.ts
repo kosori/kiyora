@@ -35,6 +35,34 @@ export const selectionBounds = (
   boundsOfShapes(selectedShapes(board, selection), board.shapes);
 
 /**
+ * The selected shapes that have no selected ancestor, in paint order. Moving a
+ * root moves what it holds, so a selection that names both a group and its
+ * member must not move the member twice.
+ */
+export const selectedRoots = (board: Board, selection: Selection): Shape[] => {
+  const selected = new Set(selection);
+  const parents = new Map(
+    board.shapes.map((shape) => [shape.id, shape.parentId])
+  );
+  const hasSelectedAncestor = (shape: Shape): boolean => {
+    const seen = new Set<string>([shape.id]);
+    let parent = shape.parentId;
+    while (parent !== null) {
+      if (selected.has(parent) || seen.has(parent)) {
+        return selected.has(parent);
+      }
+      seen.add(parent);
+      parent = parents.get(parent) ?? null;
+    }
+    return false;
+  };
+
+  return board.shapes.filter(
+    (shape) => selected.has(shape.id) && !hasSelectedAncestor(shape)
+  );
+};
+
+/**
  * The shapes a resize or a rotation must move: the selection, plus everything
  * held inside any selected group. A selected frame stays alone, because its box
  * is authored and resizing it never moves what it holds; a selected group has

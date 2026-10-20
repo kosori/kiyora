@@ -1,3 +1,4 @@
+import type { Alignment, DistributeAxis } from './align';
 import type { Tool } from './tools';
 
 /**
@@ -29,6 +30,8 @@ export type Command =
   | { kind: 'find' }
   | { kind: 'group' }
   | { kind: 'ungroup' }
+  | { kind: 'align'; alignment: Alignment }
+  | { kind: 'distribute'; axis: DistributeAxis }
   | { kind: 'undo' }
   | { kind: 'redo' }
   | { kind: 'present' }
@@ -48,6 +51,12 @@ export const commandId = (command: Command): string => {
   }
   if (command.kind === 'nudge') {
     return `nudge.${command.dx}.${command.dy}.${command.coarse ? 'coarse' : 'fine'}`;
+  }
+  if (command.kind === 'align') {
+    return `align.${command.alignment}`;
+  }
+  if (command.kind === 'distribute') {
+    return `distribute.${command.axis}`;
   }
   return command.kind;
 };

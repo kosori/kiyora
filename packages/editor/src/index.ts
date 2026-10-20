@@ -2,6 +2,15 @@
 
 export { subtreeIds } from '@kiyora/model';
 export {
+  ALIGNMENTS,
+  type Alignment,
+  alignBoard,
+  arrangeableShapes,
+  DISTRIBUTE_AXES,
+  type DistributeAxis,
+  distributeBoard,
+} from './align';
+export {
   clampZoom,
   FIT_PADDING,
   FOCUS_ZOOM,
