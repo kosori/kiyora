@@ -11,6 +11,8 @@ import type { Editor } from './state';
 export type CommandHost = {
   /** Runs a camera action. `pan` opens on keydown and closes on keyup. */
   camera: (action: CameraAction, phase: 'down' | 'up') => void;
+  /** Opens the canvas's find box, focused, over the current board. */
+  openFind: () => void;
   /** Opens the keyboard shortcut reference. */
   showShortcuts: () => void;
 };
@@ -45,6 +47,7 @@ const HANDLERS: Handlers = {
   cut: ({ editor }) => editor.cut(),
   delete: ({ editor }) => editor.deleteSelection(),
   duplicate: ({ editor }) => editor.duplicate(),
+  find: ({ host }) => host.openFind(),
   group: ({ editor }) => editor.groupSelection(),
   nudge: ({ editor }, command) => {
     const step = command.coarse ? GRID : NUDGE_STEP;

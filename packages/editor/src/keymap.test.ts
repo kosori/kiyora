@@ -280,6 +280,19 @@ describe('the clipboard keys', () => {
   });
 });
 
+describe('the find key', () => {
+  it('opens find on the command key, and leaves the bare letter to the frame tool', () => {
+    expect(resolveKey({ command: true, key: 'f' })).toEqual({ kind: 'find' });
+    expect(resolveKey({ key: 'f' })).toEqual({ kind: 'tool', tool: 'frame' });
+  });
+
+  it('shows find in the reference, read from the keymap', () => {
+    expect(
+      shortcutReference().find((row) => row.label === 'Find on board')?.keys
+    ).toEqual(['Ctrl + F']);
+  });
+});
+
 describe('the presenting keys', () => {
   it('navigates and leaves while presenting, so a slide show needs no pointer', () => {
     expect(resolveKey({ key: 'ArrowRight', mode: 'present' })).toEqual({

@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
+import { FindBox } from './find-box';
 import { Marquee } from './marquee';
 import { PaintNode } from './paint-node';
 import { ResizeRefusal } from './resize-refusal';
@@ -51,13 +52,16 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
   const surface = useCameraSurface();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [finding, setFinding] = useState(false);
   const openEditor = useCallback((id: string) => setEditingId(id), []);
   const closeEditor = useCallback(() => setEditingId(null), []);
+  const openFind = useCallback(() => setFinding(true), []);
+  const closeFind = useCallback(() => setFinding(false), []);
   const pointer = useBoardPointer(surface.hand, openEditor);
   const measure = useMemo(() => createTextMeasurer(), []);
   const { camera } = surface.view;
 
-  useShortcuts(onShowShortcuts, surface.intent);
+  useShortcuts(onShowShortcuts, surface.intent, openFind);
 
   const view = useMemo(
     () =>
@@ -103,6 +107,9 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
         </g>
       </svg>
       <ResizeRefusal />
+      {finding ? (
+        <FindBox onClose={closeFind} viewport={surface.viewport} />
+      ) : null}
       {editingId === null ? null : (
         <TextEditor
           measure={measure}

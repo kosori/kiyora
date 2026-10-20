@@ -4,7 +4,9 @@ export { subtreeIds } from '@kiyora/model';
 export {
   clampZoom,
   FIT_PADDING,
+  FOCUS_ZOOM,
   fitCamera,
+  focusCamera,
   GRID_BASE_STEP,
   gridSpacing,
   gridStep,
@@ -63,6 +65,7 @@ export {
   DISPATCHED_KINDS,
   runCommand,
 } from './dispatch';
+export { findMatches } from './find';
 export {
   HANDLE_REACH,
   HANDLE_SIZE,

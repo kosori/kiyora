@@ -55,6 +55,7 @@ const recordingHost = (): { calls: string[]; host: CommandHost } => {
     calls,
     host: {
       camera: (action, phase) => calls.push(`${action}:${phase}`),
+      openFind: () => calls.push('find'),
       showShortcuts: () => calls.push('shortcuts'),
     },
   };
@@ -101,6 +102,15 @@ describe('the one dispatch', () => {
     runCommand({ kind: 'show-shortcuts' }, { editor, host });
 
     expect(calls).toEqual(['zoom-in:down', 'shortcuts']);
+  });
+
+  it('opens find through the dispatch, because the app owns the search box', () => {
+    const editor = createEditor(board([]));
+    const { calls, host } = recordingHost();
+
+    runCommand({ kind: 'find' }, { editor, host });
+
+    expect(calls).toEqual(['find']);
   });
 
   it('undoes through the dispatch, so history is not a path the keyboard owns alone', () => {

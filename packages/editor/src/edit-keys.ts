@@ -48,6 +48,12 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     key: '-',
     preventDefault: true,
   },
+  {
+    command: { kind: 'find' },
+    key: 'f',
+    modifiers: { command: 'required' },
+    preventDefault: true,
+  },
   { command: { kind: 'show-shortcuts' }, key: '?' },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
   { command: { kind: 'delete' }, key: 'delete', preventDefault: true },
@@ -105,6 +111,7 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ action: 'pan', kind: 'camera' }, 'View', 'Pan (hold)'),
   row({ action: 'zoom-in', kind: 'camera' }, 'View', 'Zoom in'),
   row({ action: 'zoom-out', kind: 'camera' }, 'View', 'Zoom out'),
+  row({ kind: 'find' }, 'View', 'Find on board'),
   {
     commands: nudgeCommands(false),
     group: 'Selection',

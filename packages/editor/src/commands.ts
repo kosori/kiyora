@@ -26,6 +26,7 @@ export type Command =
   | { kind: 'cut' }
   | { kind: 'paste' }
   | { kind: 'duplicate' }
+  | { kind: 'find' }
   | { kind: 'group' }
   | { kind: 'ungroup' }
   | { kind: 'undo' }
