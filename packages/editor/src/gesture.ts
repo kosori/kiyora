@@ -1,6 +1,5 @@
-import type { Board, Bounds } from '@kiyora/model';
+import { type Board, type Bounds, subtreeIds } from '@kiyora/model';
 import type { Point } from './camera';
-import { subtreeIds } from './containment';
 import { type HandleKind, handleAt } from './geometry/handles';
 import { type Selection, selectedShapes, selectionBounds } from './selection';
 import { snapshotShapes } from './shape-edit';

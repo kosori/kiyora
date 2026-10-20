@@ -16,26 +16,43 @@ export type Bounds = {
   h: number;
 };
 
+/** `point` turned `degrees` about `origin`. */
+export const turn = (point: Point, origin: Point, degrees: number): Point => {
+  if (degrees === 0) {
+    return point;
+  }
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = point.x - origin.x;
+  const dy = point.y - origin.y;
+
+  return {
+    x: origin.x + dx * cos - dy * sin,
+    y: origin.y + dx * sin + dy * cos,
+  };
+};
+
+/** The centre of a shape's authored box. */
+export const centreOf = (shape: Shape): Point => ({
+  x: shape.x + shape.w / 2,
+  y: shape.y + shape.h / 2,
+});
+
 /**
  * The four corners of a shape's box, in drawing order, turned about its centre.
  * Rotation is authored, so corners are derived rather than stored.
  */
 export const cornersOf = (shape: Shape): [Point, Point, Point, Point] => {
-  const centre = { x: shape.x + shape.w / 2, y: shape.y + shape.h / 2 };
-  const radians = (shape.rotation * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-
-  const turn = (x: number, y: number): Point => ({
-    x: centre.x + (x - centre.x) * cos - (y - centre.y) * sin,
-    y: centre.y + (x - centre.x) * sin + (y - centre.y) * cos,
-  });
+  const centre = centreOf(shape);
+  const corner = (x: number, y: number): Point =>
+    turn({ x, y }, centre, shape.rotation);
 
   return [
-    turn(shape.x, shape.y),
-    turn(shape.x + shape.w, shape.y),
-    turn(shape.x + shape.w, shape.y + shape.h),
-    turn(shape.x, shape.y + shape.h),
+    corner(shape.x, shape.y),
+    corner(shape.x + shape.w, shape.y),
+    corner(shape.x + shape.w, shape.y + shape.h),
+    corner(shape.x, shape.y + shape.h),
   ];
 };
 

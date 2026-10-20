@@ -206,13 +206,18 @@ describe('heads, chosen per end', () => {
     rectangle({ id: 'b', x: 300, y: 0 }),
   ]);
 
+  const heads = (ink: ReturnType<typeof connectorInk>) =>
+    ink.filter((part) => part.head);
+
   it('draws a head only at the end that asks for one', () => {
     const ink = connectorInk(
       connector({ end: 'arrow', start: 'none' }),
       shapes
     );
 
-    expect(ink.filter((part) => part.head)).toHaveLength(1);
+    const [only] = heads(ink);
+    expect(only?.d).toMatch(/^M .* L .* L .* Z$/);
+    expect(heads(ink)[1]).toBeUndefined();
   });
 
   it('draws an independent head at each end', () => {
@@ -221,12 +226,14 @@ describe('heads, chosen per end', () => {
       shapes
     );
 
-    expect(ink.filter((part) => part.head)).toHaveLength(2);
+    const [start, end] = heads(ink);
+    expect(start?.d).toContain(' A ');
+    expect(end?.d).toMatch(/^M .* L .* L .* Z$/);
   });
 
   it('draws no head at all when both ends are none', () => {
     const ink = connectorInk(connector({ end: 'none', start: 'none' }), shapes);
 
-    expect(ink.filter((part) => part.head)).toHaveLength(0);
+    expect(heads(ink)).toEqual([]);
   });
 });

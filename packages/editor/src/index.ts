@@ -1,4 +1,6 @@
 // The engine: the store, the gestures, the history, the hit-testing, the persistence.
+
+export { subtreeIds } from '@kiyora/model';
 export {
   clampZoom,
   FIT_PADDING,
@@ -43,7 +45,6 @@ export {
   memberIds,
   parentFrame,
   setMembership,
-  subtreeIds,
 } from './containment';
 export {
   HANDLE_REACH,

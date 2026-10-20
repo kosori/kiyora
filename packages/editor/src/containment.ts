@@ -30,33 +30,6 @@ export const memberIds = (board: Board, frameId: string): string[] =>
     .filter((shape) => shape.parentId === frameId)
     .map((shape) => shape.id);
 
-/**
- * `ids` and everything held inside them, in paint order. A move carries this
- * whole set, so dragging a frame takes its members along.
- */
-export const subtreeIds = (board: Board, ids: readonly string[]): string[] => {
-  const wanted = new Set(ids);
-  let grew = true;
-
-  while (grew) {
-    grew = false;
-    for (const shape of board.shapes) {
-      if (
-        shape.parentId !== null &&
-        wanted.has(shape.parentId) &&
-        !wanted.has(shape.id)
-      ) {
-        wanted.add(shape.id);
-        grew = true;
-      }
-    }
-  }
-
-  return board.shapes
-    .filter((shape) => wanted.has(shape.id))
-    .map((shape) => shape.id);
-};
-
 /** Whether `box` lies wholly inside `frame`'s authored box. */
 const holdsBox = (frame: FrameShape, box: Bounds): boolean =>
   box.x >= frame.x &&

@@ -6,6 +6,7 @@ import {
   type FigureShape,
   type FrameShape,
   NOTE_STYLE,
+  nextId,
   type Shape,
   type StickyShape,
   type Style,
@@ -63,14 +64,7 @@ export const placementBox = (
 export const nextShapeId = (
   kind: Placeable,
   existing: readonly Shape[]
-): string => {
-  const used = new Set(existing.map((shape) => shape.id));
-  let n = 1;
-  while (used.has(`${kind}-${n}`)) {
-    n += 1;
-  }
-  return `${kind}-${n}`;
-};
+): string => nextId(kind, new Set(existing.map((shape) => shape.id)));
 
 /**
  * The shape a placement asks for: `kind`, in the gesture's box, wearing `style`.

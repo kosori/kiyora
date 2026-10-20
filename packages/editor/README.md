@@ -23,7 +23,7 @@ The engine: the store, the gestures, the history, the hit-testing, the persisten
 ## The rules it enforces
 
 - One gesture, exactly one history entry. A drag commits on pointer-up; nudges coalesce; Escape restores the before-picture and pushes nothing.
-- Camera and selection are outside history. Panning is never undoable and never autosaves.
+- Undo never restores the camera or the selection. Panning is never undoable and never autosaves.
 - Commit **notifies** subscribers. The toolbar reads its enabled state from that notification, never by polling — a stale undo button was a real defect in an earlier implementation.
 - Storage faults are typed and surfaced, never swallowed.
 

@@ -27,6 +27,12 @@ const board = (page: Page) => page.getByTestId('board');
 
 const labels = (page: Page) => board(page).locator('text');
 
+/** The painted baseline of every label line, in board units. */
+const labelBaselines = (page: Page) =>
+  labels(page).evaluateAll((nodes) =>
+    nodes.map((node) => Number(node.getAttribute('y')))
+  );
+
 /** Place a text shape by clicking with the text tool, and wait for the overlay. */
 const placeText = async (page: Page, box: { x: number; y: number }) => {
   await railButton(page, 'Text').click();
@@ -121,5 +127,16 @@ test('a long label wraps inside its shape', async ({ page }) => {
   await editor.fill('aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj');
   await editor.blur();
 
-  await expect.poll(() => labels(page).count()).toBeGreaterThan(1);
+  await expect
+    .poll(async () => {
+      const baselines = await labelBaselines(page);
+      return (
+        baselines.length > 1 && new Set(baselines).size === baselines.length
+      );
+    })
+    .toBe(true);
+
+  const baselines = await labelBaselines(page);
+  expect(baselines).toEqual([...baselines].sort((a, b) => a - b));
+  expect(baselines[1] ?? 0).toBeGreaterThan(baselines[0] ?? 0);
 });

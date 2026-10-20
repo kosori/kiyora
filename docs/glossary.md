@@ -23,7 +23,7 @@ The nine colours a board may use, and the three fill styles. Any other colour sn
 _Avoid_: Theme, swatches, colour set
 
 **Camera**:
-Where the board is being looked at from: x, y and zoom. Outside history, so panning is never undoable and never autosaves.
+Where the board is being looked at from: x, y and zoom. The board stores only a snapshot the last save wrote; the live camera is in the view, outside undo, so panning is never undoable and never autosaves.
 _Avoid_: Viewport, scroll position, pan
 
 **Canvas**:

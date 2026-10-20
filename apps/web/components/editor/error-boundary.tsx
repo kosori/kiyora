@@ -1,9 +1,13 @@
 'use client';
 
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import {
+  Component,
+  type ErrorInfo,
+  type PropsWithChildren,
+  type ReactNode,
+} from 'react';
 
 type Props = {
-  children: ReactNode;
   /** What to call the panel in the message, e.g. "Tools". */
   label: string;
 };
@@ -20,7 +24,7 @@ type State = {
  *
  * A class is the only shape React accepts for an error boundary.
  */
-export class PanelBoundary extends Component<Props, State> {
+export class PanelBoundary extends Component<PropsWithChildren<Props>, State> {
   state: State = { failed: false };
 
   static getDerivedStateFromError(): State {

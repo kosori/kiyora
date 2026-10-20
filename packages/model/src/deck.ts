@@ -99,7 +99,7 @@ const isFrame = (shape: Shape): shape is FrameShape => shape.kind === 'frame';
  * mints its shapes the way the rest of the app mints them, so the ids a board
  * gains from a template read like the ones it gains from a tool.
  */
-const nextId = (base: string, used: Set<string>): string => {
+export const nextId = (base: string, used: Set<string>): string => {
   let n = 1;
   while (used.has(`${base}-${n}`)) {
     n += 1;
@@ -116,13 +116,9 @@ const nextId = (base: string, used: Set<string>): string => {
  */
 const framesOf = (board: Board): FrameShape[] => board.shapes.filter(isFrame);
 
-/** Every id in `rootId`'s subtree, the root included, in board order. */
-const subtreeIds = (board: Board, rootId: string): Set<string> => {
-  const wanted = new Set<string>();
-  if (!board.shapes.some((shape) => shape.id === rootId)) {
-    return wanted;
-  }
-  wanted.add(rootId);
+/** `ids` and everything held inside them, the roots included, in paint order. */
+export const subtreeIds = (board: Board, ids: readonly string[]): string[] => {
+  const wanted = new Set(ids);
 
   let grew = true;
   while (grew) {
@@ -139,7 +135,9 @@ const subtreeIds = (board: Board, rootId: string): Set<string> => {
     }
   }
 
-  return wanted;
+  return board.shapes
+    .filter((shape) => wanted.has(shape.id))
+    .map((shape) => shape.id);
 };
 
 /**
@@ -268,7 +266,7 @@ export const deleteSlide = (board: Board, frameId: string): Board => {
   if (frame === undefined || !isFrame(frame)) {
     return board;
   }
-  const removed = subtreeIds(board, frameId);
+  const removed = new Set(subtreeIds(board, [frameId]));
 
   return {
     ...board,
@@ -290,7 +288,7 @@ export const duplicateSlide = (board: Board, frameId: string): Board => {
     return board;
   }
 
-  const subtree = subtreeIds(board, frameId);
+  const subtree = new Set(subtreeIds(board, [frameId]));
   const used = new Set(board.shapes.map((shape) => shape.id));
   const remap = new Map<string, string>();
   for (const shape of board.shapes) {

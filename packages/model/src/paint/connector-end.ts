@@ -6,7 +6,7 @@ import type {
   Shape,
 } from '../board/schema';
 import { formatNumber } from '../format';
-import type { Point } from './figures';
+import { centreOf, type Point, turn } from './figures';
 
 /**
  * Where a connector's ends attach: the anchor an endpoint names, the one the
@@ -29,28 +29,6 @@ export const clamp = (value: number, low: number, high: number): number =>
 /** A point written the way the artifact writes numbers. */
 export const formatPoint = (point: Point): string =>
   `${formatNumber(point.x)} ${formatNumber(point.y)}`;
-
-/** `point` turned `degrees` about `origin`. */
-export const turn = (point: Point, origin: Point, degrees: number): Point => {
-  if (degrees === 0) {
-    return point;
-  }
-  const radians = (degrees * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const dx = point.x - origin.x;
-  const dy = point.y - origin.y;
-
-  return {
-    x: origin.x + dx * cos - dy * sin,
-    y: origin.y + dx * sin + dy * cos,
-  };
-};
-
-const centreOf = (shape: Shape): Point => ({
-  x: shape.x + shape.w / 2,
-  y: shape.y + shape.h / 2,
-});
 
 /** The point on a shape's box an edge and a fraction name, turned with the shape. */
 export const anchorPoint = (shape: Shape, anchor: Anchor): Point => {

@@ -1,20 +1,13 @@
 import type { Board } from '@kiyora/model';
-import { useContext, useSyncExternalStore } from 'react';
-import type { Editor } from '../store';
-import { EditorContext } from './context';
+import { useSyncExternalStore } from 'react';
+import { useEditorContext } from './context';
 
-/** The engine in scope. Throws when a surface is rendered outside a provider. */
-export const useEditor = (): Editor => {
-  const editor = useContext(EditorContext);
-  if (editor === null) {
-    throw new Error('useEditor must be used inside an EditorProvider');
-  }
-  return editor;
-};
+/** The engine in scope, by the name the React surfaces use. */
+export const useEditor = useEditorContext;
 
 /** The board, re-rendering the caller whenever the engine publishes a change. */
 export const useBoard = (): Board => {
-  const editor = useEditor();
+  const editor = useEditorContext();
   return useSyncExternalStore(
     editor.subscribe,
     editor.getBoard,

@@ -1,4 +1,4 @@
-import type { Board } from '@kiyora/model';
+import { type Board, subtreeIds } from '@kiyora/model';
 import {
   type Clipboard,
   COPY_OFFSET,
@@ -7,7 +7,6 @@ import {
   pasteFragment,
 } from './clipboard';
 import { removeShapes } from './connectors';
-import { subtreeIds } from './containment';
 import type { Selection } from './selection';
 
 /** The edits the store exposes beside its gestures: the clipboard and the delete. */

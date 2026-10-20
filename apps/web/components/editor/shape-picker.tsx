@@ -6,36 +6,7 @@ import { FIGURE_KINDS, type FigureKind } from '@kiyora/model';
 import { IconShape } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
-
-/** A kind's name as a person reads it: `predefined-process` to `Predefined Process`. */
-export const figureLabel = (kind: FigureKind): string =>
-  kind
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-type ItemProps = {
-  kind: FigureKind;
-  onChoose: (kind: FigureKind) => void;
-  selected: boolean;
-};
-
-/** One menu entry: it names a kind, and choosing it hands that kind back. */
-const ShapePickerItem = ({ kind, onChoose, selected }: ItemProps) => {
-  const choose = useCallback(() => onChoose(kind), [kind, onChoose]);
-
-  return (
-    <Button
-      className='justify-start'
-      onClick={choose}
-      role='menuitem'
-      size='sm'
-      variant={selected ? 'secondary' : 'ghost'}
-    >
-      {figureLabel(kind)}
-    </Button>
-  );
-};
+import { ShapePickerItem } from './shape-picker-item';
 
 /**
  * The shape picker: one rail entry that opens the whole figure vocabulary. It
