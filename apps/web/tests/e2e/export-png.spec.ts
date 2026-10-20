@@ -112,6 +112,17 @@ type Rgba = [number, number, number, number];
 
 type Probe = { height: number; samples: Rgba[]; width: number };
 
+const LONG_NOTE =
+  'Remember to ship the note before the demo, then walk the deck once more and close the loop with the team on Friday, and after that send the summary to everyone who could not make it and file the follow-ups in the board';
+
+/** The height a rectangle path spans, read from its own coordinates. */
+const pathHeight = (d: string): number => {
+  const values = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  const ys = values.filter((_, index) => index % 2 === 1);
+
+  return Math.max(...ys) - Math.min(...ys);
+};
+
 /** Reads pixels out of PNG bytes through the browser's own decoder. */
 const probe = async (
   page: Page,
@@ -265,6 +276,47 @@ test('the export theme is its own, so a light board can leave as a dark image', 
   await expect(
     page.getByTestId('board').locator('path[data-shape="ellipse-1"]').first()
   ).toHaveAttribute('stroke', '#1e1e1e');
+});
+
+test('a refitted note exports at the box it paints, in the SVG and the PNG', async ({
+  page,
+}) => {
+  await open(page);
+  await page.evaluate(async () => {
+    await document.fonts.load("16px 'Balsamiq Sans Neue'");
+    await document.fonts.ready;
+  });
+  const box = await canvasBox(page);
+
+  await page.keyboard.press('s');
+  await page.mouse.click(box.x + 400, box.y + 300);
+  const editor = page.getByTestId('text-editor');
+  await expect(editor).toBeVisible();
+  await editor.fill(LONG_NOTE);
+  await editor.blur();
+
+  await page.mouse.click(box.x + 400, box.y + 300);
+
+  const painted =
+    (await page
+      .getByTestId('board')
+      .locator('path[data-shape="sticky-1"]')
+      .getAttribute('d')) ?? '';
+  const height = pathHeight(painted);
+  expect(height).toBeGreaterThan(160);
+
+  await page.getByTestId('png-options').click();
+  await pick(page, 'png-target', 'selection');
+  await pick(page, 'png-scale', '1');
+  expect(pngSize(await exportPng(page)).height).toBe(Math.round(height));
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('export-svg').click(),
+  ]);
+  const svg = await readFile(await download.path(), 'utf8');
+
+  expect(svg).toContain(painted);
 });
 
 test('a board past the size cap is refused, and no file is written', async ({

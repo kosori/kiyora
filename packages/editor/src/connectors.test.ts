@@ -164,6 +164,96 @@ describe('choosing a connector’s route and heads', () => {
   });
 });
 
+describe('fixing an end to an edge', () => {
+  const joined = (): ReturnType<typeof createEditor> => {
+    const editor = createEditor(twoShapes());
+    editor.setTool('connector');
+    editor.placeShape({ from: { x: 50, y: 30 }, to: { x: 350, y: 30 } });
+    return editor;
+  };
+
+  it('paints from the edge the author names instead of the one auto-picking chose', () => {
+    const editor = joined();
+    expect(lineOf(editor.getBoard())).toBe('M 100 30 L 300 30');
+
+    editor.setConnector('connector-1', {
+      fromAnchor: { edge: 'top', fraction: 0.5 },
+    });
+
+    expect(connectorOf(editor.getBoard()).from).toEqual({
+      anchor: { edge: 'top', fraction: 0.5 },
+      kind: 'bound',
+      shapeId: 'a',
+    });
+    expect(lineOf(editor.getBoard())).toBe('M 50 0 L 300 30');
+  });
+
+  it('fixes either end, chosen independently', () => {
+    const editor = joined();
+
+    editor.setConnector('connector-1', {
+      fromAnchor: { edge: 'top', fraction: 0.5 },
+      toAnchor: { edge: 'bottom', fraction: 0.5 },
+    });
+
+    expect(lineOf(editor.getBoard())).toBe('M 50 0 L 350 60');
+  });
+
+  it('returns the end to auto-picking when no edge is chosen', () => {
+    const editor = joined();
+    editor.setConnector('connector-1', {
+      fromAnchor: { edge: 'top', fraction: 0.5 },
+    });
+    expect(connectorOf(editor.getBoard()).from).toMatchObject({
+      anchor: { edge: 'top', fraction: 0.5 },
+    });
+
+    editor.setConnector('connector-1', { fromAnchor: null });
+
+    expect(connectorOf(editor.getBoard()).from).toEqual({
+      kind: 'bound',
+      shapeId: 'a',
+    });
+    expect(lineOf(editor.getBoard())).toBe('M 100 30 L 300 30');
+  });
+
+  it('keeps the fraction of the edge, so the attachment follows a resize and a move', () => {
+    const editor = joined();
+    editor.setConnector('connector-1', {
+      fromAnchor: { edge: 'bottom', fraction: 0.25 },
+    });
+    expect(lineOf(editor.getBoard())).toBe('M 25 60 L 300 30');
+
+    editor.setSelection(['a']);
+    editor.pointerDown({ x: 100, y: 60 }, false);
+    editor.pointerMove({ x: 160, y: 120 }, NO_GESTURE_MODIFIERS);
+    editor.pointerUp();
+    expect(lineOf(editor.getBoard())).toBe('M 40 120 L 300 60');
+
+    editor.setSelection(['a']);
+    editor.nudge(10, 0);
+    editor.endNudgeRun();
+    expect(lineOf(editor.getBoard())).toBe('M 50 120 L 300 60');
+  });
+
+  it('frees a fixed end where it attached when its shape is deleted', () => {
+    const editor = joined();
+    editor.setConnector('connector-1', {
+      fromAnchor: { edge: 'bottom', fraction: 0.25 },
+    });
+
+    editor.setSelection(['a']);
+    editor.deleteSelection();
+
+    expect(connectorOf(editor.getBoard()).from).toEqual({
+      kind: 'free',
+      x: 25,
+      y: 60,
+    });
+    expect(lineOf(editor.getBoard())).toBe('M 25 60 L 300 60');
+  });
+});
+
 describe('deleting a shape its connector touches', () => {
   it('keeps the connector in a defined, visible state: the end is freed where it was', () => {
     const editor = createEditor(twoShapes());

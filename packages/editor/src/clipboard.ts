@@ -112,7 +112,7 @@ export const pasteFragment = (
     }
     const id = remap.get(endpoint.shapeId);
 
-    return id === undefined ? endpoint : { kind: 'bound', shapeId: id };
+    return id === undefined ? endpoint : { ...endpoint, shapeId: id };
   };
 
   const copies: Shape[] = [];

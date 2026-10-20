@@ -36,6 +36,13 @@ const centreOf = (shape: Shape): Point => ({
   y: shape.y + shape.h / 2,
 });
 
+/**
+ * A shape a resize has just sized. A sticky's height is now the one its author
+ * chose, so it is pinned `fixed` and a later label edit cannot undo the resize.
+ */
+const pinnedByResize = (shape: Shape): Shape =>
+  shape.kind === 'sticky' ? { ...shape, fit: 'fixed' } : shape;
+
 /** The angle of `point` about `origin`, in degrees, with straight up as zero. */
 export const angleAt = (origin: Point, point: Point): number => {
   const degrees =
@@ -136,13 +143,13 @@ const resizeOne = (
     y: anchor.y + halfW * sin + halfH * cos,
   };
 
-  return {
+  return pinnedByResize({
     ...shape,
     h: clean(nextH),
     w: clean(nextW),
     x: clean(nextCentre.x - nextW / 2),
     y: clean(nextCentre.y - nextH / 2),
-  };
+  });
 };
 
 /**
@@ -194,13 +201,16 @@ export const resizeSelection = (
   const next: Replacements = new Map();
 
   for (const shape of shapes) {
-    next.set(shape.id, {
-      ...shape,
-      h: clean(shape.h * scaleY),
-      w: clean(shape.w * scaleX),
-      x: clean(anchorX + (shape.x - anchorX) * scaleX),
-      y: clean(anchorY + (shape.y - anchorY) * scaleY),
-    });
+    next.set(
+      shape.id,
+      pinnedByResize({
+        ...shape,
+        h: clean(shape.h * scaleY),
+        w: clean(shape.w * scaleX),
+        x: clean(anchorX + (shape.x - anchorX) * scaleX),
+        y: clean(anchorY + (shape.y - anchorY) * scaleY),
+      })
+    );
   }
 
   return next;

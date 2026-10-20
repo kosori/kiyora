@@ -44,12 +44,15 @@ export {
   SCHEMA_VERSION,
   type Shape,
   type Slide,
+  STICKY_FITS,
+  type StickyFit,
   type StickyShape,
   type Style,
   settingsSchema,
   shapeBaseSchema,
   shapeSchema,
   slideSchema,
+  stickyFitSchema,
   styleSchema,
   type TextShape,
 } from './board/schema';
@@ -149,6 +152,7 @@ export {
 export {
   DEFAULT_STICKY_SIZE,
   fitSticky,
+  MIN_STICKY_HEIGHT,
   NOTE_COLOUR,
   NOTE_STYLE,
 } from './paint/sticky';
