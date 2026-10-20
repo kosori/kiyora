@@ -142,25 +142,15 @@ export function parseGraph(source: string): ParseResult {
 		}
 		// The first non-empty line picks the family. A recognized graph
 		// header (whole-line match) selects that family; a recognized but
-		// unsupported header is refused with `unsupported-family` and
-		// yields an empty graph; anything else falls through to the
-		// default architecture family.
+		// unsupported header is reported once with `unsupported-family` and
+		// consumed, then the remaining lines parse as the default
+		// architecture family; anything else falls through to that default.
 		if (state.family === null) {
 			const detect = detectFamily(line, span, state.diagnostics);
-			// A recognized-but-unsupported family (e.g. `sequence`) is
-			// refused here: one `unsupported-family` error and an empty
-			// graph, with no later lines misparsed as graph shapes.
-			if (detect.skipLine && detect.family === null) {
-				return {
-					diagnostics: state.diagnostics,
-					diagram: buildDiagram(state),
-				};
-			}
+			state.family = detect.family ?? 'architecture';
 			if (detect.skipLine) {
-				state.family = detect.family;
 				continue;
 			}
-			state.family = detect.family ?? 'architecture';
 		}
 		// Directives may appear anywhere, on their own lines.
 		if (consumeDirective(state, line, span)) {
@@ -293,8 +283,8 @@ type FamilyDetect = { family: Family | null; skipLine: boolean };
  * Detect a family header on the first non-empty line. A recognized graph
  * keyword selects that family (the line is consumed). A recognized but
  * unsupported family keyword produces one `unsupported-family` error and
- * the line is consumed (an empty graph results). Anything else is left for
- * the regular statement parser with the default architecture family.
+ * the line is consumed; the rest of the file keeps parsing. Anything else is
+ * left for the regular statement parser with the default architecture family.
  */
 function detectFamily(
 	line: string,

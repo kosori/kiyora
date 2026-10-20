@@ -78,6 +78,25 @@ describe('parse', () => {
 		]);
 	});
 
+	test('keeps the statements around a warning', () => {
+		const result = parse('Before\nWarned [not-a-shape]\nAfter');
+		assertGraph(result.diagram);
+
+		expect(result.diagram.nodes.map((node) => node.id)).toEqual([
+			'before',
+			'warned',
+			'after',
+		]);
+		expect(result.diagnostics).toMatchObject([
+			{
+				code: 'unknown-attribute',
+				message: 'unknown attribute "not-a-shape"',
+				severity: 'warning',
+				span: { start: { line: 2 } },
+			},
+		]);
+	});
+
 	test('reports unclosed groups while retaining their partial content', () => {
 		const result = parse('group Services {\nCache\n');
 		assertGraph(result.diagram);
@@ -271,31 +290,28 @@ describe('parse', () => {
 		assertSingleAsteriskState(diagram);
 	});
 
-	test('refuses infographic and chart family headers', () => {
-		for (const family of ['infographic', 'chart']) {
-			const result = parse(`${family}\nLater Node`);
+	test('reports an unsupported family once and still parses the rest of the file', () => {
+		for (const family of ['wireframe', 'infographic', 'chart']) {
+			const result = parse(`${family}\nLater Node\nOther -> Last`);
 
-			expect(result).toEqual({
-				diagnostics: [
-					{
-						code: 'unsupported-family',
-						message: `unsupported family "${family}"`,
-						severity: 'error',
-						span: {
-							end: { column: family.length, line: 1 },
-							start: { column: 1, line: 1 },
-						},
+			expect(result.diagnostics).toEqual([
+				{
+					code: 'unsupported-family',
+					message: `unsupported family "${family}"`,
+					severity: 'error',
+					span: {
+						end: { column: family.length, line: 1 },
+						start: { column: 1, line: 1 },
 					},
-				],
-				diagram: {
-					direction: 'right',
-					edges: [],
-					groups: [],
-					kind: 'graph',
-					nodes: [],
-					title: '',
 				},
-			});
+			]);
+			assertGraph(result.diagram);
+			expect(result.diagram.nodes.map((node) => node.id)).toEqual([
+				'later-node',
+				'other',
+				'last',
+			]);
+			expect(result.diagram.edges).toHaveLength(1);
 		}
 	});
 

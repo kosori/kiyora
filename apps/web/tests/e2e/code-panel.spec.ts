@@ -160,6 +160,92 @@ test('an unreadable source leaves the board intact and keeps its text', async ({
   await expect(source(page)).toHaveValue('->');
 });
 
+test('diagnostics list in source order and clicking one moves the caret to its line', async ({
+  page,
+}) => {
+  await open(page);
+  await drawFrame(page);
+  await selectFrame(page);
+  await openCode(page);
+
+  const text = 'Box [rectangle]\nNope [not-a-shape]\n->\nOther';
+  await source(page).fill(text);
+
+  const diagnostics = page.getByTestId('code-diagnostic');
+  await expect(diagnostics).toHaveCount(2);
+
+  const warning = diagnostics.nth(0);
+  await expect(warning).toHaveAttribute('data-severity', 'warning');
+  await expect(warning).toContainText('unknown attribute "not-a-shape"');
+  await expect(warning).toContainText('Line 2');
+
+  const error = diagnostics.nth(1);
+  await expect(error).toHaveAttribute('data-severity', 'error');
+  await expect(error).toContainText('edge needs both ends');
+  await expect(error).toContainText('Line 3');
+
+  await warning.click();
+  await expect(source(page)).toBeFocused();
+  await expect
+    .poll(() =>
+      source(page).evaluate((element) =>
+        element instanceof HTMLTextAreaElement ? element.selectionStart : -1
+      )
+    )
+    .toBe(text.indexOf('Nope'));
+
+  // Inserting a line above shifts both diagnostics, because the list derives
+  // from the text on screen rather than from the last apply.
+  await source(page).fill(`// note\n${text}`);
+  await expect(diagnostics).toHaveCount(2);
+  await expect(diagnostics.nth(0)).toContainText('Line 3');
+  await expect(diagnostics.nth(1)).toContainText('Line 4');
+});
+
+test('an error leaves the lines after it parsed and painted', async ({
+  page,
+}) => {
+  await open(page);
+  await drawFrame(page);
+  await selectFrame(page);
+  await openCode(page);
+
+  await source(page).fill('->\nBox');
+  await source(page).press('Control+Enter');
+
+  await expect(page.getByTestId('code-diagnostic')).toContainText(
+    'edge needs both ends'
+  );
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+  );
+});
+
+test('an unsupported family is one diagnostic and the rest of the file still applies', async ({
+  page,
+}) => {
+  await open(page);
+  await drawFrame(page);
+  await selectFrame(page);
+  await openCode(page);
+
+  await source(page).fill('wireframe\nBox [rectangle]');
+  await source(page).press('Control+Enter');
+
+  const diagnostics = page.getByTestId('code-diagnostic');
+  await expect(diagnostics).toHaveCount(1);
+  await expect(diagnostics.nth(0)).toHaveAttribute('data-severity', 'error');
+  await expect(diagnostics.nth(0)).toContainText(
+    'unsupported family "wireframe"'
+  );
+  await expect(diagnostics.nth(0)).toContainText('Line 1');
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+  );
+});
+
 test('Mod+Enter outside the panel applies nothing, as before', async ({
   page,
 }) => {

@@ -22,6 +22,21 @@
     "direction": "right",
     "edges": [],
     "groups": [],
-    "nodes": []
+    "nodes": [
+      {
+        "id": "alice",
+        "label": "Alice",
+        "span": {
+          "end": {
+            "column": 5,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      }
+    ]
   }
 }
