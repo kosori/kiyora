@@ -182,6 +182,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
 
   // Two slides from the deck's templates, then presenting plays them fullscreen.
   await page.getByTestId('png-options').click();
+  await page.getByTestId('rail-tab-deck').click();
   await page.getByTestId('template-title').click();
   await page.getByTestId('template-blank').click();
   await expect(page.getByTestId('slide')).toHaveCount(2);

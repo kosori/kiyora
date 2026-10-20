@@ -21,7 +21,7 @@ export const Inspector = () => {
   return (
     <aside
       aria-label='Inspector'
-      className='flex h-full w-64 shrink-0 flex-col gap-3 overflow-y-auto border-border border-l bg-background p-3'
+      className='flex h-full flex-col gap-3 overflow-y-auto p-3'
       data-testid='inspector'
     >
       <h2 className='font-heading font-medium text-sm'>Style</h2>

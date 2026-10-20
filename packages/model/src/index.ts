@@ -66,6 +66,7 @@ export {
   boardIssues,
   parseBoard,
 } from './board/validate';
+export { mapSource, type SourceMapping } from './bridge/mapping';
 export {
   addSlide,
   DECK_TEMPLATES,
