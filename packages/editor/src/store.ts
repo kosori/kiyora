@@ -46,6 +46,8 @@ export const createEditor = (board: Board): Editor => {
     addSlideFromTemplate: deck.addSlideFromTemplate,
     applySource: source.applySource,
     beginTextEdit: label.begin,
+    bringForward: () => edits.reorder('forward'),
+    bringToFront: () => edits.reorder('front'),
     cancelGesture: gestures.cancelGesture,
     cancelTextEdit: edits.cancelTextEdit,
     copy: commands.copy,
@@ -76,6 +78,8 @@ export const createEditor = (board: Board): Editor => {
     previousSlide: present.previous,
     redo: edits.redo,
     restyle: edits.restyle,
+    sendBackward: () => edits.reorder('backward'),
+    sendToBack: () => edits.reorder('back'),
     setBoard: edits.setBoard,
     setCamera: (camera) => {
       core.setView({ ...core.view(), camera });

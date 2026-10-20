@@ -28,6 +28,10 @@ export type Command =
   | { kind: 'duplicate' }
   | { kind: 'group' }
   | { kind: 'ungroup' }
+  | { kind: 'bring-to-front' }
+  | { kind: 'send-to-back' }
+  | { kind: 'bring-forward' }
+  | { kind: 'send-backward' }
   | { kind: 'undo' }
   | { kind: 'redo' }
   | { kind: 'present' }

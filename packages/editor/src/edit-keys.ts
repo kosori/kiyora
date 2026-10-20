@@ -63,6 +63,30 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     modifiers: { command: 'required', shift: 'required' },
   },
   {
+    command: { kind: 'bring-forward' },
+    key: ']',
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'send-backward' },
+    key: '[',
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'bring-to-front' },
+    key: ']',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'send-to-back' },
+    key: '[',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
     command: { kind: 'undo' },
     key: 'z',
     modifiers: { command: 'required', shift: 'forbidden' },
@@ -118,6 +142,10 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'cancel-gesture' }, 'Selection', 'Cancel a gesture'),
   row({ kind: 'group' }, 'Selection', 'Group'),
   row({ kind: 'ungroup' }, 'Selection', 'Ungroup'),
+  row({ kind: 'bring-to-front' }, 'Selection', 'Bring to front'),
+  row({ kind: 'bring-forward' }, 'Selection', 'Bring forward'),
+  row({ kind: 'send-backward' }, 'Selection', 'Send backward'),
+  row({ kind: 'send-to-back' }, 'Selection', 'Send to back'),
 ];
 
 /** The rows after the clipboard's in the reference: the history and the help. */

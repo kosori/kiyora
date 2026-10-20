@@ -12,7 +12,7 @@ import type { Selection } from './selection';
  */
 
 /** The selected shapes that have no selected ancestor, in paint order. */
-const selectedRoots = (board: Board, selection: Selection): Shape[] => {
+export const selectedRoots = (board: Board, selection: Selection): Shape[] => {
   const selected = new Set(selection);
   const parents = new Map(
     board.shapes.map((shape) => [shape.id, shape.parentId])
