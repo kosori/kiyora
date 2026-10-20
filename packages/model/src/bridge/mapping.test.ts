@@ -88,6 +88,30 @@ describe('mapping a source onto a frame', () => {
     expect(result.shapes[0]?.kind).toBe('ellipse');
   });
 
+  it('turns every node into a figure, laid out along the direction', () => {
+    const result = mapSource(
+      'direction right\nA -> B\nA -> C',
+      frame({ h: 600, w: 800 }),
+      style,
+      board().shapes
+    );
+    const [a, b, c] = result.shapes;
+
+    expect(result.shapes.map((shape) => shape.text)).toEqual(['A', 'B', 'C']);
+    expect(new Set(result.shapes.map((shape) => shape.id)).size).toBe(3);
+    expect(b?.x).toBeGreaterThan(a?.x ?? 0);
+    expect(c?.x).toBe(b?.x);
+    expect(c?.y).toBeGreaterThan(b?.y ?? 0);
+  });
+
+  it('maps the same source to the same figures twice in one run', () => {
+    const source = 'direction down\nA -> B\nA -> C';
+
+    expect(mapSource(source, frame(), style, board().shapes).shapes).toEqual(
+      mapSource(source, frame(), style, board().shapes).shapes
+    );
+  });
+
   it('gives the figure an id the board does not already hold', () => {
     const existing = board([
       {

@@ -105,6 +105,17 @@ describe('the one dispatch', () => {
     expect(calls).toEqual(['zoom-in:down', 'shortcuts', 'palette']);
   });
 
+  it('aligns through the dispatch, so the Inspector runs the command the key runs', () => {
+    const editor = createEditor(
+      board([square, { ...square, id: 'other', x: 200 }])
+    );
+    editor.setSelection(['square', 'other']);
+
+    runCommand({ alignment: 'left', kind: 'align' }, { editor });
+
+    expect(editor.getBoard().shapes.map((shape) => shape.x)).toEqual([0, 0]);
+  });
+
   it('undoes through the dispatch, so history is not a path the keyboard owns alone', () => {
     const editor = createEditor(board([square]));
     editor.setSelection(['square']);
