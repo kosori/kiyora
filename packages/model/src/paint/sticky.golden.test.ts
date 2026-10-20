@@ -19,6 +19,9 @@ const light: PaintContext = { theme: 'light' };
 /** A deterministic measurer: every character is half the run's size wide. */
 const fake: Measurer = (run) => run.text.length * run.size * 0.5;
 
+const LONG =
+  'One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty';
+
 const golden = (name: string): string =>
   readFileSync(
     fileURLToPath(new URL(`./goldens/${name}`, import.meta.url)),
@@ -26,6 +29,7 @@ const golden = (name: string): string =>
   );
 
 const sticky = (overrides: Partial<StickyShape> = {}): StickyShape => ({
+  fit: 'auto',
   h: 160,
   id: 'sticky-1',
   kind: 'sticky',
@@ -120,5 +124,25 @@ describe('growing a sticky', () => {
     const note = sticky({ h: 160, text: '' });
 
     expect(fitSticky(note, fake)).toBe(note);
+  });
+
+  it('shrinks a grown note back toward the size a click places', () => {
+    const note = sticky({ h: 400, text: 'hi' });
+
+    expect(fitSticky(note, fake).h).toBe(160);
+  });
+
+  it('floors an emptied auto note at the size a click places', () => {
+    const note = sticky({ h: 400, text: '' });
+
+    expect(fitSticky(note, fake).h).toBe(160);
+  });
+
+  it('never refits a fixed note, however its label changes', () => {
+    const small = sticky({ fit: 'fixed', h: 80, text: LONG });
+    const large = sticky({ fit: 'fixed', h: 400, text: 'hi' });
+
+    expect(fitSticky(small, fake)).toBe(small);
+    expect(fitSticky(large, fake)).toBe(large);
   });
 });
