@@ -15,6 +15,7 @@ import type { GestureModifiers } from './modifiers';
 import type { Placement } from './placement';
 import type { Restyle } from './restyle';
 import type { Selection } from './selection';
+import type { SourceApply } from './source-commands';
 import type { Tool } from './tools';
 
 /**
@@ -134,8 +135,16 @@ export type Editor = {
    * stored with them so the next open shows what was typed. One call is one
    * gesture, so one undo takes the whole apply back; a frame with no Source
    * applies an empty text without complaint.
+   *
+   * A stale frame is left exactly as it was unless `force` is set, and the
+   * result says so, so a caller can ask before discarding a hand edit. Shapes
+   * inside the frame that the Source did not generate always survive.
    */
-  applySource: (frameId: string, text: string) => void;
+  applySource: (
+    frameId: string,
+    text: string,
+    options?: { force?: boolean }
+  ) => SourceApply;
   /**
    * Opens the label edit's transaction, so every write between this and
    * `endTextEdit` is one gesture and one history entry. Joins one already open —

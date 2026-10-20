@@ -163,6 +163,12 @@ export {
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';
+export type { SourceApply, SourceApplyOptions } from './source-commands';
+export {
+  markSourceStale,
+  type SourceState,
+  sourceState,
+} from './source-state';
 export {
   createEditor,
   type Editor,

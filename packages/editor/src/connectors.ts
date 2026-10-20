@@ -7,6 +7,7 @@ import {
   type Head,
   type Route,
 } from '@kiyora/model';
+import { markSourceStale } from './source-state';
 
 /**
  * What the inspector may change about a connector: its route, the head at each
@@ -99,5 +100,5 @@ export const removeShapes = (board: Board, ids: readonly string[]): Board => {
       : shape
   );
 
-  return { ...board, shapes };
+  return markSourceStale(board, { ...board, shapes }, ids);
 };
