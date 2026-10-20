@@ -1,0 +1,43 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "down",
+    "edges": [],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "ceo",
+        "label": "CEO",
+        "span": {
+          "end": {
+            "column": 3,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "shape": "rectangle"
+      },
+      {
+        "id": "cto",
+        "label": "CTO",
+        "span": {
+          "end": {
+            "column": 3,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "shape": "rectangle"
+      }
+    ],
+    "variant": "orgchart"
+  }
+}

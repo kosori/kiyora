@@ -1,81 +1,54 @@
 # Kiyora
 
-## What's inside?
+An offline whiteboard for diagrams, notes and slides. Draw by hand, or type a diagram as code.
 
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `@kiyora/web`: a [Next.js](https://nextjs.org/) app using [shadcn/ui](https://ui.shadcn.com/) with the [Base UI](https://base-ui.com/) primitives
-
-### Tooling
-
-- `@kiyora/typescript`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [Tailwind CSS](https://tailwindcss.com/) v4 for styling
-- [Ultracite](https://www.ultracite.ai/) with [Biome](https://biomejs.dev/) for linting and formatting (configured once at the repo root)
-
-### Build
-
-To build all apps and packages, run the following command:
+No account. No sync. No network. The board lives in this browser, and the only request the editor makes is for its own assets — a property a test enforces rather than a promise.
 
 ```sh
-turbo build
+bun install
+bun run dev          # http://localhost:3000
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## What it does
+
+Draw with a hand-drawn look: shapes, connectors, text and sticky notes. Style them in the inspector, pan and zoom an infinite canvas, and present the frames as slides. Save the board to a single `.kyr.json` file or let it autosave. Export PNG at 1×/2×/4× with a transparent or solid background, in light or dark, or export SVG.
+
+The diagram-code panel — type a few lines, get laid-out shapes — arrives in [v1.5](./docs/product/v1.5.md). The parser is already here and tested.
+
+## Repo
+
+```
+apps/web             the Next.js app: canvas, chrome, panels
+packages/dsl         the source grammar: text to AST with diagnostics
+packages/model       the board: schema, geometry, projection
+packages/editor      the engine: store, gestures, persistence
+tooling/typescript   shared tsconfigs
+docs/                architecture, glossary, decisions, product scope
+```
+
+Dependencies run one way: `dsl ← model ← editor ← apps/web`.
+
+## Gates
+
+CI runs all of these; run them before you call anything done.
 
 ```sh
-turbo build --filter=@kiyora/web
+bun run check            # lint and format
+bun run check-types      # types across every workspace
+bun run test             # unit, Vitest
+bun run test:e2e         # end to end, Playwright
+bun run check-budgets    # file size budget
 ```
 
-### Develop
+## Docs
 
-To develop all apps and packages, run the following command:
+- [Architecture](./docs/architecture.md) — package boundaries, the document model, the render seam, and the invariants every change keeps. **Read this first.**
+- [Glossary](./docs/glossary.md) — the words this project uses.
+- [Decisions](./docs/adr/) — what is hard to reverse and why.
+- [v1](./docs/product/v1.md) — every capability, and the test that proves it.
+- [v1.5](./docs/product/v1.5.md) · [v2](./docs/product/v2.md) — what comes next.
+- [Provenance](./docs/provenance.md) — where the code and the behaviours came from.
 
-```sh
-turbo dev
-```
+## Licence
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-```sh
-turbo dev --filter=@kiyora/web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache), then enter the following commands:
-
-```sh
-turbo login
-```
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```sh
-turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+MIT. See [LICENSE](./LICENSE) and [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).

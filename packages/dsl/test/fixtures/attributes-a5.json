@@ -1,0 +1,92 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "direction": "right",
+    "edges": [
+      {
+        "from": "web",
+        "span": {
+          "end": {
+            "column": 18,
+            "line": 5
+          },
+          "start": {
+            "column": 1,
+            "line": 5
+          }
+        },
+        "to": "docs",
+        "flow": true
+      },
+      {
+        "from": "docs",
+        "span": {
+          "end": {
+            "column": 38,
+            "line": 6
+          },
+          "start": {
+            "column": 1,
+            "line": 6
+          }
+        },
+        "to": "database",
+        "width": 5,
+        "value": 10
+      }
+    ],
+    "groups": [],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "web",
+        "label": "Web",
+        "span": {
+          "end": {
+            "column": 45,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "icon": "globe",
+        "link": "https://kiyora.dev"
+      },
+      {
+        "id": "docs",
+        "label": "Docs",
+        "span": {
+          "end": {
+            "column": 37,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "link": "https://kiyora.dev/docs"
+      },
+      {
+        "id": "database",
+        "label": "Database",
+        "span": {
+          "end": {
+            "column": 48,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
+        "icon": "database",
+        "width": 140,
+        "score": 95
+      }
+    ],
+    "title": "Attributes A5"
+  }
+}

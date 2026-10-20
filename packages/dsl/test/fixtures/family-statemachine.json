@@ -1,0 +1,76 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "start",
+        "label": "Start",
+        "span": {
+          "end": {
+            "column": 5,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "shape": "circle",
+        "fill": "bold",
+        "color": "gray"
+      },
+      {
+        "id": "idle",
+        "label": "Idle",
+        "span": {
+          "end": {
+            "column": 4,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "shape": "rectangle",
+        "corner": "rounded"
+      },
+      {
+        "id": "active",
+        "label": "Active",
+        "span": {
+          "end": {
+            "column": 16,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
+        "shape": "diamond"
+      },
+      {
+        "id": "end",
+        "label": "End",
+        "span": {
+          "end": {
+            "column": 3,
+            "line": 5
+          },
+          "start": {
+            "column": 1,
+            "line": 5
+          }
+        },
+        "shape": "double-circle"
+      }
+    ],
+    "variant": "statemachine"
+  }
+}

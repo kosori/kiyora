@@ -1,0 +1,87 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "direction": "right",
+    "edges": [
+      {
+        "from": "cache",
+        "span": {
+          "end": {
+            "column": 11,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "to": "db"
+      },
+      {
+        "from": "db",
+        "span": {
+          "end": {
+            "column": 20,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        },
+        "to": "queue",
+        "label": "enqueue"
+      }
+    ],
+    "groups": [],
+    "kind": "graph",
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 11,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
+        "color": "red"
+      },
+      {
+        "id": "db",
+        "label": "DB",
+        "span": {
+          "end": {
+            "column": 11,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "shape": "cylinder",
+        "color": "green"
+      },
+      {
+        "id": "queue",
+        "label": "Queue",
+        "span": {
+          "end": {
+            "column": 20,
+            "line": 4
+          },
+          "start": {
+            "column": 1,
+            "line": 4
+          }
+        }
+      }
+    ],
+    "title": ""
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "right",
+    "edges": [],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "cache",
+        "label": "Cache",
+        "span": {
+          "end": {
+            "column": 27,
+            "line": 1
+          },
+          "start": {
+            "column": 1,
+            "line": 1
+          }
+        },
+        "shape": "cylinder",
+        "color": "red",
+        "fill": "bold"
+      },
+      {
+        "id": "api-v1",
+        "label": "API: /v1",
+        "span": {
+          "end": {
+            "column": 24,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "icon": "cache"
+      },
+      {
+        "id": "a",
+        "label": "A",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "color": "green"
+      },
+      {
+        "id": "b",
+        "label": "B",
+        "span": {
+          "end": {
+            "column": 12,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "color": "green"
+      }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+title Payment Flow
+direction down
+colorMode bold
+legend { blue: api, teal: cache }
+A

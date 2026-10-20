@@ -1,0 +1,43 @@
+{
+  "diagnostics": [],
+  "diagram": {
+    "kind": "graph",
+    "title": "",
+    "direction": "down",
+    "edges": [],
+    "groups": [],
+    "nodes": [
+      {
+        "id": "start",
+        "label": "Start",
+        "span": {
+          "end": {
+            "column": 5,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        },
+        "shape": "rectangle"
+      },
+      {
+        "id": "process",
+        "label": "Process",
+        "span": {
+          "end": {
+            "column": 7,
+            "line": 3
+          },
+          "start": {
+            "column": 1,
+            "line": 3
+          }
+        },
+        "shape": "rectangle"
+      }
+    ],
+    "swimlanes": true
+  }
+}
