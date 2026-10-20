@@ -36,10 +36,18 @@ export const PresentOverlay = () => {
 
   const slides = presentedSlides(board);
   const slide = present.active ? slides[present.index] : undefined;
+  const frame = slide?.frame;
 
   const paint = useMemo(
-    () => paintBoard(board, { measure, theme: board.settings.theme }),
-    [board, measure]
+    () =>
+      frame === undefined
+        ? null
+        : paintBoard(board, {
+            measure,
+            theme: board.settings.theme,
+            view: frame,
+          }),
+    [board, frame, measure]
   );
 
   /**
@@ -129,7 +137,7 @@ export const PresentOverlay = () => {
     return () => clearInterval(tick);
   }, [present.active]);
 
-  if (slide === undefined) {
+  if (slide === undefined || paint === null) {
     return null;
   }
 

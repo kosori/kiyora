@@ -49,6 +49,8 @@ export type CameraSurface = {
   ready: boolean;
   ref: RefObject<SVGSVGElement | null>;
   view: View;
+  /** The canvas's own size in screen pixels, zero until it has measured itself. */
+  viewport: Viewport;
 };
 
 /** A pointer's position in the canvas's own pixels, whatever the page scrolled to. */
@@ -80,6 +82,7 @@ export const useCameraSurface = (): CameraSurface => {
   const hasPointer = useRef<boolean>(false);
   const [ready, setReady] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
+  const [viewport, setViewport] = useState<Viewport>({ h: 0, w: 0 });
 
   useEffect(() => {
     const element = ref.current;
@@ -88,7 +91,11 @@ export const useCameraSurface = (): CameraSurface => {
     }
     const measure = () => {
       const box = element.getBoundingClientRect();
-      size.current = { h: box.height, w: box.width };
+      const next = { h: box.height, w: box.width };
+      if (next.h !== size.current.h || next.w !== size.current.w) {
+        setViewport(next);
+      }
+      size.current = next;
       setReady(box.width > 0 && box.height > 0);
     };
     measure();
@@ -218,5 +225,6 @@ export const useCameraSurface = (): CameraSurface => {
     ready,
     ref,
     view,
+    viewport,
   };
 };
