@@ -39,6 +39,13 @@ const frameShape = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** A group: the same base as any shape, and no ink of its own. */
+const groupShape = (overrides: Record<string, unknown> = {}) => ({
+  ...shape(),
+  kind: 'group',
+  ...overrides,
+});
+
 const board = (overrides: Record<string, unknown> = {}) => ({
   camera: { x: 0, y: 0, zoom: 1 },
   createdAt: 1_700_000_000_000,
@@ -179,6 +186,61 @@ describe('a frame', () => {
     );
 
     expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.variant']);
+  });
+
+  it('carries the source it was generated from, when it has one', () => {
+    const source = {
+      generatedIds: ['node-1', 'node-2'],
+      stale: false,
+      text: 'graph TD\n  node-1 --> node-2',
+    };
+    const [parsed] = parseBoard(
+      board({ shapes: [frameShape({ source })] })
+    ).shapes;
+
+    expect(parsed).toMatchObject({ kind: 'frame', source });
+  });
+
+  it('has no source until one is attached, so a frame from before the panel reads', () => {
+    const [parsed] = parseBoard(board({ shapes: [frameShape()] })).shapes;
+
+    expect(parsed).not.toHaveProperty('source');
+  });
+
+  it('rejects a source that cannot say whether it is stale', () => {
+    const issues = boardIssues(
+      board({
+        shapes: [frameShape({ source: { generatedIds: [], text: '' } })],
+      })
+    );
+
+    expect(issues.map((issue) => issue.path)).toEqual([
+      'shapes.0.source.stale',
+    ]);
+  });
+});
+
+describe('a group', () => {
+  it('is a shape kind the document can hold, with the box it was authored with', () => {
+    const authored = groupShape({ h: 200, w: 300, x: 16, y: 24 });
+
+    expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+      authored
+    );
+  });
+
+  it('holds members by naming it, and nests inside another group the same way', () => {
+    const outer = groupShape({ id: 'outer' });
+    const inner = groupShape({ id: 'inner', parentId: 'outer' });
+    const member = shape({ id: 'member', parentId: 'inner' });
+
+    const parsed = parseBoard(board({ shapes: [outer, inner, member] }));
+
+    expect(parsed.shapes.map((one) => one.parentId)).toEqual([
+      null,
+      'outer',
+      'inner',
+    ]);
   });
 });
 

@@ -1,4 +1,5 @@
 import type { Board } from '../board/schema';
+import { utf8Length } from '../format';
 import type { PaintContext } from '../paint/paint';
 import { projectBoard } from '../projection/svg';
 import { sanitizeHref } from '../text/markdown';
@@ -30,26 +31,6 @@ export class SvgExportRefusal extends Error {
     this.reason = reason;
   }
 }
-
-/** The bytes UTF-8 would write, counted without a `TextEncoder`, so `model` stays pure. */
-const utf8Length = (value: string): number => {
-  let bytes = 0;
-
-  for (const character of value) {
-    const point = character.codePointAt(0) ?? 0;
-    if (point < 0x80) {
-      bytes += 1;
-    } else if (point < 0x8_00) {
-      bytes += 2;
-    } else if (point < 0x1_00_00) {
-      bytes += 3;
-    } else {
-      bytes += 4;
-    }
-  }
-
-  return bytes;
-};
 
 /** An element that either runs code, fetches something, or animates itself. */
 const ACTIVE_ELEMENT =

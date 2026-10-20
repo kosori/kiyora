@@ -3,9 +3,11 @@ import {
   type FigureKind,
   type FigureShape,
   figureKindSchema,
+  type GroupShape,
   type Paint,
   type PaintPath,
   paintShape,
+  shapeBounds,
 } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
@@ -106,6 +108,14 @@ const figure = (kind: FigureKind): FigureShape => ({
   y: 0,
 });
 
+/** A group: the same authored base as any shape, with no geometry of its own. */
+const group = (overrides: Partial<GroupShape> = {}): GroupShape => ({
+  ...rectangle(),
+  id: 'group-1',
+  kind: 'group',
+  ...overrides,
+});
+
 const inks = (paint: Paint): PaintPath[] => [
   ...paint.paths,
   ...paint.children.flatMap(inks),
@@ -167,4 +177,59 @@ describe('the figure vocabulary', () => {
       expect(Math.max(extent.w / 120, extent.h / 80)).toBeGreaterThan(0.5);
     }
   );
+});
+
+describe("a group's bounds", () => {
+  it('is the box of what it holds, not the box it was stored with', () => {
+    const box = group({ h: 1, w: 1, x: 999, y: 999 });
+    const member = rectangle({
+      id: 'member-1',
+      parentId: 'group-1',
+      x: 20,
+      y: 30,
+    });
+
+    expect(shapeBounds(box, [box, member])).toEqual({
+      h: 80,
+      w: 120,
+      x: 20,
+      y: 30,
+    });
+  });
+
+  it('holds what a group nested inside it holds', () => {
+    const outer = group({ h: 1, w: 1, x: 999, y: 999 });
+    const inner = group({
+      h: 1,
+      id: 'group-2',
+      parentId: 'group-1',
+      w: 1,
+      x: 999,
+      y: 999,
+    });
+    const member = rectangle({
+      id: 'member-1',
+      parentId: 'group-2',
+      x: 40,
+      y: 50,
+    });
+
+    expect(shapeBounds(outer, [outer, inner, member])).toEqual({
+      h: 80,
+      w: 120,
+      x: 40,
+      y: 50,
+    });
+  });
+
+  it('falls back to its stored box while it holds nothing', () => {
+    const empty = group({ h: 24, w: 32, x: 16, y: 8 });
+
+    expect(shapeBounds(empty, [empty])).toEqual({
+      h: 24,
+      w: 32,
+      x: 16,
+      y: 8,
+    });
+  });
 });

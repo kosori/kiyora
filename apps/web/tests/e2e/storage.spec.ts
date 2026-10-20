@@ -162,7 +162,7 @@ test('a corrupt board is set aside, never overwritten by a fresh one', async ({
         }
       })
     )
-    .toBe(1);
+    .toBe(2);
 
   const fresh = page.getByTestId('board').locator('path[fill="#2f9e44"]');
   await expect(fresh).toBeVisible();
