@@ -32,6 +32,12 @@ export const NOTE_STYLE: Style = {
 export const DEFAULT_STICKY_SIZE = { h: 160, w: 160 } as const;
 
 /**
+ * The shortest an auto note may be refitted to: the square a click places. An
+ * emptied note therefore stays a note rather than collapsing to its padding.
+ */
+export const MIN_STICKY_HEIGHT = DEFAULT_STICKY_SIZE.h;
+
+/**
  * The room a sticky's wrapped label needs, padding included. Text is wrapped to
  * the note's authored width, so a note grows downward and never sideways.
  */
@@ -53,22 +59,27 @@ const contentHeight = (
 };
 
 /**
- * The sticky with its box grown — never shrunk — so its wrapped label fits. The
- * authored width and the top-left corner are kept, so growth reaches nothing
- * but the note's own height: a neighbour is not moved and a frame it sits in is
- * not resized. With no label, or no measurer to wrap it, the note is left as it
- * was authored.
+ * The sticky refitted to its wrapped label in either direction — grown when the
+ * words need more room and shrunk back when they need less — floored at the
+ * square a click places. The authored width and top-left corner are kept, so a
+ * refit reaches nothing but the note's own height: a neighbour is not moved and
+ * a frame it sits in is not resized. A `fixed` note, or one with no measurer to
+ * wrap its words, is left exactly as authored.
  */
 export const fitSticky = (
   shape: StickyShape,
   measure?: Measurer
 ): StickyShape => {
-  const { text } = shape;
-  if (measure === undefined || text === undefined || text === '') {
+  if (shape.fit === 'fixed' || measure === undefined) {
     return shape;
   }
+  const { text } = shape;
   const style = shape.textStyle ?? DEFAULT_TEXT_STYLE;
-  const needed = contentHeight(text, shape.w, style.size, measure);
+  const needed =
+    text === undefined || text === ''
+      ? 0
+      : contentHeight(text, shape.w, style.size, measure);
+  const height = Math.max(needed, MIN_STICKY_HEIGHT);
 
-  return needed <= shape.h ? shape : { ...shape, h: needed };
+  return height === shape.h ? shape : { ...shape, h: height };
 };

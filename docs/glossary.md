@@ -47,7 +47,7 @@ A shape that holds other shapes so they move together. Its box is derived from i
 _Avoid_: Container, folder, cluster
 
 **Sticky**:
-A shape kind: a coloured note with centred text that grows with its content.
+A shape kind: a coloured note with centred text whose height fits its content until a person resizes it.
 
 **Inspector**:
 The right-hand panel that edits the selection's style, text style and connector routing.
