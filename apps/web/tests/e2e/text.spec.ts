@@ -107,6 +107,41 @@ test('bold, italic, inline code and links render as runs', async ({ page }) => {
   ).toContainText('link');
 });
 
+test('the editing overlay sets the words under the caret in the code face', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  const editor = await placeText(page, box);
+  await editor.fill('plain `code` plain');
+  await editor.blur();
+
+  await page.mouse.dblclick(box.x + 300, box.y + 200);
+  const again = page.getByTestId('text-editor');
+  await expect(again).toBeVisible();
+
+  await again.evaluate((element) => {
+    const field = element as HTMLTextAreaElement;
+    field.focus();
+    const inside = field.value.indexOf('code') + 2;
+    field.setSelectionRange(inside, inside);
+    field.dispatchEvent(new Event('select', { bubbles: true }));
+    field.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    field.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+  });
+  await expect(again).toHaveCSS('font-family', /Geist Mono/);
+
+  await again.evaluate((element) => {
+    const field = element as HTMLTextAreaElement;
+    field.setSelectionRange(1, 1);
+    field.dispatchEvent(new Event('select', { bubbles: true }));
+    field.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    field.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+  });
+  await expect(again).toHaveCSS('font-family', /Balsamiq Sans Neue/);
+});
+
 test('a hostile link scheme never becomes a real link', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);

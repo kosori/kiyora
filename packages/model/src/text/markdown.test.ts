@@ -1,4 +1,4 @@
-import { parseRuns, type Run, sanitizeHref } from '@kiyora/model';
+import { caretInCode, parseRuns, type Run, sanitizeHref } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const plain = (text: string): Run => ({
@@ -67,6 +67,23 @@ describe('parsing a label into runs', () => {
 
   it('splits a run around a hard line break', () => {
     expect(parseRuns('one\ntwo')).toEqual([plain('one\ntwo')]);
+  });
+});
+
+describe('a caret inside a label', () => {
+  it('is inside code only between the backticks', () => {
+    const source = 'plain `code` plain';
+    const opener = source.indexOf('`');
+
+    expect(caretInCode(source, opener)).toBe(false);
+    expect(caretInCode(source, opener + 1)).toBe(true);
+    expect(caretInCode(source, opener + 4)).toBe(true);
+    expect(caretInCode(source, opener + 5)).toBe(true);
+    expect(caretInCode(source, opener + 6)).toBe(false);
+  });
+
+  it('is not inside code when a backtick never closes', () => {
+    expect(caretInCode('an `open span', 6)).toBe(false);
   });
 });
 

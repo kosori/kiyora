@@ -74,8 +74,18 @@ export class PngExportRefusal extends Error {
 
 /** The faces the projection names, as the page serves them. */
 const FONT_FACES = [
-  { file: 'balsamiq-sans-neue-regular.woff2', weight: 400 },
-  { file: 'balsamiq-sans-neue-bold.woff2', weight: 700 },
+  {
+    family: 'Balsamiq Sans Neue',
+    file: 'balsamiq-sans-neue-regular.woff2',
+    weight: 400,
+  },
+  {
+    family: 'Balsamiq Sans Neue',
+    file: 'balsamiq-sans-neue-bold.woff2',
+    weight: 700,
+  },
+  { family: 'Geist Mono', file: 'geist-mono-regular.woff2', weight: 400 },
+  { family: 'Geist Mono', file: 'geist-mono-bold.woff2', weight: 700 },
 ] as const;
 
 /** The width and height a document's own viewBox names, or `null` when it carries none. */
@@ -145,20 +155,20 @@ const base64Of = (bytes: Uint8Array): string => {
  * The face rules the raster needs and the exported file must not carry. An
  * `<img>` renders an SVG with no reach into the page's stylesheets, so without
  * these a label would leave in a fallback face while the screen shows the
- * hand-drawn one. The fetch is for the app's own asset; when it fails the raster
+ * vendored one. The fetch is for the app's own asset; when it fails the raster
  * still leaves, with the fallback face, because a missing face must not cost the
  * person their image.
  */
 const facesMarkup = async (): Promise<string> => {
   try {
     const rules = await Promise.all(
-      FONT_FACES.map(async ({ file, weight }) => {
+      FONT_FACES.map(async ({ family, file, weight }) => {
         const response = await fetch(`/fonts/${file}`);
         if (!response.ok) {
           throw new Error(`the face ${file} would not load`);
         }
         const base64 = base64Of(new Uint8Array(await response.arrayBuffer()));
-        return `@font-face{font-family:'Balsamiq Sans Neue';font-style:normal;font-weight:${weight};src:url(data:font/woff2;base64,${base64}) format('woff2')}`;
+        return `@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};src:url(data:font/woff2;base64,${base64}) format('woff2')}`;
       })
     );
 

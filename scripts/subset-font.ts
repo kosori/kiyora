@@ -4,9 +4,10 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Cuts the web subsets of the hand-drawn face from the upstream TTFs.
+ * Cuts the web subsets of the vendored faces from their upstream TTFs.
  *
- * The upstream (`nilbuild/balsamiq-sans-neue`) publishes TTFs only, so a weight
+ * Both upstreams (`nilbuild/balsamiq-sans-neue` for the hand-drawn face and
+ * `vercel/geist-font` for the monospace one) publish TTFs only, so a weight
  * becomes a web asset in one command: add it to `WEIGHTS`, run
  * `mise exec -- bun run fonts:subset`. The bytes land in
  * `apps/web/public/fonts`, beside the OFL text the licence requires.
@@ -20,18 +21,39 @@ import { fileURLToPath } from 'node:url';
 const LATIN =
   'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
 
-const UPSTREAM =
+/** Where the hand-drawn face's TTFs live. */
+const BALSAMIQ =
   'https://github.com/nilbuild/balsamiq-sans-neue/raw/main/fonts';
 
-/** Every weight the app ships: its source TTF upstream, and the woff2 it becomes. */
+/** Where the monospace face's TTFs live. */
+const GEIST_MONO =
+  'https://github.com/vercel/geist-font/raw/main/fonts/GeistMono/ttf';
+
+/**
+ * Every weight the app ships: its source TTF upstream, and the woff2 it
+ * becomes. `Model` names both families, and the page and the raster resolve
+ * them from these same bytes.
+ */
 export const WEIGHTS = [
   {
     output: 'balsamiq-sans-neue-regular.woff2',
     source: 'BalsamiqSansNeue-Regular.ttf',
+    upstream: BALSAMIQ,
   },
   {
     output: 'balsamiq-sans-neue-bold.woff2',
     source: 'BalsamiqSansNeue-Bold.ttf',
+    upstream: BALSAMIQ,
+  },
+  {
+    output: 'geist-mono-regular.woff2',
+    source: 'GeistMono-Regular.ttf',
+    upstream: GEIST_MONO,
+  },
+  {
+    output: 'geist-mono-bold.woff2',
+    source: 'GeistMono-Bold.ttf',
+    upstream: GEIST_MONO,
   },
 ] as const;
 
@@ -41,11 +63,15 @@ const fonts = join(root, 'apps', 'web', 'public', 'fonts');
 
 const usage = `usage: bun scripts/subset-font.ts [weight ...] [--offline]
 
-  weight     one or more of: ${WEIGHTS.map((weight) => weight.output.replace('balsamiq-sans-neue-', '').replace('.woff2', '')).join(', ')}
+  weight     one or more of: ${WEIGHTS.map((weight) => weight.output.replace('.woff2', '')).join(', ')}
   --offline  do not download a missing TTF; read only the cache`;
 
 /** The TTF for one weight, downloaded to the cache once. */
-const sourceFor = async (source: string, offline: boolean): Promise<string> => {
+const sourceFor = async (
+  source: string,
+  upstream: string,
+  offline: boolean
+): Promise<string> => {
   const cached = join(cache, source);
   if (existsSync(cached)) {
     return cached;
@@ -54,7 +80,7 @@ const sourceFor = async (source: string, offline: boolean): Promise<string> => {
     throw new Error(`${source} is not cached and --offline was given`);
   }
 
-  const response = await fetch(`${UPSTREAM}/${source}`);
+  const response = await fetch(`${upstream}/${source}`);
   if (!response.ok) {
     throw new Error(
       `downloading ${source} failed: ${response.status} ${response.statusText}`
@@ -111,7 +137,7 @@ const main = async (): Promise<void> => {
 
   mkdirSync(fonts, { recursive: true });
   const sources = await Promise.all(
-    chosen.map((weight) => sourceFor(weight.source, offline))
+    chosen.map((weight) => sourceFor(weight.source, weight.upstream, offline))
   );
   chosen.forEach((weight, index) => {
     const source = sources[index];

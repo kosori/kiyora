@@ -57,6 +57,48 @@ const exportPng = async (page: Page): Promise<Buffer> => {
   return readFile(await download.path());
 };
 
+/** The page's own measure of one string in a family stack, at a size that hides rounding. */
+const textWidth = async (page: Page, family: string): Promise<number> =>
+  await page.evaluate((stack) => {
+    const context = document.createElement('canvas').getContext('2d');
+    if (context === null) {
+      throw new Error('the page offered no 2D context');
+    }
+    context.font = `200px ${stack}`;
+    return context.measureText('ship it').width;
+  }, family);
+
+type RasterWindow = Window & { __rasterSvg?: Promise<string> };
+
+/**
+ * The SVG document the raster is drawn from, captured as it leaves the app. The
+ * raster is an artifact in its own right: it carries the faces, and a test that
+ * never sees it can only guess whether the text resolved to one.
+ */
+const captureRaster = async (page: Page): Promise<string> => {
+  await page.evaluate(() => {
+    const create = URL.createObjectURL.bind(URL);
+    const scope = window as RasterWindow;
+    scope.__rasterSvg = undefined;
+    URL.createObjectURL = (object: Blob | MediaSource) => {
+      if (object instanceof Blob && object.type === 'image/svg+xml') {
+        scope.__rasterSvg = object.text();
+      }
+      return create(object);
+    };
+  });
+
+  await exportPng(page);
+
+  return await page.evaluate(async () => {
+    const scope = window as RasterWindow;
+    if (scope.__rasterSvg === undefined) {
+      throw new Error('the raster left no document');
+    }
+    return await scope.__rasterSvg;
+  });
+};
+
 /** Opens the panel and picks one option from one of its groups. */
 const pick = async (
   page: Page,
@@ -274,4 +316,44 @@ test('a PNG export asks the network for nothing but the app’s own assets', asy
 
   expect(blocked).toEqual([]);
   expect(pngSize(bytes)).toEqual({ height: 280, width: 440 });
+});
+
+test('inline code leaves in the vendored mono face, not a fallback', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await page.getByRole('button', { name: 'Text' }).click();
+  await page.mouse.click(box.x + 300, box.y + 200);
+  const editor = page.getByTestId('text-editor');
+  await expect(editor).toBeVisible();
+  await editor.fill('`ship it`');
+  await editor.blur();
+
+  await page.evaluate(async () => {
+    await document.fonts.load("200px 'Geist Mono'");
+    await document.fonts.ready;
+  });
+
+  const stack = "'Geist Mono', ui-monospace, monospace";
+  const onPage = await textWidth(page, stack);
+  const pageFallback = await textWidth(page, 'ui-monospace, monospace');
+  expect(onPage).not.toBeCloseTo(pageFallback, 1);
+
+  await page.getByTestId('png-options').click();
+  const raster = await captureRaster(page);
+  expect(raster.startsWith('<svg')).toBe(true);
+
+  await page.setContent(raster);
+  await page.evaluate(async () => {
+    await document.fonts.load("200px 'Geist Mono'");
+    await document.fonts.ready;
+  });
+
+  const inRaster = await textWidth(page, stack);
+  const rasterFallback = await textWidth(page, 'ui-monospace, monospace');
+
+  expect(inRaster).toBeCloseTo(onPage, 1);
+  expect(inRaster).not.toBeCloseTo(rasterFallback, 1);
 });

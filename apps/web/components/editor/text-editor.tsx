@@ -3,6 +3,8 @@
 import { toScreen } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
 import {
+  CODE_FONT_FAMILY,
+  caretInCode,
   connectorLabelPoint,
   DEFAULT_TEXT_STYLE,
   fitSticky,
@@ -14,6 +16,7 @@ import {
 import type {
   ChangeEvent as ReactChangeEvent,
   KeyboardEvent as ReactKeyboardEvent,
+  SyntheticEvent as ReactSyntheticEvent,
 } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -39,6 +42,7 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
   const { camera } = useView();
   const shape = board.shapes.find((item) => item.id === shapeId);
   const [value, setValue] = useState(shape?.text ?? '');
+  const [caret, setCaret] = useState(value.length);
   const input = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -74,6 +78,15 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
   const onChange = useCallback(
     (event: ReactChangeEvent<HTMLTextAreaElement>) => {
       setValue(event.target.value);
+      setCaret(event.target.selectionStart);
+    },
+    []
+  );
+
+  /** Tracks the caret across a click, a key or a selection, so code is set in its face. */
+  const trackCaret = useCallback(
+    (event: ReactSyntheticEvent<HTMLTextAreaElement>) => {
+      setCaret(event.currentTarget.selectionStart);
     },
     []
   );
@@ -113,10 +126,15 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
       data-testid='text-editor'
       onBlur={commit}
       onChange={onChange}
+      onClick={trackCaret}
       onKeyDown={onKeyDown}
+      onKeyUp={trackCaret}
+      onSelect={trackCaret}
       ref={input}
       style={{
-        fontFamily: TEXT_FONT_FAMILY,
+        fontFamily: caretInCode(value, caret)
+          ? CODE_FONT_FAMILY
+          : TEXT_FONT_FAMILY,
         fontSize: style.size * camera.zoom,
         height,
         left: label ? at.x - width / 2 : at.x,

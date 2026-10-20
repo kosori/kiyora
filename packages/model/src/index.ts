@@ -164,6 +164,7 @@ export {
   textOf,
 } from './text/layout';
 export {
+  caretInCode,
   parseRuns,
   type Run,
   sameRunStyle,

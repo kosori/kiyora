@@ -12,12 +12,12 @@ Runs at `http://localhost:3000`. A normal Next.js server, deliberately **not** a
 
 | Area | Responsibility |
 | --- | --- |
-| `app/` | Routes, layout, theme tokens, the font faces |
+| `app/` | Routes, layout, theme tokens, the vendored font faces via `public/fonts` |
 | canvas host | Mounts the React adapter, wires gestures, keyboard and the camera |
 | tool rail, inspector | Selection and style surfaces |
 | menus, panels | Board file, export, slides, the shortcut dialog, the status bar |
 | export | The PNG raster path, which needs a canvas and therefore lives here |
-| `assets/fonts`, `scripts/subset-fonts.ts` | The vendored TTFs and the woff2 cut |
+| `public/fonts`, `scripts/subset-font.ts` | The vendored woff2 subsets and the licence text beside them |
 | `lib/` | Glue with no home in a package |
 
 ## Boundaries

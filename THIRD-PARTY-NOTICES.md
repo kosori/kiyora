@@ -15,6 +15,7 @@ Where the origin is this repository's own history, see [docs/provenance.md](./do
 | Component | Licence | Notes |
 | --- | --- | --- |
 | Balsamiq Sans Neue | SIL Open Font License 1.1 | A re-fitted derivative of Balsamiq Sans, renamed by its author; not endorsed by the original authors. The licence text ships beside the font bytes |
+| Geist Mono | SIL Open Font License 1.1 | Copyright 2024 The Geist Project Authors. The licence text ships beside the font bytes |
 
 ## Runtime dependencies
 

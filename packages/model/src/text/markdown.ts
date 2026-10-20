@@ -181,3 +181,24 @@ export const parseRuns = (source: string): Run[] => {
   }
   return merge(runs);
 };
+
+/**
+ * Whether a caret sits inside an inline code span, by the parser's own rules.
+ * The label overlay is one plain field, so this is how it knows to set the
+ * field in the code face without a second backtick grammar.
+ */
+export const caretInCode = (source: string, caret: number): boolean => {
+  let index = 0;
+  while (index < source.length) {
+    const parsed = parseAt(source, index);
+    if (parsed === null) {
+      index += 1;
+      continue;
+    }
+    if (parsed.run.code && caret > index && caret < parsed.next) {
+      return true;
+    }
+    index = parsed.next;
+  }
+  return false;
+};

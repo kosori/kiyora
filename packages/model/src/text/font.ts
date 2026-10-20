@@ -9,7 +9,7 @@
 export const TEXT_FONT_FAMILY =
   "'Balsamiq Sans Neue', 'Balsamiq Sans', sans-serif";
 
-/** The monospace face an inline code run is set in. */
+/** The monospace face an inline code run is set in, vendored by the app. */
 export const CODE_FONT_FAMILY = "'Geist Mono', ui-monospace, monospace";
 
 /** The family a run draws in: monospace for code, the hand-drawn face otherwise. */

@@ -8,10 +8,6 @@ const geistSans = localFont({
   src: './fonts/GeistVF.woff',
   variable: '--font-sans',
 });
-const geistMono = localFont({
-  src: './fonts/GeistMonoVF.woff',
-  variable: '--font-mono',
-});
 
 export const metadata: Metadata = {
   description: 'Kiyora web app',
@@ -20,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 const Layout = ({ children }: LayoutProps<'/'>) => (
-  <html className={cn(geistSans.variable, geistMono.variable)} lang='en'>
+  <html className={cn(geistSans.variable)} lang='en'>
     <body>{children}</body>
   </html>
 );
