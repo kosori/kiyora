@@ -21,7 +21,22 @@
     "edges": [],
     "groups": [],
     "kind": "graph",
-    "nodes": [],
+    "nodes": [
+      {
+        "id": "later-node",
+        "label": "Later Node",
+        "span": {
+          "end": {
+            "column": 10,
+            "line": 2
+          },
+          "start": {
+            "column": 1,
+            "line": 2
+          }
+        }
+      }
+    ],
     "title": ""
   }
 }
