@@ -9,6 +9,7 @@ import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
 import { Marquee } from './marquee';
 import { PaintNode } from './paint-node';
+import { ResizeRefusal } from './resize-refusal';
 import { SelectionFrame } from './selection-frame';
 import { TextEditor } from './text-editor';
 import { useBoardPointer } from './use-board-pointer';
@@ -83,6 +84,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           <Marquee />
         </g>
       </svg>
+      <ResizeRefusal />
       {editingId === null ? null : (
         <TextEditor
           measure={measure}

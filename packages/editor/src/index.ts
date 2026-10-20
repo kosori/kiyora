@@ -166,6 +166,8 @@ export {
 export {
   angleAt,
   type Replacements,
+  ROTATED_SCALE_REFUSAL,
+  resizeRefusal,
   resizeSelection,
   rotateSelection,
   settleRotation,
