@@ -1,4 +1,10 @@
-import { createEditor, resizeSelection } from '@kiyora/editor';
+import {
+  createEditor,
+  HANDLES,
+  type HandleKind,
+  resizeRefusal,
+  resizeSelection,
+} from '@kiyora/editor';
 import {
   type Board,
   type FigureShape,
@@ -90,6 +96,38 @@ describe('a uniform resize of a selection holding a rotated shape', () => {
       { h: 80, w: 160, x: 0, y: 0 },
       { h: 160, rotation: 90, w: 160, x: 320, y: 0 },
     ]);
+  });
+});
+
+const upright = (): Shape[] => [
+  rectangle({ h: 50, id: 'left', w: 100, x: 0, y: 0 }),
+  rectangle({ h: 100, id: 'right', w: 100, x: 200, y: 0 }),
+];
+
+/** A pointer clear of each handle, so the drag is unambiguous. */
+const beyond: Record<HandleKind, { x: number; y: number }> = {
+  e: { x: 450, y: 50 },
+  n: { x: 150, y: -50 },
+  ne: { x: 350, y: -50 },
+  nw: { x: -50, y: -50 },
+  s: { x: 150, y: 150 },
+  se: { x: 450, y: 150 },
+  sw: { x: -50, y: 150 },
+  w: { x: -50, y: 50 },
+};
+
+describe('an unrotated multi-selection', () => {
+  it('keeps all eight handles exact', () => {
+    for (const handle of HANDLES) {
+      const pointer = beyond[handle];
+
+      expect(
+        resizeRefusal(upright(), bounds, handle, pointer, exact)
+      ).toBeNull();
+      expect(
+        resizeSelection(upright(), bounds, handle, pointer, exact).size
+      ).toBe(2);
+    }
   });
 });
 
