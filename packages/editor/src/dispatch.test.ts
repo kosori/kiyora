@@ -7,7 +7,7 @@ import {
   NUDGE_STEP,
   runCommand,
 } from '@kiyora/editor';
-import { type Board, parseBoard } from '@kiyora/model';
+import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const style = {
@@ -40,7 +40,7 @@ const board = (shapes: unknown[]): Board =>
     createdAt: 1_700_000_000_000,
     deck: [],
     id: 'board-1',
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     settings: { theme: 'light' },
     shapes,
     title: 'Untitled',
