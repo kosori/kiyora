@@ -28,10 +28,11 @@ const NODE_BUDGET = 250;
 
 /**
  * The median frame a drag or a pan may cost, in milliseconds. Loose on purpose:
- * on a shared headless box this run measures about 17 ms while dragging and
- * 120–140 ms while panning a thousand shapes through the dev server, with other
- * checkouts compiling beside it. Twice the expensive case is a tripwire for a
- * gross regression, not a frame budget — the node count is the gate.
+ * against the dev server this measures about 17 ms while dragging and 67–133 ms
+ * while panning; against the built app both are 16.7 ms, worst frame 33 ms.
+ * Twice the expensive case is a tripwire for a gross regression, not a frame
+ * budget — the node count is the gate. When a number about performance is the
+ * point, serve the built app: E2E_SERVER=prod.
  */
 const MEDIAN_FRAME_CEILING_MS = 250;
 
