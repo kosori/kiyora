@@ -7,6 +7,7 @@ const open = async (page: Page): Promise<void> => {
     'data-ready',
     'true'
   );
+  await page.getByTestId('rail-tab-deck').click();
 };
 
 /** The canvas's place on the screen, so board coordinates can be dragged to exactly. */

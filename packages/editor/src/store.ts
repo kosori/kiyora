@@ -5,6 +5,7 @@ import { createEditCommands } from './edit-commands';
 import { createGestures } from './gestures';
 import { createLabelEdit } from './label-edit';
 import { createPresent } from './present';
+import { createSourceCommands } from './source-commands';
 import type { Editor } from './state';
 import { createStoreCore } from './store-core';
 
@@ -38,10 +39,12 @@ export const createEditor = (board: Board): Editor => {
     transactions: core.transactions,
   });
   const edits = createBoardCommands({ core, gestures, label });
+  const source = createSourceCommands(core);
 
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    applySource: source.applySource,
     beginTextEdit: label.begin,
     cancelGesture: gestures.cancelGesture,
     cancelTextEdit: edits.cancelTextEdit,

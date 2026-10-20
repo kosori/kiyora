@@ -18,6 +18,11 @@ const open = async (page: Page): Promise<void> => {
   );
 };
 
+/** The deck is a tab in the right rail; open it before reaching for a slide. */
+const openDeck = async (page: Page): Promise<void> => {
+  await page.getByTestId('rail-tab-deck').click();
+};
+
 /** The canvas's place on the screen, so board coordinates can be clicked exactly. */
 const canvasBox = async (page: Page) => {
   const box = await page.getByTestId('canvas').boundingBox();
@@ -185,6 +190,7 @@ test('the deck with a slide reports no accessibility violations', async ({
   page,
 }) => {
   await open(page);
+  await openDeck(page);
   await page.getByTestId('template-title').click();
   await expect(page.getByTestId('slide')).toBeVisible();
 
@@ -195,6 +201,7 @@ test('the present overlay reports no accessibility violations', async ({
   page,
 }) => {
   await open(page);
+  await openDeck(page);
   await page.getByTestId('template-title').click();
   await page.getByTestId('present-button').click();
   await expect(page.getByTestId('present-overlay')).toBeVisible();
@@ -289,6 +296,7 @@ test('the deck builds and presents a slide from the keyboard', async ({
   page,
 }) => {
   await open(page);
+  await openDeck(page);
 
   const template = page.getByTestId('template-title');
   await template.focus();
@@ -335,6 +343,7 @@ test('presenting takes focus, keeps it inside, and gives it back on exit', async
   page,
 }) => {
   await open(page);
+  await openDeck(page);
   await page.getByTestId('template-title').click();
 
   const present = page.getByTestId('present-button');

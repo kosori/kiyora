@@ -74,7 +74,7 @@ export const DeckPanel = () => {
   return (
     <aside
       aria-label='Deck'
-      className='flex h-full w-64 shrink-0 flex-col gap-4 overflow-y-auto border-border border-l bg-background p-3'
+      className='flex h-full flex-col gap-4 overflow-y-auto p-3'
       data-testid='deck'
     >
       <section>

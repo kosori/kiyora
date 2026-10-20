@@ -129,6 +129,14 @@ export type Editor = {
   setText: (id: string, text: string, measure?: Measurer) => void;
   setTextStyle: (id: string, textStyle: TextStyle) => void;
   /**
+   * Applies diagram source to the frame `frameId` names. The shapes its last
+   * Source generated are replaced, the new ones join the frame, and the text is
+   * stored with them so the next open shows what was typed. One call is one
+   * gesture, so one undo takes the whole apply back; a frame with no Source
+   * applies an empty text without complaint.
+   */
+  applySource: (frameId: string, text: string) => void;
+  /**
    * Opens the label edit's transaction, so every write between this and
    * `endTextEdit` is one gesture and one history entry. Joins one already open —
    * a placed text shape hands its own transaction to the overlay — so a
