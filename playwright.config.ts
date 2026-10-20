@@ -1,9 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import {
-  E2E_BASE_URL,
-  E2E_PORT,
-  E2E_SERVER_COMMAND,
-} from './apps/web/tests/e2e-server';
+import { E2E_BASE_URL, E2E_SERVER_COMMAND } from './apps/web/tests/e2e-server';
 
 export default defineConfig({
   expect: { timeout: 5000 },
