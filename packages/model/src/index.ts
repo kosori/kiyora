@@ -101,6 +101,20 @@ export {
   serializeBoard,
 } from './file/board-file';
 export {
+  DEFAULT_LAYOUT_DIRECTION,
+  type GroupPlacement,
+  LAYOUT_DIRECTIONS,
+  LAYOUT_GAP,
+  LAYOUT_INSET,
+  LAYOUT_NODE,
+  LAYOUT_RANK_GAP,
+  type Layout,
+  type LayoutDirection,
+  type LayoutOptions,
+  layoutGraph,
+  type NodePlacement,
+} from './layout/layered';
+export {
   anchorPoint,
   autoAnchor,
   detachConnector,
