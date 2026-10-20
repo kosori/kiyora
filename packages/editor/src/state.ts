@@ -7,6 +7,7 @@ import type {
   Style,
   TextStyle,
 } from '@kiyora/model';
+import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
 import type { ConnectorEdit } from './connectors';
 import type { HandleKind } from './geometry/handles';
@@ -178,6 +179,20 @@ export type Editor = {
    * One board change, one history entry.
    */
   ungroupSelection: () => void;
+  /**
+   * Lines the selection up to one edge or centre of its own box. A Connector is
+   * not an item alignment arranges — its bound ends follow the shapes that move
+   * — and a Group travels as the members its derived box holds. A locked shape
+   * stays put. One call is one gesture; an alignment that would move nothing
+   * writes nothing, so a no-op never lands in undo.
+   */
+  align: (alignment: Alignment) => void;
+  /**
+   * Spaces three or more movable selected shapes evenly along `axis`, keeping
+   * the outermost two where they are. One call is one gesture, and a selection
+   * already spaced evenly writes nothing.
+   */
+  distribute: (axis: DistributeAxis) => void;
   /**
    * Puts the clipboard on the board offset clear of what it copies, cascading
    * further on each repeat so a second paste is not hidden by the first. One

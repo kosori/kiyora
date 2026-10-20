@@ -63,6 +63,54 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     modifiers: { command: 'required', shift: 'required' },
   },
   {
+    command: { alignment: 'left', kind: 'align' },
+    key: 'a',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'center-horizontal', kind: 'align' },
+    key: 'h',
+    modifiers: { alt: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'right', kind: 'align' },
+    key: 'd',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'top', kind: 'align' },
+    key: 'w',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'center-vertical', kind: 'align' },
+    key: 'v',
+    modifiers: { alt: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'bottom', kind: 'align' },
+    key: 's',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { axis: 'x', kind: 'distribute' },
+    key: 'h',
+    modifiers: { alt: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { axis: 'y', kind: 'distribute' },
+    key: 'v',
+    modifiers: { alt: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
     command: { kind: 'undo' },
     key: 'z',
     modifiers: { command: 'required', shift: 'forbidden' },
@@ -118,6 +166,22 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'cancel-gesture' }, 'Selection', 'Cancel a gesture'),
   row({ kind: 'group' }, 'Selection', 'Group'),
   row({ kind: 'ungroup' }, 'Selection', 'Ungroup'),
+  row({ alignment: 'left', kind: 'align' }, 'Arrange', 'Align left'),
+  row(
+    { alignment: 'center-horizontal', kind: 'align' },
+    'Arrange',
+    'Align centre horizontally'
+  ),
+  row({ alignment: 'right', kind: 'align' }, 'Arrange', 'Align right'),
+  row({ alignment: 'top', kind: 'align' }, 'Arrange', 'Align top'),
+  row(
+    { alignment: 'center-vertical', kind: 'align' },
+    'Arrange',
+    'Align centre vertically'
+  ),
+  row({ alignment: 'bottom', kind: 'align' }, 'Arrange', 'Align bottom'),
+  row({ axis: 'x', kind: 'distribute' }, 'Arrange', 'Distribute horizontally'),
+  row({ axis: 'y', kind: 'distribute' }, 'Arrange', 'Distribute vertically'),
 ];
 
 /** The rows after the clipboard's in the reference: the history and the help. */
