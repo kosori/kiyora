@@ -7,6 +7,7 @@ import type { GestureModifiers } from './modifiers';
 import { moveResize } from './resize';
 import { offsetShapes } from './selection';
 import { replaceShapes } from './shape-edit';
+import { markSourceStale } from './source-state';
 import type { Drag, Gesture } from './state';
 import type { StoreCore } from './store-core';
 import { subscriptionOf } from './subscription';
@@ -209,8 +210,10 @@ export const createGestures = (core: StoreCore): Gestures => {
         return;
       }
       if (drag.kind !== 'marquee') {
-        const { before } = drag;
+        const { before, originals } = drag;
         drag = null;
+        const next = markSourceStale(before, core.board(), originals.keys());
+        core.publish(next);
         core.transactions.commit(before, core.board());
         publishGesture();
         return;

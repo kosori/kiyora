@@ -43,6 +43,19 @@ const selectFrame = async (page: Page) => {
   await page.mouse.click(box.x + frame.x + frame.w - 20, box.y + frame.y + 280);
 };
 
+/** One drag on the canvas, in board pixels. */
+const drag = async (
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number }
+) => {
+  const box = await canvasBox(page);
+  await page.mouse.move(box.x + from.x, box.y + from.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + to.x, box.y + to.y, { steps: 6 });
+  await page.mouse.up();
+};
+
 const openCode = async (page: Page) => {
   await page.getByTestId('rail-tab-code').click();
 };
@@ -259,4 +272,152 @@ test('Mod+Enter outside the panel applies nothing, as before', async ({
   await expect(clean(page, 'rectangle-1')).toHaveCount(0);
   await openCode(page);
   await expect(source(page)).toHaveValue('');
+});
+
+test('typing makes the source pending, and applying clears it', async ({
+  page,
+}) => {
+  await open(page);
+  await drawFrame(page);
+  await selectFrame(page);
+  await openCode(page);
+
+  await source(page).fill('Box');
+  await expect(page.getByTestId('code-pending')).toContainText('Pending');
+
+  // Panning and selecting never touch a pending draft.
+  await selectFrame(page);
+  await page.keyboard.down('Space');
+  await drag(page, { x: 40, y: 40 }, { x: 80, y: 60 });
+  await page.keyboard.up('Space');
+  await expect(page.getByTestId('code-pending')).toContainText('Pending');
+
+  await source(page).press('Control+Enter');
+
+  await expect(page.getByTestId('code-pending')).toHaveCount(0);
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+  );
+});
+
+test('moving a generated shape makes the frame stale, and applying asks', async ({
+  page,
+}) => {
+  await open(page);
+  await drawFrame(page);
+  await selectFrame(page);
+  await openCode(page);
+  await source(page).fill('Box');
+  await source(page).press('Control+Enter');
+
+  // A fresh frame applies silently.
+  await expect(page.getByTestId('code-confirm')).toBeHidden();
+  await expect(page.getByTestId('code-stale')).toHaveCount(0);
+
+  // Drag the generated figure 20 units to the right, landing on the grid.
+  await drag(page, { x: 180, y: 160 }, { x: 200, y: 160 });
+
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 144 128 L 304 128 L 304 228 L 144 228 Z'
+  );
+
+  // The panel follows the generated shape back to its frame.
+  await expect(page.getByTestId('code-stale')).toContainText('Stale');
+
+  // Selecting the frame and panning leave it where the hand edit put it.
+  await selectFrame(page);
+  await expect(page.getByTestId('code-stale')).toContainText('Stale');
+  await page.keyboard.down('Space');
+  await drag(page, { x: 40, y: 40 }, { x: 70, y: 60 });
+  await page.keyboard.up('Space');
+  await expect(page.getByTestId('code-stale')).toContainText('Stale');
+
+  await source(page).fill('Next');
+  await page.getByTestId('code-apply').click();
+  await expect(page.getByTestId('code-confirm')).toBeVisible();
+
+  // Cancelling changes neither the board nor the text.
+  await page.getByTestId('code-confirm-cancel').click();
+  await expect(page.getByTestId('code-confirm')).toBeHidden();
+  await expect(source(page)).toHaveValue('Next');
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 144 128 L 304 128 L 304 228 L 144 228 Z'
+  );
+
+  // Confirming replaces exactly the generated shapes and clears both flags.
+  await page.getByTestId('code-apply').click();
+  await page.getByTestId('code-confirm-apply').click();
+  await expect(page.getByTestId('code-confirm')).toBeHidden();
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+  );
+  await expect(page.getByTestId('code-stale')).toHaveCount(0);
+  await expect(page.getByTestId('code-pending')).toHaveCount(0);
+  await expect(source(page)).toHaveValue('Next');
+});
+
+test('a hand-added shape inside the frame survives an apply', async ({
+  page,
+}) => {
+  await open(page);
+  await drawFrame(page);
+  await selectFrame(page);
+  await openCode(page);
+  await source(page).fill('Box');
+  await source(page).press('Control+Enter');
+
+  await selectFrame(page);
+  await page.keyboard.press('r');
+  await drag(page, { x: 340, y: 150 }, { x: 400, y: 200 });
+  await expect(clean(page, 'rectangle-2')).toHaveAttribute(
+    'd',
+    'M 340 150 L 400 150 L 400 200 L 340 200 Z'
+  );
+
+  await selectFrame(page);
+  await source(page).fill('Next');
+  await source(page).press('Control+Enter');
+
+  await expect(clean(page, 'rectangle-2')).toHaveAttribute(
+    'd',
+    'M 340 150 L 400 150 L 400 200 L 340 200 Z'
+  );
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+  );
+});
+
+test('the frame grows to hold the diagram and never shrinks', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  await page.keyboard.press('f');
+  await page.mouse.move(box.x + 100, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + 200);
+  await page.mouse.up();
+  await page.mouse.click(box.x + 190, box.y + 190);
+  await openCode(page);
+
+  await source(page).fill('Box');
+  await source(page).press('Control+Enter');
+
+  await expect(clean(page, 'frame-1')).toHaveAttribute(
+    'd',
+    'M 100 100 L 308 100 L 308 248 L 100 248 Z'
+  );
+
+  await source(page).fill('');
+  await source(page).press('Control+Enter');
+
+  await expect(clean(page, 'frame-1')).toHaveAttribute(
+    'd',
+    'M 100 100 L 308 100 L 308 248 L 100 248 Z'
+  );
 });
