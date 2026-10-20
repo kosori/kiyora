@@ -135,6 +135,7 @@ export const shapeFromPlacement = (
     const sticky: StickyShape = {
       ...base,
       ...placementBox(placement, DEFAULT_STICKY_SIZE),
+      fit: 'auto',
       kind: 'sticky',
       style: NOTE_STYLE,
       text: '',
