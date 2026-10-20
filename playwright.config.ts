@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
-import { E2E_BASE_URL, E2E_PORT } from './apps/web/tests/e2e-server';
+import {
+  E2E_BASE_URL,
+  E2E_PORT,
+  E2E_SERVER_COMMAND,
+} from './apps/web/tests/e2e-server';
 
 export default defineConfig({
   expect: { timeout: 5000 },
@@ -20,7 +24,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: `bun run dev --port ${E2E_PORT}`,
+    command: E2E_SERVER_COMMAND,
     cwd: './apps/web',
     reuseExistingServer: false,
     timeout: 180_000,
