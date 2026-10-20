@@ -40,6 +40,18 @@ const connectorPaths = (page: Page) =>
 
 const connectorLine = (page: Page) => connectorPaths(page).first();
 
+/** Every path the connector paints, by `d`; the first is the line, the rest heads. */
+const connectorDs = (page: Page) =>
+  connectorPaths(page).evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute('d') ?? '')
+  );
+
+/** The painted heads, start then end, without the line. */
+const connectorHeads = async (page: Page): Promise<string[]> => {
+  const [, ...heads] = await connectorDs(page);
+  return heads;
+};
+
 /** Draws the starter rectangle's partner at `at`, then joins the two. */
 const joinTwoShapes = async (page: Page, box: { x: number; y: number }) => {
   await page.keyboard.press('r');
@@ -124,7 +136,13 @@ test('the inspector chooses the route and a head per end, independently', async 
 
   await controls.getByTestId('head-start-circle').click();
 
-  await expect(connectorPaths(page)).toHaveCount(3);
+  await expect
+    .poll(async () => (await connectorHeads(page))[0] ?? '')
+    .toContain(' A ');
+
+  const [start, end] = await connectorHeads(page);
+  expect(start).toContain(' A ');
+  expect(end).toMatch(/^M .* L .* L .* Z$/);
 });
 
 test('a connector carries a label, typed on the canvas', async ({ page }) => {

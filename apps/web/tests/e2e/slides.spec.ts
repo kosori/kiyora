@@ -59,6 +59,27 @@ const drawFrame = async (
 const templateFramePath = (page: Page) =>
   board(page).locator('path[d="M 0 0 L 1280 0 L 1280 720 L 0 720 Z"]').first();
 
+/** Every painted label, with the ink and baseline it carries. */
+const paintedLabels = (page: Page) =>
+  board(page)
+    .locator('text')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        baseline: Number(node.getAttribute('y')),
+        fill: node.getAttribute('fill'),
+        text: node.textContent ?? '',
+      }))
+    );
+
+/** The five templates and the words each paints inside its frame. */
+const TEMPLATES = [
+  { id: 'title', words: ['Title'] },
+  { id: 'title-and-content', words: ['Title', 'Body'] },
+  { id: 'two-columns', words: ['Title', 'Left', 'Right'] },
+  { id: 'quote', words: ['Quote'] },
+  { id: 'blank', words: [] },
+] as const;
+
 /** The board bytes the browser has written, read straight from IndexedDB. */
 const storedBoard = (page: Page) =>
   page.evaluate(
@@ -99,6 +120,31 @@ test('a template plants a slide whose frame and words paint', async ({
   const title = board(page).locator('text').filter({ hasText: 'Title' });
   await expect(title).toHaveAttribute('fill', '#1e1e1e');
 });
+
+for (const template of TEMPLATES) {
+  test(`the ${template.id} template paints its frame and its own words`, async ({
+    page,
+  }) => {
+    await open(page);
+
+    await page.getByTestId(`template-${template.id}`).click();
+
+    await expect(templateFramePath(page)).toHaveAttribute(
+      'fill',
+      'rgba(25, 113, 194, 0.2)'
+    );
+
+    await expect
+      .poll(async () => (await paintedLabels(page)).map((label) => label.text))
+      .toEqual([...template.words]);
+
+    for (const paint of await paintedLabels(page)) {
+      expect(paint.fill).toBe('#1e1e1e');
+      expect(paint.baseline).toBeGreaterThan(0);
+      expect(paint.baseline).toBeLessThan(720);
+    }
+  });
+}
 
 test('a frame is added as a slide, then reordered, duplicated, skipped and deleted', async ({
   page,

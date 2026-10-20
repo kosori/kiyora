@@ -1,6 +1,7 @@
 import { selectedShapes } from '@kiyora/editor';
 import {
   type Board,
+  CANVAS_ENTRY,
   exportBoardSvg,
   type Measurer,
   type Theme,
@@ -41,13 +42,13 @@ export type PngExportOptions = {
 };
 
 /**
- * The colour a solid background paints, per theme: the canvas's own colour,
- * paired with the ink the palette names for it, so a light image is near-black
- * on white and a dark one near-white on near-black.
+ * The colour a solid background paints, per theme: the canvas the palette names,
+ * paired with the ink drawn on it, so the raster and the page cannot disagree
+ * about what the board was drawn on.
  */
 export const PNG_BACKGROUND: Record<Theme, string> = {
-  dark: '#1e1e1e',
-  light: '#ffffff',
+  dark: CANVAS_ENTRY.dark,
+  light: CANVAS_ENTRY.light,
 };
 
 /**

@@ -95,8 +95,9 @@ export const loadBoard = async (storage: BoardStorage): Promise<BoardLoad> => {
 
 /**
  * Opens `board` in the engine, bringing the view back to where the board was
- * left. The camera is in the board but not in its history, so restoring it is a
- * view change, not a board change, and never arms a save.
+ * left. The board's camera is only the snapshot the last save wrote; the live
+ * camera is the view's, and restoring it is a view change, not a board change,
+ * so it never arms a save.
  */
 export const restoreBoard = (editor: Editor, board: Board): void => {
   editor.setBoard(board);

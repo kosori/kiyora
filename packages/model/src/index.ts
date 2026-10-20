@@ -70,8 +70,10 @@ export {
   framesWithoutSlide,
   insertTemplateSlide,
   moveSlide,
+  nextId,
   presentedSlides,
   setSlideNotes,
+  subtreeIds,
   type TemplatePiece,
   toggleSlideSkipped,
 } from './deck';
@@ -117,6 +119,7 @@ export {
   boundsOf,
   boundsOfShapes,
   shapeBounds,
+  turn,
 } from './paint/figures';
 export {
   type Paint,
@@ -126,6 +129,7 @@ export {
   paintShape,
 } from './paint/paint';
 export {
+  CANVAS_ENTRY,
   FILL_STYLES,
   type FillStyle,
   FOREGROUND,

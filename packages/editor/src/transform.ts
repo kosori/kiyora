@@ -1,4 +1,4 @@
-import type { Bounds, Shape } from '@kiyora/model';
+import { type Bounds, type Shape, turn } from '@kiyora/model';
 import type { Point } from './camera';
 import {
   type HandleKind,
@@ -28,19 +28,6 @@ const radians = (degrees: number): number => (degrees * Math.PI) / 180;
 const clean = (value: number): number => {
   const rounded = Math.round(value * 1e6) / 1e6;
   return Object.is(rounded, -0) ? 0 : rounded;
-};
-
-const turn = (point: Point, origin: Point, degrees: number): Point => {
-  const angle = radians(degrees);
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  const dx = point.x - origin.x;
-  const dy = point.y - origin.y;
-
-  return {
-    x: origin.x + dx * cos - dy * sin,
-    y: origin.y + dx * sin + dy * cos,
-  };
 };
 
 /** The centre of a shape's authored box. */

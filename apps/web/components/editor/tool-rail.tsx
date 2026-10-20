@@ -4,6 +4,7 @@ import type { Tool } from '@kiyora/editor';
 import {
   IconArrowUpRight,
   IconFrame,
+  IconHandMove,
   IconNote,
   IconPointer,
   IconRectangle,
@@ -26,6 +27,7 @@ export type RailEntry = {
 /** The tools the rail offers. The picker carries the rest of the vocabulary. */
 const RAIL: readonly RailEntry[] = [
   { icon: IconPointer, label: 'Select', tool: 'select' },
+  { icon: IconHandMove, label: 'Hand', tool: 'hand' },
   { icon: IconRectangle, label: 'Rectangle', tool: 'rectangle' },
   { icon: IconTypography, label: 'Text', tool: 'text' },
   { icon: IconArrowUpRight, label: 'Connector', tool: 'connector' },

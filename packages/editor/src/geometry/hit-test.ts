@@ -4,6 +4,7 @@ import {
   connectorAt,
   type Shape,
   shapeBounds,
+  turn,
 } from '@kiyora/model';
 import type { Point } from '../camera';
 
@@ -20,15 +21,12 @@ import type { Point } from '../camera';
  */
 export const containsPoint = (shape: Shape, point: Point): boolean => {
   const centre = { x: shape.x + shape.w / 2, y: shape.y + shape.h / 2 };
-  const radians = (-shape.rotation * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const dx = point.x - centre.x;
-  const dy = point.y - centre.y;
-  const localX = dx * cos - dy * sin;
-  const localY = dx * sin + dy * cos;
+  const local = turn(point, centre, -shape.rotation);
 
-  return Math.abs(localX) <= shape.w / 2 && Math.abs(localY) <= shape.h / 2;
+  return (
+    Math.abs(local.x - centre.x) <= shape.w / 2 &&
+    Math.abs(local.y - centre.y) <= shape.h / 2
+  );
 };
 
 /**

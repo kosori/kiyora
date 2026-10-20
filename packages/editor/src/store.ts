@@ -1,7 +1,7 @@
-import type { Board, Style } from '@kiyora/model';
+import { type Board, type Style, subtreeIds } from '@kiyora/model';
 import type { Point } from './camera';
 import { editConnector } from './connectors';
-import { addShape, subtreeIds } from './containment';
+import { addShape } from './containment';
 import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
 import { resizeModifiers } from './geometry/handles';

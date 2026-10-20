@@ -1,8 +1,10 @@
-'use client';
-
 import type { Paint } from '@kiyora/model';
 import type { ReactNode } from 'react';
 import { TextLayer } from './text-layer';
+
+type Props = {
+  paint: Paint;
+};
 
 /**
  * One paint node as React elements: its paths, its label, and its children. A
@@ -10,7 +12,7 @@ import { TextLayer } from './text-layer';
  * inside the box its author drew. The canvas and the present surface both render
  * through this, so a slide is drawn by the same walker the board is.
  */
-export const PaintNode = ({ paint }: { paint: Paint }): ReactNode => {
+export const PaintNode = ({ paint }: Props): ReactNode => {
   const children = paint.children.map((child, index) => (
     <PaintNode key={child.shapeId ?? `child-${index}`} paint={child} />
   ));

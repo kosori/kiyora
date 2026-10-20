@@ -7,53 +7,11 @@ import {
   framesWithoutSlide,
   presentedSlides,
 } from '@kiyora/model';
-import {
-  type ChangeEvent,
-  type MouseEvent,
-  useCallback,
-  useState,
-} from 'react';
+import { type MouseEvent, useCallback } from 'react';
 import { Button } from '~/components/ui/button';
+import { SlideNotes } from './slide-notes';
 
 const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
-
-/**
- * One slide's notes. The draft is held locally and committed on blur, so a note
- * that takes thirty keystrokes is one board change and one undo, like a label.
- */
-const SlideNotes = ({ frameId, notes }: { frameId: string; notes: string }) => {
-  const editor = useEditor();
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState(false);
-
-  const onFocus = useCallback(() => {
-    setDraft(notes);
-    setEditing(true);
-  }, [notes]);
-  const onChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    setDraft(event.target.value);
-    setEditing(true);
-  }, []);
-  const onBlur = useCallback(() => {
-    if (editing) {
-      editor.setSlideNotes(frameId, draft);
-      setEditing(false);
-    }
-  }, [draft, editing, editor, frameId]);
-
-  return (
-    <textarea
-      aria-label='Slide notes'
-      className='min-h-12 w-full resize-none rounded border border-border bg-background p-1.5 text-xs'
-      data-testid='slide-notes'
-      onBlur={onBlur}
-      onChange={onChange}
-      onFocus={onFocus}
-      placeholder='Speaker notes'
-      value={editing ? draft : notes}
-    />
-  );
-};
 
 /**
  * The deck panel: the board's slides in order, their notes, and the templates a

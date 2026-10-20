@@ -1,5 +1,9 @@
-import type { Board, Endpoint, Shape } from '@kiyora/model';
-import { subtreeIds } from './containment';
+import {
+  type Board,
+  type Endpoint,
+  type Shape,
+  subtreeIds,
+} from '@kiyora/model';
 import { movedShape } from './shape-edit';
 
 /**

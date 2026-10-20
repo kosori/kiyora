@@ -211,6 +211,36 @@ test('a pan alone is flushed as the tab hides, so the view comes back', async ({
   await expect.poll(() => camera(page)).toEqual(left);
 });
 
+test('a pan alone is flushed as the page goes away, so the view comes back', async ({
+  page,
+}) => {
+  await open(page);
+  await drawRectangle(page);
+  await expect(page.getByTestId('save-status')).toHaveAttribute(
+    'data-state',
+    'saved'
+  );
+
+  await pan(page, { x: 600, y: 300 }, { x: 660, y: 340 });
+  const left = await camera(page);
+  expect(left.x).toBeCloseTo(60, 0);
+  expect(left.y).toBeCloseTo(40, 0);
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('pagehide'));
+  });
+
+  await expect.poll(() => storedCamera(page)).toEqual(left);
+
+  await page.reload();
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
+
+  await expect.poll(() => camera(page)).toEqual(left);
+});
+
 test('a board is saved and read back without IndexedDB, through the fallback', async ({
   page,
 }) => {

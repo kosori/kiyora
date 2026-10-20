@@ -223,7 +223,10 @@ export const shapeSchema = z.discriminatedUnion('kind', [
 /** One item on the board. */
 export type Shape = z.infer<typeof shapeSchema>;
 
-/** Where the board is being looked at from. Outside history, never in an artifact. */
+/**
+ * Where the board is being looked at from. The live value is the view's; the
+ * board stores the snapshot the last save wrote, and no artifact draws it.
+ */
 export const cameraSchema = z.object({
   x: z.number(),
   y: z.number(),

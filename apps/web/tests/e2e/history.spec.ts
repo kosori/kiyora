@@ -17,6 +17,24 @@ const open = async (page: Page): Promise<void> => {
 const starterShape = (page: Page) =>
   page.getByTestId('board').locator('path').first();
 
+const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
+
+/** The camera the board is actually painted under. */
+const camera = async (page: Page) => {
+  const value = await page.getByTestId('board').getAttribute('transform');
+  const match = TRANSFORM.exec(value ?? '');
+
+  if (match === null) {
+    throw new Error(`the board is not placed by a camera: ${value}`);
+  }
+
+  return {
+    x: Number(match[1]),
+    y: Number(match[2]),
+    zoom: Number(match[3]),
+  };
+};
+
 const ORIGINAL = 'M 80 80 L 300 80 L 300 220 L 80 220 Z';
 const MOVED = 'M 120 120 L 340 120 L 340 260 L 120 260 Z';
 
@@ -93,6 +111,34 @@ test('a pan is never undoable', async ({ page }) => {
 
   await expect(page.getByTestId('undo')).toBeDisabled();
   await expect(starterShape(page)).toHaveAttribute('d', ORIGINAL);
+});
+
+test('undo never puts the camera back, so a pan stays where the person left it', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+
+  await drag(
+    page,
+    { x: box.x + 150, y: box.y + 150 },
+    { x: box.x + 190, y: box.y + 190 }
+  );
+  await expect(page.getByTestId('undo')).toBeEnabled();
+
+  await page.mouse.move(box.x + 400, box.y + 300);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(box.x + 460, box.y + 340, { steps: 4 });
+  await page.mouse.up({ button: 'middle' });
+
+  const panned = await camera(page);
+  expect(panned.x).toBeCloseTo(60, 0);
+  expect(panned.y).toBeCloseTo(40, 0);
+
+  await page.getByTestId('undo').click();
+
+  await expect(starterShape(page)).toHaveAttribute('d', ORIGINAL);
+  expect(await camera(page)).toEqual(panned);
 });
 
 test('undo and redo work from the keyboard', async ({ page }) => {

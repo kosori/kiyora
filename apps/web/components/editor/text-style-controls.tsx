@@ -59,13 +59,17 @@ const presetOf = (size: number): SizePreset | null => {
   return found?.[0] ?? null;
 };
 
+type Props = {
+  shape: Shape;
+};
+
 /**
  * The controls for a label's text style: the four sizes, the horizontal
  * alignment, and — for a shape label, never a text shape — the vertical
  * alignment. Every pick is one restyle, so one undo walks it back, and it
  * reaches every selected shape through the same store the palette writes.
  */
-export const TextStyleControls = ({ shape }: { shape: Shape }) => {
+export const TextStyleControls = ({ shape }: Props) => {
   const editor = useEditor();
   const style = shape.textStyle ?? DEFAULT_TEXT_STYLE;
 

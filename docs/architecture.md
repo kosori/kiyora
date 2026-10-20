@@ -39,7 +39,7 @@ type Board = {
   title: string
   createdAt: number
   updatedAt: number
-  camera: { x: number; y: number; zoom: number }    // never in history
+  camera: { x: number; y: number; zoom: number }    // snapshot autosave writes from the view
   settings: { theme: 'light' | 'dark' }
   shapes: Shape[]                                   // array index is paint order
   deck: Slide[]                                     // empty when there are no slides
@@ -77,7 +77,7 @@ Only authored state is stored. Group boxes, connector paths, text wrapping, hit-
 
 Paint order is array order: index 0 paints first. There is no `z` number, so a z-collision cannot exist. Reordering is a splice.
 
-The camera and the selection live outside the document, in `editor`. Panning is never undoable and never triggers a save.
+The selection lives outside the document, in `editor`. The camera does too while a board is open: the board's `camera` is only the snapshot the last save wrote from the view, and undo never restores the view. Panning is therefore never undoable and never triggers a save.
 
 ## The render seam
 
@@ -162,7 +162,7 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 5. **Offline by construction.** Every request that is not to localhost is aborted, by a test.
 6. **The export path sees only a board.** Nothing display-only can reach an artifact.
 7. **No silent failures.** Every user-visible failure has a surface.
-8. **One gesture, one history entry.** Camera and selection stay outside history.
+8. **One gesture, one history entry.** Undo never restores the camera or the selection.
 9. **Only authored state is stored.**
 10. **New source files stay under the size budget** (400 lines; tests 600). `packages/dsl/src` is vendored and exempt.
 

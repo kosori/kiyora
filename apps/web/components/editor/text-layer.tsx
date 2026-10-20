@@ -1,5 +1,3 @@
-'use client';
-
 import {
   fontFamilyOf,
   type Paint,
@@ -7,6 +5,10 @@ import {
   textAnchorOf,
 } from '@kiyora/model';
 import type { ReactNode } from 'react';
+
+type Props = {
+  paint: Paint;
+};
 
 /**
  * One run, as a `tspan` — inside a real anchor when it is a link. The family and
@@ -39,7 +41,7 @@ const renderRun = (run: Run, key: number): ReactNode => {
  * projector's string does. The fill is the model's foreground ink, so a label is
  * never the invisible `none` that once shipped.
  */
-export const TextLayer = ({ paint }: { paint: Paint }): ReactNode => (
+export const TextLayer = ({ paint }: Props): ReactNode => (
   <>
     {(paint.text ?? []).map((line, index) => (
       <text

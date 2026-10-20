@@ -69,6 +69,15 @@ export const FOREGROUND_ENTRY: PaletteEntry = {
   light: '#1e1e1e',
 };
 
+/**
+ * The canvas each theme paints the board on, so an export's solid background
+ * is the page's own colour rather than a second copy of it.
+ */
+export const CANVAS_ENTRY: PaletteEntry = {
+  dark: '#1e1e1e',
+  light: '#ffffff',
+};
+
 /** The alpha each fill style paints at, before the shape's own opacity. */
 export const FILL_ALPHA: Record<FillStyle, number> = {
   bold: 1,

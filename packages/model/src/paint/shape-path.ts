@@ -1,6 +1,6 @@
 import type { FigureShape } from '../board/schema';
 import { formatNumber } from '../format';
-import type { Point } from './figures';
+import { centreOf, type Point, turn } from './figures';
 
 /**
  * A point on a shape's box as a fraction of it: `u` across, `v` down, each from
@@ -32,19 +32,12 @@ export const solid = (d: string): Ink => ({ d });
 export const KAPPA = 0.552_284_749_830_793_6;
 
 /** The board point a unit point names, turned about the shape's centre. */
-export const at = (shape: FigureShape, [u, v]: UnitPoint): Point => {
-  const centre = { x: shape.x + shape.w / 2, y: shape.y + shape.h / 2 };
-  const radians = (shape.rotation * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const x = shape.x + u * shape.w;
-  const y = shape.y + v * shape.h;
-
-  return {
-    x: centre.x + (x - centre.x) * cos - (y - centre.y) * sin,
-    y: centre.y + (x - centre.x) * sin + (y - centre.y) * cos,
-  };
-};
+export const at = (shape: FigureShape, [u, v]: UnitPoint): Point =>
+  turn(
+    { x: shape.x + u * shape.w, y: shape.y + v * shape.h },
+    centreOf(shape),
+    shape.rotation
+  );
 
 const xy = (shape: FigureShape, point: UnitPoint): string => {
   const { x, y } = at(shape, point);
