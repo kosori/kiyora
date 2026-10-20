@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "title": "Legacy",
+  "id": "board-1",
+  "createdAt": 1700000000000,
+  "updatedAt": 1700000000000,
+  "camera": {
+    "x": 12,
+    "y": -8,
+    "zoom": 1.5
+  },
+  "settings": {
+    "theme": "dark"
+  },
+  "shapes": [
+    {
+      "id": "frame-1",
+      "kind": "frame",
+      "parentId": null,
+      "x": 40,
+      "y": 60,
+      "w": 600,
+      "h": 400,
+      "rotation": 0,
+      "opacity": 1,
+      "locked": false,
+      "style": {
+        "fill": "blue",
+        "fillStyle": "pastel",
+        "stroke": "ink",
+        "strokeWidth": 2
+      },
+      "clip": true,
+      "variant": "browser"
+    },
+    {
+      "id": "shape-1",
+      "kind": "rectangle",
+      "parentId": null,
+      "x": 8,
+      "y": 8,
+      "w": 120,
+      "h": 80,
+      "rotation": 0,
+      "opacity": 1,
+      "locked": false,
+      "style": {
+        "fill": "blue",
+        "fillStyle": "pastel",
+        "stroke": "ink",
+        "strokeWidth": 2
+      },
+      "text": "Ship it"
+    },
+    {
+      "id": "member-1",
+      "kind": "rectangle",
+      "parentId": "frame-1",
+      "x": 80,
+      "y": 100,
+      "w": 120,
+      "h": 80,
+      "rotation": 0,
+      "opacity": 1,
+      "locked": false,
+      "style": {
+        "fill": "green",
+        "fillStyle": "bold",
+        "stroke": "green",
+        "strokeWidth": 2
+      }
+    }
+  ],
+  "deck": [
+    {
+      "frameId": "frame-1",
+      "notes": "Intro",
+      "skipped": false
+    }
+  ]
+}

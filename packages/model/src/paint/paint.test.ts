@@ -3,6 +3,7 @@ import {
   type PaintContext,
   paintBoard,
   parseBoard,
+  SCHEMA_VERSION,
 } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
@@ -39,7 +40,7 @@ const board = (shapes: unknown[]): Board =>
     createdAt: 1_700_000_000_000,
     deck: [],
     id: 'board-1',
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     settings: { theme: 'light' },
     shapes,
     title: 'Untitled',
@@ -165,5 +166,50 @@ describe('naming the shape a paint came from', () => {
 
   it('leaves the board node unnamed, because it came from no shape', () => {
     expect(paintBoard(board([shape()]), light).shapeId).toBeUndefined();
+  });
+});
+
+describe('painting a group', () => {
+  const group = (overrides: Record<string, unknown> = {}) =>
+    shape({ kind: 'group', ...overrides });
+
+  it('paints no ink of its own, because a group has no box a person drew', () => {
+    const paint = paintBoard(board([group({ id: 'group-1' })]), light);
+
+    expect(paint.children[0]?.paths).toEqual([]);
+  });
+
+  it('holds its members inside its node, so they paint through the nesting', () => {
+    const paint = paintBoard(
+      board([
+        group({ id: 'group-1' }),
+        shape({ id: 'member-1', parentId: 'group-1', x: 20, y: 30 }),
+      ]),
+      light
+    );
+
+    expect(paint.children.map((child) => child.shapeId)).toEqual(['group-1']);
+    expect(paint.children[0]?.children.map((child) => child.shapeId)).toEqual([
+      'member-1',
+    ]);
+    expect(paint.children[0]?.children[0]?.paths[0]?.d).toBe(
+      'M 20 30 L 120 30 L 120 90 L 20 90 Z'
+    );
+  });
+
+  it('nests a group inside a group without painting anything on the way', () => {
+    const paint = paintBoard(
+      board([
+        group({ id: 'outer' }),
+        group({ id: 'inner', parentId: 'outer' }),
+        shape({ id: 'member-1', parentId: 'inner' }),
+      ]),
+      light
+    );
+
+    const inner = paint.children[0]?.children[0];
+
+    expect(inner?.paths).toEqual([]);
+    expect(inner?.children.map((child) => child.shapeId)).toEqual(['member-1']);
   });
 });

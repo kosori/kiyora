@@ -71,6 +71,36 @@ describe('the migration chain', () => {
   it('leaves the last fixture a board this code can read', () => {
     expect(() => parseBoard(fixture(SCHEMA_VERSION))).not.toThrow();
   });
+
+  it('leaves the camera, deck and settings exactly as the older board wrote them', () => {
+    const before = fixture(SCHEMA_VERSION - 1) as Record<string, unknown>;
+    const lifted = migratePayload(before);
+
+    expect(lifted.status).toBe('migrated');
+    if (lifted.status !== 'migrated') {
+      throw new Error('expected a migration');
+    }
+    const after = parseBoard(lifted.payload);
+
+    expect(after.camera).toEqual(before.camera);
+    expect(after.deck).toEqual(before.deck);
+    expect(after.settings).toEqual(before.settings);
+    expect(after.id).toBe(before.id);
+    expect(after.title).toBe(before.title);
+  });
+
+  it('carries a frame forward with no source, so an old frame reads as never generated', () => {
+    const lifted = migratePayload(fixture(SCHEMA_VERSION - 1));
+    if (lifted.status !== 'migrated') {
+      throw new Error('expected a migration');
+    }
+    const frame = parseBoard(lifted.payload).shapes.find(
+      (shape) => shape.kind === 'frame'
+    );
+
+    expect(frame).toBeDefined();
+    expect(frame).not.toHaveProperty('source');
+  });
 });
 
 describe('migrating a payload', () => {

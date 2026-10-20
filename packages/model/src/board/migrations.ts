@@ -31,11 +31,28 @@ const stampVersion: Migration = {
 };
 
 /**
+ * Version 2 adds two things the version 1 document could not carry: an optional
+ * Source on a frame and the group kind. Neither needs a value stamped onto an
+ * old board — a frame without a Source is a frame nobody generated from code,
+ * and a group is a kind no version 1 board could name — so this step only owns
+ * the version. Camera, deck, settings and every authored shape pass through
+ * untouched.
+ */
+const widenShapes: Migration = {
+  from: 1,
+  migrate: (payload) => ({
+    ...(payload as Record<string, unknown>),
+    schemaVersion: 2,
+  }),
+  to: 2,
+};
+
+/**
  * Every migration, in order, keyed by the version they lift from. Each one has a
  * committed fixture pair, and a test fails if a migration has no fixture or the
  * chain has a gap. The list is empty only when the running version is the first.
  */
-export const MIGRATIONS: readonly Migration[] = [stampVersion];
+export const MIGRATIONS: readonly Migration[] = [stampVersion, widenShapes];
 
 /** What happened when a payload met the migration chain. */
 export type MigrationResult =

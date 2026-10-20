@@ -36,6 +36,8 @@ export {
   figureKindSchema,
   frameSchema,
   frameVariantSchema,
+  type GroupShape,
+  groupSchema,
   type Head,
   headSchema,
   ROUTES,
@@ -44,6 +46,7 @@ export {
   SCHEMA_VERSION,
   type Shape,
   type Slide,
+  type Source,
   STICKY_FITS,
   type StickyFit,
   type StickyShape,
@@ -52,6 +55,7 @@ export {
   shapeBaseSchema,
   shapeSchema,
   slideSchema,
+  sourceSchema,
   stickyFitSchema,
   styleSchema,
   type TextShape,
@@ -90,6 +94,8 @@ export {
 } from './export/board-svg';
 export {
   BOARD_FILE_EXTENSION,
+  BOARD_FILE_LIMIT_BYTES,
+  BoardFileFault,
   parseBoardFile,
   serializeBoard,
 } from './file/board-file';
