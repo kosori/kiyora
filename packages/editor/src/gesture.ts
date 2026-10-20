@@ -1,7 +1,12 @@
 import { type Board, type Bounds, subtreeIds } from '@kiyora/model';
 import type { Point } from './camera';
 import { type HandleKind, handleAt } from './geometry/handles';
-import { type Selection, selectedShapes, selectionBounds } from './selection';
+import {
+  type Selection,
+  selectedShapes,
+  selectionBounds,
+  transformTargets,
+} from './selection';
 import { snapshotShapes } from './shape-edit';
 import type { Drag, Gesture, MoveDrag, ResizeDrag, RotateDrag } from './state';
 import type { Tool } from './tools';
@@ -41,20 +46,15 @@ export const moveDrag = (
   const shapes = selectedShapes(board, subtreeIds(board, selection)).filter(
     (shape) => !shape.locked
   );
-  if (shapes.length === 0) {
+  const bounds = selectionBounds(board, selection);
+  if (shapes.length === 0 || bounds === null) {
     return null;
-  }
-  let left = Number.POSITIVE_INFINITY;
-  let top = Number.POSITIVE_INFINITY;
-  for (const shape of shapes) {
-    left = Math.min(left, shape.x);
-    top = Math.min(top, shape.y);
   }
   return {
     applied: { x: 0, y: 0 },
     before: board,
     kind: 'move',
-    origin: { x: left, y: top },
+    origin: { x: bounds.x, y: bounds.y },
     originals: new Map(
       shapes.map((shape) => [shape.id, { x: shape.x, y: shape.y }])
     ),
@@ -73,7 +73,7 @@ const resizeDrag = (
   bounds,
   handle,
   kind: 'resize',
-  originals: snapshotShapes(selectedShapes(board, selection)),
+  originals: snapshotShapes(transformTargets(board, selection)),
 });
 
 /** The rotate about the selection centre, starting from the pointer's angle. */
@@ -88,7 +88,7 @@ const rotateDrag = (
     before: board,
     centre,
     kind: 'rotate',
-    originals: snapshotShapes(selectedShapes(board, selection)),
+    originals: snapshotShapes(transformTargets(board, selection)),
     start: angleAt(centre, point),
   };
 };

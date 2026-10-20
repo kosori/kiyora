@@ -53,6 +53,16 @@ export const EDIT_BINDINGS: readonly Binding[] = [
   { command: { kind: 'delete' }, key: 'delete', preventDefault: true },
   { command: { kind: 'delete' }, key: 'backspace', preventDefault: true },
   {
+    command: { kind: 'group' },
+    key: 'g',
+    modifiers: { command: 'required', shift: 'forbidden' },
+  },
+  {
+    command: { kind: 'ungroup' },
+    key: 'g',
+    modifiers: { command: 'required', shift: 'required' },
+  },
+  {
     command: { kind: 'undo' },
     key: 'z',
     modifiers: { command: 'required', shift: 'forbidden' },
@@ -106,6 +116,8 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
     label: 'Nudge by a grid step',
   },
   row({ kind: 'cancel-gesture' }, 'Selection', 'Cancel a gesture'),
+  row({ kind: 'group' }, 'Selection', 'Group'),
+  row({ kind: 'ungroup' }, 'Selection', 'Ungroup'),
 ];
 
 /** The rows after the clipboard's in the reference: the history and the help. */

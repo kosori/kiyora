@@ -169,6 +169,16 @@ export type Editor = {
   /** Copies the selection clear of itself. One board change, one history entry. */
   duplicate: () => void;
   /**
+   * Brings the selection's roots together in one group, whose box is derived
+   * from them. One board change, one history entry.
+   */
+  groupSelection: () => void;
+  /**
+   * Takes the selected groups apart, leaving every member exactly where it was.
+   * One board change, one history entry.
+   */
+  ungroupSelection: () => void;
+  /**
    * Puts the clipboard on the board offset clear of what it copies, cascading
    * further on each repeat so a second paste is not hidden by the first. One
    * gesture however many shapes it carries, so one undo takes the paste back.
