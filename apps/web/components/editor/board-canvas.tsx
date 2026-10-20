@@ -1,5 +1,6 @@
 'use client';
 
+import { visibleBounds } from '@kiyora/editor';
 import { useBoard } from '@kiyora/editor/react';
 import { paintBoard } from '@kiyora/model';
 import { cn } from 'cn';
@@ -26,6 +27,11 @@ type Props = {
  * paint is server-rendered, and `data-ready` announces the moment the canvas has
  * measured itself — the precondition for any camera action.
  *
+ * The canvas also hands the walker the board box the view shows, so only the
+ * shapes in view are in the DOM. The server has no viewport, so the first,
+ * server-rendered pass is the whole board; the same measurement that sets
+ * `data-ready` narrows it.
+ *
  * The pointer handlers sit on the wrapper rather than the canvas so the camera's
  * own pointer plumbing on the `<svg>` is untouched; a pointer event bubbles from
  * the canvas to here, and each tool's handlers ignore the other's. The selection
@@ -49,14 +55,26 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const closeEditor = useCallback(() => setEditingId(null), []);
   const pointer = useBoardPointer(surface.hand, openEditor);
   const measure = useMemo(() => createTextMeasurer(), []);
+  const { camera } = surface.view;
 
   useShortcuts(onShowShortcuts, surface.intent);
 
-  const paint = useMemo(
-    () => paintBoard(board, { measure, theme: board.settings.theme }),
-    [board, measure]
+  const view = useMemo(
+    () =>
+      surface.viewport.w > 0 && surface.viewport.h > 0
+        ? visibleBounds(camera, surface.viewport)
+        : null,
+    [camera, surface.viewport]
   );
-  const { camera } = surface.view;
+  const paint = useMemo(
+    () =>
+      paintBoard(board, {
+        measure,
+        theme: board.settings.theme,
+        ...(view === null ? {} : { view }),
+      }),
+    [board, measure, view]
+  );
 
   return (
     <div className='relative h-full w-full' {...pointer}>

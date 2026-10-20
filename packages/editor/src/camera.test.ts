@@ -10,6 +10,7 @@ import {
   stepZoom,
   toScreen,
   toWorld,
+  visibleBounds,
   wheelZoom,
   zoomAt,
   zoomBy,
@@ -205,5 +206,21 @@ describe("the grid's detail", () => {
       expect(spacing).toBeLessThan(32);
       previous = step;
     }
+  });
+});
+
+describe('what the view shows', () => {
+  it('is the board box the screen holds, so a renderer culls nothing else', () => {
+    const camera = { x: -450, y: -80, zoom: 3 };
+    const shown = visibleBounds(camera, viewport);
+
+    expect(shown.x).toBeCloseTo(150, 6);
+    expect(shown.y).toBeCloseTo(80 / 3, 6);
+    expect(shown.w).toBeCloseTo(800 / 3, 6);
+    expect(shown.h).toBeCloseTo(600 / 3, 6);
+    expect(toScreen(camera, { x: shown.x, y: shown.y })).toEqual({
+      x: 0,
+      y: 0,
+    });
   });
 });
