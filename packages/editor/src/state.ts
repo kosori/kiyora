@@ -194,9 +194,14 @@ export type Editor = {
    * The pointer going down on the board. On a handle of the current selection it
    * opens a resize or a rotate; on a shape it selects it — adding to the
    * selection when `additive` — and opens a move; on empty canvas it clears the
-   * selection unless `additive`, and opens a marquee.
+   * selection unless `additive`, and opens a marquee. `includeLocked` reaches a
+   * locked shape, so alt-clicking one selects it for the Inspector to unlock.
    */
-  pointerDown: (point: Point, additive: boolean) => void;
+  pointerDown: (
+    point: Point,
+    additive: boolean,
+    includeLocked?: boolean
+  ) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
    * a resize and a rotate each read the one `modifiers` value. Alt bypasses the
@@ -221,6 +226,12 @@ export type Editor = {
    * nothing.
    */
   restyle: (change: Restyle) => void;
+  /**
+   * Locks or unlocks every selected shape in one board write. One call is one
+   * gesture, so it is one history entry; a selection already wearing the asked-for
+   * lock writes nothing. A locked shape still resists every transform.
+   */
+  setLocked: (locked: boolean) => void;
   /** Whether undo and redo are possible, as a value a control can read. */
   getHistory: () => HistoryState;
   /** Subscribes to history-availability changes. Returns the unsubscribe. */

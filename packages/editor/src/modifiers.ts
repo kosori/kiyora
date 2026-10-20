@@ -62,6 +62,11 @@ export const GESTURE_REFERENCE: readonly GestureReferenceRow[] = [
   {
     group: 'Pointer',
     keys: ['Alt'],
+    label: 'Reach a locked shape, to unlock it from the Inspector',
+  },
+  {
+    group: 'Pointer',
+    keys: ['Alt'],
     label: 'Grow from the centre (a resize)',
   },
   {

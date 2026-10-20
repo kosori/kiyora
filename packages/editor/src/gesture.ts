@@ -43,7 +43,9 @@ export const moveDrag = (
   selection: Selection,
   point: Point
 ): MoveDrag | null => {
-  const shapes = selectedShapes(board, subtreeIds(board, selection));
+  const shapes = selectedShapes(board, subtreeIds(board, selection)).filter(
+    (shape) => !shape.locked
+  );
   const bounds = selectionBounds(board, selection);
   if (shapes.length === 0 || bounds === null) {
     return null;

@@ -58,6 +58,12 @@ export {
   setMembership,
 } from './containment';
 export {
+  type CommandHost,
+  type CommandTarget,
+  DISPATCHED_KINDS,
+  runCommand,
+} from './dispatch';
+export {
   HANDLE_REACH,
   HANDLE_SIZE,
   HANDLES,
@@ -101,6 +107,7 @@ export {
   type ModifierRule,
   type Modifiers,
   matchBinding,
+  matchKey,
   resolveKey,
   SHORTCUT_ROWS,
   type ShortcutRow,

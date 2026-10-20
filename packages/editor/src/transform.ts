@@ -37,6 +37,13 @@ const centreOf = (shape: Shape): Point => ({
 });
 
 /**
+ * The shapes a transform may move. The lock is read here, where the mutation
+ * lands, so a selection that already held a locked shape still cannot move it.
+ */
+const movable = (shapes: readonly Shape[]): Shape[] =>
+  shapes.filter((shape) => !shape.locked);
+
+/**
  * A shape a resize has just sized. A sticky's height is now the one its author
  * chose, so it is pinned `fixed` and a later label edit cannot undo the resize.
  */
@@ -241,10 +248,13 @@ export const resizeRefusal = (
   handle: HandleKind,
   pointer: Point,
   modifiers: ResizeModifiers
-): string | null =>
-  shapes.length <= 1
+): string | null => {
+  const unlocked = movable(shapes);
+
+  return unlocked.length <= 1
     ? null
-    : selectionScale(shapes, bounds, handle, pointer, modifiers).refusal;
+    : selectionScale(unlocked, bounds, handle, pointer, modifiers).refusal;
+};
 
 /**
  * Every selected shape sized to `handle`'s drag. One shape keeps its own frame;
@@ -261,13 +271,17 @@ export const resizeSelection = (
   pointer: Point,
   modifiers: ResizeModifiers
 ): Replacements => {
-  const only = shapes.length === 1 ? shapes[0] : undefined;
+  const unlocked = movable(shapes);
+  if (unlocked.length === 0) {
+    return new Map();
+  }
+  const only = shapes.length === 1 ? unlocked[0] : undefined;
   if (only !== undefined && only.kind !== 'group') {
     return new Map([[only.id, resizeOne(only, handle, pointer, modifiers)]]);
   }
 
   const { anchorX, anchorY, refusal, scaleX, scaleY } = selectionScale(
-    shapes,
+    unlocked,
     bounds,
     handle,
     pointer,
@@ -278,7 +292,7 @@ export const resizeSelection = (
   }
   const next: Replacements = new Map();
 
-  for (const shape of shapes) {
+  for (const shape of unlocked) {
     if (shape.kind === 'group') {
       continue;
     }
@@ -311,7 +325,7 @@ export const rotateSelection = (
 ): Replacements => {
   const next: Replacements = new Map();
 
-  for (const shape of shapes) {
+  for (const shape of movable(shapes)) {
     if (shape.kind === 'group') {
       continue;
     }
