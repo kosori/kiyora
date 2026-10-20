@@ -160,6 +160,8 @@ export {
 export {
   bindingKey,
   bindingLabel,
+  commandPalette,
+  type PaletteEntry,
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';

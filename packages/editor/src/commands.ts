@@ -18,6 +18,7 @@ export type CameraAction = (typeof CAMERA_ACTIONS)[number];
 export type Command =
   | { kind: 'tool'; tool: Tool }
   | { kind: 'show-shortcuts' }
+  | { kind: 'palette' }
   | { kind: 'camera'; action: CameraAction }
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
   | { kind: 'cancel-gesture' }

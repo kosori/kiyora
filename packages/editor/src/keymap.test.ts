@@ -5,6 +5,8 @@ import {
   CAMERA_ACTIONS,
   type Chord,
   type Command,
+  commandId,
+  commandPalette,
   DISPATCHED_KINDS,
   KEY_MODES,
   KEYMAP,
@@ -333,5 +335,45 @@ describe('the presenting keys', () => {
     expect(rows.find((row) => row.label === 'Leave presenting')?.keys).toEqual([
       'Esc',
     ]);
+  });
+});
+
+describe('the command palette', () => {
+  it('shows exactly the rows the reference shows, with their keys and labels, so the two cannot disagree', () => {
+    const reference = shortcutReference();
+    const palette = commandPalette().map(({ group, keys, label }) => ({
+      group,
+      keys,
+      label,
+    }));
+
+    expect(palette).toEqual(reference);
+  });
+
+  it('lists every command the keymap binds, and nothing else', () => {
+    const listed = new Set(
+      commandPalette().flatMap((entry) =>
+        entry.commands.map((command) => commandId(command))
+      )
+    );
+    const bound = new Set(KEYMAP.map((binding) => commandId(binding.command)));
+
+    expect(listed).toEqual(bound);
+  });
+});
+
+describe('the command palette key', () => {
+  it('opens the palette on the command key, so the palette is a binding like any other', () => {
+    expect(resolveKey({ command: true, key: 'k' })).toEqual({
+      kind: 'palette',
+    });
+  });
+
+  it('shows the palette key in the reference, read from the keymap', () => {
+    const row = shortcutReference().find(
+      (line) => line.label === 'Command palette'
+    );
+
+    expect(row?.keys).toEqual(['Ctrl + K']);
   });
 });

@@ -55,6 +55,7 @@ const recordingHost = (): { calls: string[]; host: CommandHost } => {
     calls,
     host: {
       camera: (action, phase) => calls.push(`${action}:${phase}`),
+      showPalette: () => calls.push('palette'),
       showShortcuts: () => calls.push('shortcuts'),
     },
   };
@@ -93,14 +94,15 @@ describe('the one dispatch', () => {
     expect(squareOf(editor)?.x).toBe(NUDGE_STEP + GRID);
   });
 
-  it('hands the camera and the shortcut sheet to the app, because the engine owns neither', () => {
+  it('hands the camera, the shortcut sheet and the palette to the app, because the engine owns none of them', () => {
     const editor = createEditor(board([]));
     const { calls, host } = recordingHost();
 
     runCommand({ action: 'zoom-in', kind: 'camera' }, { editor, host });
     runCommand({ kind: 'show-shortcuts' }, { editor, host });
+    runCommand({ kind: 'palette' }, { editor, host });
 
-    expect(calls).toEqual(['zoom-in:down', 'shortcuts']);
+    expect(calls).toEqual(['zoom-in:down', 'shortcuts', 'palette']);
   });
 
   it('undoes through the dispatch, so history is not a path the keyboard owns alone', () => {

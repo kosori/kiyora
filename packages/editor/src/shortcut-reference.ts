@@ -56,22 +56,37 @@ export const bindingLabel = (binding: Binding): string => {
   return parts.join(' + ');
 };
 
-/**
- * The shortcut reference, generated from the keymap: every row of copy, each
- * carrying the keys its commands are bound to.
- */
-export const shortcutReference = (): ReferenceRow[] => {
-  const rows: ReferenceRow[] = [];
+/** One palette row: a reference row plus the commands choosing it runs. */
+export type PaletteEntry = ReferenceRow & {
+  /** The commands the row names; a row with variants runs its first. */
+  commands: readonly Command[];
+};
 
-  for (const row of SHORTCUT_ROWS) {
+/**
+ * The rows both views show, with the keys read from the keymap. The reference
+ * and the palette are generated from this one list, so neither can show a label
+ * or a key the other lacks.
+ */
+const shownRows = (): PaletteEntry[] =>
+  SHORTCUT_ROWS.flatMap((row) => {
     const keys = row.commands.flatMap((command) =>
       bindingsFor(command).map((binding) => bindingLabel(binding))
     );
 
-    if (keys.length > 0) {
-      rows.push({ group: row.group, keys, label: row.label });
-    }
-  }
+    return keys.length === 0
+      ? []
+      : [{ commands: row.commands, group: row.group, keys, label: row.label }];
+  });
 
-  return rows;
-};
+/**
+ * The shortcut reference, generated from the keymap: every row of copy, each
+ * carrying the keys its commands are bound to.
+ */
+export const shortcutReference = (): ReferenceRow[] =>
+  shownRows().map(({ group, keys, label }) => ({ group, keys, label }));
+
+/**
+ * The commands the palette offers, in the reference's order and under its
+ * labels, so the palette lists exactly what the keymap binds.
+ */
+export const commandPalette = (): PaletteEntry[] => shownRows();
