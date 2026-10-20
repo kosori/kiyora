@@ -62,11 +62,14 @@ export type Binding = {
 };
 
 /**
- * Keys that mean a declared one: a shifted `+` zooms like `=`, and a shifted
- * `_` zooms like `-`, without a second binding that has to be kept in step.
+ * Keys that mean a declared one: a shifted `+` zooms like `=`, a shifted `_`
+ * zooms like `-`, and a shifted `}` steps paint order like `]`, without a
+ * second binding that has to be kept in step.
  */
 export const KEY_ALIASES: Readonly<Record<string, string>> = {
   _: '-',
+  '{': '[',
+  '}': ']',
   '+': '=',
 };
 

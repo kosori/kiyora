@@ -69,6 +69,30 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     modifiers: { command: 'required', shift: 'required' },
   },
   {
+    command: { kind: 'bring-forward' },
+    key: ']',
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'send-backward' },
+    key: '[',
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'bring-to-front' },
+    key: ']',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'send-to-back' },
+    key: '[',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
     command: { alignment: 'left', kind: 'align' },
     key: 'a',
     modifiers: { alt: 'required' },
@@ -173,6 +197,10 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'cancel-gesture' }, 'Selection', 'Cancel a gesture'),
   row({ kind: 'group' }, 'Selection', 'Group'),
   row({ kind: 'ungroup' }, 'Selection', 'Ungroup'),
+  row({ kind: 'bring-to-front' }, 'Arrange', 'Bring to front'),
+  row({ kind: 'bring-forward' }, 'Arrange', 'Bring forward'),
+  row({ kind: 'send-backward' }, 'Arrange', 'Send backward'),
+  row({ kind: 'send-to-back' }, 'Arrange', 'Send to back'),
   row({ alignment: 'left', kind: 'align' }, 'Arrange', 'Align left'),
   row(
     { alignment: 'center-horizontal', kind: 'align' },

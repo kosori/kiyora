@@ -246,6 +246,49 @@ describe('undo and redo keys', () => {
   });
 });
 
+describe('the ordering keys', () => {
+  it('steps one place on the bracket and jumps to either end with shift', () => {
+    expect(resolveKey({ command: true, key: ']' })).toEqual({
+      kind: 'bring-forward',
+    });
+    expect(resolveKey({ command: true, key: '[' })).toEqual({
+      kind: 'send-backward',
+    });
+    expect(resolveKey({ command: true, key: ']', shift: true })).toEqual({
+      kind: 'bring-to-front',
+    });
+    expect(resolveKey({ command: true, key: '[', shift: true })).toEqual({
+      kind: 'send-to-back',
+    });
+  });
+
+  it('resolves the shifted bracket a keyboard actually produces', () => {
+    expect(resolveKey({ command: true, key: '}', shift: true })).toEqual({
+      kind: 'bring-to-front',
+    });
+    expect(resolveKey({ command: true, key: '{', shift: true })).toEqual({
+      kind: 'send-to-back',
+    });
+  });
+
+  it('shows the ordering keys in the reference, read from the keymap', () => {
+    const rows = shortcutReference();
+
+    expect(rows.find((row) => row.label === 'Bring to front')?.keys).toEqual([
+      'Ctrl + Shift + ]',
+    ]);
+    expect(rows.find((row) => row.label === 'Bring forward')?.keys).toEqual([
+      'Ctrl + ]',
+    ]);
+    expect(rows.find((row) => row.label === 'Send backward')?.keys).toEqual([
+      'Ctrl + [',
+    ]);
+    expect(rows.find((row) => row.label === 'Send to back')?.keys).toEqual([
+      'Ctrl + Shift + [',
+    ]);
+  });
+});
+
 describe('the clipboard keys', () => {
   it('duplicates, copies, cuts and pastes on the command key', () => {
     expect(resolveKey({ command: true, key: 'd' })).toEqual({

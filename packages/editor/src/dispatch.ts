@@ -55,6 +55,8 @@ type Handlers = { readonly [K in Command['kind']]: Handler<K> };
 /** Every command, and the one place each kind is executed. */
 const HANDLERS: Handlers = {
   align: ({ editor }, command) => editor.align(command.alignment),
+  'bring-forward': ({ editor }) => editor.bringForward(),
+  'bring-to-front': ({ editor }) => editor.bringToFront(),
   camera: (target, command) => hostOf(target).camera(command.action, 'down'),
   'cancel-gesture': ({ editor }) => editor.cancelGesture(),
   copy: ({ editor }) => editor.copy(),
@@ -76,6 +78,8 @@ const HANDLERS: Handlers = {
   'present-previous': ({ editor }) => editor.previousSlide(),
   'present-timer': ({ editor }) => editor.toggleTimer(),
   redo: ({ editor }) => editor.redo(),
+  'send-backward': ({ editor }) => editor.sendBackward(),
+  'send-to-back': ({ editor }) => editor.sendToBack(),
   'show-shortcuts': (target) => hostOf(target).showShortcuts(),
   tool: ({ editor }, command) => editor.setTool(command.tool),
   undo: ({ editor }) => editor.undo(),
