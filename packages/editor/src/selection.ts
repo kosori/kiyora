@@ -3,6 +3,7 @@ import {
   type Bounds,
   boundsOfShapes,
   type Shape,
+  subtreeIds,
 } from '@kiyora/model';
 import { movedShape } from './shape-edit';
 
@@ -30,7 +31,31 @@ export const normaliseSelection = (
 export const selectionBounds = (
   board: Board,
   selection: Selection
-): Bounds | null => boundsOfShapes(selectedShapes(board, selection));
+): Bounds | null =>
+  boundsOfShapes(selectedShapes(board, selection), board.shapes);
+
+/**
+ * The shapes a resize or a rotation must move: the selection, plus everything
+ * held inside any selected group. A selected frame stays alone, because its box
+ * is authored and resizing it never moves what it holds; a selected group has
+ * no box of its own, so its members are the shapes that scale and turn.
+ */
+export const transformTargets = (
+  board: Board,
+  selection: Selection
+): Shape[] => {
+  const ids = new Set(selection);
+  for (const shape of selectedShapes(board, selection)) {
+    if (shape.kind !== 'group') {
+      continue;
+    }
+    for (const id of subtreeIds(board, [shape.id])) {
+      ids.add(id);
+    }
+  }
+
+  return selectedShapes(board, [...ids]);
+};
 
 /** An absolute position per shape id. */
 export type Offsets = ReadonlyMap<string, { x: number; y: number }>;

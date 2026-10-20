@@ -45,6 +45,7 @@ const HANDLERS: Handlers = {
   cut: ({ editor }) => editor.cut(),
   delete: ({ editor }) => editor.deleteSelection(),
   duplicate: ({ editor }) => editor.duplicate(),
+  group: ({ editor }) => editor.groupSelection(),
   nudge: ({ editor }, command) => {
     const step = command.coarse ? GRID : NUDGE_STEP;
     editor.nudge(command.dx * step, command.dy * step);
@@ -60,6 +61,7 @@ const HANDLERS: Handlers = {
   'show-shortcuts': ({ host }) => host.showShortcuts(),
   tool: ({ editor }, command) => editor.setTool(command.tool),
   undo: ({ editor }) => editor.undo(),
+  ungroup: ({ editor }) => editor.ungroupSelection(),
 };
 
 /**

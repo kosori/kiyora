@@ -222,14 +222,34 @@ describe("a group's bounds", () => {
     });
   });
 
-  it('falls back to its stored box while it holds nothing', () => {
+  it('has no extent while it holds nothing, and never reads its stand-in box', () => {
     const empty = group({ h: 24, w: 32, x: 16, y: 8 });
 
-    expect(shapeBounds(empty, [empty])).toEqual({
+    expect(shapeBounds(empty, [empty])).toEqual({ h: 0, w: 0, x: 0, y: 0 });
+  });
+
+  it('derives nothing from an empty group nested inside another, at any depth', () => {
+    const outer = group({ h: 24, w: 32, x: 16, y: 8 });
+    const inner = group({
       h: 24,
+      id: 'group-2',
+      parentId: 'group-1',
       w: 32,
       x: 16,
       y: 8,
+    });
+
+    expect(shapeBounds(outer, [outer, inner])).toEqual({
+      h: 0,
+      w: 0,
+      x: 0,
+      y: 0,
+    });
+    expect(shapeBounds(inner, [outer, inner])).toEqual({
+      h: 0,
+      w: 0,
+      x: 0,
+      y: 0,
     });
   });
 });

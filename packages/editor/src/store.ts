@@ -61,6 +61,7 @@ export const createEditor = (board: Board): Editor => {
     getStyle: core.style,
     getTool: () => core.view().tool,
     getView: core.view,
+    groupSelection: commands.groupSelection,
     moveSlide: deck.moveSlide,
     nextSlide: present.next,
     nudge: edits.nudge,
@@ -98,5 +99,6 @@ export const createEditor = (board: Board): Editor => {
     toggleSlideSkip: deck.toggleSlideSkip,
     toggleTimer: present.toggleTimer,
     undo: edits.undo,
+    ungroupSelection: commands.ungroupSelection,
   };
 };
