@@ -2,6 +2,15 @@
 
 export { subtreeIds } from '@kiyora/model';
 export {
+  ALIGNMENTS,
+  type Alignment,
+  alignBoard,
+  arrangeableShapes,
+  DISTRIBUTE_AXES,
+  type DistributeAxis,
+  distributeBoard,
+} from './align';
+export {
   clampZoom,
   FIT_PADDING,
   fitCamera,
@@ -163,6 +172,12 @@ export {
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';
+export type { SourceApply, SourceApplyOptions } from './source-commands';
+export {
+  markSourceStale,
+  type SourceState,
+  sourceState,
+} from './source-state';
 export {
   createEditor,
   type Editor,

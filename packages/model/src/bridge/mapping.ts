@@ -9,7 +9,7 @@ import type {
 import { nextId } from '../deck';
 
 /** The gap a generated figure keeps from its frame's edges, in board units. */
-const INSET = 24;
+export const SOURCE_INSET = 24;
 
 /** The box one generated figure takes until layout lands. */
 const FIGURE = { h: 100, w: 160 } as const;
@@ -65,8 +65,8 @@ export const mapSource = (
     style,
     text: node.label,
     w: FIGURE.w,
-    x: frame.x + INSET,
-    y: frame.y + INSET,
+    x: frame.x + SOURCE_INSET,
+    y: frame.y + SOURCE_INSET,
   };
 
   return { diagnostics, shapes: [figure] };

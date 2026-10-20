@@ -1,6 +1,6 @@
 import { type Board, type GroupShape, nextId, type Shape } from '@kiyora/model';
 import { isContainer } from './containment';
-import type { Selection } from './selection';
+import { type Selection, selectedRoots } from './selection';
 
 /**
  * Groups: several shapes made into one thing that moves as a whole, and the
@@ -10,30 +10,6 @@ import type { Selection } from './selection';
  * stand-in no operation reads or writes; its box is derived from its members by
  * `shapeBounds`, so grouping, moving and ungrouping never have to repair it.
  */
-
-/** The selected shapes that have no selected ancestor, in paint order. */
-export const selectedRoots = (board: Board, selection: Selection): Shape[] => {
-  const selected = new Set(selection);
-  const parents = new Map(
-    board.shapes.map((shape) => [shape.id, shape.parentId])
-  );
-  const hasSelectedAncestor = (shape: Shape): boolean => {
-    const seen = new Set<string>([shape.id]);
-    let parent = shape.parentId;
-    while (parent !== null) {
-      if (selected.has(parent) || seen.has(parent)) {
-        return selected.has(parent);
-      }
-      seen.add(parent);
-      parent = parents.get(parent) ?? null;
-    }
-    return false;
-  };
-
-  return board.shapes.filter(
-    (shape) => selected.has(shape.id) && !hasSelectedAncestor(shape)
-  );
-};
 
 /** The parent every root shares, when all of them sit in one container. */
 const sharedParent = (board: Board, roots: readonly Shape[]): string | null => {

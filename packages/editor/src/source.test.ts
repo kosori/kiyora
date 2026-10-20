@@ -1,5 +1,11 @@
-import { createEditor } from '@kiyora/editor';
-import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
+import { createEditor, sourceState } from '@kiyora/editor';
+import {
+  type Board,
+  type FigureShape,
+  parseBoard,
+  SCHEMA_VERSION,
+  type Shape,
+} from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const style = {
@@ -39,6 +45,177 @@ const frame = {
   x: 100,
   y: 100,
 };
+
+const generated = (overrides: Partial<FigureShape> = {}): Shape => ({
+  h: 100,
+  id: 'rectangle-1',
+  kind: 'rectangle',
+  locked: false,
+  opacity: 1,
+  parentId: 'frame-1',
+  rotation: 0,
+  style,
+  text: 'Box',
+  w: 160,
+  x: 124,
+  y: 124,
+  ...overrides,
+});
+
+const sourcedFrame = (stale = false, generatedIds = ['rectangle-1']) => ({
+  ...frame,
+  source: { generatedIds, stale, text: 'Box' },
+});
+
+const none = { bypassSnap: false, constrain: false } as const;
+
+/** The frame `id` names, or `undefined` when the board holds none. */
+const frameOf = (editor: ReturnType<typeof createEditor>, id: string) => {
+  const shape = editor.getBoard().shapes.find((one) => one.id === id);
+
+  return shape?.kind === 'frame' ? shape : undefined;
+};
+
+describe('the two source states', () => {
+  it('reads pending only while the draft differs from the applied text', () => {
+    const source = { generatedIds: ['rectangle-1'], stale: false, text: 'Box' };
+
+    expect(sourceState(source, 'Box')).toEqual({
+      pending: false,
+      stale: false,
+    });
+    expect(sourceState(source, 'Box and more')).toEqual({
+      pending: true,
+      stale: false,
+    });
+  });
+
+  it('keeps pending and stale apart when both are true', () => {
+    const source = { generatedIds: ['rectangle-1'], stale: true, text: 'Box' };
+
+    expect(sourceState(source, 'Box and more')).toEqual({
+      pending: true,
+      stale: true,
+    });
+    expect(sourceState(source, 'Box')).toEqual({ pending: false, stale: true });
+  });
+});
+
+describe('a generated shape edited by hand marks its frame stale', () => {
+  it('on a nudge', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.nudge(8, 0);
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('on a move drag', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.pointerDown({ x: 180, y: 160 }, false);
+    editor.pointerMove({ x: 200, y: 160 }, none);
+    editor.pointerUp();
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('on a resize', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.pointerDown({ x: 284, y: 224 }, false);
+    editor.pointerMove({ x: 300, y: 240 }, none);
+    editor.pointerUp();
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('on a rotate', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.pointerDown({ x: 204, y: 102 }, false);
+    editor.pointerMove({ x: 260, y: 160 }, none);
+    editor.pointerUp();
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('on a restyle', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.restyle({ style: { fill: 'red' } });
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('on a text edit', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+
+    editor.setText('rectangle-1', 'Hand written');
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('on a delete', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.deleteSelection();
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+    expect(editor.getBoard().shapes).toHaveLength(1);
+  });
+
+  it('leaves a hand-added shape inside the frame out of it', () => {
+    const editor = createEditor(
+      board([
+        sourcedFrame(),
+        generated(),
+        generated({ id: 'hand-1', parentId: 'frame-1', text: 'Mine' }),
+      ])
+    );
+    editor.setSelection(['hand-1']);
+
+    editor.nudge(8, 0);
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(false);
+  });
+
+  it('is restored by undo and set again by redo', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+    editor.setSelection(['rectangle-1']);
+
+    editor.nudge(8, 0);
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+
+    editor.undo();
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(false);
+    expect(
+      editor.getBoard().shapes.find((shape) => shape.id === 'rectangle-1')
+    ).toMatchObject({ x: 124 });
+
+    editor.redo();
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(true);
+  });
+
+  it('stays alone when the camera, the selection or the theme changes', () => {
+    const editor = createEditor(board([sourcedFrame(), generated()]));
+
+    editor.setCamera({ x: 40, y: 40, zoom: 2 });
+    editor.setSelection(['rectangle-1']);
+    editor.setBoard({
+      ...editor.getBoard(),
+      settings: { theme: 'dark' },
+    });
+
+    expect(frameOf(editor, 'frame-1')?.source?.stale).toBe(false);
+  });
+});
 
 describe('applying a source to a frame', () => {
   it('stamps one figure inside the frame as one history entry', () => {
@@ -133,9 +310,86 @@ describe('applying a source to a frame', () => {
   it('does nothing when the id names no frame', () => {
     const editor = createEditor(board([frame]));
 
-    editor.applySource('missing', 'Box');
+    expect(editor.applySource('missing', 'Box')).toBe('missing');
 
     expect(editor.getBoard().shapes).toHaveLength(1);
     expect(editor.getHistory().canUndo).toBe(false);
+  });
+});
+
+describe('the apply contract', () => {
+  it('applies a fresh frame silently', () => {
+    const editor = createEditor(board([sourcedFrame()]));
+
+    expect(editor.applySource('frame-1', 'Next')).toBe('applied');
+    expect(frameOf(editor, 'frame-1')?.source).toMatchObject({
+      stale: false,
+      text: 'Next',
+    });
+  });
+
+  it('asks before it replaces a stale frame, changing nothing until told', () => {
+    const editor = createEditor(board([sourcedFrame(true), generated()]));
+    const before = editor.getBoard();
+
+    expect(editor.applySource('frame-1', 'Next')).toBe('needs-confirm');
+
+    expect(editor.getBoard()).toBe(before);
+    expect(editor.getHistory().canUndo).toBe(false);
+    expect(editor.getBoard().shapes).toHaveLength(2);
+  });
+
+  it('applies a stale frame once the caller confirms', () => {
+    const editor = createEditor(board([sourcedFrame(true), generated()]));
+
+    expect(editor.applySource('frame-1', 'Next', { force: true })).toBe(
+      'applied'
+    );
+
+    const stored = frameOf(editor, 'frame-1');
+    expect(stored?.source).toMatchObject({ stale: false, text: 'Next' });
+    expect(stored?.source?.generatedIds).toEqual(['rectangle-1']);
+  });
+
+  it('replaces exactly the generated ids, so a hand-added shape survives', () => {
+    const hand = generated({ id: 'hand-1', parentId: 'frame-1', text: 'Mine' });
+    const editor = createEditor(
+      board([sourcedFrame(false, ['old-1']), generated({ id: 'old-1' }), hand])
+    );
+
+    editor.applySource('frame-1', 'Next');
+
+    const { shapes } = editor.getBoard();
+    expect(shapes.find((shape) => shape.id === 'hand-1')).toEqual(hand);
+    expect(shapes.find((shape) => shape.id === 'old-1')).toBeUndefined();
+    expect(shapes.find((shape) => shape.id === 'rectangle-1')).toMatchObject({
+      text: 'Next',
+    });
+  });
+});
+
+describe('the frame around an applied diagram', () => {
+  const smallFrame = { ...frame, h: 100, w: 100 };
+  const sizeOf = (editor: ReturnType<typeof createEditor>) => {
+    const stored = frameOf(editor, 'frame-1');
+
+    return { h: stored?.h, w: stored?.w };
+  };
+
+  it('grows to hold a diagram that does not fit', () => {
+    const editor = createEditor(board([smallFrame]));
+
+    editor.applySource('frame-1', 'Box');
+
+    expect(sizeOf(editor)).toEqual({ h: 148, w: 208 });
+  });
+
+  it('never shrinks, even when the next source stamps nothing', () => {
+    const editor = createEditor(board([smallFrame]));
+
+    editor.applySource('frame-1', 'Box');
+    editor.applySource('frame-1', '');
+
+    expect(sizeOf(editor)).toEqual({ h: 148, w: 208 });
   });
 });

@@ -15,10 +15,23 @@ export type CommandHost = {
   showShortcuts: () => void;
 };
 
-/** What running a command takes: the engine, and the effects the app owns. */
+/** What running a command takes: the engine, and, when it needs them, the effects the app owns. */
 export type CommandTarget = {
   editor: Editor;
-  host: CommandHost;
+  /**
+   * The app's effects. A command that owns none — an alignment, a delete — can
+   * run without one, so the Inspector and a menu need not invent a camera.
+   */
+  host?: CommandHost;
+};
+
+/** The app host, for the commands that cannot run without one. */
+const hostOf = (target: CommandTarget): CommandHost => {
+  if (target.host === undefined) {
+    throw new Error('this command needs the app command host');
+  }
+
+  return target.host;
 };
 
 /**
@@ -39,13 +52,15 @@ type Handlers = { readonly [K in Command['kind']]: Handler<K> };
 
 /** Every command, and the one place each kind is executed. */
 const HANDLERS: Handlers = {
+  align: ({ editor }, command) => editor.align(command.alignment),
   'bring-forward': ({ editor }) => editor.bringForward(),
   'bring-to-front': ({ editor }) => editor.bringToFront(),
-  camera: ({ host }, command) => host.camera(command.action, 'down'),
+  camera: (target, command) => hostOf(target).camera(command.action, 'down'),
   'cancel-gesture': ({ editor }) => editor.cancelGesture(),
   copy: ({ editor }) => editor.copy(),
   cut: ({ editor }) => editor.cut(),
   delete: ({ editor }) => editor.deleteSelection(),
+  distribute: ({ editor }, command) => editor.distribute(command.axis),
   duplicate: ({ editor }) => editor.duplicate(),
   group: ({ editor }) => editor.groupSelection(),
   nudge: ({ editor }, command) => {
@@ -62,7 +77,7 @@ const HANDLERS: Handlers = {
   redo: ({ editor }) => editor.redo(),
   'send-backward': ({ editor }) => editor.sendBackward(),
   'send-to-back': ({ editor }) => editor.sendToBack(),
-  'show-shortcuts': ({ host }) => host.showShortcuts(),
+  'show-shortcuts': (target) => hostOf(target).showShortcuts(),
   tool: ({ editor }, command) => editor.setTool(command.tool),
   undo: ({ editor }) => editor.undo(),
   ungroup: ({ editor }) => editor.ungroupSelection(),

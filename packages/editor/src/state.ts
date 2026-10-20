@@ -7,6 +7,7 @@ import type {
   Style,
   TextStyle,
 } from '@kiyora/model';
+import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
 import type { ConnectorEdit } from './connectors';
 import type { HandleKind } from './geometry/handles';
@@ -15,6 +16,7 @@ import type { GestureModifiers } from './modifiers';
 import type { Placement } from './placement';
 import type { Restyle } from './restyle';
 import type { Selection } from './selection';
+import type { SourceApply } from './source-commands';
 import type { Tool } from './tools';
 
 /**
@@ -134,8 +136,16 @@ export type Editor = {
    * stored with them so the next open shows what was typed. One call is one
    * gesture, so one undo takes the whole apply back; a frame with no Source
    * applies an empty text without complaint.
+   *
+   * A stale frame is left exactly as it was unless `force` is set, and the
+   * result says so, so a caller can ask before discarding a hand edit. Shapes
+   * inside the frame that the Source did not generate always survive.
    */
-  applySource: (frameId: string, text: string) => void;
+  applySource: (
+    frameId: string,
+    text: string,
+    options?: { force?: boolean }
+  ) => SourceApply;
   /**
    * Opens the label edit's transaction, so every write between this and
    * `endTextEdit` is one gesture and one history entry. Joins one already open —
@@ -178,6 +188,20 @@ export type Editor = {
    * One board change, one history entry.
    */
   ungroupSelection: () => void;
+  /**
+   * Lines the selection up to one edge or centre of its own box. A Connector is
+   * not an item alignment arranges — its bound ends follow the shapes that move
+   * — and a Group travels as the members its derived box holds. A locked shape
+   * stays put. One call is one gesture; an alignment that would move nothing
+   * writes nothing, so a no-op never lands in undo.
+   */
+  align: (alignment: Alignment) => void;
+  /**
+   * Spaces three or more movable selected shapes evenly along `axis`, keeping
+   * the outermost two where they are. One call is one gesture, and a selection
+   * already spaced evenly writes nothing.
+   */
+  distribute: (axis: DistributeAxis) => void;
   /**
    * Puts the clipboard on the board offset clear of what it copies, cascading
    * further on each repeat so a second paste is not hidden by the first. One

@@ -1,4 +1,5 @@
 import type { Board } from '@kiyora/model';
+import { createArrangeCommands } from './arrange-commands';
 import { createBoardCommands } from './board-commands';
 import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
@@ -32,6 +33,11 @@ export const createEditor = (board: Board): Editor => {
     select: core.select,
     selection: core.selection,
   });
+  const arrange = createArrangeCommands({
+    board: core.board,
+    change: core.change,
+    selection: core.selection,
+  });
   const label = createLabelEdit({
     board: core.board,
     change: core.change,
@@ -44,6 +50,7 @@ export const createEditor = (board: Board): Editor => {
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    align: arrange.align,
     applySource: source.applySource,
     beginTextEdit: label.begin,
     bringForward: () => edits.reorder('forward'),
@@ -54,6 +61,7 @@ export const createEditor = (board: Board): Editor => {
     cut: commands.cut,
     deleteSelection: commands.deleteSelection,
     deleteSlide: deck.deleteSlide,
+    distribute: arrange.distribute,
     duplicate: commands.duplicate,
     duplicateSlide: deck.duplicateSlide,
     endNudgeRun: core.transactions.endNudgeRun,

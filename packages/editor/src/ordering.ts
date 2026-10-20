@@ -1,6 +1,5 @@
 import type { Board, Shape } from '@kiyora/model';
-import { selectedRoots } from './groups';
-import { type Selection, sameIds } from './selection';
+import { type Selection, sameIds, selectedRoots } from './selection';
 
 /**
  * Where a selection moves in paint order: to the front or the back of its

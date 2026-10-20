@@ -7,6 +7,7 @@ import {
   type TextStyle,
 } from '@kiyora/model';
 import { removeShapes } from './connectors';
+import { markSourceStale } from './source-state';
 
 /** The board without the named shapes, or the same board when there is nothing to remove. */
 export const withoutSelection = (
@@ -83,18 +84,25 @@ export const setShapeText = (
   id: string,
   text: string,
   measure?: Measurer
-): Board =>
-  withShape(board, id, (shape) => {
+): Board => {
+  const next = withShape(board, id, (shape) => {
     const labelled = shape.text === text ? shape : { ...shape, text };
     return labelled.kind === 'sticky' ? fitSticky(labelled, measure) : labelled;
   });
+
+  return markSourceStale(board, next, [id]);
+};
 
 /** Sets one shape's text style, returning the same board when it did not change. */
 export const setShapeTextStyle = (
   board: Board,
   id: string,
   textStyle: TextStyle
-): Board => withShape(board, id, (shape) => ({ ...shape, textStyle }));
+): Board => {
+  const next = withShape(board, id, (shape) => ({ ...shape, textStyle }));
+
+  return markSourceStale(board, next, [id]);
+};
 
 /** The board with the named shapes moved by `dx`, `dy`, leaving the rest alone. */
 export const translateShapes = (
@@ -107,10 +115,12 @@ export const translateShapes = (
     return board;
   }
   const moved = new Set(ids);
-  return {
+  const next = {
     ...board,
     shapes: board.shapes.map((shape) =>
       moved.has(shape.id) ? movedShape(shape, dx, dy) : shape
     ),
   };
+
+  return markSourceStale(board, next, ids);
 };
