@@ -11,8 +11,9 @@ import type {
 import { type PaintText, textOf } from '../text/layout';
 import type { Measurer } from '../text/wrap';
 import { connectorInk, connectorLabel } from './connectors';
+import { shapesInView } from './cull';
 import { FIGURE_GEOMETRY } from './figure-geometry';
-import { rectanglePath } from './figures';
+import { type Bounds, rectanglePath } from './figures';
 import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
@@ -52,14 +53,17 @@ export type Paint = {
 };
 
 /**
- * What a board cannot carry: the canvas it is painted on, and the measurer text
- * needs. Measurement needs a DOM, and `model` must not have one, so the caller
- * injects it; a shape with text and no measurer fails loudly rather than
- * painting nothing.
+ * What a board cannot carry: the canvas it is painted on, the measurer text
+ * needs, and — when a live view is painting — the board box that view shows.
+ * Measurement needs a DOM, and `model` must not have one, so the caller injects
+ * it; a shape with text and no measurer fails loudly rather than painting
+ * nothing. `view` is display-only: an artifact passes none and therefore paints
+ * the whole board.
  */
 export type PaintContext = {
   theme: Theme;
   measure?: Measurer;
+  view?: Bounds;
 };
 
 const fillOf = (style: Style, theme: Theme, opacity: number): string => {
@@ -211,12 +215,20 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
  * can be clipped by it; a shape with no parent stays at the top level. A
  * connector is painted against the whole board, because its path is resolved
  * from the shapes its ends name.
+ *
+ * When the context carries a `view`, only the shapes that view can show are
+ * painted, and every connector still resolves against the whole board. The
+ * export passes no view, so nothing display-only can reach an artifact.
  */
 export const paintBoard = (board: Board, context: PaintContext): Paint => {
   const nodes = new Map<string, Paint>();
   const children: Paint[] = [];
+  const shapes =
+    context.view === undefined
+      ? board.shapes
+      : shapesInView(board, context.view);
 
-  for (const shape of board.shapes) {
+  for (const shape of shapes) {
     const node =
       shape.kind === 'connector'
         ? paintConnector(shape, board.shapes, context)
