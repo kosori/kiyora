@@ -25,7 +25,11 @@ export const gestureOf = (drag: Drag | null): Gesture =>
       : drag.kind === 'marquee'
         ? { box: drag.box, kind: 'marquee' }
         : drag.kind === 'resize'
-          ? { handle: drag.handle, kind: 'resize' }
+          ? {
+              handle: drag.handle,
+              kind: 'resize',
+              ...(drag.refusal === undefined ? {} : { refusal: drag.refusal }),
+            }
           : { kind: 'rotate' };
 
 /** The move drag `point` opens over the selection's subtree, or `null` when it holds nothing. */

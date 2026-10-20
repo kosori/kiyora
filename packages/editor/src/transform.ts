@@ -153,24 +153,38 @@ const resizeOne = (
 };
 
 /**
- * Every selected shape sized to `handle`'s drag. One shape keeps its own frame;
- * a group scales from the selection box, so a turned member is approximated by
- * scaling its box rather than deforming it. `modifiers` is the resolved
- * behaviour; the store turns the gesture vocabulary into it with
- * `resizeModifiers`.
+ * Why a one-way scale cannot be applied to a selection holding a turned shape:
+ * its box plus an angle cannot hold the skew that would need. The message names
+ * the reason, so a refusal reads as a fact about the geometry rather than a
+ * gesture that quietly did nothing.
  */
-export const resizeSelection = (
+export const ROTATED_SCALE_REFUSAL =
+  'Rotated shapes scale uniformly only — a one-way scale would need skew, which a box and an angle cannot represent';
+
+/** How far two scales may drift before they are different scales rather than float noise. */
+const SCALE_EPSILON = 1e-9;
+
+type SelectionScale = {
+  anchorX: number;
+  anchorY: number;
+  refusal: string | null;
+  scaleX: number;
+  scaleY: number;
+};
+
+/**
+ * The scales a multi-selection resize would apply, and the refusal it earns.
+ * A turned member is exact under a uniform scale — its centre, size and angle
+ * all scale about the anchor — but a non-uniform one is not representable as a
+ * box plus a rotation, so it is refused instead of approximated.
+ */
+const selectionScale = (
   shapes: readonly Shape[],
   bounds: Bounds,
   handle: HandleKind,
   pointer: Point,
   modifiers: ResizeModifiers
-): Replacements => {
-  const only = shapes.length === 1 ? shapes[0] : undefined;
-  if (only !== undefined) {
-    return new Map([[only.id, resizeOne(only, handle, pointer, modifiers)]]);
-  }
-
+): SelectionScale => {
   const to = resizeBounds(bounds, handle, pointer, modifiers);
   const signs = handleSigns(handle);
   const floor = (scale: number, smallest: number): number =>
@@ -198,6 +212,61 @@ export const resizeSelection = (
       : signs.y === -1
         ? bounds.y + bounds.h
         : centre.y;
+  const turned = shapes.some((shape) => shape.rotation !== 0);
+  const refusal =
+    turned && Math.abs(scaleX - scaleY) > SCALE_EPSILON
+      ? ROTATED_SCALE_REFUSAL
+      : null;
+
+  return { anchorX, anchorY, refusal, scaleX, scaleY };
+};
+
+/**
+ * Why a resize would be refused, or `null` when `handle`'s drag is uniform or
+ * the selection holds no turned member. The store reads this before it touches
+ * the board, so a refusal neither moves a shape nor opens a history entry.
+ */
+export const resizeRefusal = (
+  shapes: readonly Shape[],
+  bounds: Bounds,
+  handle: HandleKind,
+  pointer: Point,
+  modifiers: ResizeModifiers
+): string | null =>
+  shapes.length <= 1
+    ? null
+    : selectionScale(shapes, bounds, handle, pointer, modifiers).refusal;
+
+/**
+ * Every selected shape sized to `handle`'s drag. One shape keeps its own frame;
+ * a group scales from the selection box. A selection holding a turned member
+ * scales uniformly only, so a non-uniform drag throws rather than writing an
+ * inexact box — the store checks `resizeRefusal` first and tells the user why.
+ * `modifiers` is the resolved behaviour; the store turns the gesture vocabulary
+ * into it with `resizeModifiers`.
+ */
+export const resizeSelection = (
+  shapes: readonly Shape[],
+  bounds: Bounds,
+  handle: HandleKind,
+  pointer: Point,
+  modifiers: ResizeModifiers
+): Replacements => {
+  const only = shapes.length === 1 ? shapes[0] : undefined;
+  if (only !== undefined) {
+    return new Map([[only.id, resizeOne(only, handle, pointer, modifiers)]]);
+  }
+
+  const { anchorX, anchorY, refusal, scaleX, scaleY } = selectionScale(
+    shapes,
+    bounds,
+    handle,
+    pointer,
+    modifiers
+  );
+  if (refusal !== null) {
+    throw new Error(refusal);
+  }
   const next: Replacements = new Map();
 
   for (const shape of shapes) {

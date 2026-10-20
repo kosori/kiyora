@@ -42,7 +42,7 @@ export type Gesture =
   | { kind: 'idle' }
   | { kind: 'move' }
   | { kind: 'marquee'; box: Bounds }
-  | { kind: 'resize'; handle: HandleKind }
+  | { kind: 'resize'; handle: HandleKind; refusal?: string }
   | { kind: 'rotate' };
 
 /** The open move: the board it began on, where the pointer went down, and the positions it moved from. */
@@ -71,6 +71,8 @@ export type ResizeDrag = {
   handle: HandleKind;
   kind: 'resize';
   originals: ReadonlyMap<string, Shape>;
+  /** Why the current pointer position is refused, or absent when it scales exactly. */
+  refusal?: string;
 };
 
 /** The open rotate: the board it began on, where the pointer started, and the before-picture. */

@@ -4,7 +4,6 @@ import { editConnector } from './connectors';
 import { addShape } from './containment';
 import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
-import { resizeModifiers } from './geometry/handles';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { gestureOf, handleDrag, moveDrag } from './gesture';
@@ -12,6 +11,7 @@ import { createTransactions } from './history/transaction';
 import { createLabelEdit } from './label-edit';
 import { shapeFromPlacement } from './placement';
 import { createPresent } from './present';
+import { moveResize } from './resize';
 import { restyledBoard } from './restyle';
 import {
   normaliseSelection,
@@ -24,12 +24,7 @@ import { replaceShapes, translateShapes } from './shape-edit';
 import type { Drag, Editor, Gesture, View } from './state';
 import { subscriptionOf } from './subscription';
 import { DEFAULT_STYLE, placesShape } from './tools';
-import {
-  angleAt,
-  resizeSelection,
-  rotateSelection,
-  shortestDelta,
-} from './transform';
+import { angleAt, rotateSelection, shortestDelta } from './transform';
 
 export type { Drag, Editor, Gesture, PresentState, View } from './state';
 
@@ -272,15 +267,20 @@ export const createEditor = (board: Board): Editor => {
         return;
       }
       if (drag.kind === 'resize') {
-        const replacements = resizeSelection(
-          [...drag.originals.values()],
-          drag.bounds,
-          drag.handle,
+        const { board: nextBoard, drag: nextDrag } = moveResize(
+          current,
+          drag,
           point,
-          resizeModifiers(modifiers)
+          modifiers
         );
-        current = replaceShapes(current, replacements);
-        publish(listeners);
+        if (nextDrag !== drag) {
+          drag = nextDrag;
+          publishGesture();
+        }
+        if (nextBoard !== current) {
+          current = nextBoard;
+          publish(listeners);
+        }
         return;
       }
       if (drag.kind === 'rotate') {
