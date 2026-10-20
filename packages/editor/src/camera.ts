@@ -52,6 +52,23 @@ export const toWorld = (camera: Camera, point: Point): Point => ({
   y: (point.y - camera.y) / camera.zoom,
 });
 
+/**
+ * The board box a camera shows through a viewport, in board units: what a
+ * renderer may cull against. Exact, not padded — a shape whose box only touches
+ * the view is already in it.
+ */
+export const visibleBounds = (camera: Camera, viewport: Viewport): Bounds => {
+  const topLeft = toWorld(camera, { x: 0, y: 0 });
+  const bottomRight = toWorld(camera, { x: viewport.w, y: viewport.h });
+
+  return {
+    h: bottomRight.y - topLeft.y,
+    w: bottomRight.x - topLeft.x,
+    x: topLeft.x,
+    y: topLeft.y,
+  };
+};
+
 /** Moves the view by a screen-pixel delta. The zoom does not change. */
 export const panBy = (camera: Camera, delta: Point): Camera => ({
   x: camera.x + delta.x,

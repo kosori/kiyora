@@ -19,6 +19,7 @@ export {
   toWorld,
   type Viewport,
   viewCentre,
+  visibleBounds,
   wheelZoom,
   ZOOM_STEP,
   zoomAt,
