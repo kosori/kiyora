@@ -94,6 +94,18 @@ export const useShortcuts = (
         return;
       }
 
+      if (command.kind === 'group') {
+        event.preventDefault();
+        editor.groupSelection();
+        return;
+      }
+
+      if (command.kind === 'ungroup') {
+        event.preventDefault();
+        editor.ungroupSelection();
+        return;
+      }
+
       if (command.kind === 'copy') {
         event.preventDefault();
         editor.copy();

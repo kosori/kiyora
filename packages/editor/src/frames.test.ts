@@ -105,13 +105,25 @@ describe('recording membership', () => {
     expect(after.shapes[0]).toEqual(authored);
   });
 
-  it('refuses a parent that is not a frame, leaving the board as it was', () => {
+  it('refuses a parent that is not a container, leaving the board as it was', () => {
     const before = board([
       shape({ id: 'plain-1' }),
       shape({ id: 'a', x: 400 }),
     ]);
 
     expect(setMembership(before, 'a', 'plain-1')).toBe(before);
+  });
+
+  it('accepts a group as a container, so a group can hold another', () => {
+    const before = board([
+      shape({ id: 'group-1', kind: 'group' }),
+      shape({ id: 'a', x: 400 }),
+    ]);
+
+    const after = setMembership(before, 'a', 'group-1');
+
+    expect(after.shapes.map((entry) => entry.id)).toEqual(['group-1', 'a']);
+    expect(after.shapes[1]?.parentId).toBe('group-1');
   });
 
   it('refuses a shape the board does not hold', () => {

@@ -29,11 +29,19 @@ export const containsPoint = (shape: Shape, point: Point): boolean => {
   );
 };
 
+/** Whether `point` lies inside an axis-aligned box, its edges included. */
+const containsBounds = (bounds: Bounds, point: Point): boolean =>
+  point.x >= bounds.x &&
+  point.x <= bounds.x + bounds.w &&
+  point.y >= bounds.y &&
+  point.y <= bounds.y + bounds.h;
+
 /**
  * The topmost shape under `point`, or `null` in empty space. The last shape
  * painted is the one in front, so the search runs back to front. A locked shape
  * is never picked. A connector is picked near its line rather than by its box,
- * so a click lands on the line where a person sees it.
+ * and a group by the box its members derive, so a click lands where a person
+ * sees the shape or the group's members.
  */
 export const shapeAt = (
   shapes: readonly Shape[],
@@ -47,7 +55,9 @@ export const shapeAt = (
     const hit =
       shape.kind === 'connector'
         ? connectorAt(shape, shapes, point, CONNECTOR_REACH)
-        : containsPoint(shape, point);
+        : shape.kind === 'group'
+          ? containsBounds(shapeBounds(shape, shapes), point)
+          : containsPoint(shape, point);
     if (hit) {
       return shape;
     }

@@ -1,4 +1,5 @@
 import type { Point } from './camera';
+import { outermostGroup } from './containment';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { gestureOf, handleDrag, moveDrag } from './gesture';
@@ -130,16 +131,17 @@ export const createGestures = (core: StoreCore): Gestures => {
         publishGesture();
         return;
       }
+      const target = outermostGroup(board, hit.id) ?? hit.id;
       if (additive) {
         core.select(
-          core.selection().includes(hit.id)
-            ? core.selection().filter((id) => id !== hit.id)
-            : [...core.selection(), hit.id]
+          core.selection().includes(target)
+            ? core.selection().filter((id) => id !== target)
+            : [...core.selection(), target]
         );
-      } else if (!core.selection().includes(hit.id)) {
-        core.select([hit.id]);
+      } else if (!core.selection().includes(target)) {
+        core.select([target]);
       }
-      if (core.selection().includes(hit.id)) {
+      if (core.selection().includes(target)) {
         openDrag(moveDrag(board, core.selection(), point));
       }
     },

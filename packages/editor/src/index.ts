@@ -46,11 +46,15 @@ export {
 } from './connectors';
 export {
   addShape,
+  type ContainerShape,
   frameAround,
   frameIds,
+  isContainer,
   isFrame,
+  isGroup,
   memberIds,
-  parentFrame,
+  outermostGroup,
+  parentContainer,
   setMembership,
 } from './containment';
 export {

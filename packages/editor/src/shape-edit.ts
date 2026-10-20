@@ -31,12 +31,17 @@ export const replaceShapes = (
 /**
  * One shape moved by a delta. A connector carries its authored footprint and its
  * free ends; an end bound to a shape stays with that shape, which is what makes
- * a bound connector re-route with no repair pass.
+ * a bound connector re-route with no repair pass. A group has no box to move:
+ * its members are the shapes that travel, and its stored box is a stand-in.
  */
-export const movedShape = (shape: Shape, dx: number, dy: number): Shape =>
-  shape.kind === 'connector'
+export const movedShape = (shape: Shape, dx: number, dy: number): Shape => {
+  if (shape.kind === 'group') {
+    return shape;
+  }
+  return shape.kind === 'connector'
     ? moveConnector(shape, dx, dy)
     : { ...shape, x: shape.x + dx, y: shape.y + dy };
+};
 
 /** The before-picture of a set of shapes, keyed by id. */
 export const snapshotShapes = (

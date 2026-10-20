@@ -249,8 +249,9 @@ export type StickyShape = z.infer<typeof stickySchema>;
 /**
  * A group: a shape that holds other shapes so they move together. It paints no
  * ink of its own, and its box is derived from its members rather than read from
- * the one stored here — the base box exists only so a group is a shape like any
- * other, and an empty group still has a place to stand.
+ * the base box the schema requires. That stored box is a documented stand-in:
+ * the app writes zeros when the group is made and never reads or rewrites it,
+ * so a drag can never leave a stale box behind.
  */
 export const groupSchema = shapeBaseSchema.extend({
   kind: z.literal('group'),
