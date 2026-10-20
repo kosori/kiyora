@@ -34,6 +34,12 @@ export {
   pasteFragment,
 } from './clipboard';
 export {
+  CAMERA_ACTIONS,
+  type CameraAction,
+  type Command,
+  commandId,
+} from './commands';
+export {
   type ConnectorEdit,
   editConnector,
   removeShapes,
@@ -82,13 +88,7 @@ export {
 } from './history/stack';
 export {
   type Binding,
-  bindingKey,
-  bindingLabel,
-  CAMERA_ACTIONS,
-  type CameraAction,
   type Chord,
-  type Command,
-  commandId,
   KEY_ALIASES,
   KEY_MODES,
   KEYMAP,
@@ -97,11 +97,9 @@ export {
   type ModifierRule,
   type Modifiers,
   matchBinding,
-  type ReferenceRow,
   resolveKey,
   SHORTCUT_ROWS,
   type ShortcutRow,
-  shortcutReference,
 } from './keymap';
 export {
   GESTURE_REFERENCE,
@@ -148,6 +146,12 @@ export {
   selectedShapes,
   selectionBounds,
 } from './selection';
+export {
+  bindingKey,
+  bindingLabel,
+  type ReferenceRow,
+  shortcutReference,
+} from './shortcut-reference';
 export {
   createEditor,
   type Editor,
