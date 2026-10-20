@@ -1,4 +1,5 @@
-import type { Binding, Command, ShortcutRow } from './keymap';
+import type { Command } from './commands';
+import type { Binding, ShortcutRow } from './keymap';
 
 /**
  * The presenting keys, declared in the same shape as the editing keymap and
