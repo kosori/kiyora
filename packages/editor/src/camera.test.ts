@@ -1,6 +1,8 @@
 import {
   clampZoom,
+  FOCUS_ZOOM,
   fitCamera,
+  focusCamera,
   gridSpacing,
   gridStep,
   MAX_ZOOM,
@@ -165,6 +167,36 @@ describe('fitting the view to the contents', () => {
 
   it('rests on nothing when there is nothing to fit', () => {
     expect(fitCamera(null, viewport, 0)).toEqual({ x: 0, y: 0, zoom: 1 });
+  });
+});
+
+describe('framing a find match', () => {
+  it('centres a small match and never magnifies it past twice life size', () => {
+    const content = { h: 60, w: 100, x: 100, y: 100 };
+    const camera = focusCamera(content, viewport);
+
+    expect(camera.zoom).toBe(FOCUS_ZOOM);
+    expect(toScreen(camera, { x: 150, y: 130 })).toEqual({ x: 400, y: 300 });
+  });
+
+  it('zooms out until a large match is wholly visible, padding included', () => {
+    const content = { h: 3000, w: 4000, x: -500, y: -300 };
+    const camera = focusCamera(content, viewport);
+    const topLeft = toScreen(camera, content);
+    const bottomRight = toScreen(camera, {
+      x: content.x + content.w,
+      y: content.y + content.h,
+    });
+
+    expect(camera.zoom).toBeLessThan(1);
+    expect(topLeft.x).toBeGreaterThanOrEqual(31);
+    expect(topLeft.y).toBeGreaterThanOrEqual(31);
+    expect(bottomRight.x).toBeLessThanOrEqual(viewport.w - 31);
+    expect(bottomRight.y).toBeLessThanOrEqual(viewport.h - 31);
+  });
+
+  it('rests on nothing when there is no match to frame', () => {
+    expect(focusCamera(null, viewport)).toEqual({ x: 0, y: 0, zoom: 1 });
   });
 });
 

@@ -41,13 +41,15 @@ const isTyping = (target: EventTarget | null): boolean =>
  */
 export const useShortcuts = (
   onShowShortcuts: () => void,
-  camera: CameraIntent
+  camera: CameraIntent,
+  onOpenFind: () => void
 ): void => {
   const editor = useEditor();
 
   useEffect(() => {
     const host: CommandHost = {
       camera: camera.run,
+      openFind: onOpenFind,
       showShortcuts: onShowShortcuts,
     };
 
@@ -106,5 +108,5 @@ export const useShortcuts = (
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [camera, editor, onShowShortcuts]);
+  }, [camera, editor, onOpenFind, onShowShortcuts]);
 };
