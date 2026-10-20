@@ -32,7 +32,9 @@ export const restyledBoard = (
   selection: Selection,
   change: Restyle
 ): RestyleResult | null => {
-  const shapes = selectedShapes(board, selection);
+  const shapes = selectedShapes(board, selection).filter(
+    (shape) => !shape.locked
+  );
   if (shapes.length === 0) {
     return null;
   }
