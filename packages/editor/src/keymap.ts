@@ -53,6 +53,12 @@ export type Binding = {
   /** When the binding applies. Omitted means editing, so the edit keymap stays as it was. */
   mode?: KeyMode;
   modifiers?: Modifiers;
+  /**
+   * Whether the browser would act on this chord as well — scrolling on space,
+   * opening a dialog on a command chord, leaving fullscreen on escape — so the
+   * handler has to stop it. A chord with no default action leaves it off.
+   */
+  preventDefault?: boolean;
 };
 
 /**
@@ -145,6 +151,10 @@ export const matchBinding = (binding: Binding, chord: Chord): boolean => {
   );
 };
 
+/** The binding `chord` answers, or `null` when nothing is bound, so the handler can read both its command and its rules. */
+export const matchKey = (chord: Chord): Binding | null =>
+  KEYMAP.find((binding) => matchBinding(binding, chord)) ?? null;
+
 /** The command `chord` runs, case-insensitively, or `null` when nothing is bound. */
 export const resolveKey = (chord: Chord): Command | null =>
-  KEYMAP.find((binding) => matchBinding(binding, chord))?.command ?? null;
+  matchKey(chord)?.command ?? null;

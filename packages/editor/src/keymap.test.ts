@@ -5,6 +5,7 @@ import {
   CAMERA_ACTIONS,
   type Chord,
   type Command,
+  DISPATCHED_KINDS,
   KEY_MODES,
   KEYMAP,
   matchBinding,
@@ -199,6 +200,24 @@ describe('the keymap', () => {
     expect(rows.find((row) => row.label === 'Cancel a gesture')?.keys).toEqual([
       'Esc',
     ]);
+  });
+});
+
+describe('the one dispatch', () => {
+  it('has a dispatch for every command the keymap binds, so no chord can land with nothing to run', () => {
+    const dispatched = new Set<Command['kind']>(DISPATCHED_KINDS);
+
+    for (const binding of KEYMAP) {
+      expect(dispatched.has(binding.command.kind)).toBe(true);
+    }
+  });
+
+  it('binds every command the dispatch runs, so no execution path can hide from the keyboard', () => {
+    const bound = new Set(KEYMAP.map((binding) => binding.command.kind));
+
+    for (const kind of DISPATCHED_KINDS) {
+      expect(bound.has(kind)).toBe(true);
+    }
   });
 });
 

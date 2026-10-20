@@ -12,21 +12,25 @@ export const CLIPBOARD_BINDINGS: readonly Binding[] = [
     command: { kind: 'duplicate' },
     key: 'd',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'copy' },
     key: 'c',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'cut' },
     key: 'x',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'paste' },
     key: 'v',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
 ];
 
