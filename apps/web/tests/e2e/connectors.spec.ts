@@ -145,6 +145,36 @@ test('the inspector chooses the route and a head per end, independently', async 
   expect(end).toMatch(/^M .* L .* L .* Z$/);
 });
 
+test('the inspector fixes either end to an edge, and the paint leaves from it', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  await joinTwoShapes(page, box);
+
+  await page.mouse.click(box.x + 400, box.y + 140);
+
+  const controls = page.getByTestId('connector-controls');
+  await controls.getByTestId('edge-start-top').click();
+  await controls.getByTestId('edge-end-left').click();
+
+  await expect(connectorLine(page)).toHaveAttribute('d', 'M 190 80 L 500 130');
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+
+  await expect(connectorLine(page)).toHaveAttribute('d', 'M 192 80 L 500 130');
+
+  await drag(
+    page,
+    { x: box.x + 302, y: box.y + 150 },
+    { x: box.x + 360, y: box.y + 150 }
+  );
+
+  await expect(connectorLine(page)).toHaveAttribute('d', 'M 221 80 L 500 130');
+});
+
 test('a connector carries a label, typed on the canvas', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);
