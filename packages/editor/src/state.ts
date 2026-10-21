@@ -251,6 +251,23 @@ export type Editor = {
   /** Ends the open run of nudges, so the next nudge is a fresh history entry. */
   endNudgeRun: () => void;
   /**
+   * Puts the selection in front of its siblings in paint order. A frame's
+   * member moves inside its frame, and a group moves with its members. One
+   * board change, one history entry; nothing is written when it is already
+   * there.
+   */
+  bringToFront: () => void;
+  /** Puts the selection behind its siblings in paint order. One history entry. */
+  sendToBack: () => void;
+  /**
+   * Raises the selection one place in its sibling list, moving a multi-selection
+   * as one block. One board change, one history entry; nothing is written when
+   * it cannot step.
+   */
+  bringForward: () => void;
+  /** Lowers the selection one place in its sibling list. One history entry. */
+  sendBackward: () => void;
+  /**
    * Restyles every selected shape in one board write: a style patch, an
    * opacity, a text-style patch, or any combination. One call is one gesture,
    * so it is one history entry. A restyled style becomes the one the next shape

@@ -30,6 +30,13 @@ export const MIN_GRID_SPACING = 16;
 /** The margin fitting leaves between the contents and the edge, in pixels. */
 export const FIT_PADDING = 32;
 
+/**
+ * The most a find match is magnified. A match is brought into view at its own
+ * scale, so a label smaller than the viewport is not blown up past twice life
+ * size and a large match still shrinks until it is wholly visible.
+ */
+export const FOCUS_ZOOM = 2;
+
 /** Holds a zoom inside the limits, so a view can never break the board. */
 export const clampZoom = (zoom: number): number =>
   Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
@@ -151,6 +158,35 @@ export const fitCamera = (
 /** Comes back to one hundred percent, keeping whatever sat in the middle there. */
 export const resetCamera = (camera: Camera, viewport: Viewport): Camera =>
   zoomAt(camera, viewCentre(viewport), 1);
+
+/**
+ * Frames one find match: the whole box in the middle of the viewport, with the
+ * usual fit padding, and never magnified past `FOCUS_ZOOM`. A match larger than
+ * the viewport therefore shrinks until it is all visible, while a label smaller
+ * than it stays legible instead of filling the screen with one word.
+ */
+export const focusCamera = (
+  content: Bounds | null,
+  viewport: Viewport,
+  padding = FIT_PADDING
+): Camera => {
+  const fitted = fitCamera(content, viewport, padding);
+  if (content === null || viewport.w <= 0 || viewport.h <= 0) {
+    return fitted;
+  }
+  const zoom = Math.min(FOCUS_ZOOM, fitted.zoom);
+  const centre = viewCentre(viewport);
+  const middle = {
+    x: content.x + content.w / 2,
+    y: content.y + content.h / 2,
+  };
+
+  return {
+    x: centre.x - middle.x * zoom,
+    y: centre.y - middle.y * zoom,
+    zoom,
+  };
+};
 
 /** The base step, doubled or halved, until its screen spacing is a legible band. */
 export const gridStep = (zoom: number): number => {
