@@ -1,5 +1,6 @@
 'use client';
 
+import { runCommand } from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
@@ -11,7 +12,9 @@ type Props = {
 /** Locks or unlocks the selection as one gesture, so one undo puts the flag back. */
 export const LockControl = ({ locked }: Props) => {
   const editor = useEditor();
-  const toggle = useCallback(() => editor.setLocked(!locked), [editor, locked]);
+  const toggle = useCallback(() => {
+    runCommand({ kind: 'lock' }, { editor });
+  }, [editor]);
 
   return (
     <section>
