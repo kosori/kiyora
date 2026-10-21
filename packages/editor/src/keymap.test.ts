@@ -325,6 +325,19 @@ describe('the clipboard keys', () => {
   });
 });
 
+describe('the lock key', () => {
+  it('locks or unlocks the selection from the keyboard, so the menu has a command to run', () => {
+    expect(resolveKey({ key: 'l' })).toEqual({ kind: 'lock' });
+    expect(resolveKey({ command: true, key: 'l' })).toBeNull();
+  });
+
+  it('shows the lock key in the reference, read from the keymap', () => {
+    expect(
+      shortcutReference().find((row) => row.label === 'Lock or unlock')?.keys
+    ).toEqual(['L']);
+  });
+});
+
 describe('the find key', () => {
   it('opens find on the command key, and leaves the bare letter to the frame tool', () => {
     expect(resolveKey({ command: true, key: 'f' })).toEqual({ kind: 'find' });

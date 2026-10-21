@@ -9,6 +9,7 @@ import type {
 } from '@kiyora/model';
 import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
+import type { Clipboard } from './clipboard';
 import type { ConnectorEdit } from './connectors';
 import type { AlignmentLine, Guide } from './geometry/guides';
 import type { HandleKind } from './geometry/handles';
@@ -188,6 +189,11 @@ export type Editor = {
   deleteSelection: () => void;
   /** Copies the selection to the app's clipboard. Changes nothing on the board. */
   copy: () => void;
+  /**
+   * Whether the clipboard holds a fragment, so a surface can disable a paste
+   * rather than offer one that does nothing. Reads display state only.
+   */
+  canPaste: () => boolean;
   /** Copies the selection and deletes it as one gesture, so one undo restores both. */
   cut: () => void;
   /** Copies the selection clear of itself. One board change, one history entry. */
@@ -222,6 +228,14 @@ export type Editor = {
    * gesture however many shapes it carries, so one undo takes the paste back.
    */
   paste: () => void;
+  /**
+   * Takes a fragment copied in another tab as this tab's clipboard. The next
+   * paste re-ids it against this board, exactly as a copy made here would; the
+   * board is untouched until then.
+   */
+  receiveClipboard: (fragment: Clipboard) => void;
+  /** Subscribes to copies made here, so a tab can share them over the board channel. */
+  subscribeClipboard: (listener: (fragment: Clipboard) => void) => () => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */

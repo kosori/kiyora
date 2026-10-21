@@ -150,6 +150,9 @@ export const useCameraSurface = (): CameraSurface => {
   );
 
   const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (event.button === 2) {
+      return;
+    }
     const panning =
       event.button === 1 || space.current || editor.getView().tool === 'hand';
     if (!panning) {
