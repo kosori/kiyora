@@ -120,6 +120,10 @@ const groupBounds = (group: Shape, shapes: readonly Shape[]): Bounds | null => {
       seen.add(shape.id);
       if (shape.kind === 'group') {
         next.add(shape.id);
+      } else if (shape.kind === 'connector') {
+        // A member connector's route may resolve against this very group, so
+        // measure its authored footprint rather than deriving through the box.
+        boxes.push(boundsOf(shape));
       } else {
         boxes.push(shapeBounds(shape, shapes));
       }
