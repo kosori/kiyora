@@ -1,18 +1,21 @@
 'use client';
 
 import {
-  type ContextMenuItem,
+  type CommandHost,
   commandId,
   contextMenu,
+  type ContextMenuItem as MenuItem,
   runCommand,
 } from '@kiyora/editor';
 import { useBoard, useEditor, useSelection } from '@kiyora/editor/react';
 import { type KeyboardEvent, useCallback, useEffect, useRef } from 'react';
-import { ContextMenuEntry } from './context-menu-item';
+import { ContextMenuItem } from './context-menu-item';
 
 type Props = {
   /** Where the pointer opened it, in the canvas's own pixels. */
   at: { x: number; y: number };
+  /** The app's side of the dispatch, for the commands the engine cannot finish alone. */
+  host: CommandHost;
   onClose: () => void;
 };
 
@@ -35,7 +38,7 @@ const enabledItems = (root: HTMLElement | null): HTMLElement[] =>
  * the menu closes. The arrows, Home and End walk the enabled entries, Enter and
  * Space run the focused one, and Escape or a pointer outside dismisses it.
  */
-export const ContextMenu = ({ at, onClose }: Props) => {
+export const ContextMenu = ({ at, host, onClose }: Props) => {
   const editor = useEditor();
   const board = useBoard();
   const selection = useSelection();
@@ -70,14 +73,14 @@ export const ContextMenu = ({ at, onClose }: Props) => {
   }, [onClose]);
 
   const choose = useCallback(
-    (item: ContextMenuItem) => {
+    (item: MenuItem) => {
       if (item.disabled) {
         return;
       }
       onClose();
-      runCommand(item.command, { editor });
+      runCommand(item.command, { editor, host });
     },
-    [editor, onClose]
+    [editor, host, onClose]
   );
 
   const onKeyDown = useCallback(
@@ -134,7 +137,7 @@ export const ContextMenu = ({ at, onClose }: Props) => {
             {section.label}
           </p>
           {section.items.map((item) => (
-            <ContextMenuEntry
+            <ContextMenuItem
               item={item}
               key={commandId(item.command)}
               onChoose={choose}

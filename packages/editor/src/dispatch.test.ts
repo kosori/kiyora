@@ -55,6 +55,7 @@ const recordingHost = (): { calls: string[]; host: CommandHost } => {
     calls,
     host: {
       camera: (action, phase) => calls.push(`${action}:${phase}`),
+      copyPng: () => calls.push('copy-png'),
       openFind: () => calls.push('find'),
       showPalette: () => calls.push('palette'),
       showShortcuts: () => calls.push('shortcuts'),
@@ -104,6 +105,16 @@ describe('the one dispatch', () => {
     runCommand({ kind: 'palette' }, { editor, host });
 
     expect(calls).toEqual(['zoom-in:down', 'shortcuts', 'palette']);
+  });
+
+  it('copies a selection as a PNG through the app host, because the engine has no clipboard', () => {
+    const editor = createEditor(board([square]));
+    editor.setSelection(['square']);
+    const { calls, host } = recordingHost();
+
+    runCommand({ kind: 'copy-png' }, { editor, host });
+
+    expect(calls).toEqual(['copy-png']);
   });
 
   it('opens find through the dispatch, because the app owns the search box', () => {

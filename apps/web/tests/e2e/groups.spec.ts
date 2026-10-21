@@ -212,8 +212,13 @@ test('a connector bound to a member keeps painting and re-routes after grouping'
   await page.keyboard.press('Control+g');
   await page.keyboard.press('Shift+ArrowRight');
 
-  await expect(connector.first()).toHaveAttribute('d', 'M 308 130 L 508 150');
-  await expect(connector).toHaveCount(2);
+  await expect(connector.nth(0)).toHaveAttribute('d', 'M 308 130 L 508 150');
+  // A connector paints its line and the head at its arrow end, so both paths
+  // are read: the head moved with the line instead of being counted.
+  await expect(connector.nth(1)).toHaveAttribute(
+    'd',
+    'M 508 150 L 496 156 L 496 144 Z'
+  );
 });
 
 test('the shortcut reference names both group commands', async ({ page }) => {

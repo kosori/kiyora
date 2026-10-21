@@ -12,6 +12,8 @@ import type { Editor } from './state';
 export type CommandHost = {
   /** Runs a camera action. `pan` opens on keydown and closes on keyup. */
   camera: (action: CameraAction, phase: 'down' | 'up') => void;
+  /** Copies the selection to the system clipboard as a PNG, reporting a refusal. */
+  copyPng: () => void;
   /** Opens the canvas's find box, focused, over the current board. */
   openFind: () => void;
   /** Opens the keyboard shortcut reference. */
@@ -63,6 +65,7 @@ const HANDLERS: Handlers = {
   camera: (target, command) => hostOf(target).camera(command.action, 'down'),
   'cancel-gesture': ({ editor }) => editor.cancelGesture(),
   copy: ({ editor }) => editor.copy(),
+  'copy-png': (target) => hostOf(target).copyPng(),
   cut: ({ editor }) => editor.cut(),
   delete: ({ editor }) => editor.deleteSelection(),
   distribute: ({ editor }, command) => editor.distribute(command.axis),

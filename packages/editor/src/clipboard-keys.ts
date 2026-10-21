@@ -17,7 +17,13 @@ export const CLIPBOARD_BINDINGS: readonly Binding[] = [
   {
     command: { kind: 'copy' },
     key: 'c',
-    modifiers: { command: 'required' },
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'copy-png' },
+    key: 'c',
+    modifiers: { command: 'required', shift: 'required' },
     preventDefault: true,
   },
   {
@@ -45,6 +51,7 @@ const row = (command: Command, label: string): ShortcutRow => ({
 export const CLIPBOARD_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'duplicate' }, 'Duplicate'),
   row({ kind: 'copy' }, 'Copy'),
+  row({ kind: 'copy-png' }, 'Copy as PNG'),
   row({ kind: 'cut' }, 'Cut'),
   row({ kind: 'paste' }, 'Paste'),
 ];

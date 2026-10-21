@@ -84,6 +84,7 @@ describe('the context menu', () => {
     expect(idsOf(editor, true)).toEqual([
       'cut',
       'copy',
+      'copy-png',
       'duplicate',
       'paste',
       'group',
@@ -134,6 +135,7 @@ describe('the context menu', () => {
     }
     expect(itemOf(editor, 'cut').disabled).toBe(false);
     expect(itemOf(editor, 'copy').disabled).toBe(false);
+    expect(itemOf(editor, 'copy-png').disabled).toBe(false);
     expect(itemOf(editor, 'duplicate').disabled).toBe(false);
     expect(itemOf(editor, 'delete').disabled).toBe(false);
     expect(itemOf(editor, 'lock').disabled).toBe(false);

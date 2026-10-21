@@ -1,16 +1,16 @@
 'use client';
 
-import { type ContextMenuItem, commandId } from '@kiyora/editor';
+import { commandId, type ContextMenuItem as MenuItem } from '@kiyora/editor';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
 
 type Props = {
-  item: ContextMenuItem;
-  onChoose: (item: ContextMenuItem) => void;
+  item: MenuItem;
+  onChoose: (item: MenuItem) => void;
 };
 
 /** One command in the context menu: its copy, and whether the selection allows it. */
-export const ContextMenuEntry = ({ item, onChoose }: Props) => {
+export const ContextMenuItem = ({ item, onChoose }: Props) => {
   const choose = useCallback(() => onChoose(item), [item, onChoose]);
 
   return (

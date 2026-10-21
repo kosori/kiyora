@@ -43,13 +43,15 @@ export const useShortcuts = (
   onShowShortcuts: () => void,
   camera: CameraIntent,
   onOpenFind: () => void,
-  onShowPalette: () => void
+  onShowPalette: () => void,
+  copyPng: () => void
 ): void => {
   const editor = useEditor();
 
   useEffect(() => {
     const host: CommandHost = {
       camera: camera.run,
+      copyPng,
       openFind: onOpenFind,
       showPalette: onShowPalette,
       showShortcuts: onShowShortcuts,
@@ -110,5 +112,5 @@ export const useShortcuts = (
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [camera, editor, onOpenFind, onShowPalette, onShowShortcuts]);
+  }, [camera, copyPng, editor, onOpenFind, onShowPalette, onShowShortcuts]);
 };

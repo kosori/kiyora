@@ -111,6 +111,8 @@ const openCode = async (page: Page) => {
 
 const source = (page: Page) => page.getByTestId('code-source');
 
+const panel = (page: Page) => page.getByTestId('code');
+
 const stale = (page: Page) => page.getByTestId('code-stale');
 
 /** Types a Source and applies it to the selected frame. */
@@ -156,8 +158,8 @@ test('the cut journey passes with every non-localhost request aborted', async ({
     'rgba(25, 113, 194, 0.2)'
   );
   await expect(clean(page, 'frame-1')).toHaveAttribute('d', FRAME_BOX);
-  await expect(page.getByTestId('code-pending')).toHaveCount(0);
-  await expect(stale(page)).toHaveCount(0);
+  await expect(panel(page)).not.toContainText('Pending');
+  await expect(panel(page)).not.toContainText('Stale');
 
   // Edit the generated figure by hand: the geometry moves and the frame says
   // it is stale, while the text still matches, so nothing is pending.
@@ -165,7 +167,7 @@ test('the cut journey passes with every non-localhost request aborted', async ({
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute('d', ONE_NODE_MOVED);
   await expect(stale(page)).toContainText('Stale');
-  await expect(page.getByTestId('code-pending')).toHaveCount(0);
+  await expect(panel(page)).not.toContainText('Pending');
 
   // Applying over a hand edit asks first; confirming replaces the generated
   // figure with the new Source's layout.
@@ -174,7 +176,7 @@ test('the cut journey passes with every non-localhost request aborted', async ({
   await confirmApply(page);
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute('d', ONE_NODE);
-  await expect(stale(page)).toHaveCount(0);
+  await expect(panel(page)).not.toContainText('Stale');
   await expect(source(page)).toHaveValue('Next');
 
   // One undo takes the apply back and with it the stale flag, so the hand edit
@@ -199,7 +201,7 @@ test('the cut journey passes with every non-localhost request aborted', async ({
   await expect(clean(page, 'rectangle-2')).toHaveAttribute('d', TWO_NODES);
   await expect(clean(page, 'frame-1')).toHaveAttribute('d', FRAME_BOX);
   await expect(clean(page, 'starter-rectangle')).toHaveAttribute('d', STARTER);
-  await expect(stale(page)).toHaveCount(0);
+  await expect(panel(page)).not.toContainText('Stale');
 
   // Export the result as PNG at 2× and cross-check the pixels against the SVG
   // the same board exports, so the number comes from the file, not the button.

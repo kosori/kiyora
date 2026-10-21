@@ -297,6 +297,9 @@ describe('the clipboard keys', () => {
       kind: 'duplicate',
     });
     expect(resolveKey({ command: true, key: 'c' })).toEqual({ kind: 'copy' });
+    expect(resolveKey({ command: true, key: 'c', shift: true })).toEqual({
+      kind: 'copy-png',
+    });
     expect(resolveKey({ command: true, key: 'x' })).toEqual({ kind: 'cut' });
     expect(resolveKey({ command: true, key: 'v' })).toEqual({ kind: 'paste' });
   });
@@ -314,6 +317,9 @@ describe('the clipboard keys', () => {
 
     expect(rows.find((row) => row.label === 'Copy')?.keys).toEqual([
       'Ctrl + C',
+    ]);
+    expect(rows.find((row) => row.label === 'Copy as PNG')?.keys).toEqual([
+      'Ctrl + Shift + C',
     ]);
     expect(rows.find((row) => row.label === 'Cut')?.keys).toEqual(['Ctrl + X']);
     expect(rows.find((row) => row.label === 'Paste')?.keys).toEqual([

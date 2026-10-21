@@ -60,6 +60,20 @@ const rightClickStarter = async (page: Page): Promise<void> => {
   await rightClick(page, { x: 150, y: 150 });
 };
 
+/** The selection's own pixel box as the system clipboard holds it, or `null` before the copy lands. */
+const clipboardPngSize = (page: Page) =>
+  page.evaluate(async () => {
+    const items = await navigator.clipboard.read();
+    const png = items.find((item) => item.types.includes('image/png'));
+
+    if (png === undefined) {
+      return null;
+    }
+    const bitmap = await createImageBitmap(await png.getType('image/png'));
+
+    return { height: bitmap.height, width: bitmap.width };
+  });
+
 test('right-click on the selection opens the menu at the pointer, and empty canvas opens nothing', async ({
   page,
 }) => {
@@ -78,10 +92,12 @@ test('right-click on the selection opens the menu at the pointer, and empty canv
   expect(Math.abs(placed.y - (box.y + 120))).toBeLessThan(16);
 
   await page.keyboard.press('Escape');
-  await expect(menu(page)).toHaveCount(0);
+  // A closed menu has no state to read beyond its absence from the
+  // accessibility tree, so hidden is the honest assertion here.
+  await expect(menu(page)).toBeHidden();
 
   await rightClick(page, { x: 600, y: 430 });
-  await expect(menu(page)).toHaveCount(0);
+  await expect(menu(page)).toBeHidden();
 });
 
 test('an item runs the command the keyboard runs, and one undo takes it back', async ({
@@ -93,12 +109,12 @@ test('an item runs the command the keyboard runs, and one undo takes it back', a
 
   await entry(page, 'Delete').click();
 
-  await expect(menu(page)).toHaveCount(0);
-  await expect(shapeWith(page, STARTER)).toHaveCount(0);
+  await expect(menu(page)).toBeHidden();
+  await expect(shapeWith(page, STARTER)).toBeHidden();
 
   await page.getByTestId('undo').click();
 
-  await expect(shapeWith(page, STARTER)).toHaveCount(1);
+  await expect(shapeWith(page, STARTER)).toBeVisible();
 });
 
 test('items without a target are disabled rather than missing', async ({
@@ -152,7 +168,7 @@ test('Escape and an outside click dismiss it, and focus returns', async ({
 
   await page.keyboard.press('Escape');
 
-  await expect(menu(page)).toHaveCount(0);
+  await expect(menu(page)).toBeHidden();
   expect(
     await page.evaluate(() => document.activeElement === document.body)
   ).toBe(true);
@@ -171,7 +187,7 @@ test('Escape and an outside click dismiss it, and focus returns', async ({
   const box = await canvasBox(page);
   await page.mouse.click(box.x + 600, box.y + 430);
 
-  await expect(menu(page)).toHaveCount(0);
+  await expect(menu(page)).toBeHidden();
 });
 
 test('the keyboard moves through the menu and Enter runs the focused item', async ({
@@ -187,12 +203,12 @@ test('the keyboard moves through the menu and Enter runs the focused item', asyn
   await expect(page.getByTestId('context-menu-copy')).toBeFocused();
   await page.keyboard.press('Enter');
 
-  await expect(menu(page)).toHaveCount(0);
+  await expect(menu(page)).toBeHidden();
 
   await rightClickStarter(page);
   await entry(page, 'Paste').click();
 
-  await expect(shapeWith(page, PASTED)).toHaveCount(1);
+  await expect(shapeWith(page, PASTED)).toBeVisible();
 });
 
 test('a right-click starts no marquee, no move and no placement', async ({
@@ -209,7 +225,7 @@ test('a right-click starts no marquee, no move and no placement', async ({
   await page.mouse.up({ button: 'right' });
 
   await expect(shapeWith(page, STARTER)).toHaveAttribute('d', before ?? '');
-  await expect(page.getByTestId('marquee')).toHaveCount(0);
+  await expect(page.getByTestId('marquee')).toBeHidden();
 
   await page.keyboard.press('Escape');
   await page.keyboard.press('r');
@@ -220,8 +236,54 @@ test('a right-click starts no marquee, no move and no placement', async ({
 
   await expect(
     shapeWith(page, 'M 400 300 L 600 300 L 600 430 L 400 430 Z')
-  ).toHaveCount(0);
-  await expect(page.getByTestId('marquee')).toHaveCount(0);
+  ).toBeHidden();
+  await expect(page.getByTestId('marquee')).toBeHidden();
+});
+
+test('copy as PNG runs from the menu and puts the selection on the clipboard', async ({
+  context,
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'the clipboard is proven in Chromium');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await open(page);
+  await selectStarter(page);
+  await rightClickStarter(page);
+
+  await entry(page, 'Copy as PNG').click();
+
+  await expect
+    .poll(() => clipboardPngSize(page))
+    .toEqual({
+      height: 140,
+      width: 220,
+    });
+});
+
+test('a refused PNG copy names why in the chrome rather than dropping the rejection', async ({
+  context,
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'the clipboard is proven in Chromium');
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        write: () => Promise.reject(new Error('denied')),
+      },
+    });
+  });
+  await open(page);
+  await selectStarter(page);
+  await rightClickStarter(page);
+
+  await entry(page, 'Copy as PNG').click();
+
+  await expect(page.getByTestId('file-error')).toContainText(
+    'the browser refused the clipboard'
+  );
 });
 
 test('the menu is display state, so opening it leaves no history entry behind', async ({
@@ -236,5 +298,5 @@ test('the menu is display state, so opening it leaves no history entry behind', 
   await page.keyboard.press('Escape');
 
   await expect(page.getByTestId('undo')).toBeDisabled();
-  await expect(shapeWith(page, STARTER)).toHaveCount(1);
+  await expect(shapeWith(page, STARTER)).toBeVisible();
 });
