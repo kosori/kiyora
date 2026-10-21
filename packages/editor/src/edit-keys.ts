@@ -55,6 +55,12 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     preventDefault: true,
   },
   { command: { kind: 'show-shortcuts' }, key: '?' },
+  {
+    command: { kind: 'palette' },
+    key: 'k',
+    modifiers: { command: 'required' },
+    preventDefault: true,
+  },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
   { command: { kind: 'delete' }, key: 'delete', preventDefault: true },
   { command: { kind: 'delete' }, key: 'backspace', preventDefault: true },
@@ -223,5 +229,6 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
 export const HISTORY_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'undo' }, 'History', 'Undo'),
   row({ kind: 'redo' }, 'History', 'Redo'),
+  row({ kind: 'palette' }, 'Help', 'Command palette'),
   row({ kind: 'show-shortcuts' }, 'Help', 'Keyboard shortcuts'),
 ];

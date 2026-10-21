@@ -15,6 +15,8 @@ export type CommandHost = {
   openFind: () => void;
   /** Opens the keyboard shortcut reference. */
   showShortcuts: () => void;
+  /** Opens the command palette, the reference's other view. */
+  showPalette: () => void;
 };
 
 /** What running a command takes: the engine, and, when it needs them, the effects the app owns. */
@@ -70,6 +72,7 @@ const HANDLERS: Handlers = {
     const step = command.coarse ? GRID : NUDGE_STEP;
     editor.nudge(command.dx * step, command.dy * step);
   },
+  palette: (target) => hostOf(target).showPalette(),
   paste: ({ editor }) => editor.paste(),
   present: ({ editor }) => editor.startPresent(),
   'present-exit': ({ editor }) => editor.stopPresent(),
