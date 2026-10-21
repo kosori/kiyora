@@ -12,6 +12,11 @@ import type { Selection } from './selection';
 
 /** The edits the store exposes beside its gestures: the clipboard, the delete and grouping. */
 export type EditCommands = {
+  /**
+   * Whether the clipboard holds a fragment, so a menu can disable a paste
+   * instead of dropping it. Changes nothing on the board.
+   */
+  canPaste: () => boolean;
   /** Copies the selection to the app's clipboard. Changes nothing on the board. */
   copy: () => void;
   /** Copies the selection and deletes it as one gesture, so one undo restores both. */
@@ -91,6 +96,7 @@ export const createEditCommands = ({
   };
 
   return {
+    canPaste: () => clipboard !== null && clipboard.shapes.length > 0,
     copy: () => keep(copyFragment(board(), selection())),
     cut,
     deleteSelection: () => {

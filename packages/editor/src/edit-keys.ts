@@ -74,6 +74,7 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     key: 'g',
     modifiers: { command: 'required', shift: 'required' },
   },
+  { command: { kind: 'lock' }, key: 'l' },
   {
     command: { kind: 'bring-forward' },
     key: ']',
@@ -203,6 +204,7 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'cancel-gesture' }, 'Selection', 'Cancel a gesture'),
   row({ kind: 'group' }, 'Selection', 'Group'),
   row({ kind: 'ungroup' }, 'Selection', 'Ungroup'),
+  row({ kind: 'lock' }, 'Selection', 'Lock or unlock'),
   row({ kind: 'bring-to-front' }, 'Arrange', 'Bring to front'),
   row({ kind: 'bring-forward' }, 'Arrange', 'Bring forward'),
   row({ kind: 'send-backward' }, 'Arrange', 'Send backward'),

@@ -74,6 +74,12 @@ export {
   setMembership,
 } from './containment';
 export {
+  type ContextMenuItem,
+  type ContextMenuSection,
+  type ContextMenuState,
+  contextMenu,
+} from './context-menu';
+export {
   type CommandHost,
   type CommandTarget,
   DISPATCHED_KINDS,

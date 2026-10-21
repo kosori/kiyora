@@ -1,5 +1,6 @@
 import type { CameraAction, Command } from './commands';
 import { GRID, NUDGE_STEP } from './geometry/snap';
+import { selectedLocked } from './selection';
 import type { Editor } from './state';
 
 /**
@@ -68,6 +69,8 @@ const HANDLERS: Handlers = {
   duplicate: ({ editor }) => editor.duplicate(),
   find: (target) => hostOf(target).openFind(),
   group: ({ editor }) => editor.groupSelection(),
+  lock: ({ editor }) =>
+    editor.setLocked(!selectedLocked(editor.getBoard(), editor.getSelection())),
   nudge: ({ editor }, command) => {
     const step = command.coarse ? GRID : NUDGE_STEP;
     editor.nudge(command.dx * step, command.dy * step);

@@ -42,6 +42,9 @@ const boardPoint = (
  * click on a shape opens its label for editing, on the canvas. Alt is forwarded
  * so a locked shape can be reached, which is the only way to unlock it.
  *
+ * Only the primary button begins a gesture, so a right-click hands the pointer
+ * to the context menu instead of placing, moving or marqueing under it.
+ *
  * `panning` is true while space is held or the hand tool is up; the camera is
  * driving then, and the selection must not fight it for the same drag.
  */
@@ -56,8 +59,11 @@ export const useBoardPointer = (
 
   const onPointerDown = useCallback(
     (event: ElementPointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
       placement.onPointerDown(event);
-      if (panning || tool !== 'select' || event.button !== 0) {
+      if (panning || tool !== 'select') {
         return;
       }
       if (!(event.target instanceof SVGElement)) {
