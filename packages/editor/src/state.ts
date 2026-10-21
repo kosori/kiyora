@@ -10,6 +10,7 @@ import type {
 import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
 import type { ConnectorEdit } from './connectors';
+import type { AlignmentLine, Guide } from './geometry/guides';
 import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
 import type { GestureModifiers } from './modifiers';
@@ -42,18 +43,29 @@ export type View = {
  */
 export type Gesture =
   | { kind: 'idle' }
-  | { kind: 'move' }
+  | { guides: readonly Guide[]; kind: 'move' }
   | { kind: 'marquee'; box: Bounds }
-  | { kind: 'resize'; handle: HandleKind; refusal?: string }
+  | {
+      guides: readonly Guide[];
+      handle: HandleKind;
+      kind: 'resize';
+      refusal?: string;
+    }
   | { kind: 'rotate' };
 
-/** The open move: the board it began on, where the pointer went down, and the positions it moved from. */
+/**
+ * The open move: the board it began on, where the pointer went down, the box it
+ * started on, and the positions it moved from. The alignment lines are read
+ * once, from the board it began on, so a pointer move never rescans the board.
+ */
 export type MoveDrag = {
   applied: Point;
   before: Board;
+  box: Bounds;
+  guides: readonly Guide[];
   kind: 'move';
+  lines: readonly AlignmentLine[];
   originals: ReadonlyMap<string, Point>;
-  origin: Point;
   start: Point;
 };
 
@@ -70,8 +82,10 @@ export type MarqueeDrag = {
 export type ResizeDrag = {
   before: Board;
   bounds: Bounds;
+  guides: readonly Guide[];
   handle: HandleKind;
   kind: 'resize';
+  lines: readonly AlignmentLine[];
   originals: ReadonlyMap<string, Shape>;
   /** Why the current pointer position is refused, or absent when it scales exactly. */
   refusal?: string;
@@ -242,9 +256,9 @@ export type Editor = {
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
    * a resize and a rotate each read the one `modifiers` value. Alt bypasses the
-   * grid snap wherever a gesture snaps — a move and a resize — and, the named
-   * collision, grows a resize from its centre; shift keeps a resize's ratio and
-   * snaps a rotation to fifteen. See `modifiers.ts`.
+   * grid snap and the alignment guides wherever a gesture snaps — a move and a
+   * resize — and, the named collision, grows a resize from its centre; shift
+   * keeps a resize's ratio and snaps a rotation to fifteen. See `modifiers.ts`.
    */
   pointerMove: (point: Point, modifiers: GestureModifiers) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */

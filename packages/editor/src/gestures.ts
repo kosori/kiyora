@@ -1,5 +1,6 @@
 import type { Point } from './camera';
 import { outermostGroup } from './containment';
+import { type Guide, sameGuides, snapBox } from './geometry/guides';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { gestureOf, handleDrag, moveDrag } from './gesture';
@@ -190,15 +191,25 @@ export const createGestures = (core: StoreCore): Gestures => {
       }
       let dx = point.x - drag.start.x;
       let dy = point.y - drag.start.y;
+      let guides: readonly Guide[] = [];
       if (!modifiers.bypassSnap) {
-        dx = snapTranslation(dx, drag.origin.x);
-        dy = snapTranslation(dy, drag.origin.y);
+        const snap = snapBox(drag.box, { x: dx, y: dy }, drag.lines);
+        guides = [snap.x, snap.y].filter(
+          (guide): guide is Guide => guide !== null
+        );
+        dx = snap.x === null ? snapTranslation(dx, drag.box.x) : snap.dx;
+        dy = snap.y === null ? snapTranslation(dy, drag.box.y) : snap.dy;
       }
-      if (dx === drag.applied.x && dy === drag.applied.y) {
+      const moved = dx !== drag.applied.x || dy !== drag.applied.y;
+      if (!moved && sameGuides(drag.guides, guides)) {
         return;
       }
       const { originals } = drag;
-      drag = { ...drag, applied: { x: dx, y: dy } };
+      drag = { ...drag, applied: { x: dx, y: dy }, guides };
+      publishGesture();
+      if (!moved) {
+        return;
+      }
       const offsets = new Map<string, Point>();
       for (const [id, position] of originals) {
         offsets.set(id, { x: position.x + dx, y: position.y + dy });

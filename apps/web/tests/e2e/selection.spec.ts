@@ -288,9 +288,9 @@ test('the shortcut reference names the pointer modifiers, including alt’s resi
 
   const rows = dialog.locator('li');
 
-  await expect(rows.filter({ hasText: 'Bypass the grid snap' })).toContainText(
-    'ALT'
-  );
+  await expect(
+    rows.filter({ hasText: 'Bypass the grid and the alignment guides' })
+  ).toContainText('ALT');
   await expect(rows.filter({ hasText: 'Grow from the centre' })).toContainText(
     'ALT'
   );
