@@ -16,43 +16,30 @@ export type Migration = {
 };
 
 /**
- * Version 0 is the board saved before the record carried a version marker. It is
- * the same document without the marker, so the first step only stamps it. The
- * fixture beside this file (`fixtures/v0.json`) is what that old payload looked
- * like, and `fixtures/v1.json` is what this step owes the next reader.
+ * One step that only owns the version it writes. The record's shape is
+ * unchanged, so the marker is the whole migration: version 0 is the board
+ * saved before the marker existed, and version 2 adds only an optional Source
+ * on a frame and the group kind, neither of which needs a value stamped onto an
+ * old board. The fixtures beside this file are the payloads on either side.
  */
-const stampVersion: Migration = {
-  from: 0,
+const stampVersion = (from: number): Migration => ({
+  from,
   migrate: (payload) => ({
     ...(payload as Record<string, unknown>),
-    schemaVersion: 1,
+    schemaVersion: from + 1,
   }),
-  to: 1,
-};
-
-/**
- * Version 2 adds two things the version 1 document could not carry: an optional
- * Source on a frame and the group kind. Neither needs a value stamped onto an
- * old board — a frame without a Source is a frame nobody generated from code,
- * and a group is a kind no version 1 board could name — so this step only owns
- * the version. Camera, deck, settings and every authored shape pass through
- * untouched.
- */
-const widenShapes: Migration = {
-  from: 1,
-  migrate: (payload) => ({
-    ...(payload as Record<string, unknown>),
-    schemaVersion: 2,
-  }),
-  to: 2,
-};
+  to: from + 1,
+});
 
 /**
  * Every migration, in order, keyed by the version they lift from. Each one has a
  * committed fixture pair, and a test fails if a migration has no fixture or the
  * chain has a gap. The list is empty only when the running version is the first.
  */
-export const MIGRATIONS: readonly Migration[] = [stampVersion, widenShapes];
+export const MIGRATIONS: readonly Migration[] = [
+  stampVersion(0),
+  stampVersion(1),
+];
 
 /** What happened when a payload met the migration chain. */
 export type MigrationResult =

@@ -177,7 +177,6 @@ export {
   type BoardMessage,
   createPresence,
   type Presence,
-  type PresenceChannel,
   type PresenceMessage,
 } from './persistence/presence';
 export {

@@ -2,14 +2,14 @@
 
 import {
   type CommandHost,
-  type ContextMenuItem,
   commandId,
   contextMenu,
+  type ContextMenuItem as MenuItem,
   runCommand,
 } from '@kiyora/editor';
 import { useBoard, useEditor, useSelection } from '@kiyora/editor/react';
 import { type KeyboardEvent, useCallback, useEffect, useRef } from 'react';
-import { ContextMenuEntry } from './context-menu-item';
+import { ContextMenuItem } from './context-menu-item';
 
 type Props = {
   /** Where the pointer opened it, in the canvas's own pixels. */
@@ -73,7 +73,7 @@ export const ContextMenu = ({ at, host, onClose }: Props) => {
   }, [onClose]);
 
   const choose = useCallback(
-    (item: ContextMenuItem) => {
+    (item: MenuItem) => {
       if (item.disabled) {
         return;
       }
@@ -137,7 +137,7 @@ export const ContextMenu = ({ at, host, onClose }: Props) => {
             {section.label}
           </p>
           {section.items.map((item) => (
-            <ContextMenuEntry
+            <ContextMenuItem
               item={item}
               key={commandId(item.command)}
               onChoose={choose}

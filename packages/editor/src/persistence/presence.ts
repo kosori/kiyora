@@ -24,9 +24,6 @@ export type BoardChannel = {
   close: () => void;
 };
 
-/** The board channel, under the name presence used before it carried a clipboard. */
-export type PresenceChannel = BoardChannel;
-
 /**
  * Whether this tab may write the board. Two tabs on one board is an ordinary
  * thing to do, so the later one yields rather than clobbering the earlier: the
