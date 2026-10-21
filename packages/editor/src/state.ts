@@ -7,6 +7,7 @@ import type {
   Style,
   TextStyle,
 } from '@kiyora/model';
+import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
 import type { ConnectorEdit } from './connectors';
 import type { AlignmentLine, Guide } from './geometry/guides';
@@ -202,6 +203,20 @@ export type Editor = {
    */
   ungroupSelection: () => void;
   /**
+   * Lines the selection up to one edge or centre of its own box. A Connector is
+   * not an item alignment arranges — its bound ends follow the shapes that move
+   * — and a Group travels as the members its derived box holds. A locked shape
+   * stays put. One call is one gesture; an alignment that would move nothing
+   * writes nothing, so a no-op never lands in undo.
+   */
+  align: (alignment: Alignment) => void;
+  /**
+   * Spaces three or more movable selected shapes evenly along `axis`, keeping
+   * the outermost two where they are. One call is one gesture, and a selection
+   * already spaced evenly writes nothing.
+   */
+  distribute: (axis: DistributeAxis) => void;
+  /**
    * Puts the clipboard on the board offset clear of what it copies, cascading
    * further on each repeat so a second paste is not hidden by the first. One
    * gesture however many shapes it carries, so one undo takes the paste back.
@@ -249,6 +264,23 @@ export type Editor = {
   nudge: (dx: number, dy: number) => void;
   /** Ends the open run of nudges, so the next nudge is a fresh history entry. */
   endNudgeRun: () => void;
+  /**
+   * Puts the selection in front of its siblings in paint order. A frame's
+   * member moves inside its frame, and a group moves with its members. One
+   * board change, one history entry; nothing is written when it is already
+   * there.
+   */
+  bringToFront: () => void;
+  /** Puts the selection behind its siblings in paint order. One history entry. */
+  sendToBack: () => void;
+  /**
+   * Raises the selection one place in its sibling list, moving a multi-selection
+   * as one block. One board change, one history entry; nothing is written when
+   * it cannot step.
+   */
+  bringForward: () => void;
+  /** Lowers the selection one place in its sibling list. One history entry. */
+  sendBackward: () => void;
   /**
    * Restyles every selected shape in one board write: a style patch, an
    * opacity, a text-style patch, or any combination. One call is one gesture,

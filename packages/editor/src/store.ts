@@ -1,4 +1,5 @@
 import type { Board } from '@kiyora/model';
+import { createArrangeCommands } from './arrange-commands';
 import { createBoardCommands } from './board-commands';
 import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
@@ -32,6 +33,11 @@ export const createEditor = (board: Board): Editor => {
     select: core.select,
     selection: core.selection,
   });
+  const arrange = createArrangeCommands({
+    board: core.board,
+    change: core.change,
+    selection: core.selection,
+  });
   const label = createLabelEdit({
     board: core.board,
     change: core.change,
@@ -44,14 +50,18 @@ export const createEditor = (board: Board): Editor => {
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    align: arrange.align,
     applySource: source.applySource,
     beginTextEdit: label.begin,
+    bringForward: () => edits.reorder('forward'),
+    bringToFront: () => edits.reorder('front'),
     cancelGesture: gestures.cancelGesture,
     cancelTextEdit: edits.cancelTextEdit,
     copy: commands.copy,
     cut: commands.cut,
     deleteSelection: commands.deleteSelection,
     deleteSlide: deck.deleteSlide,
+    distribute: arrange.distribute,
     duplicate: commands.duplicate,
     duplicateSlide: deck.duplicateSlide,
     endNudgeRun: core.transactions.endNudgeRun,
@@ -76,6 +86,8 @@ export const createEditor = (board: Board): Editor => {
     previousSlide: present.previous,
     redo: edits.redo,
     restyle: edits.restyle,
+    sendBackward: () => edits.reorder('backward'),
+    sendToBack: () => edits.reorder('back'),
     setBoard: edits.setBoard,
     setCamera: (camera) => {
       core.setView({ ...core.view(), camera });

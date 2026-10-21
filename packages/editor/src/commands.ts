@@ -1,3 +1,4 @@
+import type { Alignment, DistributeAxis } from './align';
 import type { Tool } from './tools';
 
 /**
@@ -18,6 +19,7 @@ export type CameraAction = (typeof CAMERA_ACTIONS)[number];
 export type Command =
   | { kind: 'tool'; tool: Tool }
   | { kind: 'show-shortcuts' }
+  | { kind: 'palette' }
   | { kind: 'camera'; action: CameraAction }
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
   | { kind: 'cancel-gesture' }
@@ -26,8 +28,15 @@ export type Command =
   | { kind: 'cut' }
   | { kind: 'paste' }
   | { kind: 'duplicate' }
+  | { kind: 'find' }
   | { kind: 'group' }
   | { kind: 'ungroup' }
+  | { kind: 'bring-to-front' }
+  | { kind: 'send-to-back' }
+  | { kind: 'bring-forward' }
+  | { kind: 'send-backward' }
+  | { kind: 'align'; alignment: Alignment }
+  | { kind: 'distribute'; axis: DistributeAxis }
   | { kind: 'undo' }
   | { kind: 'redo' }
   | { kind: 'present' }
@@ -47,6 +56,12 @@ export const commandId = (command: Command): string => {
   }
   if (command.kind === 'nudge') {
     return `nudge.${command.dx}.${command.dy}.${command.coarse ? 'coarse' : 'fine'}`;
+  }
+  if (command.kind === 'align') {
+    return `align.${command.alignment}`;
+  }
+  if (command.kind === 'distribute') {
+    return `distribute.${command.axis}`;
   }
   return command.kind;
 };

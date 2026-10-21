@@ -10,6 +10,7 @@ The board. One schema, one paint walker, and the pure projection to SVG.
 | `paint/` | Figure geometry, the palette and style resolution |
 | `projection/` | `Paint` to an SVG string |
 | `text/` | Inline markdown runs, wrapping, and the measurement protocol |
+| `layout/` | The deterministic layered layout a Source's direction produces |
 | `file/` | The `.kyr.json` board file |
 
 ## Public API
@@ -21,6 +22,7 @@ paintBoard(board: Board, ctx: PaintContext): Paint
 paintShape(shape: Shape, ctx: PaintContext): Paint
 toSvg(board: Board, ctx: PaintContext): string
 measureTextWith(measure: Measurer): PaintContext
+layoutGraph(diagram, frame, options?): Layout         // pure, no dependency
 ```
 
 Plus the vocabulary re-exported from `@kiyora/dsl`, so the app has one import for shape kinds, colours and frames.

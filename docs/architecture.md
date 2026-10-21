@@ -172,6 +172,7 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | --- | --- |
 | Schema, shape union, migrations, serialization | `packages/model/src/board/` |
 | Figure geometry, palette, style resolution | `packages/model/src/paint/` |
+| Layered layout from a diagram's direction | `packages/model/src/layout/` |
 | SVG projection | `packages/model/src/projection/` |
 | SVG export: document, byte cap, safety | `packages/model/src/export/` |
 | Text runs, wrapping, measurement protocol | `packages/model/src/text/` |

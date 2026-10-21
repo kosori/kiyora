@@ -3,6 +3,7 @@ import { type ConnectorEdit, editConnector } from './connectors';
 import { addShape } from './containment';
 import type { Gestures } from './gestures';
 import type { LabelEdit } from './label-edit';
+import { type OrderMove, reorderedBoard } from './ordering';
 import type { Placement } from './placement';
 import { shapeFromPlacement } from './placement';
 import { type Restyle, restyledBoard } from './restyle';
@@ -26,6 +27,8 @@ export type BoardCommands = {
    * wearing the asked-for lock writes nothing.
    */
   setLocked: (locked: boolean) => void;
+  /** Moves the selection in paint order as one gesture, writing nothing when it cannot move. */
+  reorder: (move: OrderMove) => void;
   /** Replaces the board and notifies every board subscriber. */
   setBoard: (board: Board) => void;
   /**
@@ -112,6 +115,13 @@ export const createBoardCommands = ({
     },
     redo: () => {
       restore(core.transactions.redo(core.board()));
+    },
+    reorder: (move) => {
+      const next = reorderedBoard(core.board(), core.selection(), move);
+      if (next !== null) {
+        core.change(next);
+        core.select(core.selection());
+      }
     },
     restyle: (change) => {
       core.transactions.endNudgeRun();

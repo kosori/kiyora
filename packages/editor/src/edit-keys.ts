@@ -48,7 +48,19 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     key: '-',
     preventDefault: true,
   },
+  {
+    command: { kind: 'find' },
+    key: 'f',
+    modifiers: { command: 'required' },
+    preventDefault: true,
+  },
   { command: { kind: 'show-shortcuts' }, key: '?' },
+  {
+    command: { kind: 'palette' },
+    key: 'k',
+    modifiers: { command: 'required' },
+    preventDefault: true,
+  },
   { command: { kind: 'cancel-gesture' }, key: 'escape' },
   { command: { kind: 'delete' }, key: 'delete', preventDefault: true },
   { command: { kind: 'delete' }, key: 'backspace', preventDefault: true },
@@ -61,6 +73,78 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     command: { kind: 'ungroup' },
     key: 'g',
     modifiers: { command: 'required', shift: 'required' },
+  },
+  {
+    command: { kind: 'bring-forward' },
+    key: ']',
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'send-backward' },
+    key: '[',
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'bring-to-front' },
+    key: ']',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'send-to-back' },
+    key: '[',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'left', kind: 'align' },
+    key: 'a',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'center-horizontal', kind: 'align' },
+    key: 'h',
+    modifiers: { alt: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'right', kind: 'align' },
+    key: 'd',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'top', kind: 'align' },
+    key: 'w',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'center-vertical', kind: 'align' },
+    key: 'v',
+    modifiers: { alt: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { alignment: 'bottom', kind: 'align' },
+    key: 's',
+    modifiers: { alt: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { axis: 'x', kind: 'distribute' },
+    key: 'h',
+    modifiers: { alt: 'required', shift: 'required' },
+    preventDefault: true,
+  },
+  {
+    command: { axis: 'y', kind: 'distribute' },
+    key: 'v',
+    modifiers: { alt: 'required', shift: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'undo' },
@@ -105,6 +189,7 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ action: 'pan', kind: 'camera' }, 'View', 'Pan (hold)'),
   row({ action: 'zoom-in', kind: 'camera' }, 'View', 'Zoom in'),
   row({ action: 'zoom-out', kind: 'camera' }, 'View', 'Zoom out'),
+  row({ kind: 'find' }, 'View', 'Find on board'),
   {
     commands: nudgeCommands(false),
     group: 'Selection',
@@ -118,11 +203,32 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'cancel-gesture' }, 'Selection', 'Cancel a gesture'),
   row({ kind: 'group' }, 'Selection', 'Group'),
   row({ kind: 'ungroup' }, 'Selection', 'Ungroup'),
+  row({ kind: 'bring-to-front' }, 'Arrange', 'Bring to front'),
+  row({ kind: 'bring-forward' }, 'Arrange', 'Bring forward'),
+  row({ kind: 'send-backward' }, 'Arrange', 'Send backward'),
+  row({ kind: 'send-to-back' }, 'Arrange', 'Send to back'),
+  row({ alignment: 'left', kind: 'align' }, 'Arrange', 'Align left'),
+  row(
+    { alignment: 'center-horizontal', kind: 'align' },
+    'Arrange',
+    'Align centre horizontally'
+  ),
+  row({ alignment: 'right', kind: 'align' }, 'Arrange', 'Align right'),
+  row({ alignment: 'top', kind: 'align' }, 'Arrange', 'Align top'),
+  row(
+    { alignment: 'center-vertical', kind: 'align' },
+    'Arrange',
+    'Align centre vertically'
+  ),
+  row({ alignment: 'bottom', kind: 'align' }, 'Arrange', 'Align bottom'),
+  row({ axis: 'x', kind: 'distribute' }, 'Arrange', 'Distribute horizontally'),
+  row({ axis: 'y', kind: 'distribute' }, 'Arrange', 'Distribute vertically'),
 ];
 
 /** The rows after the clipboard's in the reference: the history and the help. */
 export const HISTORY_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'undo' }, 'History', 'Undo'),
   row({ kind: 'redo' }, 'History', 'Redo'),
+  row({ kind: 'palette' }, 'Help', 'Command palette'),
   row({ kind: 'show-shortcuts' }, 'Help', 'Keyboard shortcuts'),
 ];

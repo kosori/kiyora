@@ -2,9 +2,20 @@
 
 export { subtreeIds } from '@kiyora/model';
 export {
+  ALIGNMENTS,
+  type Alignment,
+  alignBoard,
+  arrangeableShapes,
+  DISTRIBUTE_AXES,
+  type DistributeAxis,
+  distributeBoard,
+} from './align';
+export {
   clampZoom,
   FIT_PADDING,
+  FOCUS_ZOOM,
   fitCamera,
+  focusCamera,
   GRID_BASE_STEP,
   gridSpacing,
   gridStep,
@@ -63,6 +74,7 @@ export {
   DISPATCHED_KINDS,
   runCommand,
 } from './dispatch';
+export { findMatches } from './find';
 export {
   type AlignmentLine,
   alignmentLines,
@@ -172,6 +184,8 @@ export {
 export {
   bindingKey,
   bindingLabel,
+  commandPalette,
+  type PaletteEntry,
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';

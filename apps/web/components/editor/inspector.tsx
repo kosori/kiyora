@@ -1,6 +1,8 @@
 'use client';
 
+import { arrangeableShapes } from '@kiyora/editor';
 import { useBoard, useSelection } from '@kiyora/editor/react';
+import { ArrangeControls } from './arrange-controls';
 import { ConnectorStyle } from './connector-style';
 import { LockControl } from './lock-control';
 import { SelectionStyle } from './selection-style';
@@ -15,6 +17,7 @@ export const Inspector = () => {
   const selection = useSelection();
   const selected = board.shapes.filter((shape) => selection.includes(shape.id));
   const [first] = selected;
+  const arrangeable = arrangeableShapes(board, selection);
   const anyLocked = selected.some((shape) => shape.locked);
   const hasLocked = board.shapes.some((shape) => shape.locked);
 
@@ -45,6 +48,9 @@ export const Inspector = () => {
       ) : (
         <div className='flex flex-col gap-4'>
           <LockControl locked={anyLocked} />
+          {arrangeable.length >= 2 ? (
+            <ArrangeControls canDistribute={arrangeable.length >= 3} />
+          ) : null}
           {first.kind === 'connector' ? <ConnectorStyle shape={first} /> : null}
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>
