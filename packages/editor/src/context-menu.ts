@@ -63,6 +63,7 @@ export const contextMenu = ({
       items: [
         entry({ kind: 'cut' }, 'Cut', !hasSelection),
         entry({ kind: 'copy' }, 'Copy', !hasSelection),
+        entry({ kind: 'copy-png' }, 'Copy as PNG', !hasSelection),
         entry({ kind: 'duplicate' }, 'Duplicate', !hasSelection),
         entry({ kind: 'paste' }, 'Paste', !canPaste),
       ],

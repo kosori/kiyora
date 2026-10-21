@@ -14,6 +14,7 @@ import { createTextMeasurer } from '~/lib/text-measurer';
 import { CameraControls } from './camera-controls';
 import { CommandPalette } from './command-palette';
 import { ContextMenu } from './context-menu';
+import { useCopyPng } from './copy-png-context';
 import { DotGrid } from './dot-grid';
 import { FindBox } from './find-box';
 import { Guides } from './guides';
@@ -77,9 +78,10 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const showPalette = useCallback(() => setPalette(true), []);
   const pointer = useBoardPointer(surface.hand, openEditor);
   const measure = useMemo(() => createTextMeasurer(), []);
+  const { copy: copyPng } = useCopyPng();
   const { camera } = surface.view;
 
-  useShortcuts(onShowShortcuts, surface.intent, openFind, showPalette);
+  useShortcuts(onShowShortcuts, surface.intent, openFind, showPalette, copyPng);
 
   /**
    * The palette's own host. Pan is a held key and a chooser has no keyup, so
@@ -93,11 +95,12 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           surface.intent.run('pan', 'up');
         }
       },
+      copyPng,
       openFind,
       showPalette,
       showShortcuts: onShowShortcuts,
     }),
-    [onShowShortcuts, openFind, showPalette, surface.intent]
+    [copyPng, onShowShortcuts, openFind, showPalette, surface.intent]
   );
 
   const openContextMenu = useCallback(
@@ -176,7 +179,9 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           </g>
         </svg>
         <ResizeRefusal />
-        {menu === null ? null : <ContextMenu at={menu} onClose={closeMenu} />}
+        {menu === null ? null : (
+          <ContextMenu at={menu} host={paletteHost} onClose={closeMenu} />
+        )}
         {finding ? (
           <FindBox onClose={closeFind} viewport={surface.viewport} />
         ) : null}

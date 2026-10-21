@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type CommandHost,
   type ContextMenuItem,
   commandId,
   contextMenu,
@@ -13,6 +14,8 @@ import { ContextMenuEntry } from './context-menu-item';
 type Props = {
   /** Where the pointer opened it, in the canvas's own pixels. */
   at: { x: number; y: number };
+  /** The app's side of the dispatch, for the commands the engine cannot finish alone. */
+  host: CommandHost;
   onClose: () => void;
 };
 
@@ -35,7 +38,7 @@ const enabledItems = (root: HTMLElement | null): HTMLElement[] =>
  * the menu closes. The arrows, Home and End walk the enabled entries, Enter and
  * Space run the focused one, and Escape or a pointer outside dismisses it.
  */
-export const ContextMenu = ({ at, onClose }: Props) => {
+export const ContextMenu = ({ at, host, onClose }: Props) => {
   const editor = useEditor();
   const board = useBoard();
   const selection = useSelection();
@@ -75,9 +78,9 @@ export const ContextMenu = ({ at, onClose }: Props) => {
         return;
       }
       onClose();
-      runCommand(item.command, { editor });
+      runCommand(item.command, { editor, host });
     },
-    [editor, onClose]
+    [editor, host, onClose]
   );
 
   const onKeyDown = useCallback(

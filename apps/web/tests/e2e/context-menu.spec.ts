@@ -60,6 +60,20 @@ const rightClickStarter = async (page: Page): Promise<void> => {
   await rightClick(page, { x: 150, y: 150 });
 };
 
+/** The selection's own pixel box as the system clipboard holds it, or `null` before the copy lands. */
+const clipboardPngSize = (page: Page) =>
+  page.evaluate(async () => {
+    const items = await navigator.clipboard.read();
+    const png = items.find((item) => item.types.includes('image/png'));
+
+    if (png === undefined) {
+      return null;
+    }
+    const bitmap = await createImageBitmap(await png.getType('image/png'));
+
+    return { height: bitmap.height, width: bitmap.width };
+  });
+
 test('right-click on the selection opens the menu at the pointer, and empty canvas opens nothing', async ({
   page,
 }) => {
@@ -222,6 +236,52 @@ test('a right-click starts no marquee, no move and no placement', async ({
     shapeWith(page, 'M 400 300 L 600 300 L 600 430 L 400 430 Z')
   ).toHaveCount(0);
   await expect(page.getByTestId('marquee')).toHaveCount(0);
+});
+
+test('copy as PNG runs from the menu and puts the selection on the clipboard', async ({
+  context,
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'the clipboard is proven in Chromium');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await open(page);
+  await selectStarter(page);
+  await rightClickStarter(page);
+
+  await entry(page, 'Copy as PNG').click();
+
+  await expect
+    .poll(() => clipboardPngSize(page))
+    .toEqual({
+      height: 140,
+      width: 220,
+    });
+});
+
+test('a refused PNG copy names why in the chrome rather than dropping the rejection', async ({
+  context,
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'the clipboard is proven in Chromium');
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        write: () => Promise.reject(new Error('denied')),
+      },
+    });
+  });
+  await open(page);
+  await selectStarter(page);
+  await rightClickStarter(page);
+
+  await entry(page, 'Copy as PNG').click();
+
+  await expect(page.getByTestId('file-error')).toContainText(
+    'the browser refused the clipboard'
+  );
 });
 
 test('the menu is display state, so opening it leaves no history entry behind', async ({

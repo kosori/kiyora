@@ -25,6 +25,7 @@ export type Command =
   | { kind: 'cancel-gesture' }
   | { kind: 'delete' }
   | { kind: 'copy' }
+  | { kind: 'copy-png' }
   | { kind: 'cut' }
   | { kind: 'paste' }
   | { kind: 'duplicate' }
