@@ -35,12 +35,17 @@ export {
   zoomBy,
 } from './camera';
 export {
+  CLIPBOARD_VERSION,
   type Clipboard,
+  type ClipboardMessage,
   COPY_OFFSET,
+  clipboardMessage,
   copyFragment,
   duplicateShapes,
   type Paste,
   pasteFragment,
+  portableFragment,
+  readClipboardMessage,
 } from './clipboard';
 export {
   CAMERA_ACTIONS,
@@ -137,12 +142,18 @@ export {
 } from './persistence/autosave';
 export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
 export {
+  type ClipboardRelay,
+  createClipboardRelay,
+} from './persistence/clipboard-channel';
+export {
   type CorruptReason,
   faultOf,
   StorageError,
   type StorageFault,
 } from './persistence/faults';
 export {
+  type BoardChannel,
+  type BoardMessage,
   createPresence,
   type Presence,
   type PresenceChannel,

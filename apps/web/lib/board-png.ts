@@ -65,8 +65,8 @@ export const PNG_EXPORT_LIMIT_SIDE = 8192;
 export class PngExportRefusal extends Error {
   readonly reason: string;
 
-  constructor(reason: string) {
-    super(`PNG export refused: ${reason}`);
+  constructor(reason: string, options?: ErrorOptions) {
+    super(`PNG export refused: ${reason}`, options);
     this.name = 'PngExportRefusal';
     this.reason = reason;
   }
@@ -264,6 +264,55 @@ export const exportBoardPng = async (
   const svg = exportBoardSvg(board, { measure, theme: options.theme });
 
   return await rasteriseBoard(svg, options);
+};
+
+/** The scale a copied picture takes: the selection's own bounds, once. */
+export const COPY_PNG_SCALE: PngScale = 1;
+
+/** Puts `blob` on the system clipboard as a PNG, refusing where the browser will not. */
+export const writePngToClipboard = async (blob: Blob): Promise<void> => {
+  if (
+    typeof ClipboardItem === 'undefined' ||
+    navigator.clipboard?.write === undefined
+  ) {
+    throw new PngExportRefusal('this browser cannot copy an image');
+  }
+
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+  } catch (thrown) {
+    throw new PngExportRefusal('the browser refused the clipboard', {
+      cause: thrown,
+    });
+  }
+};
+
+/**
+ * The selection as a PNG on the system clipboard. It goes through the same
+ * export path as a downloaded raster: cropped to the selection's own bounds,
+ * transparent, at one pixel per board unit, so the copied picture is exactly
+ * what was selected.
+ */
+export const copySelectionPng = async (
+  board: Board,
+  selection: readonly string[],
+  measure?: Measurer
+): Promise<Blob> => {
+  if (selection.length === 0) {
+    throw new PngExportRefusal('the board draws nothing to copy');
+  }
+  const blob = await exportBoardPng(
+    pngBoard(board, selection, 'selection'),
+    {
+      background: 'transparent',
+      scale: COPY_PNG_SCALE,
+      theme: board.settings.theme,
+    },
+    measure
+  );
+  await writePngToClipboard(blob);
+
+  return blob;
 };
 
 /** Writes a raster out as one PNG download, under the board's own name. */

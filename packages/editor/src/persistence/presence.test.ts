@@ -1,13 +1,13 @@
 import {
+  type BoardChannel,
+  type BoardMessage,
   createPresence,
-  type PresenceChannel,
-  type PresenceMessage,
 } from '@kiyora/editor';
 import { describe, expect, it } from 'vitest';
 
 /** A channel every presence on it shares, the way BroadcastChannel spans tabs. */
-const sharedChannel = (): PresenceChannel => {
-  const listeners = new Set<(message: PresenceMessage) => void>();
+const sharedChannel = (): BoardChannel => {
+  const listeners = new Set<(message: BoardMessage) => void>();
   return {
     close: () => undefined,
     post: (message) => {

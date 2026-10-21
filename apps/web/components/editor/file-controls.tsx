@@ -18,6 +18,7 @@ import {
 import { Button } from '~/components/ui/button';
 import { openBoardFile, saveBoardFile } from '~/lib/board-file';
 import {
+  copySelectionPng,
   exportBoardPng,
   type PngBackground,
   type PngScale,
@@ -125,6 +126,18 @@ export const FileControls = () => {
     }
   }, [background, board, measure, scale, selection, target, theme]);
 
+  const copyPng = useCallback(async () => {
+    if (selection.length === 0) {
+      return;
+    }
+    try {
+      await copySelectionPng(board, selection, measure);
+      setError(null);
+    } catch (thrown) {
+      setError(thrown instanceof Error ? thrown.message : String(thrown));
+    }
+  }, [board, measure, selection]);
+
   const togglePng = useCallback(() => {
     setPng((open) => !open);
   }, []);
@@ -212,6 +225,15 @@ export const FileControls = () => {
           />
           <Button data-testid='download-png' onClick={exportPng} size='sm'>
             Download PNG
+          </Button>
+          <Button
+            data-testid='copy-png'
+            disabled={selection.length === 0}
+            onClick={copyPng}
+            size='sm'
+            variant='secondary'
+          >
+            Copy PNG
           </Button>
         </div>
       ) : null}
