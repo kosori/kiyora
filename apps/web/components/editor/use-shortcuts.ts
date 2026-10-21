@@ -28,12 +28,12 @@ const isTyping = (target: EventTarget | null): boolean =>
 
 /**
  * The one module that listens for keys. Every window keydown is resolved
- * through the keymap and handed to the dispatch, so the bindings, the dialog
- * and the one execution path cannot drift; the keymap decides the modifiers and
- * whether the browser must not act on the chord too, and a camera key reaches
- * the surface through the host, which owns the pointer anchor. A nudge runs
- * through the same dispatch: the keymap says a shifted arrow is coarse, the
- * dispatch turns that into a step.
+ * through the keymap and handed to the dispatch, so the bindings, the dialog,
+ * the palette and the one execution path cannot drift; the keymap decides the
+ * modifiers and whether the browser must not act on the chord too, and a camera
+ * key reaches the surface through the host, which owns the pointer anchor. A
+ * nudge runs through the same dispatch: the keymap says a shifted arrow is
+ * coarse, the dispatch turns that into a step.
  *
  * The same listener serves presenting: the chord carries the mode the board is
  * in, so the keymap hands back a presenting command while a slide is up and the
@@ -41,13 +41,17 @@ const isTyping = (target: EventTarget | null): boolean =>
  */
 export const useShortcuts = (
   onShowShortcuts: () => void,
-  camera: CameraIntent
+  camera: CameraIntent,
+  onOpenFind: () => void,
+  onShowPalette: () => void
 ): void => {
   const editor = useEditor();
 
   useEffect(() => {
     const host: CommandHost = {
       camera: camera.run,
+      openFind: onOpenFind,
+      showPalette: onShowPalette,
       showShortcuts: onShowShortcuts,
     };
 
@@ -106,5 +110,5 @@ export const useShortcuts = (
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [camera, editor, onShowShortcuts]);
+  }, [camera, editor, onOpenFind, onShowPalette, onShowShortcuts]);
 };

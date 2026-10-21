@@ -5,6 +5,8 @@ import {
   CAMERA_ACTIONS,
   type Chord,
   type Command,
+  commandId,
+  commandPalette,
   DISPATCHED_KINDS,
   KEY_MODES,
   KEYMAP,
@@ -246,6 +248,49 @@ describe('undo and redo keys', () => {
   });
 });
 
+describe('the ordering keys', () => {
+  it('steps one place on the bracket and jumps to either end with shift', () => {
+    expect(resolveKey({ command: true, key: ']' })).toEqual({
+      kind: 'bring-forward',
+    });
+    expect(resolveKey({ command: true, key: '[' })).toEqual({
+      kind: 'send-backward',
+    });
+    expect(resolveKey({ command: true, key: ']', shift: true })).toEqual({
+      kind: 'bring-to-front',
+    });
+    expect(resolveKey({ command: true, key: '[', shift: true })).toEqual({
+      kind: 'send-to-back',
+    });
+  });
+
+  it('resolves the shifted bracket a keyboard actually produces', () => {
+    expect(resolveKey({ command: true, key: '}', shift: true })).toEqual({
+      kind: 'bring-to-front',
+    });
+    expect(resolveKey({ command: true, key: '{', shift: true })).toEqual({
+      kind: 'send-to-back',
+    });
+  });
+
+  it('shows the ordering keys in the reference, read from the keymap', () => {
+    const rows = shortcutReference();
+
+    expect(rows.find((row) => row.label === 'Bring to front')?.keys).toEqual([
+      'Ctrl + Shift + ]',
+    ]);
+    expect(rows.find((row) => row.label === 'Bring forward')?.keys).toEqual([
+      'Ctrl + ]',
+    ]);
+    expect(rows.find((row) => row.label === 'Send backward')?.keys).toEqual([
+      'Ctrl + [',
+    ]);
+    expect(rows.find((row) => row.label === 'Send to back')?.keys).toEqual([
+      'Ctrl + Shift + [',
+    ]);
+  });
+});
+
 describe('the clipboard keys', () => {
   it('duplicates, copies, cuts and pastes on the command key', () => {
     expect(resolveKey({ command: true, key: 'd' })).toEqual({
@@ -277,6 +322,19 @@ describe('the clipboard keys', () => {
     expect(rows.find((row) => row.label === 'Duplicate')?.keys).toEqual([
       'Ctrl + D',
     ]);
+  });
+});
+
+describe('the find key', () => {
+  it('opens find on the command key, and leaves the bare letter to the frame tool', () => {
+    expect(resolveKey({ command: true, key: 'f' })).toEqual({ kind: 'find' });
+    expect(resolveKey({ key: 'f' })).toEqual({ kind: 'tool', tool: 'frame' });
+  });
+
+  it('shows find in the reference, read from the keymap', () => {
+    expect(
+      shortcutReference().find((row) => row.label === 'Find on board')?.keys
+    ).toEqual(['Ctrl + F']);
   });
 });
 
@@ -399,5 +457,45 @@ describe('the presenting keys', () => {
     expect(rows.find((row) => row.label === 'Leave presenting')?.keys).toEqual([
       'Esc',
     ]);
+  });
+});
+
+describe('the command palette', () => {
+  it('shows exactly the rows the reference shows, with their keys and labels, so the two cannot disagree', () => {
+    const reference = shortcutReference();
+    const palette = commandPalette().map(({ group, keys, label }) => ({
+      group,
+      keys,
+      label,
+    }));
+
+    expect(palette).toEqual(reference);
+  });
+
+  it('lists every command the keymap binds, and nothing else', () => {
+    const listed = new Set(
+      commandPalette().flatMap((entry) =>
+        entry.commands.map((command) => commandId(command))
+      )
+    );
+    const bound = new Set(KEYMAP.map((binding) => commandId(binding.command)));
+
+    expect(listed).toEqual(bound);
+  });
+});
+
+describe('the command palette key', () => {
+  it('opens the palette on the command key, so the palette is a binding like any other', () => {
+    expect(resolveKey({ command: true, key: 'k' })).toEqual({
+      kind: 'palette',
+    });
+  });
+
+  it('shows the palette key in the reference, read from the keymap', () => {
+    const row = shortcutReference().find(
+      (line) => line.label === 'Command palette'
+    );
+
+    expect(row?.keys).toEqual(['Ctrl + K']);
   });
 });

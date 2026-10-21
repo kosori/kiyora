@@ -11,8 +11,12 @@ import type { Editor } from './state';
 export type CommandHost = {
   /** Runs a camera action. `pan` opens on keydown and closes on keyup. */
   camera: (action: CameraAction, phase: 'down' | 'up') => void;
+  /** Opens the canvas's find box, focused, over the current board. */
+  openFind: () => void;
   /** Opens the keyboard shortcut reference. */
   showShortcuts: () => void;
+  /** Opens the command palette, the reference's other view. */
+  showPalette: () => void;
 };
 
 /** What running a command takes: the engine, and, when it needs them, the effects the app owns. */
@@ -53,6 +57,8 @@ type Handlers = { readonly [K in Command['kind']]: Handler<K> };
 /** Every command, and the one place each kind is executed. */
 const HANDLERS: Handlers = {
   align: ({ editor }, command) => editor.align(command.alignment),
+  'bring-forward': ({ editor }) => editor.bringForward(),
+  'bring-to-front': ({ editor }) => editor.bringToFront(),
   camera: (target, command) => hostOf(target).camera(command.action, 'down'),
   'cancel-gesture': ({ editor }) => editor.cancelGesture(),
   copy: ({ editor }) => editor.copy(),
@@ -60,11 +66,13 @@ const HANDLERS: Handlers = {
   delete: ({ editor }) => editor.deleteSelection(),
   distribute: ({ editor }, command) => editor.distribute(command.axis),
   duplicate: ({ editor }) => editor.duplicate(),
+  find: (target) => hostOf(target).openFind(),
   group: ({ editor }) => editor.groupSelection(),
   nudge: ({ editor }, command) => {
     const step = command.coarse ? GRID : NUDGE_STEP;
     editor.nudge(command.dx * step, command.dy * step);
   },
+  palette: (target) => hostOf(target).showPalette(),
   paste: ({ editor }) => editor.paste(),
   present: ({ editor }) => editor.startPresent(),
   'present-exit': ({ editor }) => editor.stopPresent(),
@@ -73,6 +81,8 @@ const HANDLERS: Handlers = {
   'present-previous': ({ editor }) => editor.previousSlide(),
   'present-timer': ({ editor }) => editor.toggleTimer(),
   redo: ({ editor }) => editor.redo(),
+  'send-backward': ({ editor }) => editor.sendBackward(),
+  'send-to-back': ({ editor }) => editor.sendToBack(),
   'show-shortcuts': (target) => hostOf(target).showShortcuts(),
   tool: ({ editor }, command) => editor.setTool(command.tool),
   undo: ({ editor }) => editor.undo(),
