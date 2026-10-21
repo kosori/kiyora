@@ -71,7 +71,7 @@ Containment is flat: a frame or a group is a shape, and its members name it thro
 
 ### Authored, not derived
 
-Only authored state is stored. Group boxes, connector paths, text wrapping, hit-test geometry, selection, hover and drag state are all recomputed. A migration therefore only ever has to reason about something a person typed.
+Only authored state is stored. Group boxes, connector paths, text wrapping, hit-test geometry, selection, hover and drag state are all recomputed. A group's stored box is a placeholder: the schema requires geometry on every shape, so a group carries a zero box that bounds never read, and its real box is derived from its children. A migration therefore only ever has to reason about something a person typed.
 
 ### Paint order
 
