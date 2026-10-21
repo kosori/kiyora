@@ -64,6 +64,18 @@ export {
   runCommand,
 } from './dispatch';
 export {
+  type AlignmentLine,
+  alignmentLines,
+  type BoxSnap,
+  GUIDE_TOLERANCE,
+  type Guide,
+  type GuideAxis,
+  guideAcross,
+  nearestLine,
+  sameGuides,
+  snapBox,
+} from './geometry/guides';
+export {
   HANDLE_REACH,
   HANDLE_SIZE,
   HANDLES,

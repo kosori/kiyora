@@ -191,7 +191,11 @@ describe('resizing a group', () => {
     const stored = groupOf(editor.getBoard());
 
     editor.pointerDown({ x: 350, y: 100 }, false);
-    expect(editor.getGesture()).toEqual({ handle: 'se', kind: 'resize' });
+    expect(editor.getGesture()).toEqual({
+      guides: [],
+      handle: 'se',
+      kind: 'resize',
+    });
     editor.pointerMove({ x: 1400, y: 400 }, none);
     editor.pointerUp();
 

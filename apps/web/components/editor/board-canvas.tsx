@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { CameraControls } from './camera-controls';
 import { DotGrid } from './dot-grid';
+import { Guides } from './guides';
 import { Marquee } from './marquee';
 import { PaintNode } from './paint-node';
 import { ResizeRefusal } from './resize-refusal';
@@ -98,6 +99,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
         >
           <PaintNode paint={paint} />
+          <Guides />
           <SelectionFrame />
           <Marquee />
         </g>

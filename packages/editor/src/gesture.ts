@@ -1,5 +1,6 @@
 import { type Board, type Bounds, subtreeIds } from '@kiyora/model';
 import type { Point } from './camera';
+import { alignmentLines } from './geometry/guides';
 import { type HandleKind, handleAt } from './geometry/handles';
 import {
   type Selection,
@@ -26,11 +27,12 @@ export const gestureOf = (drag: Drag | null): Gesture =>
   drag === null
     ? { kind: 'idle' }
     : drag.kind === 'move'
-      ? { kind: 'move' }
+      ? { guides: drag.guides, kind: 'move' }
       : drag.kind === 'marquee'
         ? { box: drag.box, kind: 'marquee' }
         : drag.kind === 'resize'
           ? {
+              guides: drag.guides,
               handle: drag.handle,
               kind: 'resize',
               ...(drag.refusal === undefined ? {} : { refusal: drag.refusal }),
@@ -53,8 +55,10 @@ export const moveDrag = (
   return {
     applied: { x: 0, y: 0 },
     before: board,
+    box: bounds,
+    guides: [],
     kind: 'move',
-    origin: { x: bounds.x, y: bounds.y },
+    lines: alignmentLines(board, new Set(subtreeIds(board, selection))),
     originals: new Map(
       shapes.map((shape) => [shape.id, { x: shape.x, y: shape.y }])
     ),
@@ -68,13 +72,19 @@ const resizeDrag = (
   selection: Selection,
   bounds: Bounds,
   handle: HandleKind
-): ResizeDrag => ({
-  before: board,
-  bounds,
-  handle,
-  kind: 'resize',
-  originals: snapshotShapes(transformTargets(board, selection)),
-});
+): ResizeDrag => {
+  const originals = snapshotShapes(transformTargets(board, selection));
+
+  return {
+    before: board,
+    bounds,
+    guides: [],
+    handle,
+    kind: 'resize',
+    lines: alignmentLines(board, new Set(originals.keys())),
+    originals,
+  };
+};
 
 /** The rotate about the selection centre, starting from the pointer's angle. */
 const rotateDrag = (

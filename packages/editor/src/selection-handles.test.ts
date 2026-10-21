@@ -58,7 +58,11 @@ describe('resizing a selection from a handle', () => {
 
     editor.pointerDown({ x: 300, y: 220 }, false);
 
-    expect(editor.getGesture()).toEqual({ handle: 'se', kind: 'resize' });
+    expect(editor.getGesture()).toEqual({
+      guides: [],
+      handle: 'se',
+      kind: 'resize',
+    });
     expect(editor.getSelection()).toEqual(['a']);
   });
 

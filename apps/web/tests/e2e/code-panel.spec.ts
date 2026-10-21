@@ -315,12 +315,13 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
   await expect(page.getByTestId('code-confirm')).toBeHidden();
   await expect(page.getByTestId('code-stale')).toHaveCount(0);
 
-  // Drag the generated figure 20 units to the right, landing on the grid.
+  // Drag the generated figure 20 units to the right. It lands on the starter
+  // rectangle's edges, which the guides hold instead of the grid.
   await drag(page, { x: 180, y: 160 }, { x: 200, y: 160 });
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 144 128 L 304 128 L 304 228 L 144 228 Z'
+    'M 140 120 L 300 120 L 300 220 L 140 220 Z'
   );
 
   // The panel follows the generated shape back to its frame.
@@ -344,7 +345,7 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
   await expect(source(page)).toHaveValue('Next');
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 144 128 L 304 128 L 304 228 L 144 228 Z'
+    'M 140 120 L 300 120 L 300 220 L 140 220 Z'
   );
 
   // Confirming replaces exactly the generated shapes and clears both flags.
