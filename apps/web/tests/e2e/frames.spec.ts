@@ -230,7 +230,7 @@ test('a frame clips a member to its own box', async ({ page }) => {
   const memberPath = paths(page).last();
   await expect(memberPath).toHaveAttribute(
     'd',
-    'M 48 152 L 148 152 L 148 202 L 48 202 Z'
+    'M 50 150 L 150 150 L 150 200 L 50 200 Z'
   );
 
   const clipped = await pixelAt(page, { x: 60, y: 175 });
