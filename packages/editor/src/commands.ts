@@ -30,6 +30,7 @@ export type Command =
   | { kind: 'find' }
   | { kind: 'group' }
   | { kind: 'ungroup' }
+  | { kind: 'lock' }
   | { kind: 'bring-to-front' }
   | { kind: 'send-to-back' }
   | { kind: 'bring-forward' }

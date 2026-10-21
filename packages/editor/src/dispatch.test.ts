@@ -124,6 +124,25 @@ describe('the one dispatch', () => {
     expect(editor.getBoard().shapes.map((shape) => shape.x)).toEqual([0, 0]);
   });
 
+  it('toggles lock through the dispatch, so the menu locks what the key locks', () => {
+    const editor = createEditor(
+      board([square, { ...square, id: 'other', x: 200 }])
+    );
+    editor.setSelection(['square', 'other']);
+
+    runCommand({ kind: 'lock' }, { editor });
+    expect(editor.getBoard().shapes.map((shape) => shape.locked)).toEqual([
+      true,
+      true,
+    ]);
+
+    runCommand({ kind: 'lock' }, { editor });
+    expect(editor.getBoard().shapes.map((shape) => shape.locked)).toEqual([
+      false,
+      false,
+    ]);
+  });
+
   it('undoes through the dispatch, so history is not a path the keyboard owns alone', () => {
     const editor = createEditor(board([square]));
     editor.setSelection(['square']);

@@ -174,6 +174,11 @@ export type Editor = {
   deleteSelection: () => void;
   /** Copies the selection to the app's clipboard. Changes nothing on the board. */
   copy: () => void;
+  /**
+   * Whether the clipboard holds a fragment, so a surface can disable a paste
+   * rather than offer one that does nothing. Reads display state only.
+   */
+  canPaste: () => boolean;
   /** Copies the selection and deletes it as one gesture, so one undo restores both. */
   cut: () => void;
   /** Copies the selection clear of itself. One board change, one history entry. */

@@ -57,6 +57,7 @@ export const createEditor = (board: Board): Editor => {
     bringToFront: () => edits.reorder('front'),
     cancelGesture: gestures.cancelGesture,
     cancelTextEdit: edits.cancelTextEdit,
+    canPaste: commands.canPaste,
     copy: commands.copy,
     cut: commands.cut,
     deleteSelection: commands.deleteSelection,

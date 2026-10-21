@@ -14,6 +14,10 @@ export type Selection = readonly string[];
 export const selectedShapes = (board: Board, selection: Selection): Shape[] =>
   board.shapes.filter((shape) => selection.includes(shape.id));
 
+/** Whether any selected shape is locked, so a lock control offers the way back. */
+export const selectedLocked = (board: Board, selection: Selection): boolean =>
+  selectedShapes(board, selection).some((shape) => shape.locked);
+
 /**
  * The ids `selection` names, kept to the shapes the board actually holds and
  * ordered the way the board paints them, so the selection has one reading
