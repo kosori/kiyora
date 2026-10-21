@@ -1,3 +1,5 @@
+import type { ClipboardMessage } from '../clipboard';
+
 /**
  * One tab's announcement that it has a board open. `hello` starts a handshake,
  * `ack` answers one, and `bye` says the tab has gone.
@@ -8,12 +10,22 @@ export type PresenceMessage = {
   openedAt: number;
 };
 
+/**
+ * Everything the board channel carries: the presence handshake, and a tab's
+ * clipboard. Both share one BroadcastChannel, so a fragment is tagged rather
+ * than read as an announcement.
+ */
+export type BoardMessage = PresenceMessage | ClipboardMessage;
+
 /** A broadcast channel across tabs, as a port. The app backs it with `BroadcastChannel`. */
-export type PresenceChannel = {
-  post: (message: PresenceMessage) => void;
-  subscribe: (listener: (message: PresenceMessage) => void) => () => void;
+export type BoardChannel = {
+  post: (message: BoardMessage) => void;
+  subscribe: (listener: (message: BoardMessage) => void) => () => void;
   close: () => void;
 };
+
+/** The board channel, under the name presence used before it carried a clipboard. */
+export type PresenceChannel = BoardChannel;
 
 /**
  * Whether this tab may write the board. Two tabs on one board is an ordinary
@@ -44,7 +56,7 @@ export const createPresence = ({
   channel,
   self,
 }: {
-  channel: PresenceChannel;
+  channel: BoardChannel;
   self: { id: string; openedAt: number };
 }): Presence => {
   const mine: PresenceMessage = {
@@ -62,7 +74,10 @@ export const createPresence = ({
     }
   };
 
-  const onMessage = (message: PresenceMessage): void => {
+  const onMessage = (message: BoardMessage): void => {
+    if (message.type === 'clipboard') {
+      return;
+    }
     if (message.id === self.id) {
       return;
     }
