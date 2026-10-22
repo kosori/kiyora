@@ -8,7 +8,7 @@
  * nearest Kiyora palette hue.
  */
 
-/** Canonical shape names (42). */
+/** Canonical shape names (57). */
 export const SHAPES = [
 	'rectangle',
 	'ellipse',
@@ -53,6 +53,20 @@ export const SHAPES = [
 	'component',
 	'brace',
 	'entity',
+	'avatar',
+	'badge',
+	'breadcrumb',
+	'button',
+	'divider',
+	'dropdown',
+	'input',
+	'pagination',
+	'radio',
+	'slider',
+	'table',
+	'tabs',
+	'text-area',
+	'toggle',
 ] as const;
 
 export type Shape = (typeof SHAPES)[number];
