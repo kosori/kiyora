@@ -7,6 +7,7 @@ import {
   themeSchema,
 } from '../paint/palette';
 import { textStyleSchema } from '../text/style';
+import { filesSchema } from './image';
 
 /** The board's schema version. A migration bumps it. */
 export const SCHEMA_VERSION = 3;
@@ -275,6 +276,21 @@ export const iconSchema = shapeBaseSchema.extend({
 /** An icon: a named figure from the shipped dataset, drawn in its box. */
 export type IconShape = z.infer<typeof iconSchema>;
 
+/**
+ * An image: a raster the board file carries, drawn in its authored box. It names
+ * one entry in the board's `files` map rather than copying the bytes, so placing
+ * the same picture twice costs one payload and resizing it costs nothing. A
+ * `fileId` this build cannot find paints the authored box, so a file opened
+ * without its payload is a legible placeholder rather than an empty hole.
+ */
+export const imageSchema = shapeBaseSchema.extend({
+  fileId: z.string().min(1),
+  kind: z.literal('image'),
+});
+
+/** An image: a raster from the board's files, drawn in its box. */
+export type ImageShape = z.infer<typeof imageSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
@@ -284,6 +300,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   stickySchema,
   groupSchema,
   iconSchema,
+  imageSchema,
 ]);
 
 /** One item on the board. */
@@ -328,6 +345,7 @@ export const boardSchema = z.object({
   camera: cameraSchema,
   createdAt: z.number().int().nonnegative(),
   deck: z.array(slideSchema),
+  files: filesSchema.default({}),
   id: z.string().min(1),
   schemaVersion: z.literal(SCHEMA_VERSION),
   settings: settingsSchema,

@@ -2,6 +2,7 @@ import type {
   Board,
   Bounds,
   Camera,
+  ImageShape,
   Measurer,
   Shape,
   Style,
@@ -16,7 +17,7 @@ import type { AlignmentLine, Guide } from './geometry/guides';
 import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
 import type { GestureModifiers } from './modifiers';
-import type { Placement } from './placement';
+import type { ImagePlacement, Placement } from './placement';
 import type { Restyle } from './restyle';
 import type { Selection } from './selection';
 import type { SourceApply } from './source-commands';
@@ -156,6 +157,13 @@ export type Editor = {
    * once, or `null` for a tool that places nothing.
    */
   placeShape: (placement: Placement) => Shape | null;
+  /**
+   * Places one image in `placement`'s box and stores its raster under its
+   * content hash. The picture and the shape land as one change, so one undo
+   * takes both back; an id the board already holds is reused, so placing the
+   * same bytes again adds a shape and not a second payload.
+   */
+  placeImage: (placement: ImagePlacement) => ImageShape;
   /**
    * Replaces one shape's label, or its text style. Each is one board change and
    * one history entry. A sticky grows to fit its label when a measurer is

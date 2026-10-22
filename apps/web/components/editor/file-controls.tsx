@@ -7,7 +7,7 @@ import {
   useSelection,
   useView,
 } from '@kiyora/editor/react';
-import type { Theme } from '@kiyora/model';
+import { boardBounds, fitImageSize, type Theme } from '@kiyora/model';
 import {
   type ChangeEvent,
   useCallback,
@@ -26,6 +26,7 @@ import {
   saveBoardPng,
 } from '~/lib/board-png';
 import { saveBoardSvg } from '~/lib/board-svg';
+import { IMAGE_PLACEMENT_SIDE, importImage } from '~/lib/image-import';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { useCopyPng } from './copy-png-context';
 import { OptionButtons } from './option-buttons';
@@ -76,6 +77,7 @@ export const FileControls = () => {
   const { camera } = useView();
   const platform = usePlatform();
   const input = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
   const { clearError, copy: copyPng, error: copyError } = useCopyPng();
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +106,10 @@ export const FileControls = () => {
 
   const choose = useCallback(() => {
     input.current?.click();
+  }, []);
+
+  const chooseImage = useCallback(() => {
+    imageInput.current?.click();
   }, []);
 
   const save = useCallback(() => {
@@ -165,6 +171,54 @@ export const FileControls = () => {
     [open]
   );
 
+  const place = useCallback(
+    async (file: File) => {
+      try {
+        const imported = await importImage(file);
+        const size = fitImageSize(
+          { height: imported.height, width: imported.width },
+          IMAGE_PLACEMENT_SIDE
+        );
+        const bounds = boardBounds(board);
+        const box =
+          bounds === null
+            ? {
+                h: size.height,
+                w: size.width,
+                x: -size.width / 2,
+                y: -size.height / 2,
+              }
+            : {
+                h: size.height,
+                w: size.width,
+                x: bounds.x + (bounds.w - size.width) / 2,
+                y: bounds.y + bounds.h + 48,
+              };
+        editor.placeImage({
+          box,
+          file: imported.file,
+          fileId: imported.fileId,
+        });
+        setError(null);
+        clearError();
+      } catch (thrown) {
+        setError(thrown instanceof Error ? thrown.message : String(thrown));
+      }
+    },
+    [board, clearError, editor]
+  );
+
+  const pickImage = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (file !== undefined) {
+        await place(file);
+      }
+    },
+    [place]
+  );
+
   return (
     <div className='absolute top-3 right-3 z-10 flex max-w-xs flex-col items-end gap-1'>
       <div className='flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'>
@@ -183,6 +237,14 @@ export const FileControls = () => {
           variant='ghost'
         >
           Save file
+        </Button>
+        <Button
+          data-testid='place-image'
+          onClick={chooseImage}
+          size='sm'
+          variant='ghost'
+        >
+          Image
         </Button>
         <Button
           data-testid='export-svg'
@@ -256,6 +318,14 @@ export const FileControls = () => {
         data-testid='file-input'
         onChange={pick}
         ref={input}
+        type='file'
+      />
+      <input
+        accept='image/png,image/jpeg'
+        className='hidden'
+        data-testid='image-input'
+        onChange={pickImage}
+        ref={imageInput}
         type='file'
       />
       {shownError === null ? null : (

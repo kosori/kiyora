@@ -31,6 +31,19 @@ export const PaintNode = ({ paint }: Props): ReactNode => {
           transform={path.transform}
         />
       ))}
+      {paint.image === undefined ? null : (
+        <image
+          data-shape={paint.shapeId}
+          height={paint.image.height}
+          href={paint.image.href}
+          opacity={paint.image.opacity}
+          preserveAspectRatio='none'
+          transform={paint.image.transform}
+          width={paint.image.width}
+          x={paint.image.x}
+          y={paint.image.y}
+        />
+      )}
       <TextLayer paint={paint} />
       {paint.clip === undefined || paint.shapeId === undefined ? (
         children

@@ -10,6 +10,7 @@ import { createSourceCommands } from './source-commands';
 import type { Editor } from './state';
 import { createStoreCore } from './store-core';
 
+export type { ImagePlacement } from './placement';
 export type { Drag, Editor, Gesture, PresentState, View } from './state';
 
 /**
@@ -80,6 +81,7 @@ export const createEditor = (board: Board): Editor => {
     nextSlide: present.next,
     nudge: edits.nudge,
     paste: commands.paste,
+    placeImage: edits.placeImage,
     placeShape: edits.placeShape,
     pointerDown: gestures.pointerDown,
     pointerMove: gestures.pointerMove,

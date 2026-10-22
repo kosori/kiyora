@@ -11,7 +11,7 @@ The document of record: one ordered list of shapes, plus its deck, camera, setti
 _Avoid_: Document, diagram, scene, file
 
 **Shape**:
-One item on the board — a figure, text, sticky, frame, group or connector. Its position and style are authored; its paint is derived.
+One item on the board — a figure, text, sticky, frame, group, icon, image or connector. Its position and style are authored; its paint is derived.
 _Avoid_: Element, object, node, item
 
 **Paint**:
@@ -56,6 +56,13 @@ _Avoid_: Container, folder, cluster
 
 **Sticky**:
 A shape kind: a coloured note with centred text whose height fits its content until a person resizes it.
+
+**Image**:
+A shape kind: a PNG or JPEG carried inside the board file and drawn in its authored box. It names one entry in the board's files, so placing the same picture twice costs one payload.
+
+**Files**:
+A board's rasters, keyed by the content hash of their bytes. A board file is still one document when it holds them; nothing is fetched and nothing lives beside the board.
+_Avoid_: Blobs, assets, attachments
 
 **Inspector**:
 The right-hand panel that edits the selection's style, text style and connector routing.

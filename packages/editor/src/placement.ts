@@ -6,6 +6,8 @@ import {
   type FigureShape,
   type FrameShape,
   type IconShape,
+  type ImageFile,
+  type ImageShape,
   NOTE_STYLE,
   nextId,
   type Shape,
@@ -29,6 +31,18 @@ export type Box = {
 export type Placement = {
   from: Point;
   to: Point;
+};
+
+/**
+ * One image a caller wants on the board: the raster the import produced, the
+ * content-hashed id it is stored under, and the authored box it fills. The
+ * raster is not a `Placeable` tool, because a click cannot conjure its bytes;
+ * an importer has to hand them in.
+ */
+export type ImagePlacement = {
+  box: Box;
+  file: ImageFile;
+  fileId: string;
 };
 
 /** The size a click places a shape, in board units. */
@@ -169,6 +183,29 @@ export const shapeFromPlacement = (
 
   return figure;
 };
+
+/**
+ * The shape an image placement asks for: the raster's content-hashed id, drawn
+ * in `box` and wearing the last used style so opacity and stroke width reach
+ * the inspector like any other shape. The bytes stay in the board's files, so
+ * the shape carries only the reference.
+ */
+export const imageShape = (
+  fileId: string,
+  box: Box,
+  style: Style,
+  existing: readonly Shape[]
+): ImageShape => ({
+  ...box,
+  fileId,
+  id: nextId('image', new Set(existing.map((shape) => shape.id))),
+  kind: 'image',
+  locked: false,
+  opacity: 1,
+  parentId: null,
+  rotation: 0,
+  style,
+});
 
 /**
  * The end a connector's drag landed on: bound to the shape under `point` with

@@ -1,6 +1,20 @@
 // The board: one schema, one paint walker, and the pure projection to SVG.
 
 export {
+  type BoardFiles,
+  filesSchema,
+  fitImageSize,
+  hasImageFiles,
+  IMAGE_FILE_LIMIT_BYTES,
+  IMAGE_MAX_SIDE,
+  IMAGE_MIME_TYPES,
+  type ImageFile,
+  type ImageMime,
+  imageFileSchema,
+  imageMimeOf,
+  imageMimeSchema,
+} from './board/image';
+export {
   MIGRATIONS,
   type Migration,
   type MigrationResult,
@@ -41,7 +55,9 @@ export {
   type Head,
   headSchema,
   type IconShape,
+  type ImageShape,
   iconSchema,
+  imageSchema,
   ROUTES,
   type Route,
   routeSchema,
@@ -148,6 +164,7 @@ export {
   shapeBounds,
   turn,
 } from './paint/figures';
+export type { PaintImage } from './paint/image';
 export {
   type Paint,
   type PaintContext,

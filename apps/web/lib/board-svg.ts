@@ -22,7 +22,7 @@ export const saveBoardSvg = async (
   context: PaintContext
 ): Promise<void> => {
   const icons = await iconSetFor(board);
-  const svg = exportBoardSvg(board, { ...context, icons });
+  const svg = exportBoardSvg(board, { ...context, files: board.files, icons });
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   const link = document.createElement('a');
   link.download = boardFileName(board.title, SVG_FILE_EXTENSION);

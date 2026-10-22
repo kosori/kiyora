@@ -145,6 +145,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const paint = useMemo(
     () =>
       paintBoard(board, {
+        files: board.files,
         icons,
         measure,
         theme: board.settings.theme,
