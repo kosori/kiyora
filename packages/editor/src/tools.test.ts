@@ -1,6 +1,7 @@
 import { createEditor, type Tool } from '@kiyora/editor';
 import {
   type Board,
+  type FigureKind,
   parseBoard,
   SCHEMA_VERSION,
   type Style,
@@ -171,4 +172,43 @@ describe('the tools', () => {
 
     expect(editor.getBoard().shapes.at(-1)?.id).toBe('rectangle-2');
   });
+});
+
+const CONTROLS: readonly FigureKind[] = [
+  'avatar',
+  'badge',
+  'breadcrumb',
+  'button',
+  'card',
+  'checkbox',
+  'divider',
+  'dropdown',
+  'input',
+  'pagination',
+  'radio',
+  'slider',
+  'table',
+  'tabs',
+  'text-area',
+  'toggle',
+];
+
+describe('placing a wireframe control', () => {
+  it.each(CONTROLS)(
+    'places %s from its tool, on the one figure placement path',
+    (kind) => {
+      const editor = createEditor(board());
+      editor.setTool(kind);
+
+      editor.placeShape(click(400, 300));
+
+      expect(editor.getBoard().shapes.at(-1)).toMatchObject({
+        h: 100,
+        kind,
+        w: 160,
+        x: 320,
+        y: 250,
+      });
+    }
+  );
 });

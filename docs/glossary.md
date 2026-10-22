@@ -57,6 +57,10 @@ _Avoid_: Container, folder, cluster
 **Sticky**:
 A shape kind: a coloured note with centred text whose height fits its content until a person resizes it.
 
+**Control**:
+A figure kind that draws one wireframe UI control — button, input, slider, tabs and the rest — as paths on its authored box, wearing the board's palette, stroke width and corner rather than a picture of a control.
+_Avoid_: Widget, component, UI element
+
 **Image**:
 A shape kind: a PNG or JPEG carried inside the board file and drawn in its authored box. It names one entry in the board's files, so placing the same picture twice costs one payload.
 
