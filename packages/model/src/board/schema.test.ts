@@ -3,6 +3,10 @@ import {
   type Board,
   BoardRejection,
   boardIssues,
+  CHART_KINDS,
+  CHART_LABELS,
+  CHART_PALETTE,
+  MAX_CHART_VALUES,
   parseBoard,
   SCHEMA_VERSION,
 } from '@kiyora/model';
@@ -43,6 +47,17 @@ const frameShape = (overrides: Record<string, unknown> = {}) => ({
 const groupShape = (overrides: Record<string, unknown> = {}) => ({
   ...shape(),
   kind: 'group',
+  ...overrides,
+});
+
+/** A chart: the base plus the kind, the numbers, their categories and its colours. */
+const chartShape = (overrides: Record<string, unknown> = {}) => ({
+  ...shape(),
+  kind: 'chart',
+  labels: ['Mon', 'Tue'],
+  palette: ['blue', 'orange'],
+  series: [4, 8],
+  variant: 'column',
   ...overrides,
 });
 
@@ -410,6 +425,73 @@ describe('rejecting a board', () => {
     expect(
       parsed.shapes[0]?.kind === 'image' ? parsed.shapes[0].fileId : null
     ).toBe('hash');
+  });
+
+  describe('a chart', () => {
+    it('keeps the series, its categories, its colours and its kind', () => {
+      const authored = chartShape({ series: [4, -2, 6, 0] });
+
+      expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+        authored
+      );
+    });
+
+    it('accepts every kind the chart vocabulary names', () => {
+      const issues = boardIssues(
+        board({
+          shapes: CHART_KINDS.map((variant, index) =>
+            chartShape({ id: `chart-${index}`, variant })
+          ),
+        })
+      );
+
+      expect(issues).toEqual([]);
+    });
+
+    it('rejects a kind it does not name', () => {
+      const issues = boardIssues(
+        board({ shapes: [chartShape({ variant: 'radar' })] })
+      );
+
+      expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.variant']);
+    });
+
+    it('needs at least one value, because a chart of nothing is not a chart', () => {
+      const issues = boardIssues(
+        board({ shapes: [chartShape({ series: [] })] })
+      );
+
+      expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.series']);
+    });
+
+    it('caps the series at the most values a box can paint', () => {
+      const issues = boardIssues(
+        board({
+          shapes: [
+            chartShape({
+              series: Array.from({ length: MAX_CHART_VALUES + 1 }, () => 1),
+            }),
+          ],
+        })
+      );
+
+      expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.series']);
+    });
+
+    it('defaults the categories and the colours, so a hand-written chart is a kind and a series', () => {
+      const [parsed] = parseBoard(
+        board({
+          shapes: [{ ...chartShape(), labels: undefined, palette: undefined }],
+        })
+      ).shapes;
+
+      expect(parsed?.kind === 'chart' ? parsed.labels : null).toEqual([
+        ...CHART_LABELS,
+      ]);
+      expect(parsed?.kind === 'chart' ? parsed.palette : null).toEqual([
+        ...CHART_PALETTE,
+      ]);
+    });
   });
 
   it('throws a rejection whose message names what failed', () => {

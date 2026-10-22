@@ -3,6 +3,7 @@
 import type { Tool } from '@kiyora/editor';
 import {
   IconArrowUpRight,
+  IconChartBar,
   IconFrame,
   IconHandMove,
   IconHighlight,
@@ -38,6 +39,7 @@ const RAIL: readonly RailEntry[] = [
   { icon: IconNote, label: 'Sticky', tool: 'sticky' },
   { icon: IconFrame, label: 'Frame', tool: 'frame' },
   { icon: IconTable, label: 'Table', tool: 'data-table' },
+  { icon: IconChartBar, label: 'Chart', tool: 'chart' },
   { icon: IconPencil, label: 'Ink', tool: 'ink' },
   { icon: IconHighlight, label: 'Highlighter', tool: 'highlighter' },
 ];

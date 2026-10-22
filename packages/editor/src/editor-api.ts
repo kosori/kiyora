@@ -11,6 +11,7 @@ import type {
 } from '@kiyora/model';
 import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
+import type { ChartEdit } from './chart';
 import type { Clipboard } from './clipboard';
 import type { ConnectorEdit } from './connectors';
 import type { HistoryState } from './history/stack';
@@ -136,6 +137,13 @@ export type Editor = {
    * edit that changes nothing, leaves the board alone.
    */
   setConnector: (id: string, edit: ConnectorEdit) => void;
+  /**
+   * Replaces a chart's series, labels, palette or kind as one gesture, so one
+   * undo returns the data. A chart is stored as numbers, not as a picture of
+   * them; a shape that is not a chart, or an edit that changes nothing, leaves
+   * the board alone.
+   */
+  setChart: (id: string, edit: ChartEdit) => void;
   /**
    * Deletes the selection and everything it holds. A connector bound to a
    * deleted shape is kept and its end freed where it attached, so nothing

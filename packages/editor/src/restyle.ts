@@ -50,8 +50,12 @@ export const restyledBoard = (
     if (!selected.has(shape.id)) {
       return shape;
     }
+    const base =
+      change.variant !== undefined && shape.kind === 'frame'
+        ? { ...shape, variant: change.variant }
+        : shape;
     const restyled = {
-      ...shape,
+      ...base,
       ...(change.opacity === undefined ? {} : { opacity: change.opacity }),
       ...(change.textStyle === undefined
         ? {}
@@ -61,9 +65,6 @@ export const restyledBoard = (
               ...change.textStyle,
             },
           }),
-      ...(change.variant === undefined || shape.kind !== 'frame'
-        ? {}
-        : { variant: change.variant }),
       style:
         change.style === undefined
           ? shape.style

@@ -1,4 +1,8 @@
 import {
+  CHART_LABELS,
+  CHART_PALETTE,
+  CHART_SERIES,
+  type ChartShape,
   type ConnectorShape,
   DEFAULT_STICKY_SIZE,
   DEFAULT_TABLE_COLUMNS,
@@ -55,6 +59,9 @@ export const DEFAULT_SHAPE_SIZE = { h: 100, w: 160 } as const;
 
 /** The size a click places a frame: a region worth holding shapes in. */
 export const DEFAULT_FRAME_SIZE = { h: 360, w: 480 } as const;
+
+/** The size a click places a chart: wide enough for its axis and its category row. */
+export const DEFAULT_CHART_SIZE = { h: 220, w: 320 } as const;
 
 /**
  * The box a placement asks for: the rectangle the gesture swept, or, when it
@@ -188,6 +195,20 @@ export const shapeFromPlacement = (
       headerRow: true,
       kind: 'data-table',
       rows: emptyTableRows(DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
+    };
+
+    return shape;
+  }
+
+  if (kind === 'chart') {
+    const shape: ChartShape = {
+      ...base,
+      ...placementBox(placement, DEFAULT_CHART_SIZE),
+      kind: 'chart',
+      labels: [...CHART_LABELS],
+      palette: [...CHART_PALETTE],
+      series: [...CHART_SERIES],
+      variant: 'column',
     };
 
     return shape;

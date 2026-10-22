@@ -5,6 +5,7 @@ import {
   subtreeIds,
   type Theme,
 } from '@kiyora/model';
+import { type ChartEdit, editChart } from './chart';
 import { type ConnectorEdit, editConnector } from './connectors';
 import { addShape } from './containment';
 import type { Gestures } from './gestures';
@@ -52,6 +53,11 @@ export type BoardCommands = {
    * gesture, so it is one history entry.
    */
   setConnector: (id: string, edit: ConnectorEdit) => void;
+  /**
+   * Replaces a chart's series, labels, palette or kind. One call is one gesture,
+   * so one undo puts the data back; a shape that is not a chart writes nothing.
+   */
+  setChart: (id: string, edit: ChartEdit) => void;
   /**
    * Places the active shape tool's shape in `placement`'s box, wearing the last
    * used style, and returns it so a caller can begin editing a text shape at
@@ -176,6 +182,9 @@ export const createBoardCommands = ({
       core.adopt(next);
       core.select(core.selection());
       core.transactions.clear();
+    },
+    setChart: (id, edit) => {
+      core.change(editChart(core.board(), id, edit));
     },
     setConnector: (id, edit) => {
       core.change(editConnector(core.board(), id, edit));
