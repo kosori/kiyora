@@ -142,10 +142,11 @@ One gesture produces exactly one history entry.
 
 ### The keymap
 
-One keymap declares every binding, and the in-app shortcut reference is generated from it, so the dialog and the handler cannot disagree. Two things live on a binding besides its key and command:
+One keymap declares every binding, and the in-app shortcut reference is generated from it, so the dialog and the handler cannot disagree. Three things live on a binding besides its key and command:
 
-- A **mode** — `edit` or `present`. The two share one keymap, so a key pressed while presenting cannot run an editing command behind the slide.
+- A **mode** — `edit`, `present` or `navigate`. The three share one keymap, so a key pressed while presenting cannot run an editing command behind the slide, and an arrow pressed while navigating steps the selection spatially instead of nudging it.
 - A **modifier rule** per modifier — `required`, `forbidden` or `ignored`. Two bindings on one key differ by declaring the modifier, not by spelling the combination into the key.
+- A **focus** rule — `canvas` when the binding only applies while the board holds focus, so Enter on a button is still a button press.
 
 Tests fail if a binding has no row in the reference, if a row names a command the keymap cannot key, or if two bindings claim one chord in one mode.
 

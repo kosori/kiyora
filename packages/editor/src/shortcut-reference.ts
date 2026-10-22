@@ -29,6 +29,7 @@ const KEY_NAMES: Readonly<Record<string, string>> = {
   arrowleft: '←',
   arrowright: '→',
   arrowup: '↑',
+  enter: 'Enter',
   escape: 'Esc',
   pagedown: 'PgDn',
   pageup: 'PgUp',

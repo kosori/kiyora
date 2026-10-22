@@ -28,6 +28,8 @@ export type View = {
   icon: string | null;
   /** Whether the chrome is hidden, so the board is left alone on screen. */
   zen: boolean;
+  /** Whether the canvas is stepping the selection spatially: a view flag, never a board write. */
+  navigating: boolean;
 };
 
 /**

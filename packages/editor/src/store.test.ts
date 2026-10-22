@@ -124,6 +124,7 @@ describe('the view', () => {
     expect(editor.getView()).toEqual({
       camera: { x: 12, y: -30, zoom: 0.5 },
       icon: null,
+      navigating: false,
       tool: 'select',
       zen: false,
     });
