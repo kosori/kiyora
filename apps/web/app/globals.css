@@ -166,6 +166,11 @@
   html {
     @apply font-sans;
   }
+  /* The board is one tab stop, so keyboard focus on it paints like every other stop. */
+  #board:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
 }
 
 /*

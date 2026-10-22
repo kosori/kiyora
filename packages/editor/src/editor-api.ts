@@ -14,6 +14,7 @@ import type { Clipboard } from './clipboard';
 import type { ConnectorEdit } from './connectors';
 import type { HistoryState } from './history/stack';
 import type { GestureModifiers } from './modifiers';
+import type { NavigationDirection } from './navigation';
 import type { ImagePlacement, Placement } from './placement';
 import type { Restyle } from './restyle';
 import type { Selection } from './selection';
@@ -51,6 +52,10 @@ export type Editor = {
    * nothing, costs no history entry and saves nothing. Escape leaves it.
    */
   setZen: (zen: boolean) => void;
+  /** Enters or leaves shape-navigation mode: a view flag, with the board, its history and its saves untouched. */
+  setNavigating: (navigating: boolean) => void;
+  /** Steps the selection to the nearest shape that way by geometry, or nowhere when nothing lies there. */
+  navigate: (direction: NavigationDirection) => void;
   /** The style the next shape wears: the last used one, or the default. */
   getStyle: () => Style;
   /**

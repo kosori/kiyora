@@ -8,7 +8,9 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   panBy,
+  REVEAL_MARGIN,
   resetCamera,
+  revealCamera,
   stepZoom,
   toScreen,
   toWorld,
@@ -254,5 +256,63 @@ describe('what the view shows', () => {
       x: 0,
       y: 0,
     });
+  });
+});
+
+describe('revealing a selection', () => {
+  it('leaves the camera alone when the selection already sits inside the margin', () => {
+    const camera = { x: 0, y: 0, zoom: 1 };
+
+    expect(
+      revealCamera(camera, viewport, { h: 100, w: 100, x: 600, y: 100 })
+    ).toBe(camera);
+  });
+
+  it('pans the least distance that brings the selection inside the margin', () => {
+    const camera = { x: 0, y: 0, zoom: 1 };
+    const moved = revealCamera(camera, viewport, {
+      h: 100,
+      w: 100,
+      x: 900,
+      y: 100,
+    });
+
+    expect(moved).toEqual({
+      x: -(1000 - (viewport.w - REVEAL_MARGIN)),
+      y: 0,
+      zoom: 1,
+    });
+  });
+
+  it('reads the margin through the zoom, so a zoomed-out board still pans by what it shows', () => {
+    const camera = { x: 0, y: 0, zoom: 0.5 };
+    const moved = revealCamera(camera, viewport, {
+      h: 200,
+      w: 200,
+      x: 1600,
+      y: 100,
+    });
+
+    expect(moved.x).toBe(-148);
+  });
+
+  it('centres content too large for the padded view, because no pan can show all of it', () => {
+    const camera = { x: 0, y: 0, zoom: 1 };
+    const moved = revealCamera(camera, viewport, {
+      h: 100,
+      w: 900,
+      x: 0,
+      y: 100,
+    });
+
+    expect(moved.x).toBe(-50);
+  });
+
+  it('leaves a camera that has not measured itself alone', () => {
+    const camera = { x: 0, y: 0, zoom: 1 };
+
+    expect(
+      revealCamera(camera, { h: 0, w: 0 }, { h: 10, w: 10, x: 900, y: 900 })
+    ).toBe(camera);
   });
 });
