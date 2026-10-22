@@ -33,8 +33,8 @@ export const turn = (point: Point, origin: Point, degrees: number): Point => {
   };
 };
 
-/** The centre of a shape's authored box. */
-export const centreOf = (shape: Shape): Point => ({
+/** The centre of an authored box: a shape's, or a frame chrome's. */
+export const centreOf = (shape: Pick<Shape, 'h' | 'w' | 'x' | 'y'>): Point => ({
   x: shape.x + shape.w / 2,
   y: shape.y + shape.h / 2,
 });

@@ -14,6 +14,11 @@ import { connectorInk, connectorLabel } from './connectors';
 import { shapesInView } from './cull';
 import { FIGURE_GEOMETRY } from './figure-geometry';
 import { type Bounds, rectanglePath } from './figures';
+import {
+  FRAME_CHROME,
+  type FrameChromePath,
+  type FrameChromeRole,
+} from './frame-geometry';
 import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
@@ -74,18 +79,26 @@ const fillOf = (style: Style, theme: Theme, opacity: number): string => {
 const strokeOf = (style: Style, theme: Theme, opacity: number): string =>
   paintColour(style.stroke, theme, opacity);
 
-/** One box-shaped shape's path: the box its author drew, styled by the palette. */
-const boxPath = (shape: Shape, context: PaintContext): PaintPath => {
+/** One path drawn on a shape's box, styled by the palette. */
+const styledPath = (
+  d: string,
+  shape: Shape,
+  context: PaintContext
+): PaintPath => {
   const dash = DASH_PATTERN[shape.style.dash];
 
   return {
-    d: rectanglePath(shape),
+    d,
     ...(dash === undefined ? {} : { dash }),
     fill: fillOf(shape.style, context.theme, shape.opacity),
     stroke: strokeOf(shape.style, context.theme, shape.opacity),
     strokeWidth: shape.style.strokeWidth,
   };
 };
+
+/** One box-shaped shape's path: the box its author drew, styled by the palette. */
+const boxPath = (shape: Shape, context: PaintContext): PaintPath =>
+  styledPath(rectanglePath(shape), shape, context);
 
 /** One box-shaped shape's paint: its clean box, styled by the palette. */
 const paintBox = (shape: Shape, context: PaintContext): PaintPath[] => [
@@ -121,15 +134,75 @@ const paintSticky = (shape: StickyShape, context: PaintContext): Paint => ({
 });
 
 /**
- * Paints one frame: the box its author drew, and — when it clips — the same box
- * as the region its members are held inside. The clip is the authored box, so
- * dropping a member in never resizes the frame to fit it.
+ * How the foreground inks each piece of device chrome: a bar is a tinted band,
+ * a detail is a stroke, and a dot is a small solid. The body is absent because
+ * it wears the frame's own fill and stroke, which keeps the shape a person
+ * styled. Alpha scales with the shape's opacity, like every other paint.
  */
-const paintFrame = (shape: FrameShape, context: PaintContext): Paint => ({
-  children: [],
-  clip: shape.clip ? rectanglePath(shape) : undefined,
-  paths: paintBox(shape, context),
-});
+const CHROME_INK: Record<
+  Exclude<FrameChromeRole, 'body'>,
+  { fill?: number; stroke?: number; strokeWidth: number }
+> = {
+  bar: { fill: 0.08, stroke: 0.2, strokeWidth: 1 },
+  dot: { fill: 0.45, strokeWidth: 0 },
+  line: { stroke: 0.35, strokeWidth: 2 },
+};
+
+/** One piece of chrome, in the role's ink rather than the frame's fill. */
+const chromePath = (
+  chrome: FrameChromePath,
+  shape: FrameShape,
+  context: PaintContext
+): PaintPath => {
+  if (chrome.role === 'body') {
+    return styledPath(chrome.d, shape, context);
+  }
+  const ink = CHROME_INK[chrome.role];
+
+  return {
+    d: chrome.d,
+    ...(ink.fill === undefined
+      ? {}
+      : {
+          fill: paintColour(
+            FOREGROUND,
+            context.theme,
+            ink.fill * shape.opacity
+          ),
+        }),
+    ...(ink.stroke === undefined
+      ? {}
+      : {
+          stroke: paintColour(
+            FOREGROUND,
+            context.theme,
+            ink.stroke * shape.opacity
+          ),
+        }),
+    ...(ink.strokeWidth === 0 ? {} : { strokeWidth: ink.strokeWidth }),
+  };
+};
+
+/**
+ * Paints one frame: the box its author drew, or — for a device variant — that
+ * box with the variant's chrome inside it, and, when it clips, the authored box
+ * as the region its members are held inside. The chrome is painted before the
+ * members, and never shrinks the clip, so a member keeps every inch its author
+ * gave it and is drawn over the chrome rather than under it or outside it.
+ */
+const paintFrame = (shape: FrameShape, context: PaintContext): Paint => {
+  const chrome =
+    shape.w > 0 && shape.h > 0 ? FRAME_CHROME[shape.variant](shape) : [];
+
+  return {
+    children: [],
+    clip: shape.clip ? rectanglePath(shape) : undefined,
+    paths:
+      chrome.length === 0
+        ? paintBox(shape, context)
+        : chrome.map((piece) => chromePath(piece, shape, context)),
+  };
+};
 
 /**
  * Paints one group: nothing. Its ink belongs to its members, and they paint

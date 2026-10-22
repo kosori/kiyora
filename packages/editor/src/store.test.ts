@@ -38,6 +38,28 @@ const shape = (id: string, x: number) => ({
   y: 0,
 });
 
+/** A frame wearing the plain variant, holding nothing yet. */
+const frame = () => ({
+  ...shape('frame-1', 0),
+  clip: true,
+  kind: 'frame',
+  variant: 'plain',
+});
+
+/** A board with a frame and a rectangle, so a variant change can be shown to skip the rectangle. */
+const framed = (): Board =>
+  parseBoard({
+    camera: { x: 0, y: 0, zoom: 1 },
+    createdAt: 1_700_000_000_000,
+    deck: [],
+    id: 'board-3',
+    schemaVersion: SCHEMA_VERSION,
+    settings: { theme: 'light' },
+    shapes: [frame(), shape('two', 200)],
+    title: 'Framed',
+    updatedAt: 1_700_000_000_000,
+  });
+
 /** A board with two shapes, so a change can be shown to reach a whole selection. */
 const twoShapes = (): Board =>
   parseBoard({
@@ -220,6 +242,26 @@ describe('restyling the selection', () => {
 
     expect(editor.getBoard()).toBe(before);
     expect(seen).toEqual([]);
+  });
+
+  it('changes a frame\u2019s variant in one history entry and leaves non-frames alone', () => {
+    const editor = createEditor(framed());
+    editor.setSelection(['frame-1', 'two']);
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.restyle({ variant: 'phone' });
+
+    expect(seen).toHaveLength(1);
+    expect(editor.getBoard().shapes[0]).toMatchObject({
+      kind: 'frame',
+      variant: 'phone',
+    });
+    expect(editor.getBoard().shapes[1]).not.toHaveProperty('variant');
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({ variant: 'plain' });
   });
 
   it('wears the restyled style on the next shape placed, so a board stays one colour', () => {
