@@ -1,4 +1,4 @@
-import { type Board, type Shape, subtreeIds } from '@kiyora/model';
+import { type Board, type Shape, subtreeIds, type Theme } from '@kiyora/model';
 import { type ConnectorEdit, editConnector } from './connectors';
 import { addShape } from './containment';
 import type { Gestures } from './gestures';
@@ -27,6 +27,12 @@ export type BoardCommands = {
    * wearing the asked-for lock writes nothing.
    */
   setLocked: (locked: boolean) => void;
+  /**
+   * Sets the board's theme — the canvas it is authored and exported on. One
+   * board change, one history entry; a board already wearing the theme writes
+   * nothing.
+   */
+  setTheme: (theme: Theme) => void;
   /** Moves the selection in paint order as one gesture, writing nothing when it cannot move. */
   reorder: (move: OrderMove) => void;
   /** Replaces the board and notifies every board subscriber. */
@@ -162,6 +168,16 @@ export const createBoardCommands = ({
       if (changed) {
         core.change({ ...board, shapes });
       }
+    },
+    setTheme: (theme) => {
+      const board = core.board();
+      if (board.settings.theme === theme) {
+        return;
+      }
+      core.change({
+        ...board,
+        settings: { ...board.settings, theme },
+      });
     },
     undo: () => {
       restore(core.transactions.undo(core.board()));

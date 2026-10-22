@@ -101,6 +101,7 @@ export const createEditor = (board: Board): Editor => {
     setStyle: core.setStyle,
     setText: label.setText,
     setTextStyle: label.setTextStyle,
+    setTheme: edits.setTheme,
     setTool: (tool) => {
       core.setView({ ...core.view(), tool });
     },

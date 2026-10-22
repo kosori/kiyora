@@ -1,5 +1,6 @@
 import { keyshortcutsFor, type Tool } from '@kiyora/editor';
 import { Button } from '~/components/ui/button';
+import { AppearanceControl } from './appearance-control';
 
 type Props = {
   fit: () => void;
@@ -11,7 +12,7 @@ type Props = {
   zoomOut: () => void;
 };
 
-/** The bottom-left cluster: how the board is looked at, and the hand that moves it. */
+/** The bottom-left cluster: how the board is looked at, the hand that moves it, and the chrome's own appearance. */
 export const CameraControls = ({
   fit,
   reset,
@@ -76,5 +77,7 @@ export const CameraControls = ({
     >
       Reset
     </Button>
+    <span aria-hidden='true' className='mx-1 h-4 w-px bg-border' />
+    <AppearanceControl />
   </div>
 );

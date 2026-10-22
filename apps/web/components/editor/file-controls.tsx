@@ -64,8 +64,9 @@ const THEME_OPTIONS: readonly Option<Theme>[] = [
  * written.
  *
  * The PNG panel is where the artifact's size, background and theme are chosen.
- * The theme is the export's own, not the app's, so a light canvas can leave as a
- * dark image.
+ * The theme starts at the board's own, so a dark board leaves dark without a
+ * second choice, and it stays an override: the export's theme is its own, so a
+ * dark board can still leave as a light image.
  */
 export const FileControls = () => {
   const editor = useEditor();
@@ -81,7 +82,8 @@ export const FileControls = () => {
   const [target, setTarget] = useState<PngTarget>('board');
   const [scale, setScale] = useState<'1' | '2' | '4'>('2');
   const [background, setBackground] = useState<PngBackground>('transparent');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme | null>(null);
+  const exportTheme = theme ?? board.settings.theme;
   const targetOptions = selection.length === 0 ? BOARD_OPTION : TARGET_OPTIONS;
   const shownTarget: PngTarget = selection.length === 0 ? 'board' : target;
 
@@ -120,7 +122,7 @@ export const FileControls = () => {
     try {
       const blob = await exportBoardPng(
         pngBoard(board, selection, target),
-        { background, scale: Number(scale) as PngScale, theme },
+        { background, scale: Number(scale) as PngScale, theme: exportTheme },
         measure
       );
       saveBoardPng(blob, board.title);
@@ -129,7 +131,16 @@ export const FileControls = () => {
     } catch (thrown) {
       setError(thrown instanceof Error ? thrown.message : String(thrown));
     }
-  }, [background, board, clearError, measure, scale, selection, target, theme]);
+  }, [
+    background,
+    board,
+    clearError,
+    exportTheme,
+    measure,
+    scale,
+    selection,
+    target,
+  ]);
 
   const togglePng = useCallback(() => {
     setPng((open) => !open);
@@ -213,7 +224,7 @@ export const FileControls = () => {
             label='Theme'
             onPick={setTheme}
             options={THEME_OPTIONS}
-            selected={theme}
+            selected={exportTheme}
             testId='png-theme'
           />
           <Button data-testid='download-png' onClick={exportPng} size='sm'>

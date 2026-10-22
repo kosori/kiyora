@@ -236,6 +236,8 @@ test('a frame clips a member to its own box', async ({ page }) => {
   const clipped = await pixelAt(page, { x: 60, y: 175 });
   const kept = await pixelAt(page, { x: 120, y: 175 });
 
-  expect(clipped.a).toBe(0);
-  expect(kept.a).toBeGreaterThan(0);
+  // The board paints its own canvas fill, so a clipped member leaves that
+  // colour rather than a hole.
+  expect(clipped).toEqual({ a: 255, b: 255, g: 255, r: 255 });
+  expect(kept).not.toEqual(clipped);
 });

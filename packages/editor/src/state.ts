@@ -6,6 +6,7 @@ import type {
   Shape,
   Style,
   TextStyle,
+  Theme,
 } from '@kiyora/model';
 import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
@@ -309,6 +310,12 @@ export type Editor = {
    * lock writes nothing. A locked shape still resists every transform.
    */
   setLocked: (locked: boolean) => void;
+  /**
+   * Sets the board's theme — the canvas it is authored and exported on. One
+   * board change, one history entry; a board already wearing the theme writes
+   * nothing. The chrome's appearance is not this: it never reaches the board.
+   */
+  setTheme: (theme: Theme) => void;
   /** Whether undo and redo are possible, as a value a control can read. */
   getHistory: () => HistoryState;
   /** Subscribes to history-availability changes. Returns the unsubscribe. */
