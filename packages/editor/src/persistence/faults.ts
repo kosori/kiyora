@@ -1,14 +1,15 @@
 /**
- * The four ways storage can fail, kept distinct because the person who sees one
- * has to do a different thing from the person who sees another: free some space,
- * unblock the site, read the board that was set aside, or stop expecting a save.
- * Collapsing them into "storage error" would hide the one instruction that
- * helps.
+ * The five ways storage can fail, kept distinct because the person who sees one
+ * has to do a different thing from the person who sees another: free some
+ * space, unblock the site, read the board that was set aside, allow site data so
+ * images can be stored, or stop expecting a save. Collapsing them into "storage
+ * error" would hide the one instruction that helps.
  */
 export type StorageFault =
   | { kind: 'quota' }
   | { kind: 'blocked' }
   | { kind: 'unavailable' }
+  | { kind: 'images' }
   | { kind: 'corrupt'; reason: CorruptReason };
 
 /**

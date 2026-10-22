@@ -1,4 +1,4 @@
-import { serializeBoard } from '@kiyora/model';
+import { type Board, hasImageFiles, serializeBoard } from '@kiyora/model';
 import type { Editor } from '../store';
 import { faultOf, type StorageFault } from './faults';
 import type { Presence } from './presence';
@@ -48,6 +48,11 @@ export type Autosave = {
  * can say which of quota, blocked, corrupt or unavailable it was. A write is
  * skipped entirely while another tab holds the board, so the first tab's work is
  * never overwritten.
+ *
+ * A store that cannot hold image payloads — the localStorage fallback — refuses
+ * a board carrying one instead of writing a file whose pictures are missing. It
+ * records the `images` fault, so the refusal is visible rather than a save that
+ * quietly loses half the document.
  */
 export const createAutosave = ({
   editor,
@@ -96,20 +101,24 @@ export const createAutosave = ({
    * board: the view is the one that moves, and the board's copy is only the
    * snapshot the previous save left behind.
    */
-  const snapshot = (): string => {
-    const board = editor.getBoard();
-    return serializeBoard({ ...board, camera: editor.getView().camera });
-  };
+  const snapshot = (board: Board): string =>
+    serializeBoard({ ...board, camera: editor.getView().camera });
 
   const write = async (): Promise<void> => {
     if (presence !== undefined && !presence.isPrimary()) {
       setStatus('unsaved');
       return;
     }
+    const board = editor.getBoard();
+    if (storage.supportsFiles === false && hasImageFiles(board)) {
+      setFault({ kind: 'images' });
+      setStatus('unsaved');
+      return;
+    }
     const writing = revision;
     setStatus('saving');
     try {
-      await storage.write(snapshot());
+      await storage.write(snapshot(board));
       changed = false;
       setFault(null);
       setStatus(revision === writing ? 'saved' : 'unsaved');

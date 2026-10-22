@@ -1,18 +1,25 @@
+import type { BoardFiles } from '../board/image';
 import type {
   Board,
   ConnectorShape,
-  Dash,
   FigureShape,
   FrameShape,
   IconShape,
   Shape,
   StickyShape,
-  Style,
 } from '../board/schema';
 import { formatNumber } from '../format';
 import { ICON_VIEWBOX, type IconSet } from '../icons/icon-set';
 import { type PaintText, textOf } from '../text/layout';
 import type { Measurer } from '../text/wrap';
+import {
+  boxPath,
+  DASH_PATTERN,
+  fillOf,
+  paintBox,
+  strokeOf,
+  styledPath,
+} from './box';
 import { connectorInk, connectorLabel } from './connectors';
 import { shapesInView } from './cull';
 import { FIGURE_GEOMETRY } from './figure-geometry';
@@ -22,8 +29,9 @@ import {
   type FrameChromePath,
   type FrameChromeRole,
 } from './frame-geometry';
+import { type PaintImage, paintImage } from './image';
 import { highlightersFirst, paintInk } from './ink';
-import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
+import { FOREGROUND, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
 export type PaintPath = {
@@ -40,16 +48,11 @@ export type PaintPath = {
   transform?: string;
 };
 
-/** The numbers a stroke pattern breaks an outline into; a solid stroke has none. */
-export const DASH_PATTERN: Record<Dash, number[] | undefined> = {
-  dashed: [8, 6],
-  dotted: [2, 6],
-  solid: undefined,
-};
-
 /** The render-ready description of a shape: its own paths, its label, then its children's. */
 export type Paint = {
   paths: PaintPath[];
+  /** The raster this shape draws, absent when it draws none. */
+  image?: PaintImage;
   /** The lines of a label, absent when the shape carries no text. */
   text?: PaintText[];
   children: Paint[];
@@ -78,6 +81,12 @@ export type Paint = {
 export type PaintContext = {
   theme: Theme;
   /**
+   * The rasters a board's image shapes name. The payload is authored state and
+   * travels with the board, so the walker is handed it rather than reading a
+   * store; a context without it paints each image's authored box instead.
+   */
+  files?: BoardFiles;
+  /**
    * The icon paths a board's icon shapes name. The dataset is generated and
    * loaded on demand, so the walker is handed it rather than importing it; a
    * context without it still paints, degrading each icon to its authored box.
@@ -86,40 +95,6 @@ export type PaintContext = {
   measure?: Measurer;
   view?: Bounds;
 };
-
-const fillOf = (style: Style, theme: Theme, opacity: number): string => {
-  const alpha = FILL_ALPHA[style.fillStyle] * opacity;
-  return alpha === 0 ? 'none' : paintColour(style.fill, theme, alpha);
-};
-
-const strokeOf = (style: Style, theme: Theme, opacity: number): string =>
-  paintColour(style.stroke, theme, opacity);
-
-/** One path drawn on a shape's box, styled by the palette. */
-const styledPath = (
-  d: string,
-  shape: Shape,
-  context: PaintContext
-): PaintPath => {
-  const dash = DASH_PATTERN[shape.style.dash];
-
-  return {
-    d,
-    ...(dash === undefined ? {} : { dash }),
-    fill: fillOf(shape.style, context.theme, shape.opacity),
-    stroke: strokeOf(shape.style, context.theme, shape.opacity),
-    strokeWidth: shape.style.strokeWidth,
-  };
-};
-
-/** One box-shaped shape's path: the box its author drew, styled by the palette. */
-const boxPath = (shape: Shape, context: PaintContext): PaintPath =>
-  styledPath(rectanglePath(shape), shape, context);
-
-/** One box-shaped shape's paint: its clean box, styled by the palette. */
-const paintBox = (shape: Shape, context: PaintContext): PaintPath[] => [
-  boxPath(shape, context),
-];
 
 /** Paints one figure: every path its geometry names, styled by the palette. */
 const paintFigure = (shape: FigureShape, context: PaintContext): Paint => {
@@ -339,7 +314,13 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
               ? paintIcon(shape, context)
               : shape.kind === 'ink'
                 ? paintInk(shape, context)
-                : paintFigure(shape, context);
+                : shape.kind === 'image'
+                  ? paintImage(
+                      shape,
+                      context.files?.[shape.fileId],
+                      boxPath(shape, context)
+                    )
+                  : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {
@@ -350,15 +331,11 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
 };
 
 /**
- * The paint for one board: one child per shape, in paint order. A shape whose
- * `parentId` names a frame is nested inside it, where it follows its frame and
- * can be clipped by it; a shape with no parent stays at the top level. A
- * connector is painted against the whole board, because its path is resolved
- * from the shapes its ends name.
- *
- * When the context carries a `view`, only the shapes that view can show are
- * painted, and every connector still resolves against the whole board. The
- * export passes no view, so nothing display-only can reach an artifact.
+ * The paint for one board: one child per shape, in paint order, nested inside
+ * the frame or group its `parentId` names. A connector paints against the whole
+ * board, because its path is resolved from the shapes its ends name. When the
+ * context carries a `view`, only the shapes that view can show are painted; the
+ * export passes none, so nothing display-only reaches an artifact.
  */
 export const paintBoard = (board: Board, context: PaintContext): Paint => {
   const nodes = new Map<string, Paint>();

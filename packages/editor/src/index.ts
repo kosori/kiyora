@@ -220,6 +220,7 @@ export {
   createEditor,
   type Editor,
   type Gesture,
+  type ImagePlacement,
   type PresentState,
   type View,
 } from './store';

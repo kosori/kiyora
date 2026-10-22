@@ -49,6 +49,7 @@ export const PresentOverlay = () => {
       frame === undefined
         ? null
         : paintBoard(board, {
+            files: board.files,
             icons,
             measure,
             theme: board.settings.theme,

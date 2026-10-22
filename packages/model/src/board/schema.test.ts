@@ -344,6 +344,28 @@ describe('rejecting a board', () => {
     expect(issues.map((issue) => issue.path)).toEqual(['schemaVersion']);
   });
 
+  it('keeps an image payload once and the shape that names it', () => {
+    const parsed = parseBoard(
+      board({
+        files: {
+          hash: {
+            bytes: 68,
+            dataURL:
+              'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            mime: 'image/png',
+          },
+        },
+        shapes: [shape({ fileId: 'hash', kind: 'image' })],
+      })
+    );
+
+    expect(parsed.files.hash?.mime).toBe('image/png');
+    expect(parsed.shapes[0]?.kind).toBe('image');
+    expect(
+      parsed.shapes[0]?.kind === 'image' ? parsed.shapes[0].fileId : null
+    ).toBe('hash');
+  });
+
   it('throws a rejection whose message names what failed', () => {
     const invalid = board({
       shapes: [shape({ style: { fillStyle: 'plaid' } })],

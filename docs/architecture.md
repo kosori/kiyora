@@ -42,6 +42,8 @@ type Board = {
   camera: { x: number; y: number; zoom: number }    // snapshot autosave writes from the view
   settings: { theme: 'light' | 'dark' }
   shapes: Shape[]                                   // array index is paint order
+  files: Record<string, { mime: string; dataURL: string; bytes: number }>
+                                                    // rasters, keyed by content hash
   deck: Slide[]                                     // empty when there are no slides
 }
 
@@ -64,6 +66,7 @@ type Shape =
   | ShapeBase & { kind: 'frame'; variant: FrameVariant; clip: boolean }
   | ShapeBase & { kind: 'group' }                                        // box derived
   | ShapeBase & { kind: 'icon'; name: string }                           // paths from the dataset
+  | ShapeBase & { kind: 'image'; fileId: string }                        // bytes in `files`
   | ShapeBase & { kind: 'connector'; from: Endpoint; to: Endpoint;
                   route: Route; start: Head; end: Head }
 ```
@@ -109,7 +112,7 @@ function paintBoard(board: Board, ctx: PaintContext): Paint
 
 Neither the app nor `editor` computes geometry, colour or text position.
 
-`PaintContext` carries only what `model` cannot obtain by itself: the theme and the **measurer**. A connector cannot be painted from itself — its path is resolved from the shapes its ends name — so `paintBoard` is the way to paint one.
+`PaintContext` carries only what `model` cannot obtain by itself: the theme, the **measurer**, and the payloads a board's icons and images name. A connector cannot be painted from itself — its path is resolved from the shapes its ends name — so `paintBoard` is the way to paint one.
 
 ### The measurer
 

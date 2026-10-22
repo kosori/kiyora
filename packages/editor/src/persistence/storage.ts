@@ -16,6 +16,13 @@ export type BoardStorage = {
   snapshot: (value: string) => Promise<void>;
   /** Moves unreadable bytes to a key of their own, freeing the board key. */
   quarantine: (value: string) => Promise<void>;
+  /**
+   * Whether this store can hold a board's image payloads. IndexedDB can; the
+   * localStorage fallback cannot, because its quota is far below one board's
+   * pictures. Absent means it can, so only a store that knows its own limit
+   * has to say so.
+   */
+  supportsFiles?: boolean;
 };
 
 /** The board's storage key. Every Kiyora key is namespaced, so nothing collides. */

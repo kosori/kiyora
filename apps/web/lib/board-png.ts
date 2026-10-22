@@ -263,7 +263,12 @@ export const exportBoardPng = async (
   measure?: Measurer
 ): Promise<Blob> => {
   const icons = await iconSetFor(board);
-  const svg = exportBoardSvg(board, { icons, measure, theme: options.theme });
+  const svg = exportBoardSvg(board, {
+    files: board.files,
+    icons,
+    measure,
+    theme: options.theme,
+  });
 
   return await rasteriseBoard(svg, options);
 };

@@ -1,11 +1,21 @@
-import { type Board, type Shape, subtreeIds, type Theme } from '@kiyora/model';
+import {
+  type Board,
+  type ImageShape,
+  type Shape,
+  subtreeIds,
+  type Theme,
+} from '@kiyora/model';
 import { type ConnectorEdit, editConnector } from './connectors';
 import { addShape } from './containment';
 import type { Gestures } from './gestures';
 import type { LabelEdit } from './label-edit';
 import { type OrderMove, reorderedBoard } from './ordering';
-import type { Placement } from './placement';
-import { shapeFromPlacement } from './placement';
+import {
+  type ImagePlacement,
+  imageShape,
+  type Placement,
+  shapeFromPlacement,
+} from './placement';
 import { type Restyle, restyledBoard } from './restyle';
 import { selectedShapes } from './selection';
 import { translateShapes } from './shape-edit';
@@ -48,6 +58,12 @@ export type BoardCommands = {
    * once, or `null` for a tool that places nothing.
    */
   placeShape: (placement: Placement) => Shape | null;
+  /**
+   * Places one image in `placement`'s box and stores its raster under its
+   * content hash, as one gesture. An id the board already holds reuses the
+   * payload, so placing the same picture twice costs one copy of its bytes.
+   */
+  placeImage: (placement: ImagePlacement) => ImageShape;
   /** Undoes the last committed gesture. Does nothing when there is none. */
   undo: () => void;
   /** Redoes the last undone gesture. Does nothing when there is none. */
@@ -98,6 +114,22 @@ export const createBoardCommands = ({
       }
       core.transactions.noteNudge(board);
       core.publish(translateShapes(board, ids, dx, dy));
+    },
+    placeImage: ({ box, file, fileId }) => {
+      core.transactions.endNudgeRun();
+      const before = core.board();
+      const shape = imageShape(fileId, box, core.style(), before.shapes);
+      const files =
+        before.files[fileId] === undefined
+          ? { ...before.files, [fileId]: file }
+          : before.files;
+      core.change({
+        ...before,
+        files,
+        shapes: [...before.shapes, shape],
+      });
+      core.select([shape.id]);
+      return shape;
     },
     placeShape: (placement) => {
       const { icon, tool } = core.view();

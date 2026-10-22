@@ -1,4 +1,6 @@
-import type { InkMode, InkShape, Style } from '../board/schema';
+import type { InkMode, InkShape } from '../board/schema';
+import type { Style } from '../board/shape-base';
+
 import { formatNumber } from '../format';
 import { turn } from '../paint/turn';
 

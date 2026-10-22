@@ -14,7 +14,11 @@ import {
 } from '@kiyora/model';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const board = (title: string, camera = { x: 0, y: 0, zoom: 1 }): Board =>
+const board = (
+  title: string,
+  camera = { x: 0, y: 0, zoom: 1 },
+  overrides: Record<string, unknown> = {}
+): Board =>
   parseBoard({
     camera,
     createdAt: 1_700_000_000_000,
@@ -25,6 +29,7 @@ const board = (title: string, camera = { x: 0, y: 0, zoom: 1 }): Board =>
     shapes: [],
     title,
     updatedAt: 1_700_000_000_000,
+    ...overrides,
   });
 
 /** A storage that records every byte it is handed, standing in for IndexedDB. */
@@ -287,6 +292,7 @@ describe('what autosave stores', () => {
       camera: { x: 0, y: 0, zoom: 1 },
       createdAt: 1_700_000_000_000,
       deck: [],
+      files: {},
       id: 'board-1',
       schemaVersion: SCHEMA_VERSION,
       settings: { theme: 'light' },
@@ -301,5 +307,80 @@ describe('what autosave stores', () => {
     await autosave.flush();
 
     expect(writes.at(0)).toBe(serializeBoard(scrambled));
+  });
+});
+
+describe('a store that cannot hold images', () => {
+  const IMAGE = {
+    bytes: 68,
+    dataURL:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    mime: 'image/png' as const,
+  };
+
+  const withImage = (): Board =>
+    board('Pictures', undefined, {
+      files: { hash: IMAGE },
+      shapes: [
+        {
+          fileId: 'hash',
+          h: 90,
+          id: 'image-1',
+          kind: 'image',
+          locked: false,
+          opacity: 1,
+          parentId: null,
+          rotation: 0,
+          style: {
+            corner: 'sharp',
+            dash: 'solid',
+            fill: 'blue',
+            fillStyle: 'pastel',
+            stroke: 'ink',
+            strokeWidth: 2,
+          },
+          w: 160,
+          x: 0,
+          y: 0,
+        },
+      ],
+    });
+
+  it('refuses the write with an images fault instead of dropping the payload', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(withImage());
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({
+      delay: 50,
+      editor,
+      storage: { ...storage, supportsFiles: false },
+    });
+
+    editor.setBoard({ ...withImage(), title: 'Changed' });
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(writes).toEqual([]);
+    expect(autosave.getFault()).toEqual({ kind: 'images' });
+    expect(autosave.getStatus()).toBe('unsaved');
+  });
+
+  it('writes again, clearing the fault, once the board carries no image', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(withImage());
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({
+      delay: 50,
+      editor,
+      storage: { ...storage, supportsFiles: false },
+    });
+
+    editor.setBoard({ ...withImage(), title: 'Changed' });
+    await vi.advanceTimersByTimeAsync(50);
+    editor.setBoard(board('Clean'));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(readBack(writes.at(0)).title).toBe('Clean');
+    expect(autosave.getFault()).toBeNull();
+    expect(autosave.getStatus()).toBe('saved');
   });
 });

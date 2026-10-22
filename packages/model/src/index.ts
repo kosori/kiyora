@@ -1,6 +1,20 @@
 // The board: one schema, one paint walker, and the pure projection to SVG.
 
 export {
+  type BoardFiles,
+  filesSchema,
+  fitImageSize,
+  hasImageFiles,
+  IMAGE_FILE_LIMIT_BYTES,
+  IMAGE_MAX_SIDE,
+  IMAGE_MIME_TYPES,
+  type ImageFile,
+  type ImageMime,
+  imageFileSchema,
+  imageMimeOf,
+  imageMimeSchema,
+} from './board/image';
+export {
   MIGRATIONS,
   type Migration,
   type MigrationResult,
@@ -15,13 +29,8 @@ export {
   boardSchema,
   type Camera,
   type ConnectorShape,
-  type Corner,
   cameraSchema,
   connectorSchema,
-  cornerSchema,
-  DASHES,
-  type Dash,
-  dashSchema,
   EDGES,
   type Edge,
   type Endpoint,
@@ -41,11 +50,13 @@ export {
   type Head,
   headSchema,
   type IconShape,
+  type ImageShape,
   INK_MODES,
   type InkMode,
   type InkPoint,
   type InkShape,
   iconSchema,
+  imageSchema,
   inkModeSchema,
   inkPointSchema,
   inkSchema,
@@ -59,16 +70,21 @@ export {
   STICKY_FITS,
   type StickyFit,
   type StickyShape,
-  type Style,
   settingsSchema,
-  shapeBaseSchema,
   shapeSchema,
   slideSchema,
   sourceSchema,
   stickyFitSchema,
-  styleSchema,
   type TextShape,
 } from './board/schema';
+export type { Corner, Dash, Style } from './board/shape-base';
+export {
+  cornerSchema,
+  DASHES,
+  dashSchema,
+  shapeBaseSchema,
+  styleSchema,
+} from './board/shape-base';
 export {
   type BoardIssue,
   BoardRejection,
@@ -170,6 +186,7 @@ export {
   boundsOfShapes,
   shapeBounds,
 } from './paint/figures';
+export type { PaintImage } from './paint/image';
 export {
   type Paint,
   type PaintContext,

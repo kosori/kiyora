@@ -1,4 +1,6 @@
-import type { StickyShape, Style } from '../board/schema';
+import type { StickyShape } from '../board/schema';
+import type { Style } from '../board/shape-base';
+
 import { TEXT_LINE_HEIGHT, TEXT_PADDING } from '../text/layout';
 import { parseRuns } from '../text/markdown';
 import { DEFAULT_TEXT_STYLE } from '../text/style';

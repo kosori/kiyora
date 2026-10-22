@@ -116,6 +116,7 @@ const localStorageStorage = (): BoardStorage => ({
       localStorage.setItem(SNAPSHOT_KEY, value);
       return Promise.resolve();
     }),
+  supportsFiles: false,
   write: (value) =>
     guarded(() => {
       localStorage.setItem(BOARD_KEY, value);
