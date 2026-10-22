@@ -2,6 +2,7 @@
 
 import {
   type CommandHost,
+  isInkTool,
   revealCamera,
   selectionBounds,
   shapeAt,
@@ -206,7 +207,11 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           aria-label='Board'
           className={cn(
             'h-full w-full touch-none',
-            surface.hand ? 'cursor-grab' : 'cursor-default'
+            surface.hand
+              ? 'cursor-grab'
+              : isInkTool(surface.view.tool)
+                ? 'cursor-crosshair'
+                : 'cursor-default'
           )}
           data-ready={surface.ready ? 'true' : undefined}
           data-testid='canvas'

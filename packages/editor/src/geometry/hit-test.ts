@@ -2,6 +2,8 @@ import {
   type Bounds,
   CONNECTOR_REACH,
   connectorAt,
+  INK_REACH,
+  inkAt,
   type Shape,
   shapeBounds,
   turn,
@@ -57,9 +59,11 @@ export const shapeAt = (
     const hit =
       shape.kind === 'connector'
         ? connectorAt(shape, shapes, point, CONNECTOR_REACH)
-        : shape.kind === 'group'
-          ? containsBounds(shapeBounds(shape, shapes), point)
-          : containsPoint(shape, point);
+        : shape.kind === 'ink'
+          ? inkAt(shape, point, INK_REACH)
+          : shape.kind === 'group'
+            ? containsBounds(shapeBounds(shape, shapes), point)
+            : containsPoint(shape, point);
     if (hit) {
       return shape;
     }

@@ -1,6 +1,12 @@
 'use client';
 
-import { gestureModifiers, type Point, shapeAt, toWorld } from '@kiyora/editor';
+import {
+  gestureModifiers,
+  isInkTool,
+  type Point,
+  shapeAt,
+  toWorld,
+} from '@kiyora/editor';
 import { useEditor, useView } from '@kiyora/editor/react';
 import type { Camera } from '@kiyora/model';
 import {
@@ -35,12 +41,25 @@ const boardPoint = (
 };
 
 /**
+ * The pressure a pointer reports, or `undefined` when the device does not report
+ * one. A mouse always reports half a press, and a finger reports a contact size
+ * rather than a press, so only a pen's value shapes the stroke; the rest stay
+ * even instead of faking variation from a constant.
+ */
+const pressureOf = (
+  event: ReactPointerEvent<HTMLElement>
+): number | undefined =>
+  event.pointerType === 'pen' ? event.pressure : undefined;
+
+/**
  * The pointer on the canvas, split by tool: a shape tool places, the select
- * tool picks and moves. A drag of the select tool becomes a move when it starts
- * on a shape and a marquee when it starts on empty canvas, so the engine owns
- * that decision and the surface only forwards where the pointer is. A double
- * click on a shape opens its label for editing, on the canvas. Alt is forwarded
- * so a locked shape can be reached, which is the only way to unlock it.
+ * tool picks and moves, and an ink tool draws a freehand stroke. A drag of the
+ * select tool becomes a move when it starts on a shape and a marquee when it
+ * starts on empty canvas, so the engine owns that decision and the surface only
+ * forwards where the pointer is — and, for a pen, the pressure it reports. A
+ * double click on a shape opens its label for editing, on the canvas. Alt is
+ * forwarded so a locked shape can be reached, which is the only way to unlock
+ * it.
  *
  * Only the primary button begins a gesture, so a right-click hands the pointer
  * to the context menu instead of placing, moving or marqueing under it.
@@ -63,7 +82,7 @@ export const useBoardPointer = (
         return;
       }
       placement.onPointerDown(event);
-      if (panning || tool !== 'select') {
+      if (panning || (tool !== 'select' && !isInkTool(tool))) {
         return;
       }
       if (!(event.target instanceof SVGElement)) {
@@ -72,7 +91,8 @@ export const useBoardPointer = (
       editor.pointerDown(
         boardPoint(event, camera),
         event.shiftKey,
-        event.altKey
+        event.altKey,
+        pressureOf(event)
       );
       selecting.current = true;
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -85,7 +105,11 @@ export const useBoardPointer = (
       if (!selecting.current) {
         return;
       }
-      editor.pointerMove(boardPoint(event, camera), gestureModifiers(event));
+      editor.pointerMove(
+        boardPoint(event, camera),
+        gestureModifiers(event),
+        pressureOf(event)
+      );
     },
     [camera, editor]
   );

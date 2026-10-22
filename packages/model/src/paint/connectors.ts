@@ -10,7 +10,7 @@ import {
   connectorPoints,
   distanceToSegment,
 } from './connector-route';
-import type { Point } from './figures';
+import type { Point } from './turn';
 
 /**
  * The ink a connector draws: its line and a head at each end that asks for one,

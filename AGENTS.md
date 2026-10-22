@@ -30,6 +30,7 @@ bun run check-types      # types across every workspace
 bun run test             # unit, Vitest
 bun run test:e2e         # end to end, Playwright
 bun run check-budgets    # file size budget
+bun run check-icons      # the committed icon dataset matches its generator
 ```
 
 The end-to-end run uses port `4319` — override it with `E2E_PORT` when another checkout holds that port — and never reuses a running server, so it can only test this app.

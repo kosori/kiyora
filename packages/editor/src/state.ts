@@ -15,6 +15,7 @@ import type { ConnectorEdit } from './connectors';
 import type { AlignmentLine, Guide } from './geometry/guides';
 import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
+import type { InkDrag } from './ink';
 import type { GestureModifiers } from './modifiers';
 import type { NavigationDirection } from './navigation';
 import type { Placement } from './placement';
@@ -38,9 +39,8 @@ export type View = {
   camera: Camera;
   tool: Tool;
   /**
-   * The icon a pending icon tool will place. It lives beside the tool rather
-   * than in the document: choosing an icon arms the canvas, and the name only
-   * becomes authored state once the gesture places a shape.
+   * The icon a pending icon tool will place, beside the tool and never in the
+   * document: the name is authored only once a gesture places a shape.
    */
   icon: string | null;
   /** Whether the chrome is hidden, so the board is left alone on screen. */
@@ -64,7 +64,8 @@ export type Gesture =
       kind: 'resize';
       refusal?: string;
     }
-  | { kind: 'rotate' };
+  | { kind: 'rotate' }
+  | { kind: 'ink' };
 
 /**
  * The open move: the board it began on, where the pointer went down, the box it
@@ -114,7 +115,7 @@ export type RotateDrag = {
 };
 
 /** A pointer's open gesture, in the shape its own kind needs. */
-export type Drag = MoveDrag | MarqueeDrag | ResizeDrag | RotateDrag;
+export type Drag = MoveDrag | MarqueeDrag | ResizeDrag | RotateDrag | InkDrag;
 
 /**
  * The engine: it holds one board and its view, and publishes each change to its
@@ -141,9 +142,8 @@ export type Editor = {
    */
   setIcon: (name: string) => void;
   /**
-   * Shows or hides the chrome, leaving the board alone on screen. Zen is a view
-   * setting: it wakes the view's subscribers, never the board's, so it writes
-   * nothing, costs no history entry and saves nothing. Escape leaves it.
+   * Shows or hides the chrome. A view setting: it wakes the view's subscribers,
+   * never the board's, so it writes nothing, costs no entry and saves nothing.
    */
   setZen: (zen: boolean) => void;
   /** Enters or leaves shape-navigation mode: a view flag, with the board, its history and its saves untouched. */
@@ -246,20 +246,17 @@ export type Editor = {
   align: (alignment: Alignment) => void;
   /**
    * Spaces three or more movable selected shapes evenly along `axis`, keeping
-   * the outermost two where they are. One call is one gesture, and a selection
-   * already spaced evenly writes nothing.
+   * the outermost two put. One gesture; an even selection writes nothing.
    */
   distribute: (axis: DistributeAxis) => void;
   /**
-   * Puts the clipboard on the board offset clear of what it copies, cascading
-   * further on each repeat so a second paste is not hidden by the first. One
-   * gesture however many shapes it carries, so one undo takes the paste back.
+   * Puts the clipboard on the board clear of what it copies, cascading further
+   * on a repeat. One gesture however many shapes, so one undo takes it back.
    */
   paste: () => void;
   /**
    * Takes a fragment copied in another tab as this tab's clipboard. The next
-   * paste re-ids it against this board, exactly as a copy made here would; the
-   * board is untouched until then.
+   * paste re-ids it against this board, exactly as a copy here would.
    */
   receiveClipboard: (fragment: Clipboard) => void;
   /** Subscribes to copies made here, so a tab can share them over the board channel. */
@@ -279,25 +276,29 @@ export type Editor = {
   /** Subscribes to gesture changes, so a marquee can be drawn. Returns the unsubscribe. */
   subscribeGesture: (listener: () => void) => () => void;
   /**
-   * The pointer going down on the board. On a handle of the current selection it
-   * opens a resize or a rotate; on a shape it selects it — adding to the
-   * selection when `additive` — and opens a move; on empty canvas it clears the
-   * selection unless `additive`, and opens a marquee. `includeLocked` reaches a
-   * locked shape, so alt-clicking one selects it for the Inspector to unlock.
+   * The pointer going down. A handle opens a resize or rotate; a shape selects
+   * and opens a move; empty canvas clears and opens a marquee. An ink tool opens
+   * a stroke, and `pressure` is what the device reported. `includeLocked`
+   * reaches a locked shape, so alt-clicking one selects it for the Inspector.
    */
   pointerDown: (
     point: Point,
     additive: boolean,
-    includeLocked?: boolean
+    includeLocked?: boolean,
+    pressure?: number
   ) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
-   * a resize and a rotate each read the one `modifiers` value. Alt bypasses the
-   * grid snap and the alignment guides wherever a gesture snaps — a move and a
-   * resize — and, the named collision, grows a resize from its centre; shift
-   * keeps a resize's ratio and snaps a rotation to fifteen. See `modifiers.ts`.
+   * a resize and a rotate read the one `modifiers` value; an ink stroke appends
+   * the sample and its pressure. Alt bypasses snapping and grows a resize from
+   * its centre; shift keeps a resize's ratio and snaps a rotation to fifteen.
+   * See `modifiers.ts`.
    */
-  pointerMove: (point: Point, modifiers: GestureModifiers) => void;
+  pointerMove: (
+    point: Point,
+    modifiers: GestureModifiers,
+    pressure?: number
+  ) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */
   pointerUp: () => void;
   /** Escape: a move goes back to the positions it started from, a marquee is dropped. */

@@ -232,7 +232,9 @@ export {
 } from './store';
 export {
   DEFAULT_STYLE,
+  type InkTool,
   isFigureTool,
+  isInkTool,
   isShapeTool,
   type Placeable,
   placesShape,

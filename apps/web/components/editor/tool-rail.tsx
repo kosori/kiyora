@@ -5,7 +5,9 @@ import {
   IconArrowUpRight,
   IconFrame,
   IconHandMove,
+  IconHighlight,
   IconNote,
+  IconPencil,
   IconPointer,
   IconRectangle,
   IconTypography,
@@ -34,6 +36,8 @@ const RAIL: readonly RailEntry[] = [
   { icon: IconArrowUpRight, label: 'Connector', tool: 'connector' },
   { icon: IconNote, label: 'Sticky', tool: 'sticky' },
   { icon: IconFrame, label: 'Frame', tool: 'frame' },
+  { icon: IconPencil, label: 'Ink', tool: 'ink' },
+  { icon: IconHighlight, label: 'Highlighter', tool: 'highlighter' },
 ];
 
 /**
