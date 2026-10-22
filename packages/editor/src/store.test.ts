@@ -124,6 +124,7 @@ describe('the view', () => {
     expect(editor.getView()).toEqual({
       camera: { x: 12, y: -30, zoom: 0.5 },
       tool: 'select',
+      zen: false,
     });
   });
 
@@ -165,6 +166,24 @@ describe('the view', () => {
     expect(editor.getView().tool).toBe('hand');
     expect(editor.getBoard()).toBe(before);
     expect(boards).toEqual([]);
+  });
+
+  it('hides the chrome without touching the board, the history or a save', () => {
+    const editor = createEditor(board('First'));
+    const before = editor.getBoard();
+    const history = editor.getHistory();
+    const boards: string[] = [];
+    const views: string[] = [];
+    editor.subscribe(() => boards.push('board'));
+    editor.subscribeView(() => views.push('view'));
+
+    editor.setZen(true);
+
+    expect(editor.getView().zen).toBe(true);
+    expect(editor.getBoard()).toBe(before);
+    expect(editor.getHistory()).toEqual(history);
+    expect(boards).toEqual([]);
+    expect(views).toEqual(['view']);
   });
 
   it('leaves the view where it is when the board is replaced', () => {
@@ -276,5 +295,33 @@ describe('restyling the selection', () => {
       corner: 'rounded',
       fill: 'red',
     });
+  });
+});
+
+describe('the board theme', () => {
+  it('sets the canvas as one history entry, so one undo puts the old one back', () => {
+    const editor = createEditor(board('Theme'));
+
+    editor.setTheme('dark');
+
+    expect(editor.getBoard().settings.theme).toBe('dark');
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: true });
+
+    editor.undo();
+
+    expect(editor.getBoard().settings.theme).toBe('light');
+  });
+
+  it('publishes nothing, and records no history, when the board already wears it', () => {
+    const editor = createEditor(board('Theme'));
+    const before = editor.getBoard();
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.setTheme('light');
+
+    expect(editor.getBoard()).toBe(before);
+    expect(seen).toEqual([]);
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
   });
 });

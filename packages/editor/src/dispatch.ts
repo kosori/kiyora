@@ -63,7 +63,10 @@ const HANDLERS: Handlers = {
   'bring-forward': ({ editor }) => editor.bringForward(),
   'bring-to-front': ({ editor }) => editor.bringToFront(),
   camera: (target, command) => hostOf(target).camera(command.action, 'down'),
-  'cancel-gesture': ({ editor }) => editor.cancelGesture(),
+  'cancel-gesture': ({ editor }) => {
+    editor.cancelGesture();
+    editor.setZen(false);
+  },
   copy: ({ editor }) => editor.copy(),
   'copy-png': (target) => hostOf(target).copyPng(),
   cut: ({ editor }) => editor.cut(),
@@ -93,6 +96,7 @@ const HANDLERS: Handlers = {
   tool: ({ editor }, command) => editor.setTool(command.tool),
   undo: ({ editor }) => editor.undo(),
   ungroup: ({ editor }) => editor.ungroupSelection(),
+  zen: ({ editor }) => editor.setZen(!editor.getView().zen),
 };
 
 /**

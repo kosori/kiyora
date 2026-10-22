@@ -41,6 +41,7 @@ export type Command =
   | { kind: 'distribute'; axis: DistributeAxis }
   | { kind: 'undo' }
   | { kind: 'redo' }
+  | { kind: 'zen' }
   | { kind: 'present' }
   | { kind: 'present-next' }
   | { kind: 'present-previous' }
