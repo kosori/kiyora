@@ -25,8 +25,8 @@ const WIDTH = 240;
 /** The gap kept between the menu and every canvas edge. */
 const GAP = 8;
 
-/** Taller than this the menu scrolls, however tall the window is. */
-const MAX_HEIGHT = 512;
+/** The menu's own top and bottom border, which a scroll height leaves out. */
+const BORDER = 2;
 
 /** Where the menu sits, in the canvas's own pixels. */
 type Placement = {
@@ -75,14 +75,13 @@ const place = (
   const below = Math.max(0, surface.clientHeight - at.y - GAP);
   const openUp = contentHeight > below && above > below;
   const room = openUp ? above : below;
-  const maxHeight = Math.min(MAX_HEIGHT, room);
-  const height = Math.min(contentHeight, maxHeight);
+  const height = Math.min(contentHeight + BORDER, room);
   const top = openUp ? at.y - height : at.y;
   const left = Math.max(GAP, Math.min(at.x, surface.clientWidth - WIDTH - GAP));
 
   return {
     left,
-    maxHeight,
+    maxHeight: room,
     top: Math.max(0, Math.min(top, surface.clientHeight - height)),
   };
 };
