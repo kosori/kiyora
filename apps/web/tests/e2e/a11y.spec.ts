@@ -480,6 +480,21 @@ test('the live region names a label and counts a multi-selection', async ({
   await expect(announcer).toHaveText('3 selected');
 });
 
+test('the shortcut dialog names the command key this platform runs', async ({
+  page,
+}) => {
+  await open(page);
+  await page.keyboard.press('?');
+
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await expect(dialog).toContainText(/ctrl \+ z/i);
+  await expect(dialog).not.toContainText('⌘');
+  await expect(page.getByTestId('undo')).toHaveAttribute(
+    'aria-keyshortcuts',
+    'Control+z'
+  );
+});
+
 test('every focus stop paints a visible indicator', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);

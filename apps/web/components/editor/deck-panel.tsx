@@ -11,6 +11,7 @@ import {
 import { type MouseEvent, useCallback } from 'react';
 import { Button } from '~/components/ui/button';
 import { SlideNotes } from './slide-notes';
+import { usePlatform } from './use-platform';
 
 const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
 
@@ -26,6 +27,7 @@ const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
 export const DeckPanel = () => {
   const editor = useEditor();
   const board = useBoard();
+  const platform = usePlatform();
   const slides = deckFrames(board);
   const playable = presentedSlides(board);
   const loose = framesWithoutSlide(board);
@@ -81,7 +83,7 @@ export const DeckPanel = () => {
         <div className='mb-2 flex items-center justify-between'>
           <h2 className='font-heading font-medium text-sm'>Slides</h2>
           <Button
-            aria-keyshortcuts={keyshortcutsFor({ kind: 'present' })}
+            aria-keyshortcuts={keyshortcutsFor({ kind: 'present' }, platform)}
             data-action='present'
             data-testid='present-button'
             disabled={playable.length === 0}
