@@ -275,6 +275,51 @@ export const iconSchema = shapeBaseSchema.extend({
 /** An icon: a named figure from the shipped dataset, drawn in its box. */
 export type IconShape = z.infer<typeof iconSchema>;
 
+/**
+ * The two ways freehand ink is drawn: a pen lays opaque ink, and a highlighter
+ * lays a wider translucent band that paints behind its siblings so the words it
+ * crosses stay legible.
+ */
+export const INK_MODES = ['pen', 'highlighter'] as const;
+
+/** How freehand ink is drawn. */
+export const inkModeSchema = z.enum(INK_MODES);
+
+/** How freehand ink is drawn. */
+export type InkMode = z.infer<typeof inkModeSchema>;
+
+/**
+ * One point on an ink stroke, as a fraction of the shape's authored box, with
+ * the pressure the device reported while it was drawn. Pressure is absent when
+ * the device reports none — a mouse always reports half a press, which is not a
+ * pressure — so an even stroke is stored honestly rather than invented from a
+ * constant. Fractions keep the stroke attached to its box through a move, a
+ * resize and a rotation, exactly as they would any other authored geometry.
+ */
+export const inkPointSchema = z.object({
+  pressure: z.number().min(0).max(1).optional(),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+});
+
+/** One point on an ink stroke. */
+export type InkPoint = z.infer<typeof inkPointSchema>;
+
+/**
+ * Freehand ink: a path of authored points with a colour, a width and a mode.
+ * The box is derived from the points when the stroke is made and scales with
+ * them afterwards, so the shape stays one thing a person can select, move,
+ * resize, lock and export.
+ */
+export const inkSchema = shapeBaseSchema.extend({
+  kind: z.literal('ink'),
+  mode: inkModeSchema,
+  points: z.array(inkPointSchema).min(1),
+});
+
+/** Freehand ink: a pen stroke or a highlighter band. */
+export type InkShape = z.infer<typeof inkSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
@@ -284,6 +329,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   stickySchema,
   groupSchema,
   iconSchema,
+  inkSchema,
 ]);
 
 /** One item on the board. */

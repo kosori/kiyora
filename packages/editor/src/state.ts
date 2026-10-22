@@ -15,6 +15,7 @@ import type { ConnectorEdit } from './connectors';
 import type { AlignmentLine, Guide } from './geometry/guides';
 import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
+import type { InkDrag } from './ink';
 import type { GestureModifiers } from './modifiers';
 import type { Placement } from './placement';
 import type { Restyle } from './restyle';
@@ -61,7 +62,8 @@ export type Gesture =
       kind: 'resize';
       refusal?: string;
     }
-  | { kind: 'rotate' };
+  | { kind: 'rotate' }
+  | { kind: 'ink' };
 
 /**
  * The open move: the board it began on, where the pointer went down, the box it
@@ -111,7 +113,7 @@ export type RotateDrag = {
 };
 
 /** A pointer's open gesture, in the shape its own kind needs. */
-export type Drag = MoveDrag | MarqueeDrag | ResizeDrag | RotateDrag;
+export type Drag = MoveDrag | MarqueeDrag | ResizeDrag | RotateDrag | InkDrag;
 
 /**
  * The engine: it holds one board and its view, and publishes each change to its
@@ -272,25 +274,29 @@ export type Editor = {
   /** Subscribes to gesture changes, so a marquee can be drawn. Returns the unsubscribe. */
   subscribeGesture: (listener: () => void) => () => void;
   /**
-   * The pointer going down on the board. On a handle of the current selection it
-   * opens a resize or a rotate; on a shape it selects it — adding to the
-   * selection when `additive` — and opens a move; on empty canvas it clears the
-   * selection unless `additive`, and opens a marquee. `includeLocked` reaches a
-   * locked shape, so alt-clicking one selects it for the Inspector to unlock.
+   * The pointer going down. A handle opens a resize or rotate; a shape selects
+   * and opens a move; empty canvas clears and opens a marquee. An ink tool opens
+   * a stroke, and `pressure` is what the device reported. `includeLocked`
+   * reaches a locked shape, so alt-clicking one selects it for the Inspector.
    */
   pointerDown: (
     point: Point,
     additive: boolean,
-    includeLocked?: boolean
+    includeLocked?: boolean,
+    pressure?: number
   ) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
-   * a resize and a rotate each read the one `modifiers` value. Alt bypasses the
-   * grid snap and the alignment guides wherever a gesture snaps — a move and a
-   * resize — and, the named collision, grows a resize from its centre; shift
-   * keeps a resize's ratio and snaps a rotation to fifteen. See `modifiers.ts`.
+   * a resize and a rotate read the one `modifiers` value; an ink stroke appends
+   * the sample and its pressure. Alt bypasses snapping and grows a resize from
+   * its centre; shift keeps a resize's ratio and snaps a rotation to fifteen.
+   * See `modifiers.ts`.
    */
-  pointerMove: (point: Point, modifiers: GestureModifiers) => void;
+  pointerMove: (
+    point: Point,
+    modifiers: GestureModifiers,
+    pressure?: number
+  ) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */
   pointerUp: () => void;
   /** Escape: a move goes back to the positions it started from, a marquee is dropped. */
