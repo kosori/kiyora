@@ -57,6 +57,10 @@ _Avoid_: Container, folder, cluster
 **Sticky**:
 A shape kind: a coloured note with centred text whose height fits its content until a person resizes it.
 
+**Control**:
+A figure kind that draws one wireframe UI control — button, input, slider, tabs and the rest — as paths on its authored box, wearing the board's palette, stroke width and corner rather than a picture of a control.
+_Avoid_: Widget, component, UI element
+
 **Inspector**:
 The right-hand panel that edits the selection's style, text style and connector routing.
 _Avoid_: Properties panel, sidebar
