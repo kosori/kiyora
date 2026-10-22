@@ -2,7 +2,7 @@
 
 import { keyshortcutsFor } from '@kiyora/editor';
 import { useBoard, useEditor, usePresent } from '@kiyora/editor/react';
-import { paintBoard, presentedSlides } from '@kiyora/model';
+import { CANVAS_ENTRY, paintBoard, presentedSlides } from '@kiyora/model';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { PaintNode } from './paint-node';
@@ -157,7 +157,11 @@ export const PresentOverlay = () => {
       role='dialog'
       tabIndex={-1}
     >
-      <div className='relative flex min-h-0 flex-1'>
+      <div
+        className='relative flex min-h-0 flex-1'
+        data-testid='present-surface'
+        style={{ backgroundColor: CANVAS_ENTRY[board.settings.theme] }}
+      >
         <svg
           aria-label='Slide'
           className='h-full w-full'

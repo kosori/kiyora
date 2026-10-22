@@ -188,6 +188,26 @@ test('the board theme repaints the canvas and the PNG, and one undo returns it',
   await expect(canvasFill(page)).toHaveAttribute('fill', '#1e1e1e');
 });
 
+test('a dark board presents on its own canvas, not on the chrome', async ({
+  page,
+}) => {
+  await open(page);
+  await pick(page, 'board-theme', 'dark');
+
+  await page.getByTestId('rail-tab-deck').click();
+  await page.getByTestId('template-blank').click();
+  await page.getByTestId('present-button').click();
+
+  await expect(page.getByTestId('present-slide')).toBeVisible();
+  await expect(page.getByTestId('present-surface')).toHaveCSS(
+    'background-color',
+    'rgb(30, 30, 30)'
+  );
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('present-overlay')).toBeHidden();
+});
+
 test('a dark chrome keeps a light board, and the reverse holds', async ({
   page,
 }) => {
