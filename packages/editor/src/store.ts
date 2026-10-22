@@ -104,6 +104,9 @@ export const createEditor = (board: Board): Editor => {
     setTool: (tool) => {
       core.setView({ ...core.view(), tool });
     },
+    setZen: (zen) => {
+      core.setView({ ...core.view(), zen });
+    },
     startPresent: present.start,
     stopPresent: present.stop,
     subscribe: core.subscribe,

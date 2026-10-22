@@ -367,6 +367,15 @@ describe('the find key', () => {
   });
 });
 
+describe('the zen key', () => {
+  it('hides the chrome on the backslash and shows it in the reference', () => {
+    expect(resolveKey({ key: '\\' })).toEqual({ kind: 'zen' });
+    expect(
+      shortcutReference().find((row) => row.label === 'Zen mode')?.keys
+    ).toEqual(['\\']);
+  });
+});
+
 describe('the arrange keys', () => {
   it('resolves the six alignments and the two distributions', () => {
     expect(resolveKey({ alt: true, key: 'a' })).toEqual({

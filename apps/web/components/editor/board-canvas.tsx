@@ -194,15 +194,17 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
             shapeId={editingId}
           />
         )}
-        <CameraControls
-          fit={surface.actions.fit}
-          reset={surface.actions.reset}
-          toggleTool={surface.actions.toggleTool}
-          tool={surface.view.tool}
-          zoom={camera.zoom}
-          zoomIn={surface.actions.zoomIn}
-          zoomOut={surface.actions.zoomOut}
-        />
+        {surface.view.zen ? null : (
+          <CameraControls
+            fit={surface.actions.fit}
+            reset={surface.actions.reset}
+            toggleTool={surface.actions.toggleTool}
+            tool={surface.view.tool}
+            zoom={camera.zoom}
+            zoomIn={surface.actions.zoomIn}
+            zoomOut={surface.actions.zoomOut}
+          />
+        )}
       </div>
       <CommandPalette
         host={paletteHost}

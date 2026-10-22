@@ -42,7 +42,11 @@ export type StoreCore = {
 /** The core over `board`, with the selection, the view and the history it starts empty. */
 export const createStoreCore = (board: Board): StoreCore => {
   let current = board;
-  let view: View = { camera: board.camera, tool: 'select' };
+  let view: View = {
+    camera: board.camera,
+    tool: 'select',
+    zen: false,
+  };
   let style: Style = DEFAULT_STYLE;
   let selection: Selection = [];
   const transactions = createTransactions();

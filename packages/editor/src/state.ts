@@ -35,6 +35,8 @@ import type { Tool } from './tools';
 export type View = {
   camera: Camera;
   tool: Tool;
+  /** Whether the chrome is hidden, so the board is left alone on screen. */
+  zen: boolean;
 };
 
 /**
@@ -122,6 +124,12 @@ export type Editor = {
   setCamera: (camera: Camera) => void;
   /** Changes what the pointer does. The board's subscribers are untouched. */
   setTool: (tool: Tool) => void;
+  /**
+   * Shows or hides the chrome, leaving the board alone on screen. Zen is a view
+   * setting: it wakes the view's subscribers, never the board's, so it writes
+   * nothing, costs no history entry and saves nothing. Escape leaves it.
+   */
+  setZen: (zen: boolean) => void;
   /** The style the next shape wears: the last used one, or the default. */
   getStyle: () => Style;
   /**
