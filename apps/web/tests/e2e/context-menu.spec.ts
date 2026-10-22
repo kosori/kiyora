@@ -38,6 +38,10 @@ const entry = (page: Page, name: string) =>
 const shapeWith = (page: Page, d: string) =>
   page.getByTestId('board').locator(`path[data-shape][d="${d}"]`);
 
+/** Every shape's clean path, in paint order, so an order change is read from the paint. */
+const shapePaths = (page: Page) =>
+  page.getByTestId('board').locator('path[data-shape]');
+
 /** Selects the starter by clicking inside it. */
 const selectStarter = async (page: Page): Promise<void> => {
   const box = await canvasBox(page);
@@ -299,4 +303,69 @@ test('the menu is display state, so opening it leaves no history entry behind', 
 
   await expect(page.getByTestId('undo')).toBeDisabled();
   await expect(shapeWith(page, STARTER)).toBeVisible();
+});
+
+test('near the bottom edge the menu opens upward and its last entry still runs', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  const top = box.height - 160;
+  const drawn = `M 320 ${top} L 480 ${top} L 480 ${top + 120} L 320 ${top + 120} Z`;
+
+  await page.keyboard.press('r');
+  await page.mouse.move(box.x + 320, box.y + top);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 480, box.y + top + 120);
+  await page.mouse.up();
+  await page.keyboard.press('v');
+
+  const pointer = { x: 400, y: top + 100 };
+  await rightClick(page, pointer);
+  await expect(menu(page)).toBeVisible();
+
+  const placed = await menu(page).boundingBox();
+  if (placed === null) {
+    throw new Error('the menu has no box');
+  }
+  expect(placed.y).toBeGreaterThanOrEqual(box.y);
+  expect(placed.y + placed.height).toBeLessThanOrEqual(box.y + pointer.y + 1);
+
+  await page.keyboard.press('End');
+  await expect(entry(page, 'Send to back')).toBeFocused();
+  await expect(entry(page, 'Send to back')).toBeInViewport();
+
+  await entry(page, 'Send to back').click();
+
+  await expect(menu(page)).toBeHidden();
+  await expect(shapePaths(page).nth(0)).toHaveAttribute('d', drawn);
+});
+
+test('near the right edge the menu slides left so it stays inside the canvas', async ({
+  page,
+}) => {
+  await open(page);
+  const box = await canvasBox(page);
+  const left = box.width - 320;
+  const drawn = `M ${left} 120 L ${left + 260} 120 L ${left + 260} 260 L ${left} 260 Z`;
+
+  await page.keyboard.press('r');
+  await page.mouse.move(box.x + left, box.y + 120);
+  await page.mouse.down();
+  await page.mouse.move(box.x + left + 260, box.y + 260);
+  await page.mouse.up();
+  await page.keyboard.press('v');
+
+  await rightClick(page, { x: box.width - 70, y: 190 });
+  await expect(menu(page)).toBeVisible();
+
+  const placed = await menu(page).boundingBox();
+  if (placed === null) {
+    throw new Error('the menu has no box');
+  }
+  expect(placed.x).toBeGreaterThanOrEqual(box.x);
+  expect(placed.x + placed.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+
+  await entry(page, 'Delete').click();
+  await expect(shapeWith(page, drawn)).toBeHidden();
 });

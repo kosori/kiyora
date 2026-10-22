@@ -172,3 +172,44 @@ test('the palette names only rows the reference names', async ({ page }) => {
     expect(labels).toContain(label);
   }
 });
+
+test('in a short window the list scrolls to the last row, which still runs', async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 460, width: 1280 });
+  await open(page);
+  await page.keyboard.press('Control+k');
+  await expect(palette(page)).toBeVisible();
+
+  const dialog = await palette(page).boundingBox();
+  if (dialog === null) {
+    throw new Error('the palette has no box');
+  }
+  expect(dialog.y).toBeGreaterThanOrEqual(0);
+  expect(dialog.y + dialog.height).toBeLessThanOrEqual(460);
+
+  await page.keyboard.press('ArrowUp');
+
+  const last = options(page).last();
+  await expect(last).toHaveAttribute('aria-selected', 'true');
+  await expect(last).toContainText('Leave presenting');
+
+  const list = await palette(page)
+    .getByRole('listbox', { name: 'Commands' })
+    .boundingBox();
+  const row = await last.boundingBox();
+  if (list === null || row === null) {
+    throw new Error('the list or its last row has no box');
+  }
+  expect(row.y).toBeGreaterThanOrEqual(list.y);
+  expect(row.y + row.height).toBeLessThanOrEqual(list.y + list.height + 0.5);
+  await expect(search(page)).toBeVisible();
+
+  await page.keyboard.press('Enter');
+
+  // Leaving a presentation with none running is the command's own no-op; what
+  // proves the row ran is that the palette took it and the board was not hurt.
+  await expect(palette(page)).toBeHidden();
+  await expect(page.getByTestId('present-overlay')).toBeHidden();
+  await expect(shapeWith(page, STARTER)).toBeVisible();
+});
