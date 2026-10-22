@@ -101,6 +101,19 @@ describe('the migration chain', () => {
     expect(frame).toBeDefined();
     expect(frame).not.toHaveProperty('source');
   });
+
+  it('stamps an older board to the icon version without rewriting a shape', () => {
+    const before = fixture(SCHEMA_VERSION - 1) as Record<string, unknown>;
+    const lifted = migratePayload(before);
+
+    if (lifted.status !== 'migrated') {
+      throw new Error('expected a migration');
+    }
+
+    expect((lifted.payload as Record<string, unknown>).shapes).toEqual(
+      before.shapes
+    );
+  });
 });
 
 describe('migrating a payload', () => {

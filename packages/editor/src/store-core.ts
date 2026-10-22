@@ -47,6 +47,7 @@ export const createStoreCore = (board: Board): StoreCore => {
   let current = board;
   let view: View = {
     camera: board.camera,
+    icon: null,
     tool: 'select',
     zen: false,
   };

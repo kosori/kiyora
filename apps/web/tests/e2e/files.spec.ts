@@ -149,7 +149,7 @@ test('an invalid file is refused, and the board it would replace is left untouch
   await openFile(
     page,
     'future.kyr.json',
-    JSON.stringify({ ...legacy, schemaVersion: 3 })
+    JSON.stringify({ ...legacy, schemaVersion: 4 })
   );
   await expect(page.getByTestId('file-error')).toContainText(/schemaVersion/);
 
@@ -170,7 +170,7 @@ test('a board saved before this build opens, and saves as the newest version', a
   await expect(rectangle(page)).toHaveAttribute('stroke', drawn.stroke);
 
   const saved = JSON.parse(await saveFile(page)) as { schemaVersion: number };
-  expect(saved.schemaVersion).toBe(2);
+  expect(saved.schemaVersion).toBe(3);
 });
 
 test('a file past the byte cap is refused with a visible fault, not a frozen tab', async ({

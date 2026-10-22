@@ -36,6 +36,12 @@ import type { Tool } from './tools';
 export type View = {
   camera: Camera;
   tool: Tool;
+  /**
+   * The icon a pending icon tool will place. It lives beside the tool rather
+   * than in the document: choosing an icon arms the canvas, and the name only
+   * becomes authored state once the gesture places a shape.
+   */
+  icon: string | null;
   /** Whether the chrome is hidden, so the board is left alone on screen. */
   zen: boolean;
 };
@@ -125,6 +131,12 @@ export type Editor = {
   setCamera: (camera: Camera) => void;
   /** Changes what the pointer does. The board's subscribers are untouched. */
   setTool: (tool: Tool) => void;
+  /**
+   * Arms the canvas to place one icon from the shipped dataset. The name lives
+   * in the view until a gesture places it, so nothing derived reaches the board
+   * and choosing an icon is never a history entry.
+   */
+  setIcon: (name: string) => void;
   /**
    * Shows or hides the chrome, leaving the board alone on screen. Zen is a view
    * setting: it wakes the view's subscribers, never the board's, so it writes

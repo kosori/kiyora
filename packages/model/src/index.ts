@@ -40,6 +40,8 @@ export {
   groupSchema,
   type Head,
   headSchema,
+  type IconShape,
+  iconSchema,
   ROUTES,
   type Route,
   routeSchema,
@@ -100,6 +102,7 @@ export {
   parseBoardFile,
   serializeBoard,
 } from './file/board-file';
+export { ICON_VIEWBOX, type IconSet } from './icons/icon-set';
 export {
   DEFAULT_LAYOUT_DIRECTION,
   type GroupPlacement,

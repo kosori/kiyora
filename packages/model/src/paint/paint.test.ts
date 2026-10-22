@@ -213,3 +213,52 @@ describe('painting a group', () => {
     expect(inner?.children.map((child) => child.shapeId)).toEqual(['member-1']);
   });
 });
+
+describe('painting an icon', () => {
+  const icon = (overrides: Record<string, unknown> = {}) =>
+    shape({ kind: 'icon', name: 'star', ...overrides });
+
+  const icons = { star: 'M4 4 L20 20' };
+
+  it('paints the dataset path, fitted into the box and named by the shape', () => {
+    const paint = paintBoard(board([icon()]), { icons, theme: 'light' });
+    const path = paint.children[0]?.paths[0];
+
+    expect(paint.children[0]?.shapeId).toBe('shape-1');
+    expect(path?.d).toBe('M4 4 L20 20');
+    expect(path?.fill).toBe('none');
+    expect(path?.stroke).toBe('#2f9e44');
+    expect(path?.transform).toBe('rotate(0 50 30) translate(20 0) scale(2.5)');
+    expect(path?.strokeWidth).toBe(0.8);
+  });
+
+  it('turns the icon with its shape', () => {
+    const paint = paintBoard(board([icon({ rotation: 90 })]), {
+      icons,
+      theme: 'light',
+    });
+
+    expect(paint.children[0]?.paths[0]?.transform).toContain(
+      'rotate(90 50 30)'
+    );
+  });
+
+  it('paints the authored box when the name is not in the dataset', () => {
+    const paint = paintBoard(board([icon({ name: 'not-an-icon' })]), {
+      icons,
+      theme: 'light',
+    });
+    const path = paint.children[0]?.paths[0];
+
+    expect(path?.d).toBe('M 0 0 L 100 0 L 100 60 L 0 60 Z');
+    expect(path?.transform).toBeUndefined();
+  });
+
+  it('paints the authored box when no dataset has arrived yet', () => {
+    const paint = paintBoard(board([icon()]), light);
+
+    expect(paint.children[0]?.paths[0]?.d).toBe(
+      'M 0 0 L 100 0 L 100 60 L 0 60 Z'
+    );
+  });
+});

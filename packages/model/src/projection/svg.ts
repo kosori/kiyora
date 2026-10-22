@@ -46,6 +46,7 @@ const attributes = (path: PaintPath): string =>
         ? undefined
         : path.dash.map(formatNumber).join(' '),
     ],
+    ['transform', path.transform],
   ]);
 
 const runMarkup = (run: {

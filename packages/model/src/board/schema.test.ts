@@ -244,6 +244,24 @@ describe('a group', () => {
   });
 });
 
+describe('an icon', () => {
+  it('is a shape kind that carries only its name, not the paths', () => {
+    const authored = shape({ kind: 'icon', name: 'star' });
+
+    expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+      authored
+    );
+  });
+
+  it('rejects an icon with no name, rather than painting a blank box', () => {
+    const issues = boardIssues(
+      board({ shapes: [shape({ kind: 'icon', name: '' })] })
+    );
+
+    expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.name']);
+  });
+});
+
 describe('a sticky', () => {
   const note = (overrides: Record<string, unknown> = {}) =>
     shape({ h: 160, kind: 'sticky', w: 160, ...overrides });

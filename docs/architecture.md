@@ -63,6 +63,7 @@ type Shape =
   | ShapeBase & { kind: 'sticky' }
   | ShapeBase & { kind: 'frame'; variant: FrameVariant; clip: boolean }
   | ShapeBase & { kind: 'group' }                                        // box derived
+  | ShapeBase & { kind: 'icon'; name: string }                           // paths from the dataset
   | ShapeBase & { kind: 'connector'; from: Endpoint; to: Endpoint;
                   route: Route; start: Head; end: Head }
 ```

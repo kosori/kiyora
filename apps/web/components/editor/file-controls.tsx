@@ -111,13 +111,19 @@ export const FileControls = () => {
   }, [board, camera]);
 
   const exportSvg = useCallback(() => {
-    try {
-      saveBoardSvg(board, { measure, theme: board.settings.theme });
-      setError(null);
-      clearError();
-    } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : String(thrown));
-    }
+    const run = async (): Promise<void> => {
+      try {
+        await saveBoardSvg(board, {
+          measure,
+          theme: board.settings.theme,
+        });
+        setError(null);
+        clearError();
+      } catch (thrown) {
+        setError(thrown instanceof Error ? thrown.message : String(thrown));
+      }
+    };
+    run().catch(() => undefined);
   }, [board, clearError, measure]);
 
   const exportPng = useCallback(async () => {

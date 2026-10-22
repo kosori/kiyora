@@ -123,6 +123,7 @@ describe('the view', () => {
 
     expect(editor.getView()).toEqual({
       camera: { x: 12, y: -30, zoom: 0.5 },
+      icon: null,
       tool: 'select',
       zen: false,
     });
@@ -295,6 +296,50 @@ describe('restyling the selection', () => {
       corner: 'rounded',
       fill: 'red',
     });
+  });
+});
+
+describe('placing an icon', () => {
+  it('arms the icon tool and places the name it was given, then returns to select', () => {
+    const editor = createEditor(board('Icons'));
+    const placement = { from: { x: 10, y: 20 }, to: { x: 110, y: 120 } };
+
+    editor.setIcon('star');
+
+    expect(editor.getView()).toMatchObject({ icon: 'star', tool: 'icon' });
+
+    const placed = editor.placeShape(placement);
+
+    expect(placed).toMatchObject({ kind: 'icon', name: 'star' });
+    expect(editor.getBoard().shapes[0]).toMatchObject({
+      h: 100,
+      kind: 'icon',
+      name: 'star',
+      w: 100,
+      x: 10,
+      y: 20,
+    });
+    expect(editor.getView()).toMatchObject({ icon: null, tool: 'select' });
+  });
+
+  it('places nothing when the icon tool was armed without a name', () => {
+    const editor = createEditor(board('Icons'));
+
+    editor.setTool('icon');
+
+    expect(
+      editor.placeShape({ from: { x: 0, y: 0 }, to: { x: 10, y: 10 } })
+    ).toBeNull();
+    expect(editor.getBoard().shapes).toEqual([]);
+  });
+
+  it('clears the pending name when another tool is chosen', () => {
+    const editor = createEditor(board('Icons'));
+
+    editor.setIcon('star');
+    editor.setTool('select');
+
+    expect(editor.getView()).toMatchObject({ icon: null, tool: 'select' });
   });
 });
 

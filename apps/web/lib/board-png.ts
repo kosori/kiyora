@@ -7,6 +7,7 @@ import {
   type Theme,
 } from '@kiyora/model';
 import { boardFileName } from './board-file';
+import { iconSetFor } from './icon-set';
 
 /**
  * The board as a raster. Rasterising needs a real canvas, and `model` must stay
@@ -261,7 +262,8 @@ export const exportBoardPng = async (
   options: PngExportOptions,
   measure?: Measurer
 ): Promise<Blob> => {
-  const svg = exportBoardSvg(board, { measure, theme: options.theme });
+  const icons = await iconSetFor(board);
+  const svg = exportBoardSvg(board, { icons, measure, theme: options.theme });
 
   return await rasteriseBoard(svg, options);
 };
