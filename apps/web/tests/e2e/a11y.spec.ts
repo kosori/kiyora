@@ -418,10 +418,66 @@ test('the live region announces the selection a gesture makes', async ({
 
   const box = await canvasBox(page);
   await page.mouse.click(box.x + 150, box.y + 150);
-  await expect(announcer).toHaveText('Rectangle selected');
+  await expect(announcer).toHaveText('Rectangle selected, 1 of 1');
 
   await page.mouse.click(box.x + 400, box.y + 300);
   await expect(announcer).toHaveText('Nothing selected');
+});
+
+test('the live region tells two shapes of one kind apart', async ({ page }) => {
+  await open(page);
+  const announcer = page.getByTestId('selection-announcer');
+  const box = await canvasBox(page);
+
+  await page.keyboard.press('r');
+  await drag(
+    page,
+    { x: box.x + 500, y: box.y + 80 },
+    { x: box.x + 600, y: box.y + 180 }
+  );
+  await page.keyboard.press('v');
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await expect(announcer).toHaveText('Rectangle selected, 1 of 2');
+
+  await page.mouse.click(box.x + 550, box.y + 130);
+  await expect(announcer).toHaveText('Rectangle selected, 2 of 2');
+});
+
+test('the live region names a label and counts a multi-selection', async ({
+  page,
+}) => {
+  await open(page);
+  const announcer = page.getByTestId('selection-announcer');
+  const box = await canvasBox(page);
+
+  await page.mouse.dblclick(box.x + 190, box.y + 150);
+  const editor = page.getByTestId('text-editor');
+  await editor.fill('Plan');
+  await editor.blur();
+
+  await page.keyboard.press('r');
+  await drag(
+    page,
+    { x: box.x + 500, y: box.y + 80 },
+    { x: box.x + 600, y: box.y + 180 }
+  );
+  await page.keyboard.press('r');
+  await drag(
+    page,
+    { x: box.x + 500, y: box.y + 300 },
+    { x: box.x + 600, y: box.y + 400 }
+  );
+  await page.keyboard.press('v');
+
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await expect(announcer).toHaveText('Plan selected, 1 of 3');
+
+  await page.keyboard.down('Shift');
+  await page.mouse.click(box.x + 550, box.y + 130);
+  await page.mouse.click(box.x + 550, box.y + 350);
+  await page.keyboard.up('Shift');
+  await expect(announcer).toHaveText('3 selected');
 });
 
 test('every focus stop paints a visible indicator', async ({ page }) => {

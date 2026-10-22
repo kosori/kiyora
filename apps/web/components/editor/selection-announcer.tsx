@@ -1,13 +1,32 @@
 'use client';
 
 import { useBoard, useSelection } from '@kiyora/editor/react';
-import type { Board } from '@kiyora/model';
+import type { Board, Shape } from '@kiyora/model';
 
 /** A shape's kind as a person reads it: `predefined-process` to `Predefined process`. */
 const kindLabel = (kind: string): string => {
   const words = kind.replaceAll('-', ' ');
 
   return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+};
+
+/** What a shape answers to: its label when it has one, its kind otherwise. */
+const nameOf = (shape: Shape): string => {
+  const text = shape.text?.trim();
+
+  return text === undefined || text.length === 0 ? kindLabel(shape.kind) : text;
+};
+
+/**
+ * Where `shape` sits among the shapes of its kind, in paint order. Two shapes of
+ * one kind would otherwise announce the same words, so the selection of the
+ * second would stay silent.
+ */
+const ordinalOf = (shape: Shape, shapes: Board['shapes']): string => {
+  const sameKind = shapes.filter((candidate) => candidate.kind === shape.kind);
+  const position = sameKind.findIndex((candidate) => candidate.id === shape.id);
+
+  return `${position + 1} of ${sameKind.length}`;
 };
 
 /** What the selection is, in words a screen reader can read out. */
@@ -19,18 +38,14 @@ const describe = (
     return 'Nothing selected';
   }
   if (selection.length > 1) {
-    return `${selection.length} shapes selected`;
+    return `${selection.length} selected`;
   }
   const shape = shapes.find((candidate) => candidate.id === selection[0]);
   if (shape === undefined) {
     return 'Selection changed';
   }
-  const name = kindLabel(shape.kind);
-  const text = shape.text?.trim();
 
-  return text === undefined || text.length === 0
-    ? `${name} selected`
-    : `${name} selected: ${text}`;
+  return `${nameOf(shape)} selected, ${ordinalOf(shape, shapes)}`;
 };
 
 /**
