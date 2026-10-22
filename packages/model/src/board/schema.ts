@@ -1,6 +1,7 @@
 import { FRAMES, HEADS, SHAPES } from '@kiyora/dsl';
 import { z } from 'zod';
 import { themeSchema } from '../paint/palette';
+import { chartSchema } from './chart';
 import { filesSchema } from './image';
 import { shapeBaseSchema } from './shape-base';
 
@@ -289,6 +290,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   iconSchema,
   imageSchema,
   inkSchema,
+  chartSchema,
 ]);
 
 /** One item on the board. */

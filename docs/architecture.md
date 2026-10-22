@@ -67,6 +67,8 @@ type Shape =
   | ShapeBase & { kind: 'group' }                                        // box derived
   | ShapeBase & { kind: 'icon'; name: string }                           // paths from the dataset
   | ShapeBase & { kind: 'image'; fileId: string }                        // bytes in `files`
+  | ShapeBase & { kind: 'chart'; variant: ChartKind; series: number[];
+                  labels: string[]; palette: PaletteColour[] }           // authored numbers
   | ShapeBase & { kind: 'connector'; from: Endpoint; to: Endpoint;
                   route: Route; start: Head; end: Head }
 ```

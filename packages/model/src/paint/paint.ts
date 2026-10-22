@@ -20,6 +20,7 @@ import {
   strokeOf,
   styledPath,
 } from './box';
+import { paintChart } from './chart';
 import { connectorInk, connectorLabel } from './connectors';
 import { shapesInView } from './cull';
 import { FIGURE_GEOMETRY } from './figure-geometry';
@@ -320,7 +321,9 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
                       context.files?.[shape.fileId],
                       boxPath(shape, context)
                     )
-                  : paintFigure(shape, context);
+                  : shape.kind === 'chart'
+                    ? paintChart(shape, context)
+                    : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {

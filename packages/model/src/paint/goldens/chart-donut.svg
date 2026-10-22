@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">
+  <path d="M 141.75 10 A 100 100 0 0 1 228.353 160 L 189.381 137.5 A 55 55 0 0 0 141.75 55 Z" fill="rgba(25, 113, 194, 0.9)"/>
+  <path d="M 228.353 160 A 100 100 0 0 1 141.75 210 L 141.75 165 A 55 55 0 0 0 189.381 137.5 Z" fill="rgba(240, 140, 0, 0.9)"/>
+  <path d="M 141.75 210 A 100 100 0 0 1 141.75 10 L 141.75 55 A 55 55 0 0 0 141.75 165 Z" fill="rgba(47, 158, 68, 0.9)"/>
+  <path d="M 281.5 14 L 289.5 14 L 289.5 22 L 281.5 22 Z" fill="rgba(25, 113, 194, 0.9)"/>
+  <path d="M 281.5 30 L 289.5 30 L 289.5 38 L 281.5 38 Z" fill="rgba(240, 140, 0, 0.9)"/>
+  <path d="M 281.5 46 L 289.5 46 L 289.5 54 L 281.5 54 Z" fill="rgba(47, 158, 68, 0.9)"/>
+  <path d="M 281.5 62 L 289.5 62 L 289.5 70 L 281.5 70 Z" fill="rgba(103, 65, 217, 0.9)"/>
+  <text x="293.5" y="21.5" fill="rgba(30, 30, 30, 0.62)" font-size="10" text-anchor="start"><tspan font-family="'Balsamiq Sans Neue', 'Balsamiq Sans', sans-serif">Mon</tspan></text>
+  <text x="293.5" y="37.5" fill="rgba(30, 30, 30, 0.62)" font-size="10" text-anchor="start"><tspan font-family="'Balsamiq Sans Neue', 'Balsamiq Sans', sans-serif">Tue</tspan></text>
+  <text x="293.5" y="53.5" fill="rgba(30, 30, 30, 0.62)" font-size="10" text-anchor="start"><tspan font-family="'Balsamiq Sans Neue', 'Balsamiq Sans', sans-serif">Wed</tspan></text>
+  <text x="293.5" y="69.5" fill="rgba(30, 30, 30, 0.62)" font-size="10" text-anchor="start"><tspan font-family="'Balsamiq Sans Neue', 'Balsamiq Sans', sans-serif">Thu</tspan></text>
+</svg>

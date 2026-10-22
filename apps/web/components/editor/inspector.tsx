@@ -4,6 +4,7 @@ import { arrangementOf } from '@kiyora/editor';
 import { useBoard, useSelection } from '@kiyora/editor/react';
 import { ArrangeControls } from './arrange-controls';
 import { BoardTheme } from './board-theme';
+import { ChartControls } from './chart-controls';
 import { ConnectorStyle } from './connector-style';
 import { FrameControls } from './frame-controls';
 import { LockControl } from './lock-control';
@@ -51,6 +52,7 @@ export const Inspector = () => {
           <LockControl locked={anyLocked} />
           {canAlign ? <ArrangeControls canDistribute={canDistribute} /> : null}
           {first.kind === 'frame' ? <FrameControls shape={first} /> : null}
+          {first.kind === 'chart' ? <ChartControls shape={first} /> : null}
           {first.kind === 'connector' ? <ConnectorStyle shape={first} /> : null}
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>

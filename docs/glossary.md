@@ -64,6 +64,10 @@ _Avoid_: Widget, component, UI element
 **Image**:
 A shape kind: a PNG or JPEG carried inside the board file and drawn in its authored box. It names one entry in the board's files, so placing the same picture twice costs one payload.
 
+**Chart**:
+A shape kind: a series of numbers, the category each belongs to, and the palette colours the marks cycle through, drawn as one of eight kinds — bar, column, line, area, pie, donut, scatter or sparkline. The numbers are authored, so replacing them repaints a chart rather than replacing a drawing.
+_Avoid_: Graph, plot, widget
+
 **Files**:
 A board's rasters, keyed by the content hash of their bytes. A board file is still one document when it holds them; nothing is fetched and nothing lives beside the board.
 _Avoid_: Blobs, assets, attachments

@@ -96,6 +96,7 @@ export const createEditor = (board: Board): Editor => {
     setCamera: (camera) => {
       core.setView({ ...core.view(), camera });
     },
+    setChart: edits.setChart,
     setConnector: edits.setConnector,
     setIcon: (name) => {
       core.setView({ ...core.view(), icon: name, tool: 'icon' });

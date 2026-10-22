@@ -38,6 +38,7 @@ export {
   zoomAt,
   zoomBy,
 } from './camera';
+export { type ChartEdit, editChart } from './chart';
 export {
   CLIPBOARD_VERSION,
   type Clipboard,
@@ -189,7 +190,11 @@ export {
   SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
-export { DEFAULT_FRAME_SIZE, DEFAULT_SHAPE_SIZE } from './placement';
+export {
+  DEFAULT_CHART_SIZE,
+  DEFAULT_FRAME_SIZE,
+  DEFAULT_SHAPE_SIZE,
+} from './placement';
 export type { Restyle } from './restyle';
 export {
   normaliseSelection,

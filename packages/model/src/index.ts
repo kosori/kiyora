@@ -1,6 +1,17 @@
 // The board: one schema, one paint walker, and the pure projection to SVG.
 
 export {
+  CHART_KINDS,
+  CHART_LABELS,
+  CHART_PALETTE,
+  CHART_SERIES,
+  type ChartKind,
+  type ChartShape,
+  chartKindSchema,
+  chartSchema,
+  MAX_CHART_VALUES,
+} from './board/chart';
+export {
   type BoardFiles,
   filesSchema,
   fitImageSize,
@@ -92,6 +103,18 @@ export {
   parseBoard,
 } from './board/validate';
 export { mapSource, SOURCE_INSET, type SourceMapping } from './bridge/mapping';
+export {
+  type ChartSlice,
+  type ChartSpan,
+  type ChartTick,
+  chartSlices,
+  chartSpan,
+  chartTicks,
+  fractionOf,
+  textWidth,
+  truncateToWidth,
+  widestOf,
+} from './chart/scale';
 export {
   addSlide,
   DECK_TEMPLATES,
