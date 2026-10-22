@@ -3,6 +3,7 @@
 import { type Alignment, keyshortcutsFor, runCommand } from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
 import { type MouseEvent, useCallback } from 'react';
+import { usePlatform } from './use-platform';
 
 type Props = {
   /** Whether three or more shapes are selected, so spacing can mean something. */
@@ -44,6 +45,7 @@ const BUTTON =
  */
 export const ArrangeControls = ({ canDistribute }: Props) => {
   const editor = useEditor();
+  const platform = usePlatform();
   const pickAlign = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const option = ALIGN_OPTIONS[Number(event.currentTarget.dataset.index)];
@@ -70,10 +72,13 @@ export const ArrangeControls = ({ canDistribute }: Props) => {
         <div className='grid grid-cols-3 gap-1'>
           {ALIGN_OPTIONS.map((option, index) => (
             <button
-              aria-keyshortcuts={keyshortcutsFor({
-                alignment: option.alignment,
-                kind: 'align',
-              })}
+              aria-keyshortcuts={keyshortcutsFor(
+                {
+                  alignment: option.alignment,
+                  kind: 'align',
+                },
+                platform
+              )}
               aria-label={option.name}
               className={BUTTON}
               data-index={index}
@@ -92,10 +97,13 @@ export const ArrangeControls = ({ canDistribute }: Props) => {
           <h3 className={HEADING}>Distribute</h3>
           <div className='grid grid-cols-2 gap-1'>
             <button
-              aria-keyshortcuts={keyshortcutsFor({
-                axis: 'x',
-                kind: 'distribute',
-              })}
+              aria-keyshortcuts={keyshortcutsFor(
+                {
+                  axis: 'x',
+                  kind: 'distribute',
+                },
+                platform
+              )}
               aria-label='Distribute horizontally'
               className={BUTTON}
               data-axis='x'
@@ -106,10 +114,13 @@ export const ArrangeControls = ({ canDistribute }: Props) => {
               Horizontal
             </button>
             <button
-              aria-keyshortcuts={keyshortcutsFor({
-                axis: 'y',
-                kind: 'distribute',
-              })}
+              aria-keyshortcuts={keyshortcutsFor(
+                {
+                  axis: 'y',
+                  kind: 'distribute',
+                },
+                platform
+              )}
               aria-label='Distribute vertically'
               className={BUTTON}
               data-axis='y'

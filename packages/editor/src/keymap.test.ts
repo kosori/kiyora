@@ -6,6 +6,7 @@ import {
   type Chord,
   type Command,
   commandId,
+  commandKeyFor,
   commandPalette,
   DISPATCHED_KINDS,
   KEY_MODES,
@@ -17,6 +18,9 @@ import {
   shortcutReference,
 } from '@kiyora/editor';
 import { describe, expect, it } from 'vitest';
+
+/** The platform these checks read the reference on; macOS has its own test. */
+const OTHER = 'other' as const;
 
 const nudge = (dx: number, dy: number, coarse: boolean): Command => ({
   coarse,
@@ -144,10 +148,10 @@ describe('the keymap', () => {
   });
 
   it('gives every declared binding a row in the reference, so a binding cannot hide from the dialog', () => {
-    const shown = new Set(shortcutReference().flatMap((row) => row.keys));
+    const shown = new Set(shortcutReference(OTHER).flatMap((row) => row.keys));
 
     for (const binding of KEYMAP) {
-      expect(shown.has(bindingLabel(binding))).toBe(true);
+      expect(shown.has(bindingLabel(binding, OTHER))).toBe(true);
     }
   });
 
@@ -166,7 +170,7 @@ describe('the keymap', () => {
   });
 
   it('lists every camera action in the reference, so the sheet does not omit the keys that zoom', () => {
-    const shown = shortcutReference().flatMap((row) => row.keys);
+    const shown = shortcutReference(OTHER).flatMap((row) => row.keys);
 
     for (const action of CAMERA_ACTIONS) {
       const binding = KEYMAP.find(
@@ -177,28 +181,49 @@ describe('the keymap', () => {
 
       expect(binding).toBeDefined();
       if (binding !== undefined) {
-        expect(shown).toContain(bindingLabel(binding));
+        expect(shown).toContain(bindingLabel(binding, OTHER));
       }
     }
   });
 
   it('shows the key the keymap binds, not a copy, so the reference cannot drift', () => {
-    const row = shortcutReference().find((line) => line.label === 'Rectangle');
+    const row = shortcutReference(OTHER).find(
+      (line) => line.label === 'Rectangle'
+    );
 
     expect(row?.keys).toEqual(['R']);
   });
 
   it('reads aria-keyshortcuts from the same keymap, so a control cannot advertise a dead chord', () => {
-    expect(keyshortcutsFor({ kind: 'tool', tool: 'rectangle' })).toBe('r');
-    expect(keyshortcutsFor({ kind: 'undo' })).toBe('Control+z');
-    expect(keyshortcutsFor({ kind: 'redo' })).toBe('Control+Shift+Z');
-    expect(keyshortcutsFor({ action: 'zoom-in', kind: 'camera' })).toBe('=');
-    expect(keyshortcutsFor({ kind: 'delete' })).toBe('Delete Backspace');
-    expect(keyshortcutsFor({ kind: 'tool', tool: 'hand' })).toBeUndefined();
+    expect(keyshortcutsFor({ kind: 'tool', tool: 'rectangle' }, OTHER)).toBe(
+      'r'
+    );
+    expect(keyshortcutsFor({ kind: 'undo' }, OTHER)).toBe('Control+z');
+    expect(keyshortcutsFor({ kind: 'redo' }, OTHER)).toBe('Control+Shift+Z');
+    expect(keyshortcutsFor({ action: 'zoom-in', kind: 'camera' }, OTHER)).toBe(
+      '='
+    );
+    expect(keyshortcutsFor({ kind: 'delete' }, OTHER)).toBe('Delete Backspace');
+    expect(
+      keyshortcutsFor({ kind: 'tool', tool: 'hand' }, OTHER)
+    ).toBeUndefined();
+  });
+
+  it('names ⌘ on macOS in the sheet and Meta in aria-keyshortcuts, so neither teaches a key the platform lacks', () => {
+    expect(commandKeyFor('other')).toEqual({ aria: 'Control', label: 'Ctrl' });
+    expect(commandKeyFor('macos')).toEqual({ aria: 'Meta', label: '⌘' });
+
+    expect(
+      shortcutReference('macos').find((row) => row.label === 'Undo')?.keys
+    ).toEqual(['⌘ + Z']);
+    expect(keyshortcutsFor({ kind: 'undo' }, 'macos')).toBe('Meta+z');
+    expect(
+      shortcutReference(OTHER).find((row) => row.label === 'Undo')?.keys
+    ).toEqual(['Ctrl + Z']);
   });
 
   it('lists the arrows the keymap declares, so a modifier binding adds no hand-written row', () => {
-    const rows = shortcutReference();
+    const rows = shortcutReference(OTHER);
 
     expect(rows.find((row) => row.label === 'Nudge by a pixel')?.keys).toEqual([
       '↑',
@@ -247,7 +272,7 @@ describe('undo and redo keys', () => {
   });
 
   it('shows undo and redo in the reference, with the keys read from the keymap', () => {
-    const rows = shortcutReference();
+    const rows = shortcutReference(OTHER);
 
     expect(rows.find((row) => row.label === 'Undo')?.keys).toEqual([
       'Ctrl + Z',
@@ -284,7 +309,7 @@ describe('the ordering keys', () => {
   });
 
   it('shows the ordering keys in the reference, read from the keymap', () => {
-    const rows = shortcutReference();
+    const rows = shortcutReference(OTHER);
 
     expect(rows.find((row) => row.label === 'Bring to front')?.keys).toEqual([
       'Ctrl + Shift + ]',
@@ -323,7 +348,7 @@ describe('the clipboard keys', () => {
   });
 
   it('shows the clipboard keys in the reference, read from the keymap', () => {
-    const rows = shortcutReference();
+    const rows = shortcutReference(OTHER);
 
     expect(rows.find((row) => row.label === 'Copy')?.keys).toEqual([
       'Ctrl + C',
@@ -349,7 +374,8 @@ describe('the lock key', () => {
 
   it('shows the lock key in the reference, read from the keymap', () => {
     expect(
-      shortcutReference().find((row) => row.label === 'Lock or unlock')?.keys
+      shortcutReference(OTHER).find((row) => row.label === 'Lock or unlock')
+        ?.keys
     ).toEqual(['L']);
   });
 });
@@ -362,7 +388,8 @@ describe('the find key', () => {
 
   it('shows find in the reference, read from the keymap', () => {
     expect(
-      shortcutReference().find((row) => row.label === 'Find on board')?.keys
+      shortcutReference(OTHER).find((row) => row.label === 'Find on board')
+        ?.keys
     ).toEqual(['Ctrl + F']);
   });
 });
@@ -404,7 +431,7 @@ describe('the arrange keys', () => {
   });
 
   it('shows the arrange keys in the reference, read from the keymap', () => {
-    const rows = shortcutReference();
+    const rows = shortcutReference(OTHER);
 
     expect(rows.find((row) => row.label === 'Align left')?.keys).toEqual([
       'Alt + A',
@@ -463,7 +490,7 @@ describe('the presenting keys', () => {
   });
 
   it('lists every presenting key in the reference, read from the keymap', () => {
-    const rows = shortcutReference();
+    const rows = shortcutReference(OTHER);
 
     expect(rows.find((row) => row.label === 'Present')?.keys).toEqual(['P']);
     expect(rows.find((row) => row.label === 'Next slide')?.keys).toEqual([
@@ -491,8 +518,8 @@ describe('the presenting keys', () => {
 
 describe('the command palette', () => {
   it('shows exactly the rows the reference shows, with their keys and labels, so the two cannot disagree', () => {
-    const reference = shortcutReference();
-    const palette = commandPalette().map(({ group, keys, label }) => ({
+    const reference = shortcutReference(OTHER);
+    const palette = commandPalette(OTHER).map(({ group, keys, label }) => ({
       group,
       keys,
       label,
@@ -503,7 +530,7 @@ describe('the command palette', () => {
 
   it('lists every command the keymap binds, and nothing else', () => {
     const listed = new Set(
-      commandPalette().flatMap((entry) =>
+      commandPalette(OTHER).flatMap((entry) =>
         entry.commands.map((command) => commandId(command))
       )
     );
@@ -521,7 +548,7 @@ describe('the command palette key', () => {
   });
 
   it('shows the palette key in the reference, read from the keymap', () => {
-    const row = shortcutReference().find(
+    const row = shortcutReference(OTHER).find(
       (line) => line.label === 'Command palette'
     );
 

@@ -5,6 +5,7 @@ import { useEditor, useTool } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
 import type { RailEntry } from './tool-rail';
+import { usePlatform } from './use-platform';
 
 type Props = {
   entry: RailEntry;
@@ -13,6 +14,7 @@ type Props = {
 /** One rail button: it names its tool, marks itself pressed, and selects on click. */
 export const ToolRailButton = ({ entry }: Props) => {
   const editor = useEditor();
+  const platform = usePlatform();
   const tool = useTool();
   const { icon: Icon, label, tool: value } = entry;
   const pressed = value === tool;
@@ -23,7 +25,10 @@ export const ToolRailButton = ({ entry }: Props) => {
 
   return (
     <Button
-      aria-keyshortcuts={keyshortcutsFor({ kind: 'tool', tool: value })}
+      aria-keyshortcuts={keyshortcutsFor(
+        { kind: 'tool', tool: value },
+        platform
+      )}
       aria-label={label}
       aria-pressed={pressed}
       onClick={select}

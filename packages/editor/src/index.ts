@@ -202,9 +202,11 @@ export {
 export {
   bindingKey,
   bindingLabel,
+  commandKeyFor,
   commandPalette,
   keyshortcutsFor,
   type PaletteEntry,
+  type Platform,
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';
