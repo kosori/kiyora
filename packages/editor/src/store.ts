@@ -1,394 +1,122 @@
-import { type Board, type Style, subtreeIds } from '@kiyora/model';
-import type { Point } from './camera';
-import { editConnector } from './connectors';
-import { addShape } from './containment';
+import type { Board } from '@kiyora/model';
+import { createArrangeCommands } from './arrange-commands';
+import { createBoardCommands } from './board-commands';
 import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
-import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
-import { snapTranslation } from './geometry/snap';
-import { gestureOf, handleDrag, moveDrag } from './gesture';
-import { createTransactions } from './history/transaction';
+import { createGestures } from './gestures';
 import { createLabelEdit } from './label-edit';
-import { shapeFromPlacement } from './placement';
 import { createPresent } from './present';
-import { moveResize } from './resize';
-import { restyledBoard } from './restyle';
-import {
-  normaliseSelection,
-  offsetShapes,
-  type Selection,
-  sameIds,
-  selectedShapes,
-} from './selection';
-import { replaceShapes, translateShapes } from './shape-edit';
-import type { Drag, Editor, Gesture, View } from './state';
-import { subscriptionOf } from './subscription';
-import { DEFAULT_STYLE, placesShape } from './tools';
-import { angleAt, rotateSelection, shortestDelta } from './transform';
+import { createSourceCommands } from './source-commands';
+import type { Editor } from './state';
+import { createStoreCore } from './store-core';
 
 export type { Drag, Editor, Gesture, PresentState, View } from './state';
 
-/** An engine over `board`, holding it and publishing each replacement. */
+/**
+ * An engine over `board`, holding it and publishing each replacement. This file
+ * only composes: the core owns the state and the write funnel, the gestures own
+ * the pointer, and each command factory owns one concern, so no one module
+ * carries the whole surface.
+ */
 export const createEditor = (board: Board): Editor => {
-  let current = board;
-  let view: View = { camera: board.camera, tool: 'select' };
-  let style: Style = DEFAULT_STYLE;
-  let selection: Selection = [];
-  let drag: Drag | null = null;
-  let cachedDrag: Drag | null = null;
-  let cachedGesture: Gesture = { kind: 'idle' };
-  const transactions = createTransactions();
-  const listeners = new Set<() => void>();
-  const viewListeners = new Set<() => void>();
-  const selectionListeners = new Set<() => void>();
-  const gestureListeners = new Set<() => void>();
-
-  const publish = (set: Set<() => void>): void => {
-    for (const listener of set) {
-      listener();
-    }
-  };
-
-  /** Adopts `next` as the board and publishes it, unless it is the same board. */
-  const publishChange = (next: Board): void => {
-    if (next === current) {
-      return;
-    }
-    current = next;
-    publish(listeners);
-  };
-
-  const setView = (next: View): void => {
-    view = next;
-    publish(viewListeners);
-  };
-
-  const publishGesture = (): void => {
-    publish(gestureListeners);
-  };
-
-  /** Drops an open gesture without restoring it, so history can replace the board. */
-  const abandonGesture = (): void => {
-    if (drag === null) {
-      return;
-    }
-    drag = null;
-    publishGesture();
-  };
-
-  /** Opens the board `next` replaces, keeping the selection honest and repainting. */
-  const restore = (next: Board | null): void => {
-    if (next === null) {
-      return;
-    }
-    abandonGesture();
-    current = next;
-    commitSelection(selection);
-    publish(listeners);
-  };
-
-  /**
-   * The gesture as a value, memoised on the drag it came from: two reads with
-   * nothing in between must see the same object, or a snapshot subscription
-   * that compares references would loop forever.
-   */
-  const gestureNow = (): Gesture => {
-    if (drag !== cachedDrag) {
-      cachedDrag = drag;
-      cachedGesture = gestureOf(drag);
-    }
-    return cachedGesture;
-  };
-
-  /** Keeps only ids the board holds, in paint order, and publishes a real change. */
-  const commitSelection = (next: Selection): void => {
-    const ids = normaliseSelection(current, next);
-    if (sameIds(ids, selection)) {
-      return;
-    }
-    transactions.endNudgeRun();
-    selection = ids;
-    publish(selectionListeners);
-  };
-
-  /** Adopts `opened` as the open drag, publishing the gesture it means. */
-  const openDrag = (opened: Drag | null): boolean => {
-    if (opened === null) {
-      return false;
-    }
-    drag = opened;
-    publishGesture();
-    return true;
-  };
-
-  /**
-   * Applies one board edit as one gesture: the board moves, the history records
-   * it once, and the subscribers are woken so autosave saves it.
-   */
-  const changeBoard = (next: Board): void => {
-    if (next === current) {
-      return;
-    }
-    transactions.endNudgeRun();
-    const before = current;
-    current = next;
-    transactions.commit(before, current);
-    publish(listeners);
-  };
-
-  const present = createPresent(() => current);
+  const core = createStoreCore(board);
+  const gestures = createGestures(core);
+  const present = createPresent(() => core.board());
   const deck = createDeckCommands({
-    board: () => current,
-    change: changeBoard,
-    style: () => style,
+    board: core.board,
+    change: core.change,
+    style: core.style,
   });
   const commands = createEditCommands({
-    board: () => current,
-    change: changeBoard,
-    select: commitSelection,
-    selection: () => selection,
+    board: core.board,
+    change: core.change,
+    select: core.select,
+    selection: core.selection,
+  });
+  const arrange = createArrangeCommands({
+    board: core.board,
+    change: core.change,
+    selection: core.selection,
   });
   const label = createLabelEdit({
-    board: () => current,
-    change: changeBoard,
-    publish: publishChange,
-    transactions,
+    board: core.board,
+    change: core.change,
+    publish: core.publish,
+    transactions: core.transactions,
   });
+  const edits = createBoardCommands({ core, gestures, label });
+  const source = createSourceCommands(core);
 
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    align: arrange.align,
+    applySource: source.applySource,
     beginTextEdit: label.begin,
-    cancelGesture: () => {
-      if (drag === null) {
-        return;
-      }
-      const open = drag;
-      drag = null;
-      if (open.kind === 'move') {
-        if (open.applied.x !== 0 || open.applied.y !== 0) {
-          publishChange(offsetShapes(current, open.originals));
-        }
-      } else if (open.kind === 'marquee') {
-        commitSelection(open.base);
-      } else {
-        publishChange(replaceShapes(current, open.originals));
-      }
-      publishGesture();
-    },
-    cancelTextEdit: () => {
-      restore(label.cancel());
-    },
+    bringForward: () => edits.reorder('forward'),
+    bringToFront: () => edits.reorder('front'),
+    cancelGesture: gestures.cancelGesture,
+    cancelTextEdit: edits.cancelTextEdit,
+    canPaste: commands.canPaste,
     copy: commands.copy,
     cut: commands.cut,
     deleteSelection: commands.deleteSelection,
     deleteSlide: deck.deleteSlide,
+    distribute: arrange.distribute,
     duplicate: commands.duplicate,
     duplicateSlide: deck.duplicateSlide,
-    endNudgeRun: transactions.endNudgeRun,
+    endNudgeRun: core.transactions.endNudgeRun,
     endTextEdit: label.end,
-    getBoard: () => current,
-    getGesture: gestureNow,
-    getHistory: () => transactions.getState(),
+    getBoard: core.board,
+    getGesture: gestures.getGesture,
+    getHistory: core.getHistory,
     getPresent: present.getState,
-    getSelection: () => selection,
-    getStyle: () => style,
-    getTool: () => view.tool,
-    getView: () => view,
+    getSelection: core.selection,
+    getStyle: core.style,
+    getTool: () => core.view().tool,
+    getView: core.view,
+    groupSelection: commands.groupSelection,
     moveSlide: deck.moveSlide,
     nextSlide: present.next,
-    nudge: (dx, dy) => {
-      const ids = subtreeIds(current, selection);
-      if (selectedShapes(current, ids).length === 0) {
-        return;
-      }
-      transactions.noteNudge(current);
-      publishChange(translateShapes(current, ids, dx, dy));
-    },
+    nudge: edits.nudge,
     paste: commands.paste,
-    placeShape: (placement) => {
-      const { tool } = view;
-      if (!placesShape(tool)) {
-        return null;
-      }
-      transactions.endNudgeRun();
-      const before = current;
-      const shape = shapeFromPlacement(tool, placement, style, current.shapes);
-      current = addShape(current, shape);
-      setView({ ...view, tool: 'select' });
-      label.place(before, shape, current);
-      publish(listeners);
-      return shape;
-    },
-    pointerDown: (point, additive) => {
-      transactions.endNudgeRun();
-      if (
-        openDrag(
-          handleDrag(current, selection, view.tool, view.camera.zoom, point)
-        )
-      ) {
-        return;
-      }
-      const hit = shapeAt(current.shapes, point);
-      if (hit === null) {
-        drag = {
-          additive,
-          base: selection,
-          box: boxBetween(point, point),
-          from: point,
-          kind: 'marquee',
-        };
-        if (!additive) {
-          commitSelection([]);
-        }
-        publishGesture();
-        return;
-      }
-      if (additive) {
-        commitSelection(
-          selection.includes(hit.id)
-            ? selection.filter((id) => id !== hit.id)
-            : [...selection, hit.id]
-        );
-      } else if (!selection.includes(hit.id)) {
-        commitSelection([hit.id]);
-      }
-      if (selection.includes(hit.id)) {
-        openDrag(moveDrag(current, selection, point));
-      }
-    },
-    pointerMove: (point, modifiers) => {
-      if (drag === null) {
-        return;
-      }
-      if (drag.kind === 'marquee') {
-        drag = { ...drag, box: boxBetween(drag.from, point) };
-        publishGesture();
-        return;
-      }
-      if (drag.kind === 'resize') {
-        const { board: nextBoard, drag: nextDrag } = moveResize(
-          current,
-          drag,
-          point,
-          modifiers
-        );
-        if (nextDrag !== drag) {
-          drag = nextDrag;
-          publishGesture();
-        }
-        if (nextBoard !== current) {
-          current = nextBoard;
-          publish(listeners);
-        }
-        return;
-      }
-      if (drag.kind === 'rotate') {
-        const delta = shortestDelta(angleAt(drag.centre, point) - drag.start);
-        const replacements = rotateSelection(
-          [...drag.originals.values()],
-          drag.centre,
-          delta,
-          modifiers
-        );
-        current = replaceShapes(current, replacements);
-        publish(listeners);
-        return;
-      }
-      let dx = point.x - drag.start.x;
-      let dy = point.y - drag.start.y;
-      if (!modifiers.bypassSnap) {
-        dx = snapTranslation(dx, drag.origin.x);
-        dy = snapTranslation(dy, drag.origin.y);
-      }
-      if (dx === drag.applied.x && dy === drag.applied.y) {
-        return;
-      }
-      const { originals } = drag;
-      drag = { ...drag, applied: { x: dx, y: dy } };
-      const offsets = new Map<string, Point>();
-      for (const [id, position] of originals) {
-        offsets.set(id, { x: position.x + dx, y: position.y + dy });
-      }
-      current = offsetShapes(current, offsets);
-      publish(listeners);
-    },
-    pointerUp: () => {
-      if (drag === null) {
-        return;
-      }
-      if (drag.kind !== 'marquee') {
-        const { before } = drag;
-        drag = null;
-        transactions.commit(before, current);
-        publishGesture();
-        return;
-      }
-      const covered = shapesInBox(current.shapes, drag.box).map(
-        (shape) => shape.id
-      );
-      const next = drag.additive ? [...drag.base, ...covered] : covered;
-      drag = null;
-      commitSelection(next);
-      publishGesture();
-    },
+    placeShape: edits.placeShape,
+    pointerDown: gestures.pointerDown,
+    pointerMove: gestures.pointerMove,
+    pointerUp: gestures.pointerUp,
     previousSlide: present.previous,
-    redo: () => {
-      restore(transactions.redo(current));
-    },
-    restyle: (change) => {
-      transactions.endNudgeRun();
-      const before = current;
-      const result = restyledBoard(current, selection, change);
-      if (result === null) {
-        return;
-      }
-      const { board: nextBoard, style: nextStyle } = result;
-      current = nextBoard;
-      if (nextStyle !== undefined) {
-        style = nextStyle;
-      }
-      transactions.commit(before, current);
-      publish(listeners);
-    },
-    setBoard: (next) => {
-      transactions.endNudgeRun();
-      current = next;
-      commitSelection(selection);
-      transactions.clear();
-      publish(listeners);
-    },
+    receiveClipboard: commands.receiveClipboard,
+    redo: edits.redo,
+    restyle: edits.restyle,
+    sendBackward: () => edits.reorder('backward'),
+    sendToBack: () => edits.reorder('back'),
+    setBoard: edits.setBoard,
     setCamera: (camera) => {
-      setView({ ...view, camera });
+      core.setView({ ...core.view(), camera });
     },
-    setConnector: (id, edit) => {
-      changeBoard(editConnector(current, id, edit));
-    },
-    setSelection: (ids) => {
-      commitSelection(ids);
-    },
+    setConnector: edits.setConnector,
+    setLocked: edits.setLocked,
+    setSelection: core.select,
     setSlideNotes: deck.setSlideNotes,
-    setStyle: (next) => {
-      style = next;
-    },
+    setStyle: core.setStyle,
     setText: label.setText,
     setTextStyle: label.setTextStyle,
     setTool: (tool) => {
-      setView({ ...view, tool });
+      core.setView({ ...core.view(), tool });
     },
     startPresent: present.start,
     stopPresent: present.stop,
-    subscribe: subscriptionOf(listeners),
-    subscribeGesture: subscriptionOf(gestureListeners),
-    subscribeHistory: transactions.subscribe,
+    subscribe: core.subscribe,
+    subscribeClipboard: commands.subscribeClipboard,
+    subscribeGesture: gestures.subscribeGesture,
+    subscribeHistory: core.subscribeHistory,
     subscribePresent: present.subscribe,
-    subscribeSelection: subscriptionOf(selectionListeners),
-    subscribeView: subscriptionOf(viewListeners),
+    subscribeSelection: core.subscribeSelection,
+    subscribeView: core.subscribeView,
     toggleNotes: present.toggleNotes,
     toggleSlideSkip: deck.toggleSlideSkip,
     toggleTimer: present.toggleTimer,
-    undo: () => {
-      restore(transactions.undo(current));
-    },
+    undo: edits.undo,
+    ungroupSelection: commands.ungroupSelection,
   };
 };

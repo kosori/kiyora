@@ -3,9 +3,10 @@
 import {
   CAMERA_ACTIONS,
   type CameraAction,
-  GRID,
-  NUDGE_STEP,
+  type CommandHost,
+  matchKey,
   resolveKey,
+  runCommand,
 } from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
 import { useEffect } from 'react';
@@ -26,11 +27,13 @@ const isTyping = (target: EventTarget | null): boolean =>
   (target.isContentEditable || TYPING.includes(target.tagName));
 
 /**
- * The one module that listens for keys. Every window keydown and keyup is
- * resolved through the keymap, so the bindings and the reference cannot drift;
- * the keymap decides the modifiers, and a camera key is handed to the surface,
- * which owns the pointer anchor. A nudge runs its step here: the keymap says a
- * shifted arrow is coarse, the grid says how far that is.
+ * The one module that listens for keys. Every window keydown is resolved
+ * through the keymap and handed to the dispatch, so the bindings, the dialog,
+ * the palette and the one execution path cannot drift; the keymap decides the
+ * modifiers and whether the browser must not act on the chord too, and a camera
+ * key reaches the surface through the host, which owns the pointer anchor. A
+ * nudge runs through the same dispatch: the keymap says a shifted arrow is
+ * coarse, the dispatch turns that into a step.
  *
  * The same listener serves presenting: the chord carries the mode the board is
  * in, so the keymap hands back a presenting command while a slide is up and the
@@ -38,126 +41,42 @@ const isTyping = (target: EventTarget | null): boolean =>
  */
 export const useShortcuts = (
   onShowShortcuts: () => void,
-  camera: CameraIntent
+  camera: CameraIntent,
+  onOpenFind: () => void,
+  onShowPalette: () => void,
+  copyPng: () => void
 ): void => {
   const editor = useEditor();
 
   useEffect(() => {
+    const host: CommandHost = {
+      camera: camera.run,
+      copyPng,
+      openFind: onOpenFind,
+      showPalette: onShowPalette,
+      showShortcuts: onShowShortcuts,
+    };
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event.target)) {
         return;
       }
 
-      const command = resolveKey({
+      const binding = matchKey({
         alt: event.altKey,
         command: event.metaKey || event.ctrlKey,
         key: event.key,
         mode: editor.getPresent().active ? 'present' : 'edit',
         shift: event.shiftKey,
       });
-      if (command === null) {
+      if (binding === null) {
         return;
       }
 
-      if (command.kind === 'tool') {
-        editor.setTool(command.tool);
-        return;
-      }
-
-      if (command.kind === 'camera') {
+      if (binding.preventDefault === true) {
         event.preventDefault();
-        camera.run(command.action, 'down');
-        return;
       }
-
-      if (command.kind === 'nudge') {
-        event.preventDefault();
-        const step = command.coarse ? GRID : NUDGE_STEP;
-        editor.nudge(command.dx * step, command.dy * step);
-        return;
-      }
-
-      if (command.kind === 'cancel-gesture') {
-        editor.cancelGesture();
-        return;
-      }
-
-      if (command.kind === 'delete') {
-        event.preventDefault();
-        editor.deleteSelection();
-        return;
-      }
-
-      if (command.kind === 'duplicate') {
-        event.preventDefault();
-        editor.duplicate();
-        return;
-      }
-
-      if (command.kind === 'copy') {
-        event.preventDefault();
-        editor.copy();
-        return;
-      }
-
-      if (command.kind === 'cut') {
-        event.preventDefault();
-        editor.cut();
-        return;
-      }
-
-      if (command.kind === 'paste') {
-        event.preventDefault();
-        editor.paste();
-        return;
-      }
-
-      if (command.kind === 'undo') {
-        event.preventDefault();
-        editor.undo();
-        return;
-      }
-
-      if (command.kind === 'redo') {
-        event.preventDefault();
-        editor.redo();
-        return;
-      }
-
-      if (command.kind === 'present') {
-        editor.startPresent();
-        return;
-      }
-
-      if (command.kind === 'present-next') {
-        event.preventDefault();
-        editor.nextSlide();
-        return;
-      }
-
-      if (command.kind === 'present-previous') {
-        event.preventDefault();
-        editor.previousSlide();
-        return;
-      }
-
-      if (command.kind === 'present-exit') {
-        event.preventDefault();
-        editor.stopPresent();
-        return;
-      }
-
-      if (command.kind === 'present-notes') {
-        editor.toggleNotes();
-        return;
-      }
-
-      if (command.kind === 'present-timer') {
-        editor.toggleTimer();
-        return;
-      }
-
-      onShowShortcuts();
+      runCommand(binding.command, { editor, host });
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
@@ -193,5 +112,5 @@ export const useShortcuts = (
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [editor, onShowShortcuts, camera]);
+  }, [camera, copyPng, editor, onOpenFind, onShowPalette, onShowShortcuts]);
 };

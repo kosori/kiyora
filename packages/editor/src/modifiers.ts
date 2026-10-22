@@ -2,8 +2,8 @@
  * The modifier vocabulary every pointer gesture reads, decided here once so no
  * gesture invents its own meaning for a key:
  *
- * - `bypassSnap` (alt) — the gesture may leave the eight-pixel grid. A move and
- *   a resize both snap, so both honour it.
+ * - `bypassSnap` (alt) — the gesture may leave the eight-pixel grid and the
+ *   alignment guides. A move and a resize both snap, so both honour it.
  * - `constrain` (shift) — the gesture's own constraint. Shift legitimately
  *   means a coarse nudge, a preserved ratio and a snapped rotation; which one
  *   applies is the gesture's business, but the key is declared here rather than
@@ -18,7 +18,7 @@
 
 /** Which keyboard modifiers a pointer gesture reads. */
 export type GestureModifiers = {
-  /** Alt: the gesture may leave the grid. */
+  /** Alt: the gesture may leave the grid and the alignment guides. */
   bypassSnap: boolean;
   /** Shift: the gesture's own constraint — a coarse nudge, a kept ratio, a snapped rotation. */
   constrain: boolean;
@@ -58,7 +58,16 @@ export type GestureReferenceRow = {
  * than hiding it.
  */
 export const GESTURE_REFERENCE: readonly GestureReferenceRow[] = [
-  { group: 'Pointer', keys: ['Alt'], label: 'Bypass the grid snap' },
+  {
+    group: 'Pointer',
+    keys: ['Alt'],
+    label: 'Bypass the grid and the alignment guides',
+  },
+  {
+    group: 'Pointer',
+    keys: ['Alt'],
+    label: 'Reach a locked shape, to unlock it from the Inspector',
+  },
   {
     group: 'Pointer',
     keys: ['Alt'],

@@ -37,6 +37,13 @@ const centreOf = (shape: Shape): Point => ({
 });
 
 /**
+ * The shapes a transform may move. The lock is read here, where the mutation
+ * lands, so a selection that already held a locked shape still cannot move it.
+ */
+const movable = (shapes: readonly Shape[]): Shape[] =>
+  shapes.filter((shape) => !shape.locked);
+
+/**
  * A shape a resize has just sized. A sticky's height is now the one its author
  * chose, so it is pinned `fixed` and a later label edit cannot undo the resize.
  */
@@ -172,6 +179,18 @@ type SelectionScale = {
   scaleY: number;
 };
 
+/** The sizes that decide how far a scale may shrink: a group's stand-in box is not one. */
+const measuredSizes = (
+  shapes: readonly Shape[]
+): { heights: number[]; widths: number[] } => {
+  const measured = shapes.filter((shape) => shape.kind !== 'group');
+
+  return {
+    heights: measured.map((shape) => shape.h),
+    widths: measured.map((shape) => shape.w),
+  };
+};
+
 /**
  * The scales a multi-selection resize would apply, and the refusal it earns.
  * A turned member is exact under a uniform scale — its centre, size and angle
@@ -187,16 +206,13 @@ const selectionScale = (
 ): SelectionScale => {
   const to = resizeBounds(bounds, handle, pointer, modifiers);
   const signs = handleSigns(handle);
+  const { heights, widths } = measuredSizes(shapes);
   const floor = (scale: number, smallest: number): number =>
     smallest > 0 ? Math.max(scale, MIN_SIZE / smallest) : scale;
   const scaleX =
-    bounds.w === 0
-      ? 1
-      : floor(to.w / bounds.w, Math.min(...shapes.map((shape) => shape.w)));
+    bounds.w === 0 ? 1 : floor(to.w / bounds.w, Math.min(...widths));
   const scaleY =
-    bounds.h === 0
-      ? 1
-      : floor(to.h / bounds.h, Math.min(...shapes.map((shape) => shape.h)));
+    bounds.h === 0 ? 1 : floor(to.h / bounds.h, Math.min(...heights));
   const centre = { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 };
   const anchorX = modifiers.fromCentre
     ? centre.x
@@ -232,10 +248,13 @@ export const resizeRefusal = (
   handle: HandleKind,
   pointer: Point,
   modifiers: ResizeModifiers
-): string | null =>
-  shapes.length <= 1
+): string | null => {
+  const unlocked = movable(shapes);
+
+  return unlocked.length <= 1
     ? null
-    : selectionScale(shapes, bounds, handle, pointer, modifiers).refusal;
+    : selectionScale(unlocked, bounds, handle, pointer, modifiers).refusal;
+};
 
 /**
  * Every selected shape sized to `handle`'s drag. One shape keeps its own frame;
@@ -252,13 +271,17 @@ export const resizeSelection = (
   pointer: Point,
   modifiers: ResizeModifiers
 ): Replacements => {
-  const only = shapes.length === 1 ? shapes[0] : undefined;
-  if (only !== undefined) {
+  const unlocked = movable(shapes);
+  if (unlocked.length === 0) {
+    return new Map();
+  }
+  const only = shapes.length === 1 ? unlocked[0] : undefined;
+  if (only !== undefined && only.kind !== 'group') {
     return new Map([[only.id, resizeOne(only, handle, pointer, modifiers)]]);
   }
 
   const { anchorX, anchorY, refusal, scaleX, scaleY } = selectionScale(
-    shapes,
+    unlocked,
     bounds,
     handle,
     pointer,
@@ -269,7 +292,10 @@ export const resizeSelection = (
   }
   const next: Replacements = new Map();
 
-  for (const shape of shapes) {
+  for (const shape of unlocked) {
+    if (shape.kind === 'group') {
+      continue;
+    }
     next.set(
       shape.id,
       pinnedByResize({
@@ -299,7 +325,10 @@ export const rotateSelection = (
 ): Replacements => {
   const next: Replacements = new Map();
 
-  for (const shape of shapes) {
+  for (const shape of movable(shapes)) {
+    if (shape.kind === 'group') {
+      continue;
+    }
     const centre = turn(centreOf(shape), origin, delta);
     next.set(shape.id, {
       ...shape,

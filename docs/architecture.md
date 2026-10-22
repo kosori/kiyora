@@ -71,7 +71,7 @@ Containment is flat: a frame or a group is a shape, and its members name it thro
 
 ### Authored, not derived
 
-Only authored state is stored. Group boxes, connector paths, text wrapping, hit-test geometry, selection, hover and drag state are all recomputed. A migration therefore only ever has to reason about something a person typed.
+Only authored state is stored. Group boxes, connector paths, text wrapping, hit-test geometry, selection, hover and drag state are all recomputed. A group's stored box is a placeholder: the schema requires geometry on every shape, so a group carries a zero box that bounds never read, and its real box is derived from its children. A migration therefore only ever has to reason about something a person typed.
 
 ### Paint order
 
@@ -172,6 +172,7 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | --- | --- |
 | Schema, shape union, migrations, serialization | `packages/model/src/board/` |
 | Figure geometry, palette, style resolution | `packages/model/src/paint/` |
+| Layered layout from a diagram's direction | `packages/model/src/layout/` |
 | SVG projection | `packages/model/src/projection/` |
 | SVG export: document, byte cap, safety | `packages/model/src/export/` |
 | Text runs, wrapping, measurement protocol | `packages/model/src/text/` |

@@ -36,6 +36,8 @@ export {
   figureKindSchema,
   frameSchema,
   frameVariantSchema,
+  type GroupShape,
+  groupSchema,
   type Head,
   headSchema,
   ROUTES,
@@ -44,6 +46,7 @@ export {
   SCHEMA_VERSION,
   type Shape,
   type Slide,
+  type Source,
   STICKY_FITS,
   type StickyFit,
   type StickyShape,
@@ -52,6 +55,7 @@ export {
   shapeBaseSchema,
   shapeSchema,
   slideSchema,
+  sourceSchema,
   stickyFitSchema,
   styleSchema,
   type TextShape,
@@ -62,6 +66,7 @@ export {
   boardIssues,
   parseBoard,
 } from './board/validate';
+export { mapSource, SOURCE_INSET, type SourceMapping } from './bridge/mapping';
 export {
   addSlide,
   DECK_TEMPLATES,
@@ -90,9 +95,25 @@ export {
 } from './export/board-svg';
 export {
   BOARD_FILE_EXTENSION,
+  BOARD_FILE_LIMIT_BYTES,
+  BoardFileFault,
   parseBoardFile,
   serializeBoard,
 } from './file/board-file';
+export {
+  DEFAULT_LAYOUT_DIRECTION,
+  type GroupPlacement,
+  LAYOUT_DIRECTIONS,
+  LAYOUT_GAP,
+  LAYOUT_INSET,
+  LAYOUT_NODE,
+  LAYOUT_RANK_GAP,
+  type Layout,
+  type LayoutDirection,
+  type LayoutOptions,
+  layoutGraph,
+  type NodePlacement,
+} from './layout/layered';
 export {
   anchorPoint,
   autoAnchor,

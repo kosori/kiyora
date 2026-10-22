@@ -1,4 +1,5 @@
-import type { Binding, Command, ShortcutRow } from './keymap';
+import type { Command } from './commands';
+import type { Binding, ShortcutRow } from './keymap';
 
 /**
  * The clipboard keys, declared in the same shape as the editing keymap and
@@ -11,21 +12,31 @@ export const CLIPBOARD_BINDINGS: readonly Binding[] = [
     command: { kind: 'duplicate' },
     key: 'd',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'copy' },
     key: 'c',
-    modifiers: { command: 'required' },
+    modifiers: { command: 'required', shift: 'forbidden' },
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'copy-png' },
+    key: 'c',
+    modifiers: { command: 'required', shift: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'cut' },
     key: 'x',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
   {
     command: { kind: 'paste' },
     key: 'v',
     modifiers: { command: 'required' },
+    preventDefault: true,
   },
 ];
 
@@ -40,6 +51,7 @@ const row = (command: Command, label: string): ShortcutRow => ({
 export const CLIPBOARD_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'duplicate' }, 'Duplicate'),
   row({ kind: 'copy' }, 'Copy'),
+  row({ kind: 'copy-png' }, 'Copy as PNG'),
   row({ kind: 'cut' }, 'Cut'),
   row({ kind: 'paste' }, 'Paste'),
 ];

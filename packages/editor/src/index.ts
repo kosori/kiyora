@@ -2,9 +2,20 @@
 
 export { subtreeIds } from '@kiyora/model';
 export {
+  ALIGNMENTS,
+  type Alignment,
+  alignBoard,
+  arrangeableShapes,
+  DISTRIBUTE_AXES,
+  type DistributeAxis,
+  distributeBoard,
+} from './align';
+export {
   clampZoom,
   FIT_PADDING,
+  FOCUS_ZOOM,
   fitCamera,
+  focusCamera,
   GRID_BASE_STEP,
   gridSpacing,
   gridStep,
@@ -26,13 +37,24 @@ export {
   zoomBy,
 } from './camera';
 export {
+  CLIPBOARD_VERSION,
   type Clipboard,
+  type ClipboardMessage,
   COPY_OFFSET,
+  clipboardMessage,
   copyFragment,
   duplicateShapes,
   type Paste,
   pasteFragment,
+  portableFragment,
+  readClipboardMessage,
 } from './clipboard';
+export {
+  CAMERA_ACTIONS,
+  type CameraAction,
+  type Command,
+  commandId,
+} from './commands';
 export {
   type ConnectorEdit,
   editConnector,
@@ -40,13 +62,42 @@ export {
 } from './connectors';
 export {
   addShape,
+  type ContainerShape,
   frameAround,
   frameIds,
+  isContainer,
   isFrame,
+  isGroup,
   memberIds,
-  parentFrame,
+  outermostGroup,
+  parentContainer,
   setMembership,
 } from './containment';
+export {
+  type ContextMenuItem,
+  type ContextMenuSection,
+  type ContextMenuState,
+  contextMenu,
+} from './context-menu';
+export {
+  type CommandHost,
+  type CommandTarget,
+  DISPATCHED_KINDS,
+  runCommand,
+} from './dispatch';
+export { findMatches } from './find';
+export {
+  type AlignmentLine,
+  alignmentLines,
+  type BoxSnap,
+  GUIDE_TOLERANCE,
+  type Guide,
+  type GuideAxis,
+  guideAcross,
+  nearestLine,
+  sameGuides,
+  snapBox,
+} from './geometry/guides';
 export {
   HANDLE_REACH,
   HANDLE_SIZE,
@@ -82,13 +133,7 @@ export {
 } from './history/stack';
 export {
   type Binding,
-  bindingKey,
-  bindingLabel,
-  CAMERA_ACTIONS,
-  type CameraAction,
   type Chord,
-  type Command,
-  commandId,
   KEY_ALIASES,
   KEY_MODES,
   KEYMAP,
@@ -97,11 +142,10 @@ export {
   type ModifierRule,
   type Modifiers,
   matchBinding,
-  type ReferenceRow,
+  matchKey,
   resolveKey,
   SHORTCUT_ROWS,
   type ShortcutRow,
-  shortcutReference,
 } from './keymap';
 export {
   GESTURE_REFERENCE,
@@ -119,15 +163,20 @@ export {
 } from './persistence/autosave';
 export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
 export {
+  type ClipboardRelay,
+  createClipboardRelay,
+} from './persistence/clipboard-channel';
+export {
   type CorruptReason,
   faultOf,
   StorageError,
   type StorageFault,
 } from './persistence/faults';
 export {
+  type BoardChannel,
+  type BoardMessage,
   createPresence,
   type Presence,
-  type PresenceChannel,
   type PresenceMessage,
 } from './persistence/presence';
 export {
@@ -148,6 +197,20 @@ export {
   selectedShapes,
   selectionBounds,
 } from './selection';
+export {
+  bindingKey,
+  bindingLabel,
+  commandPalette,
+  type PaletteEntry,
+  type ReferenceRow,
+  shortcutReference,
+} from './shortcut-reference';
+export type { SourceApply, SourceApplyOptions } from './source-commands';
+export {
+  markSourceStale,
+  type SourceState,
+  sourceState,
+} from './source-state';
 export {
   createEditor,
   type Editor,

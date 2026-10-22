@@ -1,20 +1,102 @@
 import {
   type Board,
   type Endpoint,
+  SCHEMA_VERSION,
   type Shape,
+  shapeSchema,
   subtreeIds,
 } from '@kiyora/model';
 import { movedShape } from './shape-edit';
 
 /**
  * Copying: a set of shapes lifted off the board and put back with fresh ids.
- * The clipboard is plain board data, so a later ticket can move it between tabs
- * without inventing a second format; nothing here touches the network.
+ * The clipboard is plain board data, so another tab can take it over the board
+ * channel without inventing a second format; nothing here touches the network.
  */
 
 /** A copied set of shapes, held apart from the board until it is pasted. */
 export type Clipboard = {
   shapes: Shape[];
+};
+
+/** The schema version a clipboard message is written at. */
+export const CLIPBOARD_VERSION = SCHEMA_VERSION;
+
+/**
+ * One tab's clipboard as it crosses the board channel. It carries the shape
+ * records themselves rather than ids or pixels, so the receiving tab can re-id
+ * them against its own board. `schemaVersion` is the sender's, because two tabs
+ * may be running different builds.
+ */
+export type ClipboardMessage = {
+  type: 'clipboard';
+  /** The tab that copied it, so a tab never takes back its own broadcast. */
+  origin: string;
+  schemaVersion: number;
+  shapes: Shape[];
+};
+
+/** Whether `endpoint` is bound to one of `wanted`. */
+const boundTo = (wanted: ReadonlySet<string>, endpoint: Endpoint): boolean =>
+  endpoint.kind === 'bound' && wanted.has(endpoint.shapeId);
+
+/**
+ * `fragment` as the part another tab can carry: a connector whose bound end
+ * names a shape outside the fragment is dropped. A same-board paste can keep
+ * that binding because the shape is still there; another tab has no such shape,
+ * so carrying the connector would draw a line to nothing. A connector between
+ * two copied shapes stays, and a free end still travels with its copy.
+ */
+export const portableFragment = (fragment: Clipboard): Clipboard => {
+  const carried = new Set(fragment.shapes.map((shape) => shape.id));
+
+  return {
+    shapes: fragment.shapes.filter(
+      (shape) =>
+        shape.kind !== 'connector' ||
+        ((boundTo(carried, shape.from) || shape.from.kind === 'free') &&
+          (boundTo(carried, shape.to) || shape.to.kind === 'free'))
+    ),
+  };
+};
+
+/** `fragment` as the message a tab broadcasts for the others. */
+export const clipboardMessage = (
+  fragment: Clipboard,
+  origin: string
+): ClipboardMessage => ({
+  origin,
+  schemaVersion: CLIPBOARD_VERSION,
+  shapes: portableFragment(fragment).shapes,
+  type: 'clipboard',
+});
+
+const fragments = shapeSchema.array();
+
+/**
+ * `input` as a clipboard this build can paste, or `null` when it is not. A
+ * version other than this build's is refused rather than migrated: migrations
+ * lift whole boards, and a fragment arrives with no board around it to reason
+ * about. Every shape is validated, so a message cannot put a record the schema
+ * rejects on the board.
+ */
+export const readClipboardMessage = (input: unknown): Clipboard | null => {
+  if (typeof input !== 'object' || input === null) {
+    return null;
+  }
+  const message = input as Record<string, unknown>;
+  if (
+    message.type !== 'clipboard' ||
+    message.schemaVersion !== CLIPBOARD_VERSION
+  ) {
+    return null;
+  }
+  const parsed = fragments.safeParse(message.shapes);
+  if (!parsed.success || parsed.data.length === 0) {
+    return null;
+  }
+
+  return { shapes: parsed.data };
 };
 
 /**
@@ -35,10 +117,6 @@ const mintId = (kind: Shape['kind'], used: Set<string>): string => {
 
   return id;
 };
-
-/** Whether `endpoint` is bound to one of `wanted`. */
-const boundTo = (wanted: ReadonlySet<string>, endpoint: Endpoint): boolean =>
-  endpoint.kind === 'bound' && wanted.has(endpoint.shapeId);
 
 /**
  * `ids` and everything held inside them, as a fragment. A frame arrives with

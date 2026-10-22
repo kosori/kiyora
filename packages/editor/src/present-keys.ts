@@ -1,4 +1,5 @@
-import type { Binding, Command, ShortcutRow } from './keymap';
+import type { Command } from './commands';
+import type { Binding, ShortcutRow } from './keymap';
 
 /**
  * The presenting keys, declared in the same shape as the editing keymap and
@@ -12,18 +13,50 @@ export const PRESENT_BINDINGS: readonly Binding[] = [
     command: { kind: 'present-next' },
     key: 'arrowright',
     mode: 'present',
+    preventDefault: true,
   },
-  { command: { kind: 'present-next' }, key: 'arrowdown', mode: 'present' },
-  { command: { kind: 'present-next' }, key: 'space', mode: 'present' },
-  { command: { kind: 'present-next' }, key: 'pagedown', mode: 'present' },
+  {
+    command: { kind: 'present-next' },
+    key: 'arrowdown',
+    mode: 'present',
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'present-next' },
+    key: 'space',
+    mode: 'present',
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'present-next' },
+    key: 'pagedown',
+    mode: 'present',
+    preventDefault: true,
+  },
   {
     command: { kind: 'present-previous' },
     key: 'arrowleft',
     mode: 'present',
+    preventDefault: true,
   },
-  { command: { kind: 'present-previous' }, key: 'arrowup', mode: 'present' },
-  { command: { kind: 'present-previous' }, key: 'pageup', mode: 'present' },
-  { command: { kind: 'present-exit' }, key: 'escape', mode: 'present' },
+  {
+    command: { kind: 'present-previous' },
+    key: 'arrowup',
+    mode: 'present',
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'present-previous' },
+    key: 'pageup',
+    mode: 'present',
+    preventDefault: true,
+  },
+  {
+    command: { kind: 'present-exit' },
+    key: 'escape',
+    mode: 'present',
+    preventDefault: true,
+  },
   { command: { kind: 'present-notes' }, key: 'n', mode: 'present' },
   { command: { kind: 'present-timer' }, key: 't', mode: 'present' },
 ];

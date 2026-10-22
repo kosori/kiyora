@@ -27,6 +27,7 @@ import {
 } from '~/lib/board-png';
 import { saveBoardSvg } from '~/lib/board-svg';
 import { createTextMeasurer } from '~/lib/text-measurer';
+import { useCopyPng } from './copy-png-context';
 import { OptionButtons } from './option-buttons';
 
 type Option<T extends string> = { label: string; value: T };
@@ -73,7 +74,9 @@ export const FileControls = () => {
   const { camera } = useView();
   const input = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
+  const { clearError, copy: copyPng, error: copyError } = useCopyPng();
   const [error, setError] = useState<string | null>(null);
+  const shownError = error ?? copyError;
   const [png, setPng] = useState(false);
   const [target, setTarget] = useState<PngTarget>('board');
   const [scale, setScale] = useState<'1' | '2' | '4'>('2');
@@ -87,11 +90,12 @@ export const FileControls = () => {
       try {
         restoreBoard(editor, await openBoardFile(file));
         setError(null);
+        clearError();
       } catch (thrown) {
         setError(thrown instanceof Error ? thrown.message : String(thrown));
       }
     },
-    [editor]
+    [clearError, editor]
   );
 
   const choose = useCallback(() => {
@@ -106,10 +110,11 @@ export const FileControls = () => {
     try {
       saveBoardSvg(board, { measure, theme: board.settings.theme });
       setError(null);
+      clearError();
     } catch (thrown) {
       setError(thrown instanceof Error ? thrown.message : String(thrown));
     }
-  }, [board, measure]);
+  }, [board, clearError, measure]);
 
   const exportPng = useCallback(async () => {
     try {
@@ -120,10 +125,11 @@ export const FileControls = () => {
       );
       saveBoardPng(blob, board.title);
       setError(null);
+      clearError();
     } catch (thrown) {
       setError(thrown instanceof Error ? thrown.message : String(thrown));
     }
-  }, [background, board, measure, scale, selection, target, theme]);
+  }, [background, board, clearError, measure, scale, selection, target, theme]);
 
   const togglePng = useCallback(() => {
     setPng((open) => !open);
@@ -213,6 +219,15 @@ export const FileControls = () => {
           <Button data-testid='download-png' onClick={exportPng} size='sm'>
             Download PNG
           </Button>
+          <Button
+            data-testid='copy-png'
+            disabled={selection.length === 0}
+            onClick={copyPng}
+            size='sm'
+            variant='secondary'
+          >
+            Copy PNG
+          </Button>
         </div>
       ) : null}
       <input
@@ -223,13 +238,13 @@ export const FileControls = () => {
         ref={input}
         type='file'
       />
-      {error === null ? null : (
+      {shownError === null ? null : (
         <p
           className='whitespace-pre-line rounded-lg border border-destructive/40 bg-background/95 px-2 py-1 text-destructive text-xs shadow-sm'
           data-testid='file-error'
           role='alert'
         >
-          {error}
+          {shownError}
         </p>
       )}
     </div>

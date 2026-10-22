@@ -5,6 +5,7 @@ import {
   type PaintContext,
   parseBoard,
   projectBoard,
+  SCHEMA_VERSION,
 } from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
@@ -56,7 +57,7 @@ const rectangleBoard = (): Board =>
     camera,
     deck: [],
     id: 'board-rectangle',
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     settings: { theme: 'light' },
     shapes: [rectangle()],
     title: 'One rectangle',
@@ -68,7 +69,7 @@ const board = (): Board =>
     camera,
     deck: [],
     id: 'board-three',
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     settings: { theme: 'light' },
     shapes: [
       {

@@ -1,20 +1,69 @@
-import type { Board, Bounds, FrameShape, Shape } from '@kiyora/model';
+import type {
+  Board,
+  Bounds,
+  FrameShape,
+  GroupShape,
+  Shape,
+} from '@kiyora/model';
+
+/** A shape that holds members: a frame or a group. */
+export type ContainerShape = FrameShape | GroupShape;
 
 /** Whether `shape` is a frame: a shape that holds others and can clip them. */
 export const isFrame = (shape: Shape): shape is FrameShape =>
   shape.kind === 'frame';
 
-/** The frame `parentId` names, or `null` when it names nothing that is one. */
-export const parentFrame = (
+/** Whether `shape` is a group: a shape that holds others so they move as one. */
+export const isGroup = (shape: Shape): shape is GroupShape =>
+  shape.kind === 'group';
+
+/** Whether `shape` holds members, whether a frame or a group. */
+export const isContainer = (shape: Shape): shape is ContainerShape =>
+  isFrame(shape) || isGroup(shape);
+
+/** The container `parentId` names, or `null` when it names nothing that holds members. */
+export const parentContainer = (
   board: Board,
   parentId: string | null
-): FrameShape | null => {
+): ContainerShape | null => {
   if (parentId === null) {
     return null;
   }
   const shape = board.shapes.find((one) => one.id === parentId);
 
-  return shape !== undefined && isFrame(shape) ? shape : null;
+  return shape !== undefined && isContainer(shape) ? shape : null;
+};
+
+/**
+ * The outermost group `shapeId` belongs to, itself included, or `null` when it
+ * belongs to none. A click on any member picks the group that holds it, so a
+ * group reads as one thing until it is taken apart.
+ */
+export const outermostGroup = (
+  board: Board,
+  shapeId: string
+): string | null => {
+  const byId = new Map(board.shapes.map((shape) => [shape.id, shape]));
+  const seen = new Set<string>();
+  let shape = byId.get(shapeId);
+  let group = shape !== undefined && isGroup(shape) ? shape.id : null;
+
+  while (shape !== undefined && shape.parentId !== null) {
+    if (seen.has(shape.parentId)) {
+      break;
+    }
+    seen.add(shape.parentId);
+    const parent = byId.get(shape.parentId);
+    if (parent === undefined) {
+      break;
+    }
+    if (isGroup(parent)) {
+      group = parent.id;
+    }
+    shape = parent;
+  }
+
+  return group;
 };
 
 /**
@@ -24,10 +73,10 @@ export const parentFrame = (
 export const frameIds = (board: Board): string[] =>
   board.shapes.filter(isFrame).map((shape) => shape.id);
 
-/** The ids of a frame's direct members, in paint order. */
-export const memberIds = (board: Board, frameId: string): string[] =>
+/** The ids of a container's direct members, in paint order. */
+export const memberIds = (board: Board, containerId: string): string[] =>
   board.shapes
-    .filter((shape) => shape.parentId === frameId)
+    .filter((shape) => shape.parentId === containerId)
     .map((shape) => shape.id);
 
 /** Whether `box` lies wholly inside `frame`'s authored box. */
@@ -55,12 +104,12 @@ export const frameAround = (board: Board, box: Bounds): FrameShape | null => {
 /**
  * Records which shape holds `shapeId`, and where it sits among that parent's
  * members, in one edit of the paint-order array plus the pointer. Membership
- * and ordering are the same operation, so the members of a frame can never
- * drift away from it.
+ * and ordering are the same operation, so the members of a frame or a group can
+ * never drift away from it.
  *
- * The frame's authored box is never read and never rewritten: membership moves
- * the member, not the frame. A `parentId` that names no frame on the board, or
- * a shape the board does not hold, leaves the board as it was.
+ * A frame's authored box is never read and never rewritten: membership moves
+ * the member, not the container. A `parentId` that names no container on the
+ * board, or a shape the board does not hold, leaves the board as it was.
  */
 export const setMembership = (
   board: Board,
@@ -72,7 +121,7 @@ export const setMembership = (
   if (shape === undefined || (parentId !== null && shapeId === parentId)) {
     return board;
   }
-  const parent = parentFrame(board, parentId);
+  const parent = parentContainer(board, parentId);
   if (parentId !== null && parent === null) {
     return board;
   }

@@ -91,7 +91,11 @@ describe('a uniform resize of a selection holding a rotated shape', () => {
     editor.pointerDown({ x: 300, y: 100 }, false);
     editor.pointerMove({ x: 480, y: 160 }, none);
 
-    expect(editor.getGesture()).toEqual({ handle: 'se', kind: 'resize' });
+    expect(editor.getGesture()).toEqual({
+      guides: [],
+      handle: 'se',
+      kind: 'resize',
+    });
     expect(editor.getBoard().shapes).toMatchObject([
       { h: 80, w: 160, x: 0, y: 0 },
       { h: 160, rotation: 90, w: 160, x: 320, y: 0 },

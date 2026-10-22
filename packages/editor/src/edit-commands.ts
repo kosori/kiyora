@@ -7,10 +7,16 @@ import {
   pasteFragment,
 } from './clipboard';
 import { removeShapes } from './connectors';
+import { groupSelection, ungroupSelection } from './groups';
 import type { Selection } from './selection';
 
-/** The edits the store exposes beside its gestures: the clipboard and the delete. */
+/** The edits the store exposes beside its gestures: the clipboard, the delete and grouping. */
 export type EditCommands = {
+  /**
+   * Whether the clipboard holds a fragment, so a menu can disable a paste
+   * instead of dropping it. Changes nothing on the board.
+   */
+  canPaste: () => boolean;
   /** Copies the selection to the app's clipboard. Changes nothing on the board. */
   copy: () => void;
   /** Copies the selection and deletes it as one gesture, so one undo restores both. */
@@ -19,8 +25,20 @@ export type EditCommands = {
   deleteSelection: () => void;
   /** Copies the selection clear of itself, as one gesture. */
   duplicate: () => void;
+  /** Brings the selection together as one group, as one gesture. */
+  groupSelection: () => void;
   /** Puts the clipboard on the board clear of what it copies, as one gesture. */
   paste: () => void;
+  /**
+   * Takes a fragment copied in another tab as this tab's clipboard, so the next
+   * paste uses it. Changes nothing on the board and does not echo the fragment
+   * back over the channel.
+   */
+  receiveClipboard: (fragment: Clipboard) => void;
+  /** Subscribes to copies made here, so the tab can share them with the others. */
+  subscribeClipboard: (listener: (fragment: Clipboard) => void) => () => void;
+  /** Takes the selected groups apart, leaving their members where they were. */
+  ungroupSelection: () => void;
 };
 
 type Options = {
@@ -49,9 +67,19 @@ export const createEditCommands = ({
 }: Options): EditCommands => {
   let clipboard: Clipboard | null = null;
   let pastes = 0;
+  const clipboardListeners = new Set<(fragment: Clipboard) => void>();
 
-  /** Records `fragment` as the clipboard and starts its paste cascade over. */
+  /** Records `fragment` as the clipboard, starts its paste cascade over and tells the tabs. */
   const keep = (fragment: Clipboard): void => {
+    clipboard = fragment;
+    pastes = 0;
+    for (const listener of clipboardListeners) {
+      listener(fragment);
+    }
+  };
+
+  /** Adopts a fragment from another tab without sending it back. */
+  const receiveClipboard = (fragment: Clipboard): void => {
     clipboard = fragment;
     pastes = 0;
   };
@@ -68,6 +96,7 @@ export const createEditCommands = ({
   };
 
   return {
+    canPaste: () => clipboard !== null && clipboard.shapes.length > 0,
     copy: () => keep(copyFragment(board(), selection())),
     cut,
     deleteSelection: () => {
@@ -88,6 +117,15 @@ export const createEditCommands = ({
       change(copy.board);
       select(copy.ids);
     },
+    groupSelection: () => {
+      const before = board();
+      const grouped = groupSelection(before, selection());
+      if (grouped === null) {
+        return;
+      }
+      change(grouped.board);
+      select([grouped.groupId]);
+    },
     paste: () => {
       if (clipboard === null) {
         return;
@@ -97,6 +135,22 @@ export const createEditCommands = ({
       const copy = pasteFragment(board(), clipboard, step, step);
       change(copy.board);
       select(copy.ids);
+    },
+    receiveClipboard,
+    subscribeClipboard: (listener) => {
+      clipboardListeners.add(listener);
+      return () => {
+        clipboardListeners.delete(listener);
+      };
+    },
+    ungroupSelection: () => {
+      const before = board();
+      const ungrouped = ungroupSelection(before, selection());
+      if (ungrouped === null) {
+        return;
+      }
+      change(ungrouped.board);
+      select(ungrouped.ids);
     },
   };
 };

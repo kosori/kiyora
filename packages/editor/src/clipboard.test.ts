@@ -126,6 +126,26 @@ describe('cutting, copying and pasting', () => {
     expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
   });
 
+  it('says whether there is anything to paste, so a menu can disable an empty clipboard', () => {
+    const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
+    editor.setSelection(['a']);
+
+    expect(editor.canPaste()).toBe(false);
+
+    editor.copy();
+
+    expect(editor.canPaste()).toBe(true);
+  });
+
+  it('does not count an empty selection as something to paste', () => {
+    const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
+
+    editor.copy();
+
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
+    expect(editor.canPaste()).toBe(false);
+  });
+
   it('pastes a copy clear of the original', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
     editor.setSelection(['a']);

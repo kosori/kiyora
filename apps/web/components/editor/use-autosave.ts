@@ -2,7 +2,9 @@
 
 import {
   type Autosave,
+  type ClipboardRelay,
   createAutosave,
+  createClipboardRelay,
   createPresence,
   type Editor,
   loadBoard,
@@ -12,7 +14,7 @@ import {
   type StorageFault,
 } from '@kiyora/editor';
 import { useEffect, useState } from 'react';
-import { openPresenceChannel } from '~/lib/board-presence';
+import { openBoardChannel } from '~/lib/board-channel';
 import { openBoardStorage } from '~/lib/board-storage';
 
 /** Everything the shell needs to tell the truth about where the board is. */
@@ -51,6 +53,7 @@ export const useAutosave = (editor: Editor): StorageHealth => {
   useEffect(() => {
     let cancelled = false;
     let autosave: Autosave | null = null;
+    let clipboard: ClipboardRelay | null = null;
     let presence: Presence | null = null;
     const stops: Array<() => void> = [];
 
@@ -93,12 +96,15 @@ export const useAutosave = (editor: Editor): StorageHealth => {
           return;
         }
 
-        const channel = openPresenceChannel();
-        const mine = createPresence({
-          channel,
-          self: { id: crypto.randomUUID(), openedAt: Date.now() },
-        });
+        const channel = openBoardChannel();
+        const self = { id: crypto.randomUUID(), openedAt: Date.now() };
+        const mine = createPresence({ channel, self });
         presence = mine;
+        clipboard = createClipboardRelay({
+          channel,
+          editor,
+          origin: self.id,
+        });
 
         const created = createAutosave({
           editor,
@@ -145,6 +151,7 @@ export const useAutosave = (editor: Editor): StorageHealth => {
       for (const stop of stops) {
         stop();
       }
+      clipboard?.close();
       presence?.leave();
       autosave?.stop();
     };

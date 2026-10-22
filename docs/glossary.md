@@ -22,6 +22,14 @@ _Avoid_: Render model, SVG model, draw instructions
 The nine colours a board may use, and the three fill styles. Any other colour snaps to the nearest palette hue.
 _Avoid_: Theme, swatches, colour set
 
+**Theme**:
+A board's light or dark setting. It is authored, it travels in the board file, and it decides the colour of every exported artifact.
+_Avoid_: Appearance, colour scheme, mode
+
+**Appearance**:
+The chrome's light or dark setting. It is a preference of this browser, never stored in a board, and never changes what an export looks like.
+_Avoid_: Theme, skin
+
 **Camera**:
 Where the board is being looked at from: x, y and zoom. The board stores only a snapshot the last save wrote; the live camera is in the view, outside undo, so panning is never undoable and never autosaves.
 _Avoid_: Viewport, scroll position, pan
@@ -86,6 +94,10 @@ _Avoid_: Code, script, DSL text, snippet
 **Stale**:
 A frame's source after the frame's shapes have been edited by hand. Regenerating replaces the frame's shapes as one gesture.
 _Avoid_: Dirty, out of date, unsynced
+
+**Pending**:
+The source text of a frame after it has been edited and before it has been applied. The board has not drifted from the source; the source has drifted from the board.
+_Avoid_: Stale, dirty, unsaved
 
 **Family**:
 One diagram kind the source language can express — flowchart, sequence, mindmap and the rest.

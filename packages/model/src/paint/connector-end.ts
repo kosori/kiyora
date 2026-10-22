@@ -6,7 +6,7 @@ import type {
   Shape,
 } from '../board/schema';
 import { formatNumber } from '../format';
-import { centreOf, type Point, turn } from './figures';
+import { centreOf, type Point, shapeBounds, turn } from './figures';
 
 /**
  * Where a connector's ends attach: the anchor an endpoint names, the one the
@@ -159,6 +159,10 @@ const directionOf = (end: ResolvedEnd, other: Point): ResolvedEnd => {
   return { ...end, direction: { x: dx / length, y: dy / length } };
 };
 
+/** A shape a connector end can attach to: a group wears its derived box. */
+const attachableShape = (shape: Shape, shapes: readonly Shape[]): Shape =>
+  shape.kind === 'group' ? { ...shape, ...shapeBounds(shape, shapes) } : shape;
+
 /**
  * Both ends of a connector against the shapes it is painted with. A bound end
  * whose target is missing falls back to the connector's authored footprint, so
@@ -172,7 +176,7 @@ export const resolveConnector = (
   const toShape = boundShape(shapes, connector.to);
   const from = resolveEnd(
     connector.from,
-    fromShape,
+    fromShape === undefined ? undefined : attachableShape(fromShape, shapes),
     seedPoint(connector.to, toShape, {
       x: connector.x + connector.w,
       y: connector.y + connector.h,
@@ -181,7 +185,7 @@ export const resolveConnector = (
   );
   const to = resolveEnd(
     connector.to,
-    toShape,
+    toShape === undefined ? undefined : attachableShape(toShape, shapes),
     seedPoint(connector.from, fromShape, { x: connector.x, y: connector.y }),
     { x: connector.x + connector.w, y: connector.y + connector.h }
   );

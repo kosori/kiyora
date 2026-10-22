@@ -1,6 +1,8 @@
 import {
   BOARD_FILE_EXTENSION,
+  BOARD_FILE_LIMIT_BYTES,
   type Board,
+  BoardFileFault,
   parseBoardFile,
   serializeBoard,
 } from '@kiyora/model';
@@ -29,6 +31,15 @@ export const saveBoardFile = (board: Board): void => {
   URL.revokeObjectURL(url);
 };
 
-/** Reads the board a person picked, naming what was wrong when the file is not one. */
-export const openBoardFile = async (file: File): Promise<Board> =>
-  parseBoardFile(await file.text());
+/**
+ * Reads the board a person picked. A file past the byte cap is refused before
+ * its bytes are read into a string, so a huge pick reports a Fault instead of
+ * freezing the tab; any other refusal names what was wrong and leaves the open
+ * board alone.
+ */
+export const openBoardFile = async (file: File): Promise<Board> => {
+  if (file.size > BOARD_FILE_LIMIT_BYTES) {
+    throw new BoardFileFault(file.size);
+  }
+  return parseBoardFile(await file.text());
+};

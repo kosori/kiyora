@@ -1,13 +1,23 @@
 'use client';
 
-import { visibleBounds } from '@kiyora/editor';
-import { useBoard } from '@kiyora/editor/react';
+import {
+  type CommandHost,
+  shapeAt,
+  toWorld,
+  visibleBounds,
+} from '@kiyora/editor';
+import { useBoard, useEditor } from '@kiyora/editor/react';
 import { paintBoard } from '@kiyora/model';
 import { cn } from 'cn';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { CameraControls } from './camera-controls';
+import { CommandPalette } from './command-palette';
+import { ContextMenu } from './context-menu';
+import { useCopyPng } from './copy-png-context';
 import { DotGrid } from './dot-grid';
+import { FindBox } from './find-box';
+import { Guides } from './guides';
 import { Marquee } from './marquee';
 import { PaintNode } from './paint-node';
 import { ResizeRefusal } from './resize-refusal';
@@ -42,6 +52,11 @@ type Props = {
  * every other coordinate, so `apps/web` never wraps or places a word itself. A
  * double click on a shape opens the label overlay here, on the canvas.
  *
+ * A right-click on a shape opens the selection's context menu at the pointer;
+ * on empty canvas it opens nothing. Its listener sits on the canvas itself, so
+ * chrome around the board keeps its own menu. The menu is display state beside
+ * the canvas, so neither it nor the selection it reads can reach the document.
+ *
  * The board group is unselectable, so a drag that starts on a label's words
  * begins a gesture rather than a text-selection drag — Chromium cancels that
  * drag, and the placement never completes. Keeping the text hit-testable rather
@@ -49,15 +64,74 @@ type Props = {
  */
 export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
+  const editor = useEditor();
   const surface = useCameraSurface();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [finding, setFinding] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [palette, setPalette] = useState(false);
   const openEditor = useCallback((id: string) => setEditingId(id), []);
   const closeEditor = useCallback(() => setEditingId(null), []);
+  const openFind = useCallback(() => setFinding(true), []);
+  const closeFind = useCallback(() => setFinding(false), []);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const showPalette = useCallback(() => setPalette(true), []);
   const pointer = useBoardPointer(surface.hand, openEditor);
   const measure = useMemo(() => createTextMeasurer(), []);
+  const { copy: copyPng } = useCopyPng();
   const { camera } = surface.view;
 
-  useShortcuts(onShowShortcuts, surface.intent);
+  useShortcuts(onShowShortcuts, surface.intent, openFind, showPalette, copyPng);
+
+  /**
+   * The palette's own host. Pan is a held key and a chooser has no keyup, so
+   * choosing it releases the pan at once instead of leaving the hand stuck.
+   */
+  const paletteHost = useMemo<CommandHost>(
+    () => ({
+      camera: (action, phase) => {
+        surface.intent.run(action, phase);
+        if (action === 'pan') {
+          surface.intent.run('pan', 'up');
+        }
+      },
+      copyPng,
+      openFind,
+      showPalette,
+      showShortcuts: onShowShortcuts,
+    }),
+    [copyPng, onShowShortcuts, openFind, showPalette, surface.intent]
+  );
+
+  const openContextMenu = useCallback(
+    (event: MouseEvent, element: SVGSVGElement) => {
+      event.preventDefault();
+      const box = element.getBoundingClientRect();
+      const at = { x: event.clientX - box.left, y: event.clientY - box.top };
+      const hit = shapeAt(board.shapes, toWorld(camera, at), true);
+      if (hit === null) {
+        return;
+      }
+      if (!editor.getSelection().includes(hit.id)) {
+        editor.setSelection([hit.id]);
+      }
+      setMenu(at);
+    },
+    [board.shapes, camera, editor]
+  );
+
+  useEffect(() => {
+    const element = surface.ref.current;
+    if (element === null) {
+      return;
+    }
+    const onContextMenu = (event: MouseEvent) => {
+      openContextMenu(event, element);
+    };
+    element.addEventListener('contextmenu', onContextMenu);
+
+    return () => element.removeEventListener('contextmenu', onContextMenu);
+  }, [openContextMenu, surface.ref]);
 
   const view = useMemo(
     () =>
@@ -77,48 +151,62 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   );
 
   return (
-    <div className='relative h-full w-full' {...pointer}>
-      <svg
-        aria-label='Board'
-        className={cn(
-          'h-full w-full touch-none',
-          surface.hand ? 'cursor-grab' : 'cursor-default'
-        )}
-        data-ready={surface.ready ? 'true' : undefined}
-        data-testid='canvas'
-        ref={surface.ref}
-        role='img'
-        xmlns='http://www.w3.org/2000/svg'
-        {...surface.handlers}
-      >
-        <DotGrid camera={camera} theme={board.settings.theme} />
-        <g
-          className='select-none'
-          data-testid='board'
-          transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
+    <>
+      <div className='relative h-full w-full' {...pointer}>
+        <svg
+          aria-label='Board'
+          className={cn(
+            'h-full w-full touch-none',
+            surface.hand ? 'cursor-grab' : 'cursor-default'
+          )}
+          data-ready={surface.ready ? 'true' : undefined}
+          data-testid='canvas'
+          ref={surface.ref}
+          role='img'
+          xmlns='http://www.w3.org/2000/svg'
+          {...surface.handlers}
         >
-          <PaintNode paint={paint} />
-          <SelectionFrame />
-          <Marquee />
-        </g>
-      </svg>
-      <ResizeRefusal />
-      {editingId === null ? null : (
-        <TextEditor
-          measure={measure}
-          onDone={closeEditor}
-          shapeId={editingId}
+          <DotGrid camera={camera} theme={board.settings.theme} />
+          <g
+            className='select-none'
+            data-testid='board'
+            transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
+          >
+            <PaintNode paint={paint} />
+            <Guides />
+            <SelectionFrame />
+            <Marquee />
+          </g>
+        </svg>
+        <ResizeRefusal />
+        {menu === null ? null : (
+          <ContextMenu at={menu} host={paletteHost} onClose={closeMenu} />
+        )}
+        {finding ? (
+          <FindBox onClose={closeFind} viewport={surface.viewport} />
+        ) : null}
+        {editingId === null ? null : (
+          <TextEditor
+            measure={measure}
+            onDone={closeEditor}
+            shapeId={editingId}
+          />
+        )}
+        <CameraControls
+          fit={surface.actions.fit}
+          reset={surface.actions.reset}
+          toggleTool={surface.actions.toggleTool}
+          tool={surface.view.tool}
+          zoom={camera.zoom}
+          zoomIn={surface.actions.zoomIn}
+          zoomOut={surface.actions.zoomOut}
         />
-      )}
-      <CameraControls
-        fit={surface.actions.fit}
-        reset={surface.actions.reset}
-        toggleTool={surface.actions.toggleTool}
-        tool={surface.view.tool}
-        zoom={camera.zoom}
-        zoomIn={surface.actions.zoomIn}
-        zoomOut={surface.actions.zoomOut}
+      </div>
+      <CommandPalette
+        host={paletteHost}
+        onOpenChange={setPalette}
+        open={palette}
       />
-    </div>
+    </>
   );
 };

@@ -5,13 +5,13 @@ import { EditorProvider } from '@kiyora/editor/react';
 import { useCallback, useState } from 'react';
 import { starterBoard } from '~/lib/starter-board';
 import { BoardCanvas } from './board-canvas';
+import { CopyPngProvider } from './copy-png-context';
 import { CrashProbe } from './crash-probe';
-import { DeckPanel } from './deck-panel';
 import { PanelBoundary } from './error-boundary';
 import { FileControls } from './file-controls';
 import { HistoryControls } from './history-controls';
-import { Inspector } from './inspector';
 import { PresentOverlay } from './present-overlay';
+import { RightRail } from './right-rail';
 import { SaveIndicator } from './save-indicator';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
@@ -34,36 +34,33 @@ export const Editor = () => {
 
   return (
     <EditorProvider editor={editor}>
-      <h1 className='sr-only'>Kiyora</h1>
-      <div className='flex h-full'>
-        <PanelBoundary label='Tools'>
-          <CrashProbe name='tools'>
-            <ToolRail />
-          </CrashProbe>
-        </PanelBoundary>
-        <div className='relative h-full min-w-0 flex-1'>
-          <BoardCanvas onShowShortcuts={toggleShortcuts} />
-          <FileControls />
-          <HistoryControls />
-          <PanelBoundary label='Status'>
-            <CrashProbe name='status'>
-              <SaveIndicator {...health} />
+      <CopyPngProvider>
+        <h1 className='sr-only'>Kiyora</h1>
+        <div className='flex h-full'>
+          <PanelBoundary label='Tools'>
+            <CrashProbe name='tools'>
+              <ToolRail />
+            </CrashProbe>
+          </PanelBoundary>
+          <div className='relative h-full min-w-0 flex-1'>
+            <BoardCanvas onShowShortcuts={toggleShortcuts} />
+            <FileControls />
+            <HistoryControls />
+            <PanelBoundary label='Status'>
+              <CrashProbe name='status'>
+                <SaveIndicator {...health} />
+              </CrashProbe>
+            </PanelBoundary>
+          </div>
+          <PanelBoundary label='Rail'>
+            <CrashProbe name='rail'>
+              <RightRail />
             </CrashProbe>
           </PanelBoundary>
         </div>
-        <PanelBoundary label='Inspector'>
-          <CrashProbe name='inspector'>
-            <Inspector />
-          </CrashProbe>
-        </PanelBoundary>
-        <PanelBoundary label='Deck'>
-          <CrashProbe name='deck'>
-            <DeckPanel />
-          </CrashProbe>
-        </PanelBoundary>
-      </div>
-      <PresentOverlay />
-      <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
+        <PresentOverlay />
+        <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
+      </CopyPngProvider>
     </EditorProvider>
   );
 };

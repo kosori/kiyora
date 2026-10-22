@@ -7,14 +7,18 @@ import type {
   Style,
   TextStyle,
 } from '@kiyora/model';
+import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
+import type { Clipboard } from './clipboard';
 import type { ConnectorEdit } from './connectors';
+import type { AlignmentLine, Guide } from './geometry/guides';
 import type { HandleKind } from './geometry/handles';
 import type { HistoryState } from './history/stack';
 import type { GestureModifiers } from './modifiers';
 import type { Placement } from './placement';
 import type { Restyle } from './restyle';
 import type { Selection } from './selection';
+import type { SourceApply } from './source-commands';
 import type { Tool } from './tools';
 
 /**
@@ -40,18 +44,29 @@ export type View = {
  */
 export type Gesture =
   | { kind: 'idle' }
-  | { kind: 'move' }
+  | { guides: readonly Guide[]; kind: 'move' }
   | { kind: 'marquee'; box: Bounds }
-  | { kind: 'resize'; handle: HandleKind; refusal?: string }
+  | {
+      guides: readonly Guide[];
+      handle: HandleKind;
+      kind: 'resize';
+      refusal?: string;
+    }
   | { kind: 'rotate' };
 
-/** The open move: the board it began on, where the pointer went down, and the positions it moved from. */
+/**
+ * The open move: the board it began on, where the pointer went down, the box it
+ * started on, and the positions it moved from. The alignment lines are read
+ * once, from the board it began on, so a pointer move never rescans the board.
+ */
 export type MoveDrag = {
   applied: Point;
   before: Board;
+  box: Bounds;
+  guides: readonly Guide[];
   kind: 'move';
+  lines: readonly AlignmentLine[];
   originals: ReadonlyMap<string, Point>;
-  origin: Point;
   start: Point;
 };
 
@@ -68,8 +83,10 @@ export type MarqueeDrag = {
 export type ResizeDrag = {
   before: Board;
   bounds: Bounds;
+  guides: readonly Guide[];
   handle: HandleKind;
   kind: 'resize';
+  lines: readonly AlignmentLine[];
   originals: ReadonlyMap<string, Shape>;
   /** Why the current pointer position is refused, or absent when it scales exactly. */
   refusal?: string;
@@ -129,6 +146,22 @@ export type Editor = {
   setText: (id: string, text: string, measure?: Measurer) => void;
   setTextStyle: (id: string, textStyle: TextStyle) => void;
   /**
+   * Applies diagram source to the frame `frameId` names. The shapes its last
+   * Source generated are replaced, the new ones join the frame, and the text is
+   * stored with them so the next open shows what was typed. One call is one
+   * gesture, so one undo takes the whole apply back; a frame with no Source
+   * applies an empty text without complaint.
+   *
+   * A stale frame is left exactly as it was unless `force` is set, and the
+   * result says so, so a caller can ask before discarding a hand edit. Shapes
+   * inside the frame that the Source did not generate always survive.
+   */
+  applySource: (
+    frameId: string,
+    text: string,
+    options?: { force?: boolean }
+  ) => SourceApply;
+  /**
    * Opens the label edit's transaction, so every write between this and
    * `endTextEdit` is one gesture and one history entry. Joins one already open —
    * a placed text shape hands its own transaction to the overlay — so a
@@ -156,16 +189,53 @@ export type Editor = {
   deleteSelection: () => void;
   /** Copies the selection to the app's clipboard. Changes nothing on the board. */
   copy: () => void;
+  /**
+   * Whether the clipboard holds a fragment, so a surface can disable a paste
+   * rather than offer one that does nothing. Reads display state only.
+   */
+  canPaste: () => boolean;
   /** Copies the selection and deletes it as one gesture, so one undo restores both. */
   cut: () => void;
   /** Copies the selection clear of itself. One board change, one history entry. */
   duplicate: () => void;
+  /**
+   * Brings the selection's roots together in one group, whose box is derived
+   * from them. One board change, one history entry.
+   */
+  groupSelection: () => void;
+  /**
+   * Takes the selected groups apart, leaving every member exactly where it was.
+   * One board change, one history entry.
+   */
+  ungroupSelection: () => void;
+  /**
+   * Lines the selection up to one edge or centre of its own box. A Connector is
+   * not an item alignment arranges — its bound ends follow the shapes that move
+   * — and a Group travels as the members its derived box holds. A locked shape
+   * stays put. One call is one gesture; an alignment that would move nothing
+   * writes nothing, so a no-op never lands in undo.
+   */
+  align: (alignment: Alignment) => void;
+  /**
+   * Spaces three or more movable selected shapes evenly along `axis`, keeping
+   * the outermost two where they are. One call is one gesture, and a selection
+   * already spaced evenly writes nothing.
+   */
+  distribute: (axis: DistributeAxis) => void;
   /**
    * Puts the clipboard on the board offset clear of what it copies, cascading
    * further on each repeat so a second paste is not hidden by the first. One
    * gesture however many shapes it carries, so one undo takes the paste back.
    */
   paste: () => void;
+  /**
+   * Takes a fragment copied in another tab as this tab's clipboard. The next
+   * paste re-ids it against this board, exactly as a copy made here would; the
+   * board is untouched until then.
+   */
+  receiveClipboard: (fragment: Clipboard) => void;
+  /** Subscribes to copies made here, so a tab can share them over the board channel. */
+  subscribeClipboard: (listener: (fragment: Clipboard) => void) => () => void;
   /** Subscribes to board changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Subscribes to view changes. Returns the unsubscribe. */
@@ -184,15 +254,20 @@ export type Editor = {
    * The pointer going down on the board. On a handle of the current selection it
    * opens a resize or a rotate; on a shape it selects it — adding to the
    * selection when `additive` — and opens a move; on empty canvas it clears the
-   * selection unless `additive`, and opens a marquee.
+   * selection unless `additive`, and opens a marquee. `includeLocked` reaches a
+   * locked shape, so alt-clicking one selects it for the Inspector to unlock.
    */
-  pointerDown: (point: Point, additive: boolean) => void;
+  pointerDown: (
+    point: Point,
+    additive: boolean,
+    includeLocked?: boolean
+  ) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
    * a resize and a rotate each read the one `modifiers` value. Alt bypasses the
-   * grid snap wherever a gesture snaps — a move and a resize — and, the named
-   * collision, grows a resize from its centre; shift keeps a resize's ratio and
-   * snaps a rotation to fifteen. See `modifiers.ts`.
+   * grid snap and the alignment guides wherever a gesture snaps — a move and a
+   * resize — and, the named collision, grows a resize from its centre; shift
+   * keeps a resize's ratio and snaps a rotation to fifteen. See `modifiers.ts`.
    */
   pointerMove: (point: Point, modifiers: GestureModifiers) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */
@@ -204,6 +279,23 @@ export type Editor = {
   /** Ends the open run of nudges, so the next nudge is a fresh history entry. */
   endNudgeRun: () => void;
   /**
+   * Puts the selection in front of its siblings in paint order. A frame's
+   * member moves inside its frame, and a group moves with its members. One
+   * board change, one history entry; nothing is written when it is already
+   * there.
+   */
+  bringToFront: () => void;
+  /** Puts the selection behind its siblings in paint order. One history entry. */
+  sendToBack: () => void;
+  /**
+   * Raises the selection one place in its sibling list, moving a multi-selection
+   * as one block. One board change, one history entry; nothing is written when
+   * it cannot step.
+   */
+  bringForward: () => void;
+  /** Lowers the selection one place in its sibling list. One history entry. */
+  sendBackward: () => void;
+  /**
    * Restyles every selected shape in one board write: a style patch, an
    * opacity, a text-style patch, or any combination. One call is one gesture,
    * so it is one history entry. A restyled style becomes the one the next shape
@@ -211,6 +303,12 @@ export type Editor = {
    * nothing.
    */
   restyle: (change: Restyle) => void;
+  /**
+   * Locks or unlocks every selected shape in one board write. One call is one
+   * gesture, so it is one history entry; a selection already wearing the asked-for
+   * lock writes nothing. A locked shape still resists every transform.
+   */
+  setLocked: (locked: boolean) => void;
   /** Whether undo and redo are possible, as a value a control can read. */
   getHistory: () => HistoryState;
   /** Subscribes to history-availability changes. Returns the unsubscribe. */

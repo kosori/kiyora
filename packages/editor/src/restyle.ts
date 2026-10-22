@@ -1,6 +1,7 @@
 import type { Board, Style, TextStyle } from '@kiyora/model';
 import { DEFAULT_TEXT_STYLE } from '@kiyora/model';
 import { type Selection, selectedShapes } from './selection';
+import { markSourceStale } from './source-state';
 
 /**
  * One change the inspector makes: part of a shape's style, the opacity that
@@ -32,7 +33,9 @@ export const restyledBoard = (
   selection: Selection,
   change: Restyle
 ): RestyleResult | null => {
-  const shapes = selectedShapes(board, selection);
+  const shapes = selectedShapes(board, selection).filter(
+    (shape) => !shape.locked
+  );
   if (shapes.length === 0) {
     return null;
   }
@@ -68,7 +71,11 @@ export const restyledBoard = (
     return restyled;
   });
 
-  const nextBoard = { ...board, shapes: shapesNext };
+  const nextBoard = markSourceStale(
+    board,
+    { ...board, shapes: shapesNext },
+    selected
+  );
 
   return nextStyle === undefined
     ? { board: nextBoard }

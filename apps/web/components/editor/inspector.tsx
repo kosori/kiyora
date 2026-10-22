@@ -1,7 +1,10 @@
 'use client';
 
+import { arrangeableShapes } from '@kiyora/editor';
 import { useBoard, useSelection } from '@kiyora/editor/react';
+import { ArrangeControls } from './arrange-controls';
 import { ConnectorStyle } from './connector-style';
+import { LockControl } from './lock-control';
 import { SelectionStyle } from './selection-style';
 
 /**
@@ -12,24 +15,42 @@ import { SelectionStyle } from './selection-style';
 export const Inspector = () => {
   const board = useBoard();
   const selection = useSelection();
-  const first = board.shapes.find((shape) => selection.includes(shape.id));
+  const selected = board.shapes.filter((shape) => selection.includes(shape.id));
+  const [first] = selected;
+  const arrangeable = arrangeableShapes(board, selection);
+  const anyLocked = selected.some((shape) => shape.locked);
+  const hasLocked = board.shapes.some((shape) => shape.locked);
 
   return (
     <aside
       aria-label='Inspector'
-      className='flex h-full w-64 shrink-0 flex-col gap-3 overflow-y-auto border-border border-l bg-background p-3'
+      className='flex h-full flex-col gap-3 overflow-y-auto p-3'
       data-testid='inspector'
     >
       <h2 className='font-heading font-medium text-sm'>Style</h2>
       {first === undefined ? (
-        <p
-          className='text-muted-foreground text-xs'
-          data-testid='inspector-empty'
-        >
-          Select a shape to style it.
-        </p>
+        <div className='flex flex-col gap-2'>
+          <p
+            className='text-muted-foreground text-xs'
+            data-testid='inspector-empty'
+          >
+            Select a shape to style it.
+          </p>
+          {hasLocked ? (
+            <p
+              className='text-muted-foreground text-xs'
+              data-testid='locked-hint'
+            >
+              Alt-click a locked shape to select it, then unlock it here.
+            </p>
+          ) : null}
+        </div>
       ) : (
         <div className='flex flex-col gap-4'>
+          <LockControl locked={anyLocked} />
+          {arrangeable.length >= 2 ? (
+            <ArrangeControls canDistribute={arrangeable.length >= 3} />
+          ) : null}
           {first.kind === 'connector' ? <ConnectorStyle shape={first} /> : null}
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>
