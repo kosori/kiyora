@@ -77,6 +77,9 @@ const HANDLERS: Handlers = {
   group: ({ editor }) => editor.groupSelection(),
   lock: ({ editor }) =>
     editor.setLocked(!selectedLocked(editor.getBoard(), editor.getSelection())),
+  'navigate-enter': ({ editor }) => editor.setNavigating(true),
+  'navigate-exit': ({ editor }) => editor.setNavigating(false),
+  'navigate-move': ({ editor }, command) => editor.navigate(command.direction),
   nudge: ({ editor }, command) => {
     const step = command.coarse ? GRID : NUDGE_STEP;
     editor.nudge(command.dx * step, command.dy * step);

@@ -1,4 +1,5 @@
 import type { Alignment, DistributeAxis } from './align';
+import type { NavigationDirection } from './navigation';
 import type { Tool } from './tools';
 
 /**
@@ -22,6 +23,9 @@ export type Command =
   | { kind: 'palette' }
   | { kind: 'camera'; action: CameraAction }
   | { kind: 'nudge'; dx: number; dy: number; coarse: boolean }
+  | { kind: 'navigate-enter' }
+  | { kind: 'navigate-exit' }
+  | { kind: 'navigate-move'; direction: NavigationDirection }
   | { kind: 'cancel-gesture' }
   | { kind: 'delete' }
   | { kind: 'copy' }
@@ -59,6 +63,9 @@ export const commandId = (command: Command): string => {
   }
   if (command.kind === 'nudge') {
     return `nudge.${command.dx}.${command.dy}.${command.coarse ? 'coarse' : 'fine'}`;
+  }
+  if (command.kind === 'navigate-move') {
+    return `navigate-move.${command.direction}`;
   }
   if (command.kind === 'align') {
     return `align.${command.alignment}`;
