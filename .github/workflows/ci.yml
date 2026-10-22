@@ -53,6 +53,14 @@ jobs:
       - uses: ./.github/actions/setup
       - run: bun run check-budgets
 
+  check-icons:
+    name: Icon dataset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: bun run check-icons
+
   build:
     name: Build
     runs-on: ubuntu-latest
