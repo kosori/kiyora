@@ -1,6 +1,15 @@
-import type { FigureShape } from '../board/schema';
+import type { FigureShape, Shape } from '../board/schema';
 import { formatNumber } from '../format';
-import { centreOf, type Point, turn } from './figures';
+import { centreOf } from './figures';
+import type { Point } from './turn';
+import { turn } from './turn';
+
+/**
+ * The authored box every path is mapped onto. A figure draws on its own box; a
+ * device frame draws its chrome on the box its author gave it, so both share
+ * one mapping and rotation turns with either.
+ */
+export type BoxShape = Pick<Shape, 'h' | 'rotation' | 'w' | 'x' | 'y'>;
 
 /**
  * A point on a shape's box as a fraction of it: `u` across, `v` down, each from
@@ -32,46 +41,43 @@ export const solid = (d: string): Ink => ({ d });
 export const KAPPA = 0.552_284_749_830_793_6;
 
 /** The board point a unit point names, turned about the shape's centre. */
-export const at = (shape: FigureShape, [u, v]: UnitPoint): Point =>
+export const at = (shape: BoxShape, [u, v]: UnitPoint): Point =>
   turn(
     { x: shape.x + u * shape.w, y: shape.y + v * shape.h },
     centreOf(shape),
     shape.rotation
   );
 
-const xy = (shape: FigureShape, point: UnitPoint): string => {
+const xy = (shape: BoxShape, point: UnitPoint): string => {
   const { x, y } = at(shape, point);
   return `${formatNumber(x)} ${formatNumber(y)}`;
 };
 
 /** A move to `point`. */
-export const moveTo = (shape: FigureShape, point: UnitPoint): string =>
+export const moveTo = (shape: BoxShape, point: UnitPoint): string =>
   `M ${xy(shape, point)}`;
 
 /** A line to `point`. */
-export const lineTo = (shape: FigureShape, point: UnitPoint): string =>
+export const lineTo = (shape: BoxShape, point: UnitPoint): string =>
   `L ${xy(shape, point)}`;
 
 /** A cubic curve to `to`, bowed by `first` and `second`. */
 export const curveTo = (
-  shape: FigureShape,
+  shape: BoxShape,
   first: UnitPoint,
   second: UnitPoint,
   to: UnitPoint
 ): string => `C ${xy(shape, first)} ${xy(shape, second)} ${xy(shape, to)}`;
 
 /** A closed straight-sided path through `nodes`. */
-export const polygon = (
-  shape: FigureShape,
-  nodes: readonly UnitPoint[]
-): string =>
+export const polygon = (shape: BoxShape, nodes: readonly UnitPoint[]): string =>
   `${nodes
     .map((node, index) => `${moveOrLine(index)} ${xy(shape, node)}`)
     .join(' ')} Z`;
 
 /** An open straight-sided path through `nodes`. */
 export const polyline = (
-  shape: FigureShape,
+  shape: BoxShape,
   nodes: readonly UnitPoint[]
 ): string =>
   nodes
@@ -82,7 +88,7 @@ const moveOrLine = (index: number): string => (index === 0 ? 'M' : 'L');
 
 /** A closed ellipse: four Bezier quarters, so rotation turns with the box. */
 export const ellipse = (
-  shape: FigureShape,
+  shape: BoxShape,
   cx = 0.5,
   cy = 0.5,
   rx = 0.5,
@@ -104,7 +110,7 @@ export const ellipse = (
  * A closed rectangle with equal board-unit corners. The radius is read in board
  * units, so a box of any ratio keeps round corners rather than stretched ones.
  */
-export const roundedRect = (shape: FigureShape, radius: number): string => {
+export const roundedRect = (shape: BoxShape, radius: number): string => {
   const ru = Math.min(radius / shape.w, 0.5);
   const rv = Math.min(radius / shape.h, 0.5);
   const kx = ru * KAPPA;

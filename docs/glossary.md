@@ -7,15 +7,15 @@ An offline whiteboard for diagrams, notes and slides. Draw by hand, or type a di
 ### The board
 
 **Board**:
-The document of record: one ordered list of shapes, plus its deck, camera, settings and schema version.
+The document of record: one ordered list of shapes, plus its files, deck, camera, settings and schema version.
 _Avoid_: Document, diagram, scene, file
 
 **Shape**:
-One item on the board — a figure, text, sticky, frame, group or connector. Its position and style are authored; its paint is derived.
+One item on the board — a figure, text, sticky, frame, group, icon, image, ink, table, chart or connector. Its position and style are authored; its paint is derived.
 _Avoid_: Element, object, node, item
 
 **Paint**:
-The render-ready description of a shape: paths, fills, strokes and text runs. Pure, and the only thing a renderer consumes.
+The render-ready description of a shape: paths, an optional raster, text runs, its children, and the clip its members are held inside. Pure, and the only thing a renderer consumes.
 _Avoid_: Render model, SVG model, draw instructions
 
 **Palette**:
@@ -27,7 +27,7 @@ A board's light or dark setting. It is authored, it travels in the board file, a
 _Avoid_: Appearance, colour scheme, mode
 
 **Appearance**:
-The chrome's light or dark setting. It is a preference of this browser, never stored in a board, and never changes what an export looks like.
+The chrome's light, dark or system setting. `system` follows the OS until a person picks; the choice is a preference of this browser, never stored in a board, and never changes what an export looks like.
 _Avoid_: Theme, skin
 
 **Camera**:
@@ -57,8 +57,40 @@ _Avoid_: Container, folder, cluster
 **Sticky**:
 A shape kind: a coloured note with centred text whose height fits its content until a person resizes it.
 
+**Control**:
+A figure kind that draws one wireframe UI control — button, input, slider, tabs and the rest — as paths on its authored box, wearing the board's palette, stroke width and corner rather than a picture of a control.
+_Avoid_: Widget, component, UI element
+
+**Icon**:
+A shape kind (`icon`): one figure from the 150-name dataset, named by `name` and drawn in its authored box. The paths are generated, committed and loaded on demand, so a board stores the name and never the paths.
+_Avoid_: Glyph, symbol, emoji, sticker
+
+**Image**:
+A shape kind (`image`): a PNG or JPEG carried inside the board file and drawn in its authored box. It names one entry in the board's files by `fileId`, so placing the same picture twice costs one payload.
+_Avoid_: Picture, bitmap, photo
+
+**Ink**:
+A shape kind (`ink`): a freehand stroke drawn as one path from authored points, each a fraction of the box with the pressure the pen reported — none when the device reported none. A pen lays opaque ink; a highlighter lays a wider translucent band that paints behind its siblings.
+_Avoid_: Scribble, mark, annotation, drawing
+
+**Table**:
+A shape kind (`data-table`): rows and columns of typed cells inside its authored box, with an authored header row. The columns and the row count are authored; every cell size is derived by dividing the box evenly, so resizing a table scales the whole grid and no cell size is stored. An empty table paints its authored box and nothing else. The wireframe `table` figure is a Control, not this kind.
+_Avoid_: Grid, spreadsheet, data grid
+
+**Chart**:
+A shape kind (`chart`): a series of numbers, the category each belongs to, and the palette colours the marks cycle through, drawn as one of eight kinds — bar, column, line, area, pie, donut, scatter or sparkline. The numbers are authored, so replacing them repaints a chart rather than replacing a drawing. The kind is a variant, so one chart can become another without losing its series.
+_Avoid_: Graph, plot, widget
+
+**File**:
+One raster inside a board's files: base64 PNG or JPEG bytes, the type they decode as, and their decoded size, keyed by the content hash of the bytes. Import downscales it once, and a per-image cap keeps one picture from consuming the whole board.
+_Avoid_: Blob, asset, attachment
+
+**Files**:
+A board's map of files, keyed by content hash. A board file is still one document when it holds them; nothing is fetched and nothing lives beside the board.
+_Avoid_: Blobs, assets, attachments
+
 **Inspector**:
-The right-hand panel that edits the selection's style, text style and connector routing.
+The right-hand panel that edits the selection's style, text style, connector routing and arrangement, plus the controls a frame, table or chart needs, the lock, and the board's theme.
 _Avoid_: Properties panel, sidebar
 
 **Tool rail**:
@@ -100,7 +132,7 @@ The source text of a frame after it has been edited and before it has been appli
 _Avoid_: Stale, dirty, unsaved
 
 **Family**:
-One diagram kind the source language can express — flowchart, sequence, mindmap and the rest.
+One diagram kind the source language can express — architecture, bpmn, flowchart, orgchart or statemachine.
 
 **Diagnostic**:
 A non-fatal note from the parser about one line of source: a warning (the line is ignored) or an error (the line is unparsed). The build always continues.

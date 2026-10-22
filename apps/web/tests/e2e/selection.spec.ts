@@ -89,7 +89,7 @@ test('a click on empty canvas clears the selection', async ({ page }) => {
   await expect(frame(page)).toBeVisible();
 
   await page.mouse.click(box.x + 700, box.y + 500);
-  await expect(frame(page)).toHaveCount(0);
+  await expect(frame(page)).toBeHidden();
 });
 
 test('shift-click adds a second shape to the selection', async ({ page }) => {
@@ -141,7 +141,7 @@ test('a marquee is drawn while it is dragged', async ({ page }) => {
   await expect(page.getByTestId('marquee')).toHaveAttribute('width', '300');
 
   await page.mouse.up();
-  await expect(page.getByTestId('marquee')).toHaveCount(0);
+  await expect(page.getByTestId('marquee')).toBeHidden();
 });
 
 test('a drag moves the whole selection, keeping relative positions', async ({

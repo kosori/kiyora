@@ -42,7 +42,7 @@ export const RightRail = () => {
       data-testid='rail'
     >
       <div
-        aria-label='Panels'
+        aria-label='Panel sections'
         className='flex shrink-0 border-border border-b'
         role='tablist'
       >

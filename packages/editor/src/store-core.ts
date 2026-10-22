@@ -8,7 +8,7 @@ import { DEFAULT_STYLE } from './tools';
 
 /**
  * The engine's mutable core: the board, the view, the style, the selection and
- * the history, plus the four ways a board write lands. The gestures and the
+ * the history, plus the three ways a board write lands. The gestures and the
  * command factories own one concern each and share this one write funnel, so
  * there is still one place that decides what a change publishes and whether it
  * costs a history entry.
@@ -16,14 +16,17 @@ import { DEFAULT_STYLE } from './tools';
 export type StoreCore = {
   /** The board as it stands. The same reference until something changes it. */
   board: () => Board;
-  /** Sets the board without publishing, for a caller that publishes around it. */
-  replace: (next: Board) => void;
-  /** Wakes every board subscriber, after a `replace`. */
-  announce: () => void;
   /** Adopts `next` and publishes it, unless it is the same board. */
   publish: (next: Board) => void;
   /** Adopts `next` as one gesture: one history entry and one save. */
   change: (next: Board) => void;
+  /**
+   * Adopts `next` and publishes it, recording no entry: the seam for a write
+   * whose history is somebody else's. Undo and redo rewind it, a board load
+   * clears it, and a placement hands its first entry to the label overlay. Every
+   * other write is a `change`.
+   */
+  adopt: (next: Board) => void;
   view: () => View;
   setView: (next: View) => void;
   style: () => Style;
@@ -42,7 +45,13 @@ export type StoreCore = {
 /** The core over `board`, with the selection, the view and the history it starts empty. */
 export const createStoreCore = (board: Board): StoreCore => {
   let current = board;
-  let view: View = { camera: board.camera, tool: 'select' };
+  let view: View = {
+    camera: board.camera,
+    icon: null,
+    navigating: false,
+    tool: 'select',
+    zen: false,
+  };
   let style: Style = DEFAULT_STYLE;
   let selection: Selection = [];
   const transactions = createTransactions();
@@ -60,7 +69,9 @@ export const createStoreCore = (board: Board): StoreCore => {
     current = next;
   };
 
-  const announce = (): void => {
+  /** Adopts `next` unconditionally and publishes it, for a write with no entry of its own. */
+  const adopt = (next: Board): void => {
+    replace(next);
     publish(listeners);
   };
 
@@ -69,8 +80,7 @@ export const createStoreCore = (board: Board): StoreCore => {
     if (next === current) {
       return;
     }
-    replace(next);
-    announce();
+    adopt(next);
   };
 
   const setView = (next: View): void => {
@@ -101,16 +111,15 @@ export const createStoreCore = (board: Board): StoreCore => {
     const before = current;
     replace(next);
     transactions.commit(before, current);
-    announce();
+    publish(listeners);
   };
 
   return {
-    announce,
+    adopt,
     board: () => current,
     change,
     getHistory: transactions.getState,
     publish: publishBoard,
-    replace,
     select: commitSelection,
     selection: () => selection,
     setStyle: (next) => {

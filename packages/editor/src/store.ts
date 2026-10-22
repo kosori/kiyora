@@ -5,11 +5,14 @@ import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
 import { createGestures } from './gestures';
 import { createLabelEdit } from './label-edit';
+import { nextShape } from './navigation';
 import { createPresent } from './present';
 import { createSourceCommands } from './source-commands';
 import type { Editor } from './state';
 import { createStoreCore } from './store-core';
+import { createTableEdit } from './table-edit';
 
+export type { ImagePlacement } from './placement';
 export type { Drag, Editor, Gesture, PresentState, View } from './state';
 
 /**
@@ -46,10 +49,18 @@ export const createEditor = (board: Board): Editor => {
   });
   const edits = createBoardCommands({ core, gestures, label });
   const source = createSourceCommands(core);
+  const table = createTableEdit({
+    board: core.board,
+    change: core.change,
+    publish: core.publish,
+    transactions: core.transactions,
+  });
 
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    addTableColumn: table.addColumn,
+    addTableRow: table.addRow,
     align: arrange.align,
     applySource: source.applySource,
     beginTextEdit: label.begin,
@@ -77,9 +88,16 @@ export const createEditor = (board: Board): Editor => {
     getView: core.view,
     groupSelection: commands.groupSelection,
     moveSlide: deck.moveSlide,
+    navigate: (direction) => {
+      const next = nextShape(core.board(), core.selection(), direction);
+      if (next !== null) {
+        core.select([next.id]);
+      }
+    },
     nextSlide: present.next,
     nudge: edits.nudge,
     paste: commands.paste,
+    placeImage: edits.placeImage,
     placeShape: edits.placeShape,
     pointerDown: gestures.pointerDown,
     pointerMove: gestures.pointerMove,
@@ -94,15 +112,28 @@ export const createEditor = (board: Board): Editor => {
     setCamera: (camera) => {
       core.setView({ ...core.view(), camera });
     },
+    setChart: edits.setChart,
     setConnector: edits.setConnector,
+    setIcon: (name) => {
+      core.setView({ ...core.view(), icon: name, tool: 'icon' });
+    },
     setLocked: edits.setLocked,
+    setNavigating: (navigating) => {
+      core.setView({ ...core.view(), navigating });
+    },
     setSelection: core.select,
     setSlideNotes: deck.setSlideNotes,
     setStyle: core.setStyle,
+    setTableCell: table.setCell,
+    setTableHeader: table.setHeader,
     setText: label.setText,
     setTextStyle: label.setTextStyle,
+    setTheme: edits.setTheme,
     setTool: (tool) => {
-      core.setView({ ...core.view(), tool });
+      core.setView({ ...core.view(), icon: null, tool });
+    },
+    setZen: (zen) => {
+      core.setView({ ...core.view(), zen });
     },
     startPresent: present.start,
     stopPresent: present.stop,

@@ -4,8 +4,10 @@ export { subtreeIds } from '@kiyora/model';
 export {
   ALIGNMENTS,
   type Alignment,
+  type Arrangement,
   alignBoard,
   arrangeableShapes,
+  arrangementOf,
   DISTRIBUTE_AXES,
   type DistributeAxis,
   distributeBoard,
@@ -24,7 +26,9 @@ export {
   MIN_ZOOM,
   type Point,
   panBy,
+  REVEAL_MARGIN,
   resetCamera,
+  revealCamera,
   stepZoom,
   toScreen,
   toWorld,
@@ -36,6 +40,7 @@ export {
   zoomAt,
   zoomBy,
 } from './camera';
+export { type ChartEdit, editChart } from './chart';
 export {
   CLIPBOARD_VERSION,
   type Clipboard,
@@ -156,6 +161,11 @@ export {
   NO_GESTURE_MODIFIERS,
 } from './modifiers';
 export {
+  NAVIGATION_DIRECTIONS,
+  type NavigationDirection,
+  nextShape,
+} from './navigation';
+export {
   AUTOSAVE_DELAY,
   type Autosave,
   type AutosaveOptions,
@@ -187,7 +197,11 @@ export {
   SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
-export { DEFAULT_FRAME_SIZE, DEFAULT_SHAPE_SIZE } from './placement';
+export {
+  DEFAULT_CHART_SIZE,
+  DEFAULT_FRAME_SIZE,
+  DEFAULT_SHAPE_SIZE,
+} from './placement';
 export type { Restyle } from './restyle';
 export {
   normaliseSelection,
@@ -200,8 +214,11 @@ export {
 export {
   bindingKey,
   bindingLabel,
+  commandKeyFor,
   commandPalette,
+  keyshortcutsFor,
   type PaletteEntry,
+  type Platform,
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';
@@ -215,12 +232,15 @@ export {
   createEditor,
   type Editor,
   type Gesture,
+  type ImagePlacement,
   type PresentState,
   type View,
 } from './store';
 export {
   DEFAULT_STYLE,
+  type InkTool,
   isFigureTool,
+  isInkTool,
   isShapeTool,
   type Placeable,
   placesShape,

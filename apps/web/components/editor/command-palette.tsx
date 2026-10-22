@@ -17,6 +17,8 @@ import {
   useRef,
   useState,
 } from 'react';
+import { SCROLLABLE } from './overlay-fit';
+import { usePlatform } from './use-platform';
 
 type Props = {
   host: CommandHost;
@@ -41,15 +43,19 @@ const optionId = (index: number): string => `command-palette-option-${index}`;
  * pressed inside the search box. Focus stays in the search box and the active
  * option is named by `aria-activedescendant`, so the arrows move the list
  * rather than the caret.
+ *
+ * The dialog is bounded by the viewport: in a short window the list shrinks and
+ * scrolls with a visible bar while the search box stays on screen.
  */
 export const CommandPalette = ({ host, onOpenChange, open }: Props) => {
   const editor = useEditor();
+  const platform = usePlatform();
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
 
-  const entries = useMemo(() => commandPalette(), []);
+  const entries = useMemo(() => commandPalette(platform), [platform]);
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -81,6 +87,14 @@ export const CommandPalette = ({ host, onOpenChange, open }: Props) => {
       element.close();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      document
+        .getElementById(optionId(current))
+        ?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [current, open]);
 
   const choose = useCallback(
     (entry: PaletteEntry) => {
@@ -149,14 +163,14 @@ export const CommandPalette = ({ host, onOpenChange, open }: Props) => {
   return (
     <dialog
       aria-label='Command palette'
-      className='m-auto w-[min(32rem,90vw)] rounded-lg border border-border bg-background p-0 text-foreground shadow-lg backdrop:bg-foreground/20'
+      className='m-auto w-[min(32rem,90vw)] overflow-hidden rounded-lg border border-border bg-background p-0 text-foreground shadow-lg backdrop:bg-foreground/20 open:flex open:max-h-[min(36rem,85vh)] open:flex-col'
       data-testid='command-palette'
       onClick={onDialogClick}
       onClose={close}
       onKeyDown={onDialogKey}
       ref={dialog}
     >
-      <div className='border-border border-b p-2'>
+      <div className='shrink-0 border-border border-b p-2'>
         <input
           aria-activedescendant={
             shown.length === 0 ? undefined : optionId(current)
@@ -183,7 +197,7 @@ export const CommandPalette = ({ host, onOpenChange, open }: Props) => {
       ) : (
         <div
           aria-label='Commands'
-          className='max-h-[60vh] overflow-y-auto p-1'
+          className={`min-h-0 flex-1 p-1 ${SCROLLABLE}`}
           id={LIST_ID}
           role='listbox'
         >

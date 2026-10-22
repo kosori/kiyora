@@ -2,12 +2,22 @@
 
 import {
   type CommandHost,
+  isInkTool,
+  type Point,
+  revealCamera,
+  selectionBounds,
   shapeAt,
   toWorld,
   visibleBounds,
 } from '@kiyora/editor';
-import { useBoard, useEditor } from '@kiyora/editor/react';
-import { paintBoard } from '@kiyora/model';
+import { useBoard, useEditor, useSelection } from '@kiyora/editor/react';
+import {
+  CANVAS_ENTRY,
+  paintBoard,
+  type Shape,
+  type TableCell,
+  tableCellAt,
+} from '@kiyora/model';
 import { cn } from 'cn';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
@@ -25,6 +35,7 @@ import { SelectionFrame } from './selection-frame';
 import { TextEditor } from './text-editor';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
+import { useIconSet } from './use-icon-set';
 import { useShortcuts } from './use-shortcuts';
 
 type Props = {
@@ -61,27 +72,84 @@ type Props = {
  * begins a gesture rather than a text-selection drag — Chromium cancels that
  * drag, and the placement never completes. Keeping the text hit-testable rather
  * than removing it with `pointer-events` leaves a label's link clickable.
+ *
+ * The canvas is one tab stop whatever the board holds. Pressing Enter on it
+ * enters shape navigation, where the arrows step the selection spatially and
+ * the camera follows; Escape leaves, and focus stays here throughout.
  */
 export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const board = useBoard();
   const editor = useEditor();
+  const selection = useSelection();
   const surface = useCameraSurface();
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{
+    cell?: TableCell;
+    id: string;
+  } | null>(null);
   const [finding, setFinding] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [palette, setPalette] = useState(false);
-  const openEditor = useCallback((id: string) => setEditingId(id), []);
-  const closeEditor = useCallback(() => setEditingId(null), []);
+  const openEditor = useCallback((shape: Shape, point: Point) => {
+    if (shape.kind !== 'data-table') {
+      setEditing({ id: shape.id });
+      return;
+    }
+    const cell = tableCellAt(shape, point);
+    if (cell !== null) {
+      setEditing({ cell, id: shape.id });
+    }
+  }, []);
+  const closeEditor = useCallback(() => setEditing(null), []);
   const openFind = useCallback(() => setFinding(true), []);
   const closeFind = useCallback(() => setFinding(false), []);
   const closeMenu = useCallback(() => setMenu(null), []);
   const showPalette = useCallback(() => setPalette(true), []);
   const pointer = useBoardPointer(surface.hand, openEditor);
   const measure = useMemo(() => createTextMeasurer(), []);
+  const icons = useIconSet();
   const { copy: copyPng } = useCopyPng();
   const { camera } = surface.view;
 
-  useShortcuts(onShowShortcuts, surface.intent, openFind, showPalette, copyPng);
+  useShortcuts(
+    onShowShortcuts,
+    surface.intent,
+    openFind,
+    showPalette,
+    copyPng,
+    surface.ref
+  );
+
+  /**
+   * A navigation step moves the selection without a pointer to show where it
+   * went, so the camera follows: the new selection is brought into view by the
+   * least pan that shows it, and a selection already in view leaves the camera
+   * alone. The effect reads the board and camera through the engine rather than
+   * depending on them, so a camera write cannot re-trigger it.
+   */
+  useEffect(() => {
+    if (!surface.view.navigating) {
+      return;
+    }
+    const bounds = selectionBounds(board, selection);
+    if (bounds === null || surface.viewport.w <= 0 || surface.viewport.h <= 0) {
+      return;
+    }
+    editor.setCamera(
+      revealCamera(editor.getView().camera, surface.viewport, bounds)
+    );
+  }, [board, editor, selection, surface.view.navigating, surface.viewport]);
+
+  /** Navigation belongs to the canvas, so focus leaving it leaves the mode. */
+  useEffect(() => {
+    const element = surface.ref.current;
+    if (element === null) {
+      return;
+    }
+    const leave = () => editor.setNavigating(false);
+    element.addEventListener('focusout', leave);
+
+    return () => element.removeEventListener('focusout', leave);
+  }, [editor, surface.ref]);
 
   /**
    * The palette's own host. Pan is a held key and a chooser has no keyup, so
@@ -143,11 +211,13 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const paint = useMemo(
     () =>
       paintBoard(board, {
+        files: board.files,
+        icons,
         measure,
         theme: board.settings.theme,
         ...(view === null ? {} : { view }),
       }),
-    [board, measure, view]
+    [board, icons, measure, view]
   );
 
   return (
@@ -157,15 +227,28 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           aria-label='Board'
           className={cn(
             'h-full w-full touch-none',
-            surface.hand ? 'cursor-grab' : 'cursor-default'
+            surface.hand
+              ? 'cursor-grab'
+              : isInkTool(surface.view.tool)
+                ? 'cursor-crosshair'
+                : 'cursor-default'
           )}
           data-ready={surface.ready ? 'true' : undefined}
           data-testid='canvas'
+          id='board'
           ref={surface.ref}
           role='img'
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the board is one tab stop, and Enter on it is how a keyboard enters shape navigation
+          tabIndex={0}
           xmlns='http://www.w3.org/2000/svg'
           {...surface.handlers}
         >
+          <rect
+            data-testid='canvas-fill'
+            fill={CANVAS_ENTRY[board.settings.theme]}
+            height='100%'
+            width='100%'
+          />
           <DotGrid camera={camera} theme={board.settings.theme} />
           <g
             className='select-none'
@@ -185,22 +268,25 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
         {finding ? (
           <FindBox onClose={closeFind} viewport={surface.viewport} />
         ) : null}
-        {editingId === null ? null : (
+        {editing === null ? null : (
           <TextEditor
+            cell={editing.cell}
             measure={measure}
             onDone={closeEditor}
-            shapeId={editingId}
+            shapeId={editing.id}
           />
         )}
-        <CameraControls
-          fit={surface.actions.fit}
-          reset={surface.actions.reset}
-          toggleTool={surface.actions.toggleTool}
-          tool={surface.view.tool}
-          zoom={camera.zoom}
-          zoomIn={surface.actions.zoomIn}
-          zoomOut={surface.actions.zoomOut}
-        />
+        {surface.view.zen ? null : (
+          <CameraControls
+            fit={surface.actions.fit}
+            reset={surface.actions.reset}
+            toggleTool={surface.actions.toggleTool}
+            tool={surface.view.tool}
+            zoom={camera.zoom}
+            zoomIn={surface.actions.zoomIn}
+            zoomOut={surface.actions.zoomOut}
+          />
+        )}
       </div>
       <CommandPalette
         host={paletteHost}

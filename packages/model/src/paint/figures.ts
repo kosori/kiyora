@@ -1,12 +1,8 @@
 import type { Board, Shape } from '../board/schema';
 import { formatNumber } from '../format';
+import { inkMargin } from '../ink/ink';
 import { connectorBounds } from './connector-route';
-
-/** A point in board coordinates. */
-export type Point = {
-  x: number;
-  y: number;
-};
+import { type Point, turn } from './turn';
 
 /** An axis-aligned box in board coordinates. */
 export type Bounds = {
@@ -16,25 +12,8 @@ export type Bounds = {
   h: number;
 };
 
-/** `point` turned `degrees` about `origin`. */
-export const turn = (point: Point, origin: Point, degrees: number): Point => {
-  if (degrees === 0) {
-    return point;
-  }
-  const radians = (degrees * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const dx = point.x - origin.x;
-  const dy = point.y - origin.y;
-
-  return {
-    x: origin.x + dx * cos - dy * sin,
-    y: origin.y + dx * sin + dy * cos,
-  };
-};
-
-/** The centre of a shape's authored box. */
-export const centreOf = (shape: Shape): Point => ({
+/** The centre of an authored box: a shape's, or a frame chrome's. */
+export const centreOf = (shape: Pick<Shape, 'h' | 'w' | 'x' | 'y'>): Point => ({
   x: shape.x + shape.w / 2,
   y: shape.y + shape.h / 2,
 });
@@ -147,6 +126,17 @@ export const shapeBounds = (shape: Shape, shapes: readonly Shape[]): Bounds => {
   }
   if (shape.kind === 'group') {
     return groupBounds(shape, shapes) ?? EMPTY_BOUNDS;
+  }
+  if (shape.kind === 'ink') {
+    const box = boundsOf(shape);
+    const margin = inkMargin(shape);
+
+    return {
+      h: box.h + margin * 2,
+      w: box.w + margin * 2,
+      x: box.x - margin,
+      y: box.y - margin,
+    };
   }
   return boundsOf(shape);
 };

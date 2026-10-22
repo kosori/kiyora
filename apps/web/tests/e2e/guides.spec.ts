@@ -118,7 +118,7 @@ test('a dragged edge lands on another shape’s edge, with a guide while it is o
 
   await page.mouse.up();
 
-  await expect(page.getByTestId('guide-x')).toHaveCount(0);
+  await expect(page.getByTestId('guide-x')).toBeHidden();
   await expect(dragged(page)).toHaveAttribute(
     'd',
     'M 317 80 L 437 80 L 437 160 L 317 160 Z'
@@ -149,7 +149,7 @@ test('alt leaves the edge where the pointer put it, guide and grid bypassed', as
     onScreen({ x: 379, y: 120 }).y,
     { steps: 12 }
   );
-  await expect(page.getByTestId('guide-x')).toHaveCount(0);
+  await expect(page.getByTestId('guide-x')).toBeHidden();
 
   await page.mouse.up();
   await page.keyboard.up('Alt');

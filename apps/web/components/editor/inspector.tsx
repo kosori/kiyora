@@ -1,11 +1,15 @@
 'use client';
 
-import { arrangeableShapes } from '@kiyora/editor';
+import { arrangementOf } from '@kiyora/editor';
 import { useBoard, useSelection } from '@kiyora/editor/react';
 import { ArrangeControls } from './arrange-controls';
+import { BoardTheme } from './board-theme';
+import { ChartControls } from './chart-controls';
 import { ConnectorStyle } from './connector-style';
+import { FrameControls } from './frame-controls';
 import { LockControl } from './lock-control';
 import { SelectionStyle } from './selection-style';
+import { TableControls } from './table-controls';
 
 /**
  * The right-hand panel: the selection's style, always in view, plus a
@@ -17,13 +21,12 @@ export const Inspector = () => {
   const selection = useSelection();
   const selected = board.shapes.filter((shape) => selection.includes(shape.id));
   const [first] = selected;
-  const arrangeable = arrangeableShapes(board, selection);
+  const { canAlign, canDistribute } = arrangementOf(board, selection);
   const anyLocked = selected.some((shape) => shape.locked);
   const hasLocked = board.shapes.some((shape) => shape.locked);
 
   return (
-    <aside
-      aria-label='Inspector'
+    <section
       className='flex h-full flex-col gap-3 overflow-y-auto p-3'
       data-testid='inspector'
     >
@@ -48,13 +51,15 @@ export const Inspector = () => {
       ) : (
         <div className='flex flex-col gap-4'>
           <LockControl locked={anyLocked} />
-          {arrangeable.length >= 2 ? (
-            <ArrangeControls canDistribute={arrangeable.length >= 3} />
-          ) : null}
+          {canAlign ? <ArrangeControls canDistribute={canDistribute} /> : null}
+          {first.kind === 'frame' ? <FrameControls shape={first} /> : null}
+          {first.kind === 'data-table' ? <TableControls shape={first} /> : null}
+          {first.kind === 'chart' ? <ChartControls shape={first} /> : null}
           {first.kind === 'connector' ? <ConnectorStyle shape={first} /> : null}
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>
       )}
-    </aside>
+      <BoardTheme />
+    </section>
   );
 };

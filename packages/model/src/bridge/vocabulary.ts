@@ -11,7 +11,8 @@ import {
   resolveShape,
   type Corner as SourceCorner,
 } from '@kiyora/dsl';
-import type { FigureKind, Head, Route, Style } from '../board/schema';
+import type { FigureKind, Head, Route } from '../board/schema';
+import type { Style } from '../board/shape-base';
 
 /**
  * The bridge's vocabulary: the parser's words to the board's shapes and style.

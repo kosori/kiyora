@@ -4,6 +4,7 @@ import { type Guide, sameGuides, snapBox } from './geometry/guides';
 import { boxBetween, shapeAt, shapesInBox } from './geometry/hit-test';
 import { snapTranslation } from './geometry/snap';
 import { gestureOf, handleDrag, moveDrag } from './gesture';
+import { beginInk, extendInk, finishInk } from './ink';
 import type { GestureModifiers } from './modifiers';
 import { moveResize } from './resize';
 import { offsetShapes } from './selection';
@@ -12,6 +13,7 @@ import { markSourceStale } from './source-state';
 import type { Drag, Gesture } from './state';
 import type { StoreCore } from './store-core';
 import { subscriptionOf } from './subscription';
+import { isInkTool } from './tools';
 import { angleAt, rotateSelection, shortestDelta } from './transform';
 
 /** The pointer gestures the editor exposes, and the value the marquee is drawn from. */
@@ -24,19 +26,25 @@ export type Gestures = {
    * The pointer going down on the board. On a handle of the current selection it
    * opens a resize or a rotate; on a shape it selects it — adding to the
    * selection when `additive` — and opens a move; on empty canvas it clears the
-   * selection unless `additive`, and opens a marquee. `includeLocked` reaches a
-   * locked shape, so alt-clicking one selects it for the Inspector to unlock.
+   * selection unless `additive`, and opens a marquee. An ink tool opens a
+   * stroke instead, and `pressure` is what the device reported for it.
    */
   pointerDown: (
     point: Point,
     additive: boolean,
-    includeLocked?: boolean
+    includeLocked?: boolean,
+    pressure?: number
   ) => void;
   /**
    * The pointer moving with a gesture open. A marquee redraws its box; a move,
-   * a resize and a rotate each read the one `modifiers` value.
+   * a resize and a rotate each read the one `modifiers` value; an ink stroke
+   * appends the point with the pressure the device reported.
    */
-  pointerMove: (point: Point, modifiers: GestureModifiers) => void;
+  pointerMove: (
+    point: Point,
+    modifiers: GestureModifiers,
+    pressure?: number
+  ) => void;
   /** The pointer lifting: a marquee selects what it covers, a move stays put. */
   pointerUp: () => void;
   /** Escape: a move goes back to the positions it started from, a marquee is dropped. */
@@ -109,17 +117,33 @@ export const createGestures = (core: StoreCore): Gestures => {
         }
       } else if (open.kind === 'marquee') {
         core.select(open.base);
+      } else if (open.kind === 'ink') {
+        core.publish(open.before);
       } else {
         core.publish(replaceShapes(core.board(), open.originals));
       }
       publishGesture();
     },
     getGesture: gestureNow,
-    pointerDown: (point, additive, includeLocked = false) => {
+    pointerDown: (point, additive, includeLocked, pressure) => {
       core.transactions.endNudgeRun();
       const board = core.board();
       const selection = core.selection();
       const { camera, tool } = core.view();
+      if (isInkTool(tool)) {
+        const { board: placed, drag: opened } = beginInk(
+          board,
+          tool === 'highlighter' ? 'highlighter' : 'pen',
+          core.style(),
+          point,
+          pressure,
+          camera.zoom
+        );
+        drag = opened;
+        core.publish(placed);
+        publishGesture();
+        return;
+      }
       if (openDrag(handleDrag(board, selection, tool, camera.zoom, point))) {
         return;
       }
@@ -152,8 +176,19 @@ export const createGestures = (core: StoreCore): Gestures => {
         openDrag(moveDrag(board, core.selection(), point));
       }
     },
-    pointerMove: (point, modifiers) => {
+    pointerMove: (point, modifiers, pressure) => {
       if (drag === null) {
+        return;
+      }
+      if (drag.kind === 'ink') {
+        const { board: nextBoard, drag: nextDrag } = extendInk(
+          drag,
+          point,
+          pressure
+        );
+        drag = nextDrag;
+        core.publish(nextBoard);
+        publishGesture();
         return;
       }
       if (drag.kind === 'marquee') {
@@ -218,6 +253,15 @@ export const createGestures = (core: StoreCore): Gestures => {
     },
     pointerUp: () => {
       if (drag === null) {
+        return;
+      }
+      if (drag.kind === 'ink') {
+        const { before } = drag;
+        const next = finishInk(drag);
+        drag = null;
+        core.publish(next);
+        core.transactions.commit(before, next);
+        publishGesture();
         return;
       }
       if (drag.kind !== 'marquee') {

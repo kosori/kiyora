@@ -1,6 +1,7 @@
 import type { FigureKind } from '../board/schema';
 import { BASIC_GEOMETRY } from './figure-geometry-basic';
 import { DIAGRAM_GEOMETRY } from './figure-geometry-diagram';
+import { WIREFRAME_GEOMETRY } from './figure-geometry-wireframe';
 import type { FigureGeometry } from './shape-path';
 
 /**
@@ -11,4 +12,5 @@ import type { FigureGeometry } from './shape-path';
 export const FIGURE_GEOMETRY = {
   ...BASIC_GEOMETRY,
   ...DIAGRAM_GEOMETRY,
+  ...WIREFRAME_GEOMETRY,
 } satisfies Record<FigureKind, FigureGeometry>;

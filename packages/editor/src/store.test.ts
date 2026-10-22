@@ -38,6 +38,28 @@ const shape = (id: string, x: number) => ({
   y: 0,
 });
 
+/** A frame wearing the plain variant, holding nothing yet. */
+const frame = () => ({
+  ...shape('frame-1', 0),
+  clip: true,
+  kind: 'frame',
+  variant: 'plain',
+});
+
+/** A board with a frame and a rectangle, so a variant change can be shown to skip the rectangle. */
+const framed = (): Board =>
+  parseBoard({
+    camera: { x: 0, y: 0, zoom: 1 },
+    createdAt: 1_700_000_000_000,
+    deck: [],
+    id: 'board-3',
+    schemaVersion: SCHEMA_VERSION,
+    settings: { theme: 'light' },
+    shapes: [frame(), shape('two', 200)],
+    title: 'Framed',
+    updatedAt: 1_700_000_000_000,
+  });
+
 /** A board with two shapes, so a change can be shown to reach a whole selection. */
 const twoShapes = (): Board =>
   parseBoard({
@@ -101,7 +123,10 @@ describe('the view', () => {
 
     expect(editor.getView()).toEqual({
       camera: { x: 12, y: -30, zoom: 0.5 },
+      icon: null,
+      navigating: false,
       tool: 'select',
+      zen: false,
     });
   });
 
@@ -143,6 +168,24 @@ describe('the view', () => {
     expect(editor.getView().tool).toBe('hand');
     expect(editor.getBoard()).toBe(before);
     expect(boards).toEqual([]);
+  });
+
+  it('hides the chrome without touching the board, the history or a save', () => {
+    const editor = createEditor(board('First'));
+    const before = editor.getBoard();
+    const history = editor.getHistory();
+    const boards: string[] = [];
+    const views: string[] = [];
+    editor.subscribe(() => boards.push('board'));
+    editor.subscribeView(() => views.push('view'));
+
+    editor.setZen(true);
+
+    expect(editor.getView().zen).toBe(true);
+    expect(editor.getBoard()).toBe(before);
+    expect(editor.getHistory()).toEqual(history);
+    expect(boards).toEqual([]);
+    expect(views).toEqual(['view']);
   });
 
   it('leaves the view where it is when the board is replaced', () => {
@@ -222,6 +265,26 @@ describe('restyling the selection', () => {
     expect(seen).toEqual([]);
   });
 
+  it('changes a frame\u2019s variant in one history entry and leaves non-frames alone', () => {
+    const editor = createEditor(framed());
+    editor.setSelection(['frame-1', 'two']);
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.restyle({ variant: 'phone' });
+
+    expect(seen).toHaveLength(1);
+    expect(editor.getBoard().shapes[0]).toMatchObject({
+      kind: 'frame',
+      variant: 'phone',
+    });
+    expect(editor.getBoard().shapes[1]).not.toHaveProperty('variant');
+
+    editor.undo();
+
+    expect(editor.getBoard().shapes[0]).toMatchObject({ variant: 'plain' });
+  });
+
   it('wears the restyled style on the next shape placed, so a board stays one colour', () => {
     const editor = createEditor(twoShapes());
     editor.setSelection(['one']);
@@ -234,5 +297,77 @@ describe('restyling the selection', () => {
       corner: 'rounded',
       fill: 'red',
     });
+  });
+});
+
+describe('placing an icon', () => {
+  it('arms the icon tool and places the name it was given, then returns to select', () => {
+    const editor = createEditor(board('Icons'));
+    const placement = { from: { x: 10, y: 20 }, to: { x: 110, y: 120 } };
+
+    editor.setIcon('star');
+
+    expect(editor.getView()).toMatchObject({ icon: 'star', tool: 'icon' });
+
+    const placed = editor.placeShape(placement);
+
+    expect(placed).toMatchObject({ kind: 'icon', name: 'star' });
+    expect(editor.getBoard().shapes[0]).toMatchObject({
+      h: 100,
+      kind: 'icon',
+      name: 'star',
+      w: 100,
+      x: 10,
+      y: 20,
+    });
+    expect(editor.getView()).toMatchObject({ icon: null, tool: 'select' });
+  });
+
+  it('places nothing when the icon tool was armed without a name', () => {
+    const editor = createEditor(board('Icons'));
+
+    editor.setTool('icon');
+
+    expect(
+      editor.placeShape({ from: { x: 0, y: 0 }, to: { x: 10, y: 10 } })
+    ).toBeNull();
+    expect(editor.getBoard().shapes).toEqual([]);
+  });
+
+  it('clears the pending name when another tool is chosen', () => {
+    const editor = createEditor(board('Icons'));
+
+    editor.setIcon('star');
+    editor.setTool('select');
+
+    expect(editor.getView()).toMatchObject({ icon: null, tool: 'select' });
+  });
+});
+
+describe('the board theme', () => {
+  it('sets the canvas as one history entry, so one undo puts the old one back', () => {
+    const editor = createEditor(board('Theme'));
+
+    editor.setTheme('dark');
+
+    expect(editor.getBoard().settings.theme).toBe('dark');
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: true });
+
+    editor.undo();
+
+    expect(editor.getBoard().settings.theme).toBe('light');
+  });
+
+  it('publishes nothing, and records no history, when the board already wears it', () => {
+    const editor = createEditor(board('Theme'));
+    const before = editor.getBoard();
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.setTheme('light');
+
+    expect(editor.getBoard()).toBe(before);
+    expect(seen).toEqual([]);
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
   });
 });

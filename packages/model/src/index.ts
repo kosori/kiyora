@@ -1,6 +1,31 @@
 // The board: one schema, one paint walker, and the pure projection to SVG.
 
 export {
+  CHART_KINDS,
+  CHART_LABELS,
+  CHART_PALETTE,
+  CHART_SERIES,
+  type ChartKind,
+  type ChartShape,
+  chartKindSchema,
+  chartSchema,
+  MAX_CHART_VALUES,
+} from './board/chart';
+export {
+  type BoardFiles,
+  filesSchema,
+  fitImageSize,
+  hasImageFiles,
+  IMAGE_FILE_LIMIT_BYTES,
+  IMAGE_MAX_SIDE,
+  IMAGE_MIME_TYPES,
+  type ImageFile,
+  type ImageMime,
+  imageFileSchema,
+  imageMimeOf,
+  imageMimeSchema,
+} from './board/image';
+export {
   MIGRATIONS,
   type Migration,
   type MigrationResult,
@@ -15,13 +40,8 @@ export {
   boardSchema,
   type Camera,
   type ConnectorShape,
-  type Corner,
   cameraSchema,
   connectorSchema,
-  cornerSchema,
-  DASHES,
-  type Dash,
-  dashSchema,
   EDGES,
   type Edge,
   type Endpoint,
@@ -40,6 +60,17 @@ export {
   groupSchema,
   type Head,
   headSchema,
+  type IconShape,
+  type ImageShape,
+  INK_MODES,
+  type InkMode,
+  type InkPoint,
+  type InkShape,
+  iconSchema,
+  imageSchema,
+  inkModeSchema,
+  inkPointSchema,
+  inkSchema,
   ROUTES,
   type Route,
   routeSchema,
@@ -50,16 +81,22 @@ export {
   STICKY_FITS,
   type StickyFit,
   type StickyShape,
-  type Style,
   settingsSchema,
-  shapeBaseSchema,
   shapeSchema,
   slideSchema,
   sourceSchema,
   stickyFitSchema,
-  styleSchema,
   type TextShape,
 } from './board/schema';
+export type { Corner, Dash, Style } from './board/shape-base';
+export {
+  cornerSchema,
+  DASHES,
+  dashSchema,
+  shapeBaseSchema,
+  styleSchema,
+} from './board/shape-base';
+export { type TableShape, tableSchema } from './board/table';
 export {
   type BoardIssue,
   BoardRejection,
@@ -67,6 +104,18 @@ export {
   parseBoard,
 } from './board/validate';
 export { mapSource, SOURCE_INSET, type SourceMapping } from './bridge/mapping';
+export {
+  type ChartSlice,
+  type ChartSpan,
+  type ChartTick,
+  chartSlices,
+  chartSpan,
+  chartTicks,
+  fractionOf,
+  textWidth,
+  truncateToWidth,
+  widestOf,
+} from './chart/scale';
 export {
   addSlide,
   DECK_TEMPLATES,
@@ -100,6 +149,23 @@ export {
   parseBoardFile,
   serializeBoard,
 } from './file/board-file';
+export { ICON_VIEWBOX, type IconSet } from './icons/icon-set';
+export {
+  addStrokePoint,
+  INK_HIGHLIGHTER_ALPHA,
+  INK_HIGHLIGHTER_SCALE,
+  INK_MIN_STEP,
+  INK_REACH,
+  type InkStrokePoint,
+  inkAt,
+  inkFromStroke,
+  inkMargin,
+  inkPath,
+  inkPoints,
+  inkWidths,
+  MAX_INK_POINTS,
+  simplifyStroke,
+} from './ink/ink';
 export {
   DEFAULT_LAYOUT_DIRECTION,
   type GroupPlacement,
@@ -143,8 +209,8 @@ export {
   boundsOf,
   boundsOfShapes,
   shapeBounds,
-  turn,
 } from './paint/figures';
+export type { PaintImage } from './paint/image';
 export {
   type Paint,
   type PaintContext,
@@ -177,7 +243,23 @@ export {
   NOTE_COLOUR,
   NOTE_STYLE,
 } from './paint/sticky';
+export { type Point, turn } from './paint/turn';
 export { projectBoard } from './projection/svg';
+export {
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROWS,
+  DEFAULT_TABLE_SIZE,
+  emptyTableRows,
+  type TableCell,
+  type TableCellBox,
+  tableCellAt,
+  tableCellBox,
+  tableCellText,
+  tableWithCellText,
+  tableWithColumn,
+  tableWithHeader,
+  tableWithRow,
+} from './table/table';
 export { CODE_FONT_FAMILY, fontFamilyOf, TEXT_FONT_FAMILY } from './text/font';
 export {
   type PaintText,
@@ -185,7 +267,10 @@ export {
   TEXT_LINE_HEIGHT,
   TEXT_PADDING,
   type TextAnchor,
+  type TextBox,
+  type TextBoxOptions,
   textAnchorOf,
+  textInBox,
   textOf,
 } from './text/layout';
 export {

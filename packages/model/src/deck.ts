@@ -1,4 +1,6 @@
-import type { Board, FrameShape, Shape, Slide, Style } from './board/schema';
+import type { Board, FrameShape, Shape, Slide } from './board/schema';
+import type { Style } from './board/shape-base';
+
 import { DEFAULT_TEXT_STYLE } from './text/style';
 
 /**

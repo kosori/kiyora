@@ -29,11 +29,13 @@
     "build": "turbo run build",
     "check": "ultracite check",
     "check-budgets": "bun scripts/check-budgets.ts",
+    "check-icons": "bun scripts/icons.ts --check",
     "check-types": "turbo run check-types check-types:root",
     "check-types:root": "tsc --noEmit",
     "dev": "turbo run dev",
     "fix": "ultracite fix",
     "fonts:subset": "bun scripts/subset-font.ts",
+    "icons": "bun scripts/icons.ts",
     "test": "turbo run test && vitest run",
     "test:e2e": "playwright test"
   },

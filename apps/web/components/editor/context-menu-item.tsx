@@ -1,8 +1,13 @@
 'use client';
 
-import { commandId, type ContextMenuItem as MenuItem } from '@kiyora/editor';
+import {
+  commandId,
+  keyshortcutsFor,
+  type ContextMenuItem as MenuItem,
+} from '@kiyora/editor';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
+import { usePlatform } from './use-platform';
 
 type Props = {
   item: MenuItem;
@@ -11,10 +16,12 @@ type Props = {
 
 /** One command in the context menu: its copy, and whether the selection allows it. */
 export const ContextMenuItem = ({ item, onChoose }: Props) => {
+  const platform = usePlatform();
   const choose = useCallback(() => onChoose(item), [item, onChoose]);
 
   return (
     <Button
+      aria-keyshortcuts={keyshortcutsFor(item.command, platform)}
       className='w-full justify-start font-normal'
       data-testid={`context-menu-${commandId(item.command)}`}
       disabled={item.disabled}

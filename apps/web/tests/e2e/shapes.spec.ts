@@ -212,7 +212,7 @@ test('the picker reaches the whole vocabulary without lengthening the rail', asy
 }) => {
   await open(page);
 
-  await expect(railButton(page, 'Star')).toHaveCount(0);
+  await expect(railButton(page, 'Star')).toBeHidden();
 
   await page.getByTestId('shape-picker').click();
 

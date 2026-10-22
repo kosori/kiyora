@@ -1,9 +1,10 @@
 'use client';
 
-import { runCommand } from '@kiyora/editor';
+import { keyshortcutsFor, runCommand } from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
+import { usePlatform } from './use-platform';
 
 type Props = {
   locked: boolean;
@@ -12,6 +13,7 @@ type Props = {
 /** Locks or unlocks the selection as one gesture, so one undo puts the flag back. */
 export const LockControl = ({ locked }: Props) => {
   const editor = useEditor();
+  const platform = usePlatform();
   const toggle = useCallback(() => {
     runCommand({ kind: 'lock' }, { editor });
   }, [editor]);
@@ -22,6 +24,7 @@ export const LockControl = ({ locked }: Props) => {
         Lock
       </h3>
       <Button
+        aria-keyshortcuts={keyshortcutsFor({ kind: 'lock' }, platform)}
         aria-pressed={locked}
         className='w-full justify-start'
         data-testid='lock-toggle'

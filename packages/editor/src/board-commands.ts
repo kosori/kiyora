@@ -1,11 +1,22 @@
-import { type Board, type Shape, subtreeIds } from '@kiyora/model';
+import {
+  type Board,
+  type ImageShape,
+  type Shape,
+  subtreeIds,
+  type Theme,
+} from '@kiyora/model';
+import { type ChartEdit, editChart } from './chart';
 import { type ConnectorEdit, editConnector } from './connectors';
 import { addShape } from './containment';
 import type { Gestures } from './gestures';
 import type { LabelEdit } from './label-edit';
 import { type OrderMove, reorderedBoard } from './ordering';
-import type { Placement } from './placement';
-import { shapeFromPlacement } from './placement';
+import {
+  type ImagePlacement,
+  imageShape,
+  type Placement,
+  shapeFromPlacement,
+} from './placement';
 import { type Restyle, restyledBoard } from './restyle';
 import { selectedShapes } from './selection';
 import { translateShapes } from './shape-edit';
@@ -27,6 +38,12 @@ export type BoardCommands = {
    * wearing the asked-for lock writes nothing.
    */
   setLocked: (locked: boolean) => void;
+  /**
+   * Sets the board's theme — the canvas it is authored and exported on. One
+   * board change, one history entry; a board already wearing the theme writes
+   * nothing.
+   */
+  setTheme: (theme: Theme) => void;
   /** Moves the selection in paint order as one gesture, writing nothing when it cannot move. */
   reorder: (move: OrderMove) => void;
   /** Replaces the board and notifies every board subscriber. */
@@ -37,11 +54,22 @@ export type BoardCommands = {
    */
   setConnector: (id: string, edit: ConnectorEdit) => void;
   /**
+   * Replaces a chart's series, labels, palette or kind. One call is one gesture,
+   * so one undo puts the data back; a shape that is not a chart writes nothing.
+   */
+  setChart: (id: string, edit: ChartEdit) => void;
+  /**
    * Places the active shape tool's shape in `placement`'s box, wearing the last
    * used style, and returns it so a caller can begin editing a text shape at
    * once, or `null` for a tool that places nothing.
    */
   placeShape: (placement: Placement) => Shape | null;
+  /**
+   * Places one image in `placement`'s box and stores its raster under its
+   * content hash, as one gesture. An id the board already holds reuses the
+   * payload, so placing the same picture twice costs one copy of its bytes.
+   */
+  placeImage: (placement: ImagePlacement) => ImageShape;
   /** Undoes the last committed gesture. Does nothing when there is none. */
   undo: () => void;
   /** Redoes the last undone gesture. Does nothing when there is none. */
@@ -74,9 +102,8 @@ export const createBoardCommands = ({
       return;
     }
     gestures.abandon();
-    core.replace(next);
+    core.adopt(next);
     core.select(core.selection());
-    core.announce();
   };
 
   return {
@@ -94,9 +121,25 @@ export const createBoardCommands = ({
       core.transactions.noteNudge(board);
       core.publish(translateShapes(board, ids, dx, dy));
     },
+    placeImage: ({ box, file, fileId }) => {
+      core.transactions.endNudgeRun();
+      const before = core.board();
+      const shape = imageShape(fileId, box, core.style(), before.shapes);
+      const files =
+        before.files[fileId] === undefined
+          ? { ...before.files, [fileId]: file }
+          : before.files;
+      core.change({
+        ...before,
+        files,
+        shapes: [...before.shapes, shape],
+      });
+      core.select([shape.id]);
+      return shape;
+    },
     placeShape: (placement) => {
-      const { tool } = core.view();
-      if (!placesShape(tool)) {
+      const { icon, tool } = core.view();
+      if (!placesShape(tool) || (tool === 'icon' && icon === null)) {
         return null;
       }
       core.transactions.endNudgeRun();
@@ -105,12 +148,12 @@ export const createBoardCommands = ({
         tool,
         placement,
         core.style(),
-        before.shapes
+        before.shapes,
+        icon ?? undefined
       );
-      core.replace(addShape(before, shape));
-      core.setView({ ...core.view(), tool: 'select' });
+      core.adopt(addShape(before, shape));
+      core.setView({ ...core.view(), icon: null, tool: 'select' });
       label.place(before, shape, core.board());
-      core.announce();
       return shape;
     },
     redo: () => {
@@ -124,26 +167,24 @@ export const createBoardCommands = ({
       }
     },
     restyle: (change) => {
-      core.transactions.endNudgeRun();
-      const before = core.board();
-      const result = restyledBoard(before, core.selection(), change);
+      const result = restyledBoard(core.board(), core.selection(), change);
       if (result === null) {
         return;
       }
       const { board: nextBoard, style: nextStyle } = result;
-      core.replace(nextBoard);
+      core.change(nextBoard);
       if (nextStyle !== undefined) {
         core.setStyle(nextStyle);
       }
-      core.transactions.commit(before, core.board());
-      core.announce();
     },
     setBoard: (next) => {
       core.transactions.endNudgeRun();
-      core.replace(next);
+      core.adopt(next);
       core.select(core.selection());
       core.transactions.clear();
-      core.announce();
+    },
+    setChart: (id, edit) => {
+      core.change(editChart(core.board(), id, edit));
     },
     setConnector: (id, edit) => {
       core.change(editConnector(core.board(), id, edit));
@@ -162,6 +203,16 @@ export const createBoardCommands = ({
       if (changed) {
         core.change({ ...board, shapes });
       }
+    },
+    setTheme: (theme) => {
+      const board = core.board();
+      if (board.settings.theme === theme) {
+        return;
+      }
+      core.change({
+        ...board,
+        settings: { ...board.settings, theme },
+      });
     },
     undo: () => {
       restore(core.transactions.undo(core.board()));

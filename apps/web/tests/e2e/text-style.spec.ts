@@ -51,7 +51,7 @@ const labelledText = async (
   await editor.fill(words);
   await editor.blur();
   await page.mouse.click(at.x, at.y);
-  await expect(page.getByTestId('inspector-empty')).toHaveCount(0);
+  await expect(page.getByTestId('inspector-empty')).toBeHidden();
 };
 
 test('the inspector sizes a selected text shape, and the canvas paints the new size', async ({
@@ -82,7 +82,7 @@ test('a text shape aligns left, centre or right, with no vertical control', asyn
   await expect(page.getByTestId('text-align-center')).toBeVisible();
   await expect(page.getByTestId('text-align-left')).toBeVisible();
   await expect(page.getByTestId('text-align-right')).toBeVisible();
-  await expect(page.getByTestId('text-valign-top')).toHaveCount(0);
+  await expect(page.getByTestId('text-valign-top')).toBeHidden();
 
   const line = labels(page);
   await page.getByTestId('text-align-left').click();

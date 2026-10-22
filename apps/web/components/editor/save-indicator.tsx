@@ -13,6 +13,8 @@ const FAULT_MESSAGES: Record<StorageFault['kind'], string> = {
   blocked: 'Storage is blocked — allow site data to keep saving',
   corrupt:
     'The saved board was unreadable — it is set aside and a fresh board opened',
+  images:
+    'Images need IndexedDB — local storage cannot hold them, so this board is not saved',
   quota: 'Storage is full — free some space to keep saving',
   unavailable: 'Storage is unavailable — this board will not be saved',
 };

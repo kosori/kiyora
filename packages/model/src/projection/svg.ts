@@ -1,6 +1,7 @@
 import type { Board } from '../board/schema';
 import { formatNumber } from '../format';
 import { boardBounds } from '../paint/figures';
+import type { PaintImage } from '../paint/image';
 import {
   type Paint,
   type PaintContext,
@@ -46,6 +47,7 @@ const attributes = (path: PaintPath): string =>
         ? undefined
         : path.dash.map(formatNumber).join(' '),
     ],
+    ['transform', path.transform],
   ]);
 
 const runMarkup = (run: {
@@ -76,22 +78,38 @@ const textMarkup = (line: PaintText, indent: string): string =>
     ['transform', line.transform],
   ])}>${line.runs.map(runMarkup).join('')}</text>`;
 
+/** One raster, filling its authored box and turned with the shape it belongs to. */
+const imageMarkup = (image: PaintImage, indent: string): string =>
+  `${indent}<image${attrString([
+    ['href', image.href],
+    ['x', formatNumber(image.x)],
+    ['y', formatNumber(image.y)],
+    ['width', formatNumber(image.width)],
+    ['height', formatNumber(image.height)],
+    ['preserveAspectRatio', 'none'],
+    ['opacity', image.opacity === 1 ? undefined : formatNumber(image.opacity)],
+    ['transform', image.transform],
+  ])}/>`;
+
 const markup = (paint: Paint, depth: number): string[] => {
   const indent = INDENT.repeat(depth);
   const paths = paint.paths.map(
     (path) => `${indent}<path${attributes(path)}/>`
   );
+  const image =
+    paint.image === undefined ? [] : [imageMarkup(paint.image, indent)];
   const children = paint.children.flatMap((child) => markup(child, depth + 1));
   const text = (paint.text ?? []).map((line) => textMarkup(line, indent));
 
   if (paint.clip === undefined || paint.shapeId === undefined) {
-    return [...paths, ...text, ...children];
+    return [...paths, ...image, ...text, ...children];
   }
 
   const id = `clip-${paint.shapeId}`;
 
   return [
     ...paths,
+    ...image,
     ...text,
     `${indent}<clipPath id="${id}">`,
     `${indent}${INDENT}<path d="${paint.clip}"/>`,

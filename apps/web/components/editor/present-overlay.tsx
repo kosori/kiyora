@@ -1,10 +1,14 @@
 'use client';
 
+import { keyshortcutsFor } from '@kiyora/editor';
 import { useBoard, useEditor, usePresent } from '@kiyora/editor/react';
-import { paintBoard, presentedSlides } from '@kiyora/model';
+import { CANVAS_ENTRY, paintBoard, presentedSlides } from '@kiyora/model';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { PaintNode } from './paint-node';
+import { PresentLaser } from './present-laser';
+import { useIconSet } from './use-icon-set';
+import { usePlatform } from './use-platform';
 
 /** Seconds as `m:ss`, however long a talk runs. */
 const formatElapsed = (seconds: number): string => {
@@ -27,7 +31,9 @@ export const PresentOverlay = () => {
   const editor = useEditor();
   const board = useBoard();
   const present = usePresent();
+  const platform = usePlatform();
   const measure = useMemo(() => createTextMeasurer(), []);
+  const icons = useIconSet();
   const root = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<Element | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -43,11 +49,13 @@ export const PresentOverlay = () => {
       frame === undefined
         ? null
         : paintBoard(board, {
+            files: board.files,
+            icons,
             measure,
             theme: board.settings.theme,
             view: frame,
           }),
-    [board, frame, measure]
+    [board, frame, icons, measure]
   );
 
   /**
@@ -153,16 +161,23 @@ export const PresentOverlay = () => {
       role='dialog'
       tabIndex={-1}
     >
-      <svg
-        aria-label='Slide'
-        className='min-h-0 flex-1'
-        data-testid='present-slide'
-        preserveAspectRatio='xMidYMid meet'
-        role='img'
-        viewBox={`${slide.frame.x} ${slide.frame.y} ${slide.frame.w} ${slide.frame.h}`}
+      <div
+        className='relative flex min-h-0 flex-1'
+        data-testid='present-surface'
+        style={{ backgroundColor: CANVAS_ENTRY[board.settings.theme] }}
       >
-        {node === undefined ? null : <PaintNode paint={node} />}
-      </svg>
+        <svg
+          aria-label='Slide'
+          className='h-full w-full'
+          data-testid='present-slide'
+          preserveAspectRatio='xMidYMid meet'
+          role='img'
+          viewBox={`${slide.frame.x} ${slide.frame.y} ${slide.frame.w} ${slide.frame.h}`}
+        >
+          {node === undefined ? null : <PaintNode paint={node} />}
+        </svg>
+        <PresentLaser />
+      </div>
       <div className='flex shrink-0 items-start gap-6 border-border border-t p-4'>
         {present.notes ? (
           <p
@@ -185,6 +200,10 @@ export const PresentOverlay = () => {
           {present.index + 1} / {slides.length}
         </span>
         <button
+          aria-keyshortcuts={keyshortcutsFor(
+            { kind: 'present-exit' },
+            platform
+          )}
           className='rounded border border-border px-2 py-1 text-sm'
           data-testid='present-exit'
           onClick={onExit}

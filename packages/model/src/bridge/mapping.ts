@@ -4,8 +4,9 @@ import type {
   FrameShape,
   GroupShape,
   Shape,
-  Style,
 } from '../board/schema';
+import type { Style } from '../board/shape-base';
+
 import { nextId } from '../deck';
 import { LAYOUT_INSET, layoutGraph } from '../layout/layered';
 import type { Bounds } from '../paint/figures';

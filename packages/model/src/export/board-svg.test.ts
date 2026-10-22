@@ -207,3 +207,52 @@ describe('taking the board out as SVG', () => {
     ).toThrow(/cap/);
   });
 });
+
+describe('an image in the export', () => {
+  const DATA = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAA=';
+
+  const withImage = () => {
+    const fileId = 'hash';
+    const board = parseBoard({
+      ...representative(),
+      files: {
+        [fileId]: {
+          bytes: 68,
+          dataURL: `data:image/png;base64,${DATA}`,
+          mime: 'image/png',
+        },
+      },
+      shapes: [
+        ...representative().shapes,
+        { ...box('picture', 480, 'blue'), fileId, kind: 'image' },
+      ],
+    });
+
+    return { board, fileId };
+  };
+
+  it('carries the raster in the file and paints it in the authored box', () => {
+    const { board } = withImage();
+    const svg = exportBoardSvg(board, { ...light, files: board.files });
+
+    expect(svg).toContain('<image ');
+    expect(svg).toContain(`href="data:image/png;base64,${DATA}"`);
+    expect(svg).toContain('x="480" y="0" width="180" height="100"');
+    expect(svg).toContain('preserveAspectRatio="none"');
+    expect(unsafeSvg(svg)).toBeNull();
+  });
+
+  it('accepts a data raster and still refuses every other reference', () => {
+    const open = '<svg xmlns="http://www.w3.org/2000/svg">';
+    const image = (href: string) => `${open}<image href="${href}"/></svg>`;
+
+    expect(unsafeSvg(image(`data:image/png;base64,${DATA}`))).toBeNull();
+    expect(unsafeSvg(image('data:image/jpeg;base64,/9j/4AAQ'))).toBeNull();
+    expect(unsafeSvg(image('data:image/svg+xml;base64,PHN2Zy8+'))).toMatch(
+      /image/
+    );
+    expect(unsafeSvg(image('javascript:alert(1)'))).toMatch(/image/);
+    expect(unsafeSvg(image('https://x.test/a.png'))).toMatch(/image/);
+    expect(unsafeSvg(`${open}<image x="0"/></svg>`)).toMatch(/image/);
+  });
+});

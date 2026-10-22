@@ -1,15 +1,27 @@
 import {
+  CHART_LABELS,
+  CHART_PALETTE,
+  CHART_SERIES,
+  type ChartShape,
   type ConnectorShape,
   DEFAULT_STICKY_SIZE,
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROWS,
+  DEFAULT_TABLE_SIZE,
   DEFAULT_TEXT_STYLE,
   type Endpoint,
+  emptyTableRows,
   type FigureShape,
   type FrameShape,
+  type IconShape,
+  type ImageFile,
+  type ImageShape,
   NOTE_STYLE,
   nextId,
   type Shape,
   type StickyShape,
   type Style,
+  type TableShape,
   type TextShape,
 } from '@kiyora/model';
 import type { Point } from './camera';
@@ -30,11 +42,26 @@ export type Placement = {
   to: Point;
 };
 
+/**
+ * One image a caller wants on the board: the raster the import produced, the
+ * content-hashed id it is stored under, and the authored box it fills. The
+ * raster is not a `Placeable` tool, because a click cannot conjure its bytes;
+ * an importer has to hand them in.
+ */
+export type ImagePlacement = {
+  box: Box;
+  file: ImageFile;
+  fileId: string;
+};
+
 /** The size a click places a shape, in board units. */
 export const DEFAULT_SHAPE_SIZE = { h: 100, w: 160 } as const;
 
 /** The size a click places a frame: a region worth holding shapes in. */
 export const DEFAULT_FRAME_SIZE = { h: 360, w: 480 } as const;
+
+/** The size a click places a chart: wide enough for its axis and its category row. */
+export const DEFAULT_CHART_SIZE = { h: 220, w: 320 } as const;
 
 /**
  * The box a placement asks for: the rectangle the gesture swept, or, when it
@@ -78,7 +105,8 @@ export const shapeFromPlacement = (
   kind: Placeable,
   placement: Placement,
   style: Style,
-  existing: readonly Shape[]
+  existing: readonly Shape[],
+  icon?: string
 ): Shape => {
   const base = {
     id: nextShapeId(kind, existing),
@@ -145,6 +173,47 @@ export const shapeFromPlacement = (
     return sticky;
   }
 
+  if (kind === 'icon') {
+    if (icon === undefined) {
+      throw new Error('placing an icon needs the name it draws');
+    }
+    const shape: IconShape = {
+      ...base,
+      ...placementBox(placement),
+      kind: 'icon',
+      name: icon,
+    };
+
+    return shape;
+  }
+
+  if (kind === 'data-table') {
+    const shape: TableShape = {
+      ...base,
+      ...placementBox(placement, DEFAULT_TABLE_SIZE),
+      columns: DEFAULT_TABLE_COLUMNS,
+      headerRow: true,
+      kind: 'data-table',
+      rows: emptyTableRows(DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
+    };
+
+    return shape;
+  }
+
+  if (kind === 'chart') {
+    const shape: ChartShape = {
+      ...base,
+      ...placementBox(placement, DEFAULT_CHART_SIZE),
+      kind: 'chart',
+      labels: [...CHART_LABELS],
+      palette: [...CHART_PALETTE],
+      series: [...CHART_SERIES],
+      variant: 'column',
+    };
+
+    return shape;
+  }
+
   const figure: FigureShape = {
     ...base,
     ...placementBox(placement),
@@ -153,6 +222,29 @@ export const shapeFromPlacement = (
 
   return figure;
 };
+
+/**
+ * The shape an image placement asks for: the raster's content-hashed id, drawn
+ * in `box` and wearing the last used style so opacity and stroke width reach
+ * the inspector like any other shape. The bytes stay in the board's files, so
+ * the shape carries only the reference.
+ */
+export const imageShape = (
+  fileId: string,
+  box: Box,
+  style: Style,
+  existing: readonly Shape[]
+): ImageShape => ({
+  ...box,
+  fileId,
+  id: nextId('image', new Set(existing.map((shape) => shape.id))),
+  kind: 'image',
+  locked: false,
+  opacity: 1,
+  parentId: null,
+  rotation: 0,
+  style,
+});
 
 /**
  * The end a connector's drag landed on: bound to the shape under `point` with

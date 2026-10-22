@@ -31,6 +31,13 @@ export const MIN_GRID_SPACING = 16;
 export const FIT_PADDING = 32;
 
 /**
+ * The margin a keyboard step keeps between the new selection and the view's
+ * edge, in pixels. A reveal only pans when the selection would otherwise sit
+ * outside that band.
+ */
+export const REVEAL_MARGIN = 48;
+
+/**
  * The most a find match is magnified. A match is brought into view at its own
  * scale, so a label smaller than the viewport is not blown up past twice life
  * size and a large match still shrinks until it is wholly visible.
@@ -120,6 +127,28 @@ export const wheelZoom = (
 ): Camera => zoomBy(camera, anchor, ZOOM_STEP ** (-deltaY / 100));
 
 /**
+ * Puts the middle of `content` in the middle of the viewport at `zoom`, so every
+ * camera that frames content centres it the same way.
+ */
+const centredCamera = (
+  content: Bounds,
+  viewport: Viewport,
+  zoom: number
+): Camera => {
+  const centre = viewCentre(viewport);
+  const middle = {
+    x: content.x + content.w / 2,
+    y: content.y + content.h / 2,
+  };
+
+  return {
+    x: centre.x - middle.x * zoom,
+    y: centre.y - middle.y * zoom,
+    zoom,
+  };
+};
+
+/**
  * Scales the contents up until the tighter axis fits, then centres them. An
  * empty board, or one whose contents have no size, rests at one hundred percent.
  */
@@ -142,17 +171,8 @@ export const fitCamera = (
       available.h / Math.max(content.h, 1)
     )
   );
-  const centre = viewCentre(viewport);
-  const middle = {
-    x: content.x + content.w / 2,
-    y: content.y + content.h / 2,
-  };
 
-  return {
-    x: centre.x - middle.x * zoom,
-    y: centre.y - middle.y * zoom,
-    zoom,
-  };
+  return centredCamera(content, viewport, zoom);
 };
 
 /** Comes back to one hundred percent, keeping whatever sat in the middle there. */
@@ -174,18 +194,54 @@ export const focusCamera = (
   if (content === null || viewport.w <= 0 || viewport.h <= 0) {
     return fitted;
   }
-  const zoom = Math.min(FOCUS_ZOOM, fitted.zoom);
-  const centre = viewCentre(viewport);
-  const middle = {
-    x: content.x + content.w / 2,
-    y: content.y + content.h / 2,
-  };
 
-  return {
-    x: centre.x - middle.x * zoom,
-    y: centre.y - middle.y * zoom,
-    zoom,
+  return centredCamera(content, viewport, Math.min(FOCUS_ZOOM, fitted.zoom));
+};
+
+/**
+ * Pans the least distance that brings `content` inside the viewport, keeping
+ * `margin` pixels clear of each edge, and never zooms. Content already inside
+ * that band leaves the camera untouched, by reference, so a one-shape keyboard
+ * step does not move the board at all; a step that does reach the edge moves it
+ * by exactly what it overshot. Content too large for the padded view is centred
+ * on that axis, because no pan can show all of it.
+ */
+export const revealCamera = (
+  camera: Camera,
+  viewport: Viewport,
+  content: Bounds,
+  margin = REVEAL_MARGIN
+): Camera => {
+  if (viewport.w <= 0 || viewport.h <= 0) {
+    return camera;
+  }
+  const shift = (start: number, size: number, edge: number): number => {
+    const room = edge - margin * 2;
+    if (size > room) {
+      return (edge - size) / 2 - start;
+    }
+    if (start < margin) {
+      return margin - start;
+    }
+    if (start + size > edge - margin) {
+      return edge - margin - start - size;
+    }
+    return 0;
   };
+  const dx = shift(
+    content.x * camera.zoom + camera.x,
+    content.w * camera.zoom,
+    viewport.w
+  );
+  const dy = shift(
+    content.y * camera.zoom + camera.y,
+    content.h * camera.zoom,
+    viewport.h
+  );
+
+  return dx === 0 && dy === 0
+    ? camera
+    : { x: camera.x + dx, y: camera.y + dy, zoom: camera.zoom };
 };
 
 /** The base step, doubled or halved, until its screen spacing is a legible band. */

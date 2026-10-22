@@ -9,7 +9,7 @@ import {
   runCommand,
 } from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
-import { useEffect } from 'react';
+import { type RefObject, useEffect } from 'react';
 
 const TYPING = ['INPUT', 'SELECT', 'TEXTAREA'];
 
@@ -35,16 +35,20 @@ const isTyping = (target: EventTarget | null): boolean =>
  * nudge runs through the same dispatch: the keymap says a shifted arrow is
  * coarse, the dispatch turns that into a step.
  *
- * The same listener serves presenting: the chord carries the mode the board is
- * in, so the keymap hands back a presenting command while a slide is up and the
- * editing bindings behind it stay unrun.
+ * The same listener serves presenting and shape navigation: the chord carries
+ * the mode the board is in, so the keymap hands back a presenting command while
+ * a slide is up and a navigation step while the canvas is navigating, and the
+ * editing bindings behind either stay unrun. A binding that names the canvas as
+ * its place also asks where focus is before it runs, so Enter on a button is
+ * still a button press.
  */
 export const useShortcuts = (
   onShowShortcuts: () => void,
   camera: CameraIntent,
   onOpenFind: () => void,
   onShowPalette: () => void,
-  copyPng: () => void
+  copyPng: () => void,
+  canvas: RefObject<SVGSVGElement | null>
 ): void => {
   const editor = useEditor();
 
@@ -56,6 +60,16 @@ export const useShortcuts = (
       showPalette: onShowPalette,
       showShortcuts: onShowShortcuts,
     };
+    const atCanvas = (target: EventTarget | null): boolean =>
+      canvas.current !== null && target === canvas.current;
+
+    /** Which keymap mode the board is in, so a key means one thing at a time. */
+    const modeOf = (): 'edit' | 'navigate' | 'present' => {
+      if (editor.getPresent().active) {
+        return 'present';
+      }
+      return editor.getView().navigating ? 'navigate' : 'edit';
+    };
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event.target)) {
@@ -66,10 +80,13 @@ export const useShortcuts = (
         alt: event.altKey,
         command: event.metaKey || event.ctrlKey,
         key: event.key,
-        mode: editor.getPresent().active ? 'present' : 'edit',
+        mode: modeOf(),
         shift: event.shiftKey,
       });
       if (binding === null) {
+        return;
+      }
+      if (binding.focus === 'canvas' && !atCanvas(event.target)) {
         return;
       }
 
@@ -84,7 +101,7 @@ export const useShortcuts = (
         alt: event.altKey,
         command: event.metaKey || event.ctrlKey,
         key: event.key,
-        mode: editor.getPresent().active ? 'present' : 'edit',
+        mode: modeOf(),
         shift: event.shiftKey,
       });
       if (command?.kind === 'nudge') {
@@ -112,5 +129,13 @@ export const useShortcuts = (
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [camera, copyPng, editor, onOpenFind, onShowPalette, onShowShortcuts]);
+  }, [
+    camera,
+    canvas,
+    copyPng,
+    editor,
+    onOpenFind,
+    onShowPalette,
+    onShowShortcuts,
+  ]);
 };

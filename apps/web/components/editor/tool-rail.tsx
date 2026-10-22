@@ -3,14 +3,19 @@
 import type { Tool } from '@kiyora/editor';
 import {
   IconArrowUpRight,
+  IconChartBar,
   IconFrame,
   IconHandMove,
+  IconHighlight,
   IconNote,
+  IconPencil,
   IconPointer,
   IconRectangle,
+  IconTable,
   IconTypography,
   type TablerIcon,
 } from '@tabler/icons-react';
+import { IconPicker } from './icon-picker';
 import { ShapePicker } from './shape-picker';
 import { ToolRailButton } from './tool-rail-button';
 
@@ -33,18 +38,31 @@ const RAIL: readonly RailEntry[] = [
   { icon: IconArrowUpRight, label: 'Connector', tool: 'connector' },
   { icon: IconNote, label: 'Sticky', tool: 'sticky' },
   { icon: IconFrame, label: 'Frame', tool: 'frame' },
+  { icon: IconTable, label: 'Table', tool: 'data-table' },
+  { icon: IconChartBar, label: 'Chart', tool: 'chart' },
+  { icon: IconPencil, label: 'Ink', tool: 'ink' },
+  { icon: IconHighlight, label: 'Highlighter', tool: 'highlighter' },
 ];
 
-/** The tool rail: every button names its tool, and the active one reads as pressed. */
+/**
+ * The tool rail: a navigation landmark around the toolbar a person chooses
+ * from. Every button names its tool, and the active one reads as pressed.
+ */
 export const ToolRail = () => (
-  <div
-    aria-label='Tools'
-    className='flex h-full w-12 shrink-0 flex-col items-center gap-0.5 border-border border-r bg-background p-2'
-    role='toolbar'
+  <nav
+    aria-label='Board tools'
+    className='h-full w-12 shrink-0 border-border border-r bg-background'
   >
-    {RAIL.map((entry) => (
-      <ToolRailButton entry={entry} key={entry.tool} />
-    ))}
-    <ShapePicker />
-  </div>
+    <div
+      aria-label='Tools'
+      className='flex h-full flex-col items-center gap-0.5 p-2'
+      role='toolbar'
+    >
+      {RAIL.map((entry) => (
+        <ToolRailButton entry={entry} key={entry.tool} />
+      ))}
+      <ShapePicker />
+      <IconPicker />
+    </div>
+  </nav>
 );

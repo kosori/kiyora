@@ -1,13 +1,13 @@
 'use client';
 
-import { restoreBoard } from '@kiyora/editor';
+import { keyshortcutsFor, restoreBoard } from '@kiyora/editor';
 import {
   useBoard,
   useEditor,
   useSelection,
   useView,
 } from '@kiyora/editor/react';
-import type { Theme } from '@kiyora/model';
+import { boardBounds, fitImageSize, type Theme } from '@kiyora/model';
 import {
   type ChangeEvent,
   useCallback,
@@ -26,9 +26,11 @@ import {
   saveBoardPng,
 } from '~/lib/board-png';
 import { saveBoardSvg } from '~/lib/board-svg';
+import { IMAGE_PLACEMENT_SIDE, importImage } from '~/lib/image-import';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { useCopyPng } from './copy-png-context';
 import { OptionButtons } from './option-buttons';
+import { usePlatform } from './use-platform';
 
 type Option<T extends string> = { label: string; value: T };
 
@@ -64,15 +66,18 @@ const THEME_OPTIONS: readonly Option<Theme>[] = [
  * written.
  *
  * The PNG panel is where the artifact's size, background and theme are chosen.
- * The theme is the export's own, not the app's, so a light canvas can leave as a
- * dark image.
+ * The theme starts at the board's own, so a dark board leaves dark without a
+ * second choice, and it stays an override: the export's theme is its own, so a
+ * dark board can still leave as a light image.
  */
 export const FileControls = () => {
   const editor = useEditor();
   const board = useBoard();
   const selection = useSelection();
   const { camera } = useView();
+  const platform = usePlatform();
   const input = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
   const { clearError, copy: copyPng, error: copyError } = useCopyPng();
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +86,8 @@ export const FileControls = () => {
   const [target, setTarget] = useState<PngTarget>('board');
   const [scale, setScale] = useState<'1' | '2' | '4'>('2');
   const [background, setBackground] = useState<PngBackground>('transparent');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme | null>(null);
+  const exportTheme = theme ?? board.settings.theme;
   const targetOptions = selection.length === 0 ? BOARD_OPTION : TARGET_OPTIONS;
   const shownTarget: PngTarget = selection.length === 0 ? 'board' : target;
 
@@ -102,25 +108,35 @@ export const FileControls = () => {
     input.current?.click();
   }, []);
 
+  const chooseImage = useCallback(() => {
+    imageInput.current?.click();
+  }, []);
+
   const save = useCallback(() => {
     saveBoardFile({ ...board, camera });
   }, [board, camera]);
 
   const exportSvg = useCallback(() => {
-    try {
-      saveBoardSvg(board, { measure, theme: board.settings.theme });
-      setError(null);
-      clearError();
-    } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : String(thrown));
-    }
+    const run = async (): Promise<void> => {
+      try {
+        await saveBoardSvg(board, {
+          measure,
+          theme: board.settings.theme,
+        });
+        setError(null);
+        clearError();
+      } catch (thrown) {
+        setError(thrown instanceof Error ? thrown.message : String(thrown));
+      }
+    };
+    run().catch(() => undefined);
   }, [board, clearError, measure]);
 
   const exportPng = useCallback(async () => {
     try {
       const blob = await exportBoardPng(
         pngBoard(board, selection, target),
-        { background, scale: Number(scale) as PngScale, theme },
+        { background, scale: Number(scale) as PngScale, theme: exportTheme },
         measure
       );
       saveBoardPng(blob, board.title);
@@ -129,7 +145,16 @@ export const FileControls = () => {
     } catch (thrown) {
       setError(thrown instanceof Error ? thrown.message : String(thrown));
     }
-  }, [background, board, clearError, measure, scale, selection, target, theme]);
+  }, [
+    background,
+    board,
+    clearError,
+    exportTheme,
+    measure,
+    scale,
+    selection,
+    target,
+  ]);
 
   const togglePng = useCallback(() => {
     setPng((open) => !open);
@@ -144,6 +169,54 @@ export const FileControls = () => {
       }
     },
     [open]
+  );
+
+  const place = useCallback(
+    async (file: File) => {
+      try {
+        const imported = await importImage(file);
+        const size = fitImageSize(
+          { height: imported.height, width: imported.width },
+          IMAGE_PLACEMENT_SIDE
+        );
+        const bounds = boardBounds(board);
+        const box =
+          bounds === null
+            ? {
+                h: size.height,
+                w: size.width,
+                x: -size.width / 2,
+                y: -size.height / 2,
+              }
+            : {
+                h: size.height,
+                w: size.width,
+                x: bounds.x + (bounds.w - size.width) / 2,
+                y: bounds.y + bounds.h + 48,
+              };
+        editor.placeImage({
+          box,
+          file: imported.file,
+          fileId: imported.fileId,
+        });
+        setError(null);
+        clearError();
+      } catch (thrown) {
+        setError(thrown instanceof Error ? thrown.message : String(thrown));
+      }
+    },
+    [board, clearError, editor]
+  );
+
+  const pickImage = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (file !== undefined) {
+        await place(file);
+      }
+    },
+    [place]
   );
 
   return (
@@ -164,6 +237,14 @@ export const FileControls = () => {
           variant='ghost'
         >
           Save file
+        </Button>
+        <Button
+          data-testid='place-image'
+          onClick={chooseImage}
+          size='sm'
+          variant='ghost'
+        >
+          Image
         </Button>
         <Button
           data-testid='export-svg'
@@ -213,13 +294,14 @@ export const FileControls = () => {
             label='Theme'
             onPick={setTheme}
             options={THEME_OPTIONS}
-            selected={theme}
+            selected={exportTheme}
             testId='png-theme'
           />
           <Button data-testid='download-png' onClick={exportPng} size='sm'>
             Download PNG
           </Button>
           <Button
+            aria-keyshortcuts={keyshortcutsFor({ kind: 'copy-png' }, platform)}
             data-testid='copy-png'
             disabled={selection.length === 0}
             onClick={copyPng}
@@ -236,6 +318,14 @@ export const FileControls = () => {
         data-testid='file-input'
         onChange={pick}
         ref={input}
+        type='file'
+      />
+      <input
+        accept='image/png,image/jpeg'
+        className='hidden'
+        data-testid='image-input'
+        onChange={pickImage}
+        ref={imageInput}
         type='file'
       />
       {shownError === null ? null : (

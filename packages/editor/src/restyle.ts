@@ -1,18 +1,19 @@
-import type { Board, Style, TextStyle } from '@kiyora/model';
+import type { Board, FrameVariant, Style, TextStyle } from '@kiyora/model';
 import { DEFAULT_TEXT_STYLE } from '@kiyora/model';
 import { type Selection, selectedShapes } from './selection';
 import { markSourceStale } from './source-state';
 
 /**
  * One change the inspector makes: part of a shape's style, the opacity that
- * lives on the shape rather than in the palette, or part of its label's text
- * style. Text is not the palette, so a text change never becomes the style the
- * next shape wears.
+ * lives on the shape rather than in the palette, part of its label's text
+ * style, or the variant a selected frame wears. Text and a variant are not the
+ * palette, so neither becomes the style the next shape wears.
  */
 export type Restyle = {
   opacity?: number;
   style?: Partial<Style>;
   textStyle?: Partial<TextStyle>;
+  variant?: FrameVariant;
 };
 
 /** The board after a restyle, and the style the next shape will wear, if any. */
@@ -49,8 +50,12 @@ export const restyledBoard = (
     if (!selected.has(shape.id)) {
       return shape;
     }
+    const base =
+      change.variant !== undefined && shape.kind === 'frame'
+        ? { ...shape, variant: change.variant }
+        : shape;
     const restyled = {
-      ...shape,
+      ...base,
       ...(change.opacity === undefined ? {} : { opacity: change.opacity }),
       ...(change.textStyle === undefined
         ? {}

@@ -1,68 +1,13 @@
-import { CORNERS, FRAMES, HEADS, SHAPES } from '@kiyora/dsl';
+import { FRAMES, HEADS, SHAPES } from '@kiyora/dsl';
 import { z } from 'zod';
-import {
-  fillStyleSchema,
-  foregroundSchema,
-  paletteColourSchema,
-  themeSchema,
-} from '../paint/palette';
-import { textStyleSchema } from '../text/style';
+import { themeSchema } from '../paint/palette';
+import { chartSchema } from './chart';
+import { filesSchema } from './image';
+import { shapeBaseSchema } from './shape-base';
+import { tableSchema } from './table';
 
 /** The board's schema version. A migration bumps it. */
-export const SCHEMA_VERSION = 2;
-
-/** How a shape's corners are drawn, taken from the grammar. */
-export const cornerSchema = z.enum(CORNERS);
-
-/** How a shape's corners are drawn. */
-export type Corner = z.infer<typeof cornerSchema>;
-
-/**
- * The stroke patterns a shape can wear. The grammar names the dashed and dotted
- * connector routes but no shape stroke, so the palette of patterns lives here —
- * a token, not a dash array, so only the pattern is authored and the walker
- * derives the numbers a renderer draws.
- */
-export const DASHES = ['solid', 'dashed', 'dotted'] as const;
-
-/** A stroke pattern: an unbroken, dashed or dotted outline. */
-export const dashSchema = z.enum(DASHES);
-
-/** A stroke pattern. */
-export type Dash = z.infer<typeof dashSchema>;
-
-/**
- * How a shape's outline and interior are styled, resolved from the palette.
- * Corner and dash default, so a board saved before they existed still reads:
- * the version 0 to 1 migration only has to stamp the version marker.
- */
-export const styleSchema = z.object({
-  corner: cornerSchema.default('sharp'),
-  dash: dashSchema.default('solid'),
-  fill: paletteColourSchema,
-  fillStyle: fillStyleSchema,
-  stroke: z.union([paletteColourSchema, foregroundSchema]),
-  strokeWidth: z.number().nonnegative(),
-});
-
-/** How a shape's outline and interior are styled. */
-export type Style = z.infer<typeof styleSchema>;
-
-/** What a shape is, and where it sits, whatever it draws. */
-export const shapeBaseSchema = z.object({
-  h: z.number(),
-  id: z.string().min(1),
-  locked: z.boolean(),
-  opacity: z.number().min(0).max(1),
-  parentId: z.string().min(1).nullable(),
-  rotation: z.number(),
-  style: styleSchema,
-  text: z.string().optional(),
-  textStyle: textStyleSchema.optional(),
-  w: z.number(),
-  x: z.number(),
-  y: z.number(),
-});
+export const SCHEMA_VERSION = 3;
 
 /**
  * The figure kinds: every shape the grammar names, less the ones a dedicated
@@ -260,6 +205,81 @@ export const groupSchema = shapeBaseSchema.extend({
 /** A group: shapes that move together, with no ink of their own. */
 export type GroupShape = z.infer<typeof groupSchema>;
 
+/**
+ * An icon: a shape that draws one figure from the shipped icon dataset. It
+ * carries only the icon's name, never its paths — the paths are generated,
+ * committed and fetched on demand, so a board stays small and the dataset stays
+ * out of the first paint. A name this build does not know paints its authored
+ * box rather than throwing, so an older or newer file still opens.
+ */
+export const iconSchema = shapeBaseSchema.extend({
+  kind: z.literal('icon'),
+  name: z.string().min(1),
+});
+
+/** An icon: a named figure from the shipped dataset, drawn in its box. */
+export type IconShape = z.infer<typeof iconSchema>;
+
+/**
+ * An image: a raster the board file carries, drawn in its authored box. It names
+ * one entry in the board's `files` map rather than copying the bytes, so placing
+ * the same picture twice costs one payload and resizing it costs nothing. A
+ * `fileId` this build cannot find paints the authored box, so a file opened
+ * without its payload is a legible placeholder rather than an empty hole.
+ */
+export const imageSchema = shapeBaseSchema.extend({
+  fileId: z.string().min(1),
+  kind: z.literal('image'),
+});
+
+/** An image: a raster from the board's files, drawn in its box. */
+export type ImageShape = z.infer<typeof imageSchema>;
+
+/**
+ * The two ways freehand ink is drawn: a pen lays opaque ink, and a highlighter
+ * lays a wider translucent band that paints behind its siblings so the words it
+ * crosses stay legible.
+ */
+export const INK_MODES = ['pen', 'highlighter'] as const;
+
+/** How freehand ink is drawn. */
+export const inkModeSchema = z.enum(INK_MODES);
+
+/** How freehand ink is drawn. */
+export type InkMode = z.infer<typeof inkModeSchema>;
+
+/**
+ * One point on an ink stroke, as a fraction of the shape's authored box, with
+ * the pressure the device reported while it was drawn. Pressure is absent when
+ * the device reports none — a mouse always reports half a press, which is not a
+ * pressure — so an even stroke is stored honestly rather than invented from a
+ * constant. Fractions keep the stroke attached to its box through a move, a
+ * resize and a rotation, exactly as they would any other authored geometry.
+ */
+export const inkPointSchema = z.object({
+  pressure: z.number().min(0).max(1).optional(),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+});
+
+/** One point on an ink stroke. */
+export type InkPoint = z.infer<typeof inkPointSchema>;
+
+/**
+ * Freehand ink: a path of authored points with a colour, a width and a mode.
+ * The box is derived from the points when the stroke is made and scales with
+ * them afterwards, so the shape stays one thing a person can select, move,
+ * resize, lock and export.
+ */
+export const inkSchema = shapeBaseSchema.extend({
+  kind: z.literal('ink'),
+  mode: inkModeSchema,
+  points: z.array(inkPointSchema).min(1),
+});
+
+/** Freehand ink: a pen stroke or a highlighter band. */
+export type InkShape = z.infer<typeof inkSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
@@ -268,6 +288,11 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   connectorSchema,
   stickySchema,
   groupSchema,
+  iconSchema,
+  imageSchema,
+  inkSchema,
+  tableSchema,
+  chartSchema,
 ]);
 
 /** One item on the board. */
@@ -312,6 +337,7 @@ export const boardSchema = z.object({
   camera: cameraSchema,
   createdAt: z.number().int().nonnegative(),
   deck: z.array(slideSchema),
+  files: filesSchema.default({}),
   id: z.string().min(1),
   schemaVersion: z.literal(SCHEMA_VERSION),
   settings: settingsSchema,

@@ -1,6 +1,6 @@
 # Architecture
 
-Kiyora is an offline whiteboard: one board, in this browser, drawn by hand, with a diagram-code panel arriving in v1.5. This document is the map to read before changing code — the package boundaries, the document model, the render seam, and the invariants every change must keep.
+Kiyora is an offline whiteboard: one board, in this browser, drawn by hand, with a diagram-code panel. This document is the map to read before changing code — the package boundaries, the document model, the render seam, and the invariants every change must keep.
 
 ## Why the app runs a server
 
@@ -34,7 +34,7 @@ dsl  ←  model  ←  editor  ←  apps/web
 
 ```ts
 type Board = {
-  schemaVersion: number                             // migrations bump this
+  schemaVersion: 3                                   // migrations bump this
   id: string
   title: string
   createdAt: number
@@ -42,6 +42,8 @@ type Board = {
   camera: { x: number; y: number; zoom: number }    // snapshot autosave writes from the view
   settings: { theme: 'light' | 'dark' }
   shapes: Shape[]                                   // array index is paint order
+  files: Record<string, { mime: string; dataURL: string; bytes: number }>
+                                                    // rasters, keyed by content hash
   deck: Slide[]                                     // empty when there are no slides
 }
 
@@ -58,13 +60,20 @@ type ShapeBase = {
 }
 
 type Shape =
-  | ShapeBase & { kind: FigureKind }                                     // ~40 figures
+  | ShapeBase & { kind: FigureKind }                                     // 56 figures
   | ShapeBase & { kind: 'text' }
   | ShapeBase & { kind: 'sticky' }
   | ShapeBase & { kind: 'frame'; variant: FrameVariant; clip: boolean }
   | ShapeBase & { kind: 'group' }                                        // box derived
   | ShapeBase & { kind: 'connector'; from: Endpoint; to: Endpoint;
                   route: Route; start: Head; end: Head }
+  | ShapeBase & { kind: 'icon'; name: string }                           // paths from the dataset
+  | ShapeBase & { kind: 'image'; fileId: string }                        // bytes in `files`
+  | ShapeBase & { kind: 'ink'; mode: InkMode; points: InkPoint[] }       // freehand stroke
+  | ShapeBase & { kind: 'data-table'; columns: number; headerRow: boolean;
+                  rows: string[][] }                                     // cells are authored text
+  | ShapeBase & { kind: 'chart'; variant: ChartKind; series: number[];
+                  labels: string[]; palette: PaletteColour[] }           // authored numbers
 ```
 
 Containment is flat: a frame or a group is a shape, and its members name it through `parentId`. Reordering, z-order and reparenting are all the same operation on one array.
@@ -89,14 +98,16 @@ type PaintPath = {
   d: string
   fill?: string; stroke?: string; strokeWidth?: number
   dash?: number[]
+  transform?: string   // an icon's paths are authored in the library's square
 }
 
 type Paint = {
   paths: PaintPath[]
-  text?: PaintText[]     // absent when the shape carries no label
+  image?: PaintImage    // the raster an image shape draws
+  text?: PaintText[]    // absent when the shape carries no label
   children: Paint[]
-  clip?: string          // the box a frame clips its members to
-  shapeId?: string       // the shape this node came from; the board's node carries none
+  clip?: string         // the box a frame clips its members to
+  shapeId?: string      // the shape this node came from; the board's node carries none
 }
 
 function paintShape(shape: Shape, ctx: PaintContext): Paint
@@ -108,7 +119,7 @@ function paintBoard(board: Board, ctx: PaintContext): Paint
 
 Neither the app nor `editor` computes geometry, colour or text position.
 
-`PaintContext` carries only what `model` cannot obtain by itself: the theme and the **measurer**. A connector cannot be painted from itself — its path is resolved from the shapes its ends name — so `paintBoard` is the way to paint one.
+`PaintContext` carries only what `model` cannot obtain by itself: the board's `theme`; the `measure` function text needs; the `view` a live canvas shows, absent for an export; the `files` an image names; and the `icons` an icon names. A missing payload degrades to the authored box rather than an empty hole, and a missing view paints the whole board. A connector cannot be painted from itself — its path is resolved from the shapes its ends name — so `paintBoard` is the way to paint one.
 
 ### The measurer
 
@@ -138,10 +149,11 @@ One gesture produces exactly one history entry.
 
 ### The keymap
 
-One keymap declares every binding, and the in-app shortcut reference is generated from it, so the dialog and the handler cannot disagree. Two things live on a binding besides its key and command:
+One keymap declares every binding, and the in-app shortcut reference is generated from it, so the dialog and the handler cannot disagree. Three things live on a binding besides its key and command:
 
-- A **mode** — `edit` or `present`. The two share one keymap, so a key pressed while presenting cannot run an editing command behind the slide.
+- A **mode** — `edit`, `present` or `navigate`. The three share one keymap, so a key pressed while presenting cannot run an editing command behind the slide, and an arrow pressed while navigating steps the selection spatially instead of nudging it.
 - A **modifier rule** per modifier — `required`, `forbidden` or `ignored`. Two bindings on one key differ by declaring the modifier, not by spelling the combination into the key.
+- A **focus** rule — `canvas` when the binding only applies while the board holds focus, so Enter on a button is still a button press.
 
 Tests fail if a binding has no row in the reference, if a row names a command the keymap cannot key, or if two bindings claim one chord in one mode.
 
@@ -171,7 +183,8 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | Concern | Home |
 | --- | --- |
 | Schema, shape union, migrations, serialization | `packages/model/src/board/` |
-| Figure geometry, palette, style resolution | `packages/model/src/paint/` |
+| Figure, frame, image, ink, table and chart paint; palette, style resolution | `packages/model/src/paint/` |
+| The icon dataset, its lookup and the square every icon is authored in | `packages/model/src/icons/`, `scripts/icons.ts` |
 | Layered layout from a diagram's direction | `packages/model/src/layout/` |
 | SVG projection | `packages/model/src/projection/` |
 | SVG export: document, byte cap, safety | `packages/model/src/export/` |

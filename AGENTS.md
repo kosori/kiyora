@@ -22,7 +22,7 @@ An offline whiteboard. Draw by hand, or type a diagram as code.
 
 ## Gates
 
-Run all four before you call work done. The first two also gate a commit's worth of confidence; the last two are slow and can be run once per task.
+Run all six before you call work done. The first two also gate a commit's worth of confidence; the end-to-end run is the slow one, so it can be run once per task.
 
 ```sh
 bun run check            # lint and format
@@ -30,6 +30,7 @@ bun run check-types      # types across every workspace
 bun run test             # unit, Vitest
 bun run test:e2e         # end to end, Playwright
 bun run check-budgets    # file size budget
+bun run check-icons      # the committed icon dataset matches its generator
 ```
 
 The end-to-end run uses port `4319` — override it with `E2E_PORT` when another checkout holds that port — and never reuses a running server, so it can only test this app.

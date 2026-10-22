@@ -1,8 +1,10 @@
 'use client';
 
+import { keyshortcutsFor } from '@kiyora/editor';
 import { useEditor, useHistory } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
+import { usePlatform } from './use-platform';
 
 /**
  * Undo and redo. Each button's enabled state is read from the history's own
@@ -12,6 +14,7 @@ import { Button } from '~/components/ui/button';
 export const HistoryControls = () => {
   const editor = useEditor();
   const history = useHistory();
+  const platform = usePlatform();
   const undo = useCallback(() => editor.undo(), [editor]);
   const redo = useCallback(() => editor.redo(), [editor]);
 
@@ -22,6 +25,7 @@ export const HistoryControls = () => {
       role='toolbar'
     >
       <Button
+        aria-keyshortcuts={keyshortcutsFor({ kind: 'undo' }, platform)}
         aria-label='Undo'
         data-testid='undo'
         disabled={!history.canUndo}
@@ -32,6 +36,7 @@ export const HistoryControls = () => {
         Undo
       </Button>
       <Button
+        aria-keyshortcuts={keyshortcutsFor({ kind: 'redo' }, platform)}
         aria-label='Redo'
         data-testid='redo'
         disabled={!history.canRedo}
