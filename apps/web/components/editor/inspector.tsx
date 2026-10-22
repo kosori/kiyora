@@ -3,6 +3,7 @@
 import { arrangementOf } from '@kiyora/editor';
 import { useBoard, useSelection } from '@kiyora/editor/react';
 import { ArrangeControls } from './arrange-controls';
+import { BoardTheme } from './board-theme';
 import { ConnectorStyle } from './connector-style';
 import { LockControl } from './lock-control';
 import { SelectionStyle } from './selection-style';
@@ -52,6 +53,7 @@ export const Inspector = () => {
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>
       )}
+      <BoardTheme />
     </section>
   );
 };

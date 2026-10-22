@@ -255,3 +255,31 @@ describe('restyling the selection', () => {
     });
   });
 });
+
+describe('the board theme', () => {
+  it('sets the canvas as one history entry, so one undo puts the old one back', () => {
+    const editor = createEditor(board('Theme'));
+
+    editor.setTheme('dark');
+
+    expect(editor.getBoard().settings.theme).toBe('dark');
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: true });
+
+    editor.undo();
+
+    expect(editor.getBoard().settings.theme).toBe('light');
+  });
+
+  it('publishes nothing, and records no history, when the board already wears it', () => {
+    const editor = createEditor(board('Theme'));
+    const before = editor.getBoard();
+    const seen: Board[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard()));
+
+    editor.setTheme('light');
+
+    expect(editor.getBoard()).toBe(before);
+    expect(seen).toEqual([]);
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
+  });
+});
