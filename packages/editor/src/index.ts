@@ -26,7 +26,9 @@ export {
   MIN_ZOOM,
   type Point,
   panBy,
+  REVEAL_MARGIN,
   resetCamera,
+  revealCamera,
   stepZoom,
   toScreen,
   toWorld,
@@ -158,6 +160,11 @@ export {
   type ModifierSource,
   NO_GESTURE_MODIFIERS,
 } from './modifiers';
+export {
+  NAVIGATION_DIRECTIONS,
+  type NavigationDirection,
+  nextShape,
+} from './navigation';
 export {
   AUTOSAVE_DELAY,
   type Autosave,

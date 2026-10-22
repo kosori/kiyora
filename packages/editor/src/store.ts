@@ -5,6 +5,7 @@ import { createDeckCommands } from './deck-commands';
 import { createEditCommands } from './edit-commands';
 import { createGestures } from './gestures';
 import { createLabelEdit } from './label-edit';
+import { nextShape } from './navigation';
 import { createPresent } from './present';
 import { createSourceCommands } from './source-commands';
 import type { Editor } from './state';
@@ -78,6 +79,12 @@ export const createEditor = (board: Board): Editor => {
     getView: core.view,
     groupSelection: commands.groupSelection,
     moveSlide: deck.moveSlide,
+    navigate: (direction) => {
+      const next = nextShape(core.board(), core.selection(), direction);
+      if (next !== null) {
+        core.select([next.id]);
+      }
+    },
     nextSlide: present.next,
     nudge: edits.nudge,
     paste: commands.paste,
@@ -102,6 +109,9 @@ export const createEditor = (board: Board): Editor => {
       core.setView({ ...core.view(), icon: name, tool: 'icon' });
     },
     setLocked: edits.setLocked,
+    setNavigating: (navigating) => {
+      core.setView({ ...core.view(), navigating });
+    },
     setSelection: core.select,
     setSlideNotes: deck.setSlideNotes,
     setStyle: core.setStyle,

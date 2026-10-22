@@ -1,6 +1,7 @@
 import { CLIPBOARD_BINDINGS, CLIPBOARD_ROWS } from './clipboard-keys';
 import type { Command } from './commands';
 import { EDIT_BINDINGS, EDIT_ROWS, HISTORY_ROWS } from './edit-keys';
+import { NAVIGATION_BINDINGS, NAVIGATION_ROWS } from './navigation-keys';
 import { PRESENT_BINDINGS, PRESENT_ROWS } from './present-keys';
 
 /**
@@ -11,11 +12,14 @@ import { PRESENT_BINDINGS, PRESENT_ROWS } from './present-keys';
 export type ModifierRule = 'required' | 'forbidden' | 'ignored';
 
 /**
- * When a binding applies: while editing the board, or while presenting it. The
- * two share one keymap, so a key pressed while presenting cannot run an editing
- * command behind the slide, and the reference is generated from both.
+ * When a binding applies: while editing the board, while presenting it, or
+ * while the canvas is in shape-navigation mode. The modes share one keymap, so
+ * a key pressed while presenting cannot run an editing command behind the
+ * slide, and an arrow pressed while navigating steps the selection instead of
+ * nudging it, without either mode needing a second listener. The reference is
+ * generated from all three.
  */
-export const KEY_MODES = ['edit', 'present'] as const;
+export const KEY_MODES = ['edit', 'present', 'navigate'] as const;
 
 /** When a binding applies. */
 export type KeyMode = (typeof KEY_MODES)[number];
@@ -50,6 +54,12 @@ export const rulesFor = (binding: Binding): Required<Modifiers> => ({
 export type Binding = {
   command: Command;
   key: string;
+  /**
+   * Where focus must be for the binding to apply. Omitted means anywhere on the
+   * page; `canvas` means the board itself, so Enter is still a button press on
+   * a control and only enters shape navigation from the canvas.
+   */
+  focus?: 'canvas';
   /** When the binding applies. Omitted means editing, so the edit keymap stays as it was. */
   mode?: KeyMode;
   modifiers?: Modifiers;
@@ -92,6 +102,7 @@ export const keyToken = (key: string): string => {
  */
 export const KEYMAP: readonly Binding[] = [
   ...EDIT_BINDINGS,
+  ...NAVIGATION_BINDINGS,
   ...CLIPBOARD_BINDINGS,
   ...PRESENT_BINDINGS,
 ];
@@ -110,6 +121,7 @@ export type ShortcutRow = {
  */
 export const SHORTCUT_ROWS: readonly ShortcutRow[] = [
   ...EDIT_ROWS,
+  ...NAVIGATION_ROWS,
   ...CLIPBOARD_ROWS,
   ...HISTORY_ROWS,
   ...PRESENT_ROWS,
