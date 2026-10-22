@@ -37,7 +37,9 @@ export const gestureOf = (drag: Drag | null): Gesture =>
               kind: 'resize',
               ...(drag.refusal === undefined ? {} : { refusal: drag.refusal }),
             }
-          : { kind: 'rotate' };
+          : drag.kind === 'ink'
+            ? { kind: 'ink' }
+            : { kind: 'rotate' };
 
 /** The move drag `point` opens over the selection's subtree, or `null` when it holds nothing. */
 export const moveDrag = (

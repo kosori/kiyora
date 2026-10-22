@@ -6,7 +6,8 @@ import type {
   Shape,
 } from '../board/schema';
 import { formatNumber } from '../format';
-import { centreOf, type Point, shapeBounds, turn } from './figures';
+import { centreOf, shapeBounds } from './figures';
+import { type Point, turn } from './turn';
 
 /**
  * Where a connector's ends attach: the anchor an endpoint names, the one the

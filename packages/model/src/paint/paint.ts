@@ -22,6 +22,7 @@ import {
   type FrameChromePath,
   type FrameChromeRole,
 } from './frame-geometry';
+import { highlightersFirst, paintInk } from './ink';
 import { FILL_ALPHA, FOREGROUND, paintColour, type Theme } from './palette';
 
 /** One path a renderer draws, in board coordinates. */
@@ -336,7 +337,9 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
             ? { children: [], paths: [] }
             : shape.kind === 'icon'
               ? paintIcon(shape, context)
-              : paintFigure(shape, context);
+              : shape.kind === 'ink'
+                ? paintInk(shape, context)
+                : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {
@@ -382,5 +385,5 @@ export const paintBoard = (board: Board, context: PaintContext): Paint => {
     }
   }
 
-  return { children, paths: [] };
+  return highlightersFirst({ children, paths: [] }, board.shapes);
 };

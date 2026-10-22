@@ -1,6 +1,8 @@
 import type { FigureShape, Shape } from '../board/schema';
 import { formatNumber } from '../format';
-import { centreOf, type Point, turn } from './figures';
+import { centreOf } from './figures';
+import type { Point } from './turn';
+import { turn } from './turn';
 
 /**
  * The authored box every path is mapped onto. A figure draws on its own box; a

@@ -41,7 +41,14 @@ export {
   type Head,
   headSchema,
   type IconShape,
+  INK_MODES,
+  type InkMode,
+  type InkPoint,
+  type InkShape,
   iconSchema,
+  inkModeSchema,
+  inkPointSchema,
+  inkSchema,
   ROUTES,
   type Route,
   routeSchema,
@@ -104,6 +111,22 @@ export {
 } from './file/board-file';
 export { ICON_VIEWBOX, type IconSet } from './icons/icon-set';
 export {
+  addStrokePoint,
+  INK_HIGHLIGHTER_ALPHA,
+  INK_HIGHLIGHTER_SCALE,
+  INK_MIN_STEP,
+  INK_REACH,
+  type InkStrokePoint,
+  inkAt,
+  inkFromStroke,
+  inkMargin,
+  inkPath,
+  inkPoints,
+  inkWidths,
+  MAX_INK_POINTS,
+  simplifyStroke,
+} from './ink/ink';
+export {
   DEFAULT_LAYOUT_DIRECTION,
   type GroupPlacement,
   LAYOUT_DIRECTIONS,
@@ -146,7 +169,6 @@ export {
   boundsOf,
   boundsOfShapes,
   shapeBounds,
-  turn,
 } from './paint/figures';
 export {
   type Paint,
@@ -180,6 +202,7 @@ export {
   NOTE_COLOUR,
   NOTE_STYLE,
 } from './paint/sticky';
+export { type Point, turn } from './paint/turn';
 export { projectBoard } from './projection/svg';
 export { CODE_FONT_FAMILY, fontFamilyOf, TEXT_FONT_FAMILY } from './text/font';
 export {

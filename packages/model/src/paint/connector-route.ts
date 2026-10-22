@@ -6,7 +6,8 @@ import {
   type ResolvedConnector,
   resolveConnector,
 } from './connector-end';
-import type { Bounds, Point } from './figures';
+import type { Bounds } from './figures';
+import type { Point } from './turn';
 
 /**
  * How a connector's line travels: the points a route passes through, its `d`,

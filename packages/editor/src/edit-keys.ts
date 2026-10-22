@@ -33,6 +33,8 @@ export const EDIT_BINDINGS: readonly Binding[] = [
   { command: { kind: 'tool', tool: 'connector' }, key: 'c' },
   { command: { kind: 'tool', tool: 'sticky' }, key: 's' },
   { command: { kind: 'tool', tool: 'frame' }, key: 'f' },
+  { command: { kind: 'tool', tool: 'ink' }, key: 'i' },
+  { command: { kind: 'tool', tool: 'highlighter' }, key: 'h' },
   {
     command: { action: 'pan', kind: 'camera' },
     key: 'space',
@@ -188,6 +190,8 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ kind: 'delete' }, 'Selection', 'Delete'),
   row({ kind: 'tool', tool: 'sticky' }, 'Tools', 'Sticky'),
   row({ kind: 'tool', tool: 'frame' }, 'Tools', 'Frame'),
+  row({ kind: 'tool', tool: 'ink' }, 'Tools', 'Ink'),
+  row({ kind: 'tool', tool: 'highlighter' }, 'Tools', 'Highlighter'),
   row({ action: 'pan', kind: 'camera' }, 'View', 'Pan (hold)'),
   row({ action: 'zoom-in', kind: 'camera' }, 'View', 'Zoom in'),
   row({ action: 'zoom-out', kind: 'camera' }, 'View', 'Zoom out'),
