@@ -7,7 +7,7 @@ import {
   visibleBounds,
 } from '@kiyora/editor';
 import { useBoard, useEditor } from '@kiyora/editor/react';
-import { paintBoard } from '@kiyora/model';
+import { CANVAS_ENTRY, paintBoard } from '@kiyora/model';
 import { cn } from 'cn';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
@@ -171,6 +171,12 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           xmlns='http://www.w3.org/2000/svg'
           {...surface.handlers}
         >
+          <rect
+            data-testid='canvas-fill'
+            fill={CANVAS_ENTRY[board.settings.theme]}
+            height='100%'
+            width='100%'
+          />
           <DotGrid camera={camera} theme={board.settings.theme} />
           <g
             className='select-none'
@@ -197,15 +203,17 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
             shapeId={editingId}
           />
         )}
-        <CameraControls
-          fit={surface.actions.fit}
-          reset={surface.actions.reset}
-          toggleTool={surface.actions.toggleTool}
-          tool={surface.view.tool}
-          zoom={camera.zoom}
-          zoomIn={surface.actions.zoomIn}
-          zoomOut={surface.actions.zoomOut}
-        />
+        {surface.view.zen ? null : (
+          <CameraControls
+            fit={surface.actions.fit}
+            reset={surface.actions.reset}
+            toggleTool={surface.actions.toggleTool}
+            tool={surface.view.tool}
+            zoom={camera.zoom}
+            zoomIn={surface.actions.zoomIn}
+            zoomOut={surface.actions.zoomOut}
+          />
+        )}
       </div>
       <CommandPalette
         host={paletteHost}

@@ -6,6 +6,7 @@ import type {
   Shape,
   Style,
   TextStyle,
+  Theme,
 } from '@kiyora/model';
 import type { Alignment, DistributeAxis } from './align';
 import type { Point } from './camera';
@@ -41,6 +42,8 @@ export type View = {
    * becomes authored state once the gesture places a shape.
    */
   icon: string | null;
+  /** Whether the chrome is hidden, so the board is left alone on screen. */
+  zen: boolean;
 };
 
 /**
@@ -134,6 +137,12 @@ export type Editor = {
    * and choosing an icon is never a history entry.
    */
   setIcon: (name: string) => void;
+  /**
+   * Shows or hides the chrome, leaving the board alone on screen. Zen is a view
+   * setting: it wakes the view's subscribers, never the board's, so it writes
+   * nothing, costs no history entry and saves nothing. Escape leaves it.
+   */
+  setZen: (zen: boolean) => void;
   /** The style the next shape wears: the last used one, or the default. */
   getStyle: () => Style;
   /**
@@ -321,6 +330,12 @@ export type Editor = {
    * lock writes nothing. A locked shape still resists every transform.
    */
   setLocked: (locked: boolean) => void;
+  /**
+   * Sets the board's theme — the canvas it is authored and exported on. One
+   * board change, one history entry; a board already wearing the theme writes
+   * nothing. The chrome's appearance is not this: it never reaches the board.
+   */
+  setTheme: (theme: Theme) => void;
   /** Whether undo and redo are possible, as a value a control can read. */
   getHistory: () => HistoryState;
   /** Subscribes to history-availability changes. Returns the unsubscribe. */
