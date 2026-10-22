@@ -22,7 +22,7 @@ An offline whiteboard. Draw by hand, or type a diagram as code.
 
 ## Gates
 
-Run all four before you call work done. The first two also gate a commit's worth of confidence; the last two are slow and can be run once per task.
+Run all six before you call work done. The first two also gate a commit's worth of confidence; the end-to-end run is the slow one, so it can be run once per task.
 
 ```sh
 bun run check            # lint and format
