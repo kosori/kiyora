@@ -10,7 +10,9 @@ export type OrderMove = 'front' | 'back' | 'forward' | 'backward';
 /**
  * The parent each shape paints under, read the way the paint walker reads it: a
  * `parentId` that names a shape earlier in the array nests the member, and one
- * that names nothing before it leaves the shape at the top level.
+ * that names nothing before it leaves the shape at the top level. This is a
+ * paint-order question, not the authored chain `ancestorsOf` walks: a parent
+ * that sits later in the array names nothing yet, so it nests nothing.
  */
 const parentsOf = (board: Board): Map<string, string | null> => {
   const parents = new Map<string, string | null>();
