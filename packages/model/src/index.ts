@@ -85,6 +85,7 @@ export {
   shapeBaseSchema,
   styleSchema,
 } from './board/shape-base';
+export { type TableShape, tableSchema } from './board/table';
 export {
   type BoardIssue,
   BoardRejection,
@@ -221,6 +222,21 @@ export {
 } from './paint/sticky';
 export { type Point, turn } from './paint/turn';
 export { projectBoard } from './projection/svg';
+export {
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROWS,
+  DEFAULT_TABLE_SIZE,
+  emptyTableRows,
+  type TableCell,
+  type TableCellBox,
+  tableCellAt,
+  tableCellBox,
+  tableCellText,
+  tableWithCellText,
+  tableWithColumn,
+  tableWithHeader,
+  tableWithRow,
+} from './table/table';
 export { CODE_FONT_FAMILY, fontFamilyOf, TEXT_FONT_FAMILY } from './text/font';
 export {
   type PaintText,
@@ -228,7 +244,10 @@ export {
   TEXT_LINE_HEIGHT,
   TEXT_PADDING,
   type TextAnchor,
+  type TextBox,
+  type TextBoxOptions,
   textAnchorOf,
+  textInBox,
   textOf,
 } from './text/layout';
 export {

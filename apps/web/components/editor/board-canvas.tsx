@@ -3,6 +3,7 @@
 import {
   type CommandHost,
   isInkTool,
+  type Point,
   revealCamera,
   selectionBounds,
   shapeAt,
@@ -10,7 +11,13 @@ import {
   visibleBounds,
 } from '@kiyora/editor';
 import { useBoard, useEditor, useSelection } from '@kiyora/editor/react';
-import { CANVAS_ENTRY, paintBoard } from '@kiyora/model';
+import {
+  CANVAS_ENTRY,
+  paintBoard,
+  type Shape,
+  type TableCell,
+  tableCellAt,
+} from '@kiyora/model';
 import { cn } from 'cn';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
@@ -75,12 +82,24 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const editor = useEditor();
   const selection = useSelection();
   const surface = useCameraSurface();
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{
+    cell?: TableCell;
+    id: string;
+  } | null>(null);
   const [finding, setFinding] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [palette, setPalette] = useState(false);
-  const openEditor = useCallback((id: string) => setEditingId(id), []);
-  const closeEditor = useCallback(() => setEditingId(null), []);
+  const openEditor = useCallback((shape: Shape, point: Point) => {
+    if (shape.kind !== 'data-table') {
+      setEditing({ id: shape.id });
+      return;
+    }
+    const cell = tableCellAt(shape, point);
+    if (cell !== null) {
+      setEditing({ cell, id: shape.id });
+    }
+  }, []);
+  const closeEditor = useCallback(() => setEditing(null), []);
   const openFind = useCallback(() => setFinding(true), []);
   const closeFind = useCallback(() => setFinding(false), []);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -249,11 +268,12 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
         {finding ? (
           <FindBox onClose={closeFind} viewport={surface.viewport} />
         ) : null}
-        {editingId === null ? null : (
+        {editing === null ? null : (
           <TextEditor
+            cell={editing.cell}
             measure={measure}
             onDone={closeEditor}
-            shapeId={editingId}
+            shapeId={editing.id}
           />
         )}
         {surface.view.zen ? null : (

@@ -262,6 +262,52 @@ describe('an icon', () => {
   });
 });
 
+describe('a table', () => {
+  const tableShape = (overrides: Record<string, unknown> = {}) =>
+    shape({
+      columns: 2,
+      headerRow: true,
+      kind: 'data-table',
+      rows: [
+        ['Name', 'Role'],
+        ['Ada', 'Engineer'],
+      ],
+      ...overrides,
+    });
+
+  it('round-trips its rows, columns and header flag as authored state', () => {
+    const authored = tableShape();
+
+    expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+      authored
+    );
+  });
+
+  it('keeps a table with no rows, so a degenerate grid still opens', () => {
+    const authored = tableShape({ columns: 3, rows: [] });
+
+    expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+      authored
+    );
+  });
+
+  it('keeps a table of one cell', () => {
+    const authored = tableShape({ columns: 1, rows: [['Only']] });
+
+    expect(parseBoard(board({ shapes: [authored] })).shapes[0]).toEqual(
+      authored
+    );
+  });
+
+  it('rejects a column count that is not a whole number of columns', () => {
+    const issues = boardIssues(
+      board({ shapes: [tableShape({ columns: 1.5 })] })
+    );
+
+    expect(issues.map((issue) => issue.path)).toEqual(['shapes.0.columns']);
+  });
+});
+
 describe('a sticky', () => {
   const note = (overrides: Record<string, unknown> = {}) =>
     shape({ h: 160, kind: 'sticky', w: 160, ...overrides });

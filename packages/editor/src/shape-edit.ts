@@ -4,7 +4,13 @@ import {
   type Measurer,
   moveConnector,
   type Shape,
+  type TableCell,
+  type TableShape,
   type TextStyle,
+  tableWithCellText,
+  tableWithColumn,
+  tableWithHeader,
+  tableWithRow,
 } from '@kiyora/model';
 import { removeShapes } from './connectors';
 import { markSourceStale } from './source-state';
@@ -103,6 +109,47 @@ export const setShapeTextStyle = (
 
   return markSourceStale(board, next, [id]);
 };
+
+/**
+ * One table rewritten by `update`, returning the same board when the shape is
+ * not a table or the update changed nothing. A table edit is authored structure
+ * like a label, so it marks a generated frame stale exactly as a label does.
+ */
+const withTable = (
+  board: Board,
+  id: string,
+  update: (shape: TableShape) => TableShape
+): Board => {
+  const next = withShape(board, id, (shape) =>
+    shape.kind === 'data-table' ? update(shape) : shape
+  );
+
+  return markSourceStale(board, next, [id]);
+};
+
+/** Sets one table cell's text, returning the same board when nothing changed. */
+export const setShapeTableCell = (
+  board: Board,
+  id: string,
+  cell: TableCell,
+  text: string
+): Board =>
+  withTable(board, id, (shape) => tableWithCellText(shape, cell, text));
+
+/** Adds one empty row to a table, as authored state. */
+export const addShapeTableRow = (board: Board, id: string): Board =>
+  withTable(board, id, tableWithRow);
+
+/** Adds one empty column to a table, as authored state. */
+export const addShapeTableColumn = (board: Board, id: string): Board =>
+  withTable(board, id, tableWithColumn);
+
+/** Turns a table's header row on or off, as authored state. */
+export const setShapeTableHeader = (
+  board: Board,
+  id: string,
+  headerRow: boolean
+): Board => withTable(board, id, (shape) => tableWithHeader(shape, headerRow));
 
 /** The board with the named shapes moved by `dx`, `dy`, leaving the rest alone. */
 export const translateShapes = (

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { themeSchema } from '../paint/palette';
 import { filesSchema } from './image';
 import { shapeBaseSchema } from './shape-base';
+import { tableSchema } from './table';
 
 /** The board's schema version. A migration bumps it. */
 export const SCHEMA_VERSION = 3;
@@ -289,6 +290,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   iconSchema,
   imageSchema,
   inkSchema,
+  tableSchema,
 ]);
 
 /** One item on the board. */

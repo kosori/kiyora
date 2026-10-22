@@ -1,8 +1,12 @@
 import {
   type ConnectorShape,
   DEFAULT_STICKY_SIZE,
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROWS,
+  DEFAULT_TABLE_SIZE,
   DEFAULT_TEXT_STYLE,
   type Endpoint,
+  emptyTableRows,
   type FigureShape,
   type FrameShape,
   type IconShape,
@@ -13,6 +17,7 @@ import {
   type Shape,
   type StickyShape,
   type Style,
+  type TableShape,
   type TextShape,
 } from '@kiyora/model';
 import type { Point } from './camera';
@@ -170,6 +175,19 @@ export const shapeFromPlacement = (
       ...placementBox(placement),
       kind: 'icon',
       name: icon,
+    };
+
+    return shape;
+  }
+
+  if (kind === 'data-table') {
+    const shape: TableShape = {
+      ...base,
+      ...placementBox(placement, DEFAULT_TABLE_SIZE),
+      columns: DEFAULT_TABLE_COLUMNS,
+      headerRow: true,
+      kind: 'data-table',
+      rows: emptyTableRows(DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLUMNS),
     };
 
     return shape;
