@@ -120,6 +120,28 @@ export const wheelZoom = (
 ): Camera => zoomBy(camera, anchor, ZOOM_STEP ** (-deltaY / 100));
 
 /**
+ * Puts the middle of `content` in the middle of the viewport at `zoom`, so every
+ * camera that frames content centres it the same way.
+ */
+const centredCamera = (
+  content: Bounds,
+  viewport: Viewport,
+  zoom: number
+): Camera => {
+  const centre = viewCentre(viewport);
+  const middle = {
+    x: content.x + content.w / 2,
+    y: content.y + content.h / 2,
+  };
+
+  return {
+    x: centre.x - middle.x * zoom,
+    y: centre.y - middle.y * zoom,
+    zoom,
+  };
+};
+
+/**
  * Scales the contents up until the tighter axis fits, then centres them. An
  * empty board, or one whose contents have no size, rests at one hundred percent.
  */
@@ -142,17 +164,8 @@ export const fitCamera = (
       available.h / Math.max(content.h, 1)
     )
   );
-  const centre = viewCentre(viewport);
-  const middle = {
-    x: content.x + content.w / 2,
-    y: content.y + content.h / 2,
-  };
 
-  return {
-    x: centre.x - middle.x * zoom,
-    y: centre.y - middle.y * zoom,
-    zoom,
-  };
+  return centredCamera(content, viewport, zoom);
 };
 
 /** Comes back to one hundred percent, keeping whatever sat in the middle there. */
@@ -174,18 +187,8 @@ export const focusCamera = (
   if (content === null || viewport.w <= 0 || viewport.h <= 0) {
     return fitted;
   }
-  const zoom = Math.min(FOCUS_ZOOM, fitted.zoom);
-  const centre = viewCentre(viewport);
-  const middle = {
-    x: content.x + content.w / 2,
-    y: content.y + content.h / 2,
-  };
 
-  return {
-    x: centre.x - middle.x * zoom,
-    y: centre.y - middle.y * zoom,
-    zoom,
-  };
+  return centredCamera(content, viewport, Math.min(FOCUS_ZOOM, fitted.zoom));
 };
 
 /** The base step, doubled or halved, until its screen spacing is a legible band. */
