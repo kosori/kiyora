@@ -10,6 +10,7 @@ import {
   DISPATCHED_KINDS,
   KEY_MODES,
   KEYMAP,
+  keyshortcutsFor,
   matchBinding,
   resolveKey,
   SHORTCUT_ROWS,
@@ -185,6 +186,15 @@ describe('the keymap', () => {
     const row = shortcutReference().find((line) => line.label === 'Rectangle');
 
     expect(row?.keys).toEqual(['R']);
+  });
+
+  it('reads aria-keyshortcuts from the same keymap, so a control cannot advertise a dead chord', () => {
+    expect(keyshortcutsFor({ kind: 'tool', tool: 'rectangle' })).toBe('r');
+    expect(keyshortcutsFor({ kind: 'undo' })).toBe('Control+z');
+    expect(keyshortcutsFor({ kind: 'redo' })).toBe('Control+Shift+Z');
+    expect(keyshortcutsFor({ action: 'zoom-in', kind: 'camera' })).toBe('=');
+    expect(keyshortcutsFor({ kind: 'delete' })).toBe('Delete Backspace');
+    expect(keyshortcutsFor({ kind: 'tool', tool: 'hand' })).toBeUndefined();
   });
 
   it('lists the arrows the keymap declares, so a modifier binding adds no hand-written row', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { runCommand } from '@kiyora/editor';
+import { keyshortcutsFor, runCommand } from '@kiyora/editor';
 import { useEditor } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
@@ -22,6 +22,7 @@ export const LockControl = ({ locked }: Props) => {
         Lock
       </h3>
       <Button
+        aria-keyshortcuts={keyshortcutsFor({ kind: 'lock' })}
         aria-pressed={locked}
         className='w-full justify-start'
         data-testid='lock-toggle'

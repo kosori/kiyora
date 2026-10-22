@@ -1,6 +1,6 @@
 'use client';
 
-import { restoreBoard } from '@kiyora/editor';
+import { keyshortcutsFor, restoreBoard } from '@kiyora/editor';
 import {
   useBoard,
   useEditor,
@@ -220,6 +220,7 @@ export const FileControls = () => {
             Download PNG
           </Button>
           <Button
+            aria-keyshortcuts={keyshortcutsFor({ kind: 'copy-png' })}
             data-testid='copy-png'
             disabled={selection.length === 0}
             onClick={copyPng}

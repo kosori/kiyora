@@ -13,6 +13,7 @@ import { HistoryControls } from './history-controls';
 import { PresentOverlay } from './present-overlay';
 import { RightRail } from './right-rail';
 import { SaveIndicator } from './save-indicator';
+import { SelectionAnnouncer } from './selection-announcer';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
 import { useAutosave } from './use-autosave';
@@ -35,7 +36,14 @@ export const Editor = () => {
   return (
     <EditorProvider editor={editor}>
       <CopyPngProvider>
+        <a
+          className='sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:border focus:border-border focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md focus:ring-3 focus:ring-ring/50'
+          href='#board'
+        >
+          Skip to board
+        </a>
         <h1 className='sr-only'>Kiyora</h1>
+        <SelectionAnnouncer />
         <div className='flex h-full'>
           <PanelBoundary label='Tools'>
             <CrashProbe name='tools'>

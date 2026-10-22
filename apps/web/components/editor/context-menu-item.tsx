@@ -1,6 +1,10 @@
 'use client';
 
-import { commandId, type ContextMenuItem as MenuItem } from '@kiyora/editor';
+import {
+  commandId,
+  keyshortcutsFor,
+  type ContextMenuItem as MenuItem,
+} from '@kiyora/editor';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
 
@@ -15,6 +19,7 @@ export const ContextMenuItem = ({ item, onChoose }: Props) => {
 
   return (
     <Button
+      aria-keyshortcuts={keyshortcutsFor(item.command)}
       className='w-full justify-start font-normal'
       data-testid={`context-menu-${commandId(item.command)}`}
       disabled={item.disabled}

@@ -1,5 +1,6 @@
 'use client';
 
+import { keyshortcutsFor } from '@kiyora/editor';
 import { useBoard, useEditor } from '@kiyora/editor/react';
 import {
   DECK_TEMPLATES,
@@ -72,8 +73,7 @@ export const DeckPanel = () => {
   );
 
   return (
-    <aside
-      aria-label='Deck'
+    <section
       className='flex h-full flex-col gap-4 overflow-y-auto p-3'
       data-testid='deck'
     >
@@ -81,6 +81,7 @@ export const DeckPanel = () => {
         <div className='mb-2 flex items-center justify-between'>
           <h2 className='font-heading font-medium text-sm'>Slides</h2>
           <Button
+            aria-keyshortcuts={keyshortcutsFor({ kind: 'present' })}
             data-action='present'
             data-testid='present-button'
             disabled={playable.length === 0}
@@ -219,6 +220,6 @@ export const DeckPanel = () => {
           </div>
         </section>
       )}
-    </aside>
+    </section>
   );
 };

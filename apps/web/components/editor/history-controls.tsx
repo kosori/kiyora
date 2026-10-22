@@ -1,5 +1,6 @@
 'use client';
 
+import { keyshortcutsFor } from '@kiyora/editor';
 import { useEditor, useHistory } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
@@ -22,6 +23,7 @@ export const HistoryControls = () => {
       role='toolbar'
     >
       <Button
+        aria-keyshortcuts={keyshortcutsFor({ kind: 'undo' })}
         aria-label='Undo'
         data-testid='undo'
         disabled={!history.canUndo}
@@ -32,6 +34,7 @@ export const HistoryControls = () => {
         Undo
       </Button>
       <Button
+        aria-keyshortcuts={keyshortcutsFor({ kind: 'redo' })}
         aria-label='Redo'
         data-testid='redo'
         disabled={!history.canRedo}

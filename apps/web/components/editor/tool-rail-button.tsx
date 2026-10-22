@@ -1,5 +1,6 @@
 'use client';
 
+import { keyshortcutsFor } from '@kiyora/editor';
 import { useEditor, useTool } from '@kiyora/editor/react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
@@ -22,6 +23,7 @@ export const ToolRailButton = ({ entry }: Props) => {
 
   return (
     <Button
+      aria-keyshortcuts={keyshortcutsFor({ kind: 'tool', tool: value })}
       aria-label={label}
       aria-pressed={pressed}
       onClick={select}

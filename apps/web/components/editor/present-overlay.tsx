@@ -1,5 +1,6 @@
 'use client';
 
+import { keyshortcutsFor } from '@kiyora/editor';
 import { useBoard, useEditor, usePresent } from '@kiyora/editor/react';
 import { paintBoard, presentedSlides } from '@kiyora/model';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -185,6 +186,7 @@ export const PresentOverlay = () => {
           {present.index + 1} / {slides.length}
         </span>
         <button
+          aria-keyshortcuts={keyshortcutsFor({ kind: 'present-exit' })}
           className='rounded border border-border px-2 py-1 text-sm'
           data-testid='present-exit'
           onClick={onExit}

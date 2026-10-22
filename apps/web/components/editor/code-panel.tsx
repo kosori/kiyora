@@ -180,8 +180,7 @@ export const CodePanel = () => {
   );
 
   return (
-    <aside
-      aria-label='Code'
+    <section
       className='flex h-full min-h-0 flex-col gap-2 overflow-y-auto p-3'
       data-testid='code'
     >
@@ -303,6 +302,6 @@ export const CodePanel = () => {
           </Button>
         </div>
       </dialog>
-    </aside>
+    </section>
   );
 };
