@@ -75,6 +75,7 @@ export const EDIT_BINDINGS: readonly Binding[] = [
     modifiers: { command: 'required', shift: 'required' },
   },
   { command: { kind: 'lock' }, key: 'l' },
+  { command: { kind: 'zen' }, key: '\\' },
   {
     command: { kind: 'bring-forward' },
     key: ']',
@@ -191,6 +192,7 @@ export const EDIT_ROWS: readonly ShortcutRow[] = [
   row({ action: 'zoom-in', kind: 'camera' }, 'View', 'Zoom in'),
   row({ action: 'zoom-out', kind: 'camera' }, 'View', 'Zoom out'),
   row({ kind: 'find' }, 'View', 'Find on board'),
+  row({ kind: 'zen' }, 'View', 'Zen mode'),
   {
     commands: nudgeCommands(false),
     group: 'Selection',

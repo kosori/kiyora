@@ -102,6 +102,7 @@ describe('the view', () => {
     expect(editor.getView()).toEqual({
       camera: { x: 12, y: -30, zoom: 0.5 },
       tool: 'select',
+      zen: false,
     });
   });
 
@@ -143,6 +144,24 @@ describe('the view', () => {
     expect(editor.getView().tool).toBe('hand');
     expect(editor.getBoard()).toBe(before);
     expect(boards).toEqual([]);
+  });
+
+  it('hides the chrome without touching the board, the history or a save', () => {
+    const editor = createEditor(board('First'));
+    const before = editor.getBoard();
+    const history = editor.getHistory();
+    const boards: string[] = [];
+    const views: string[] = [];
+    editor.subscribe(() => boards.push('board'));
+    editor.subscribeView(() => views.push('view'));
+
+    editor.setZen(true);
+
+    expect(editor.getView().zen).toBe(true);
+    expect(editor.getBoard()).toBe(before);
+    expect(editor.getHistory()).toEqual(history);
+    expect(boards).toEqual([]);
+    expect(views).toEqual(['view']);
   });
 
   it('leaves the view where it is when the board is replaced', () => {
