@@ -4,10 +4,13 @@ import type {
   Dash,
   FigureShape,
   FrameShape,
+  IconShape,
   Shape,
   StickyShape,
   Style,
 } from '../board/schema';
+import { formatNumber } from '../format';
+import { ICON_VIEWBOX, type IconSet } from '../icons/icon-set';
 import { type PaintText, textOf } from '../text/layout';
 import type { Measurer } from '../text/wrap';
 import { connectorInk, connectorLabel } from './connectors';
@@ -23,6 +26,12 @@ export type PaintPath = {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  /**
+   * How the path's own coordinates map onto the board. An icon is authored in
+   * its library's square and scaled into the box the author drew, so it carries
+   * the transform; every figure has its coordinates in board space already.
+   */
+  transform?: string;
 };
 
 /** The numbers a stroke pattern breaks an outline into; a solid stroke has none. */
@@ -62,6 +71,12 @@ export type Paint = {
  */
 export type PaintContext = {
   theme: Theme;
+  /**
+   * The icon paths a board's icon shapes name. The dataset is generated and
+   * loaded on demand, so the walker is handed it rather than importing it; a
+   * context without it still paints, degrading each icon to its authored box.
+   */
+  icons?: IconSet;
   measure?: Measurer;
   view?: Bounds;
 };
@@ -172,6 +187,44 @@ const paintConnector = (
 };
 
 /**
+ * Paints one icon: the dataset's path for its name, fitted into the authored
+ * box and turned with it. The fit is uniform, so an icon keeps its shape in a
+ * wide or tall box; the stroke and dash are divided by the same scale, so they
+ * still read in board units rather than growing with the icon. A name the
+ * dataset does not know paints the authored box instead, so an old or newer
+ * file opens as a legible placeholder rather than an empty hole.
+ */
+const paintIcon = (shape: IconShape, context: PaintContext): Paint => {
+  const paths = context.icons?.[shape.name];
+  const scale = Math.min(shape.w, shape.h) / ICON_VIEWBOX;
+
+  if (paths === undefined || scale <= 0) {
+    return { children: [], paths: paintBox(shape, context) };
+  }
+
+  const x = shape.x + (shape.w - ICON_VIEWBOX * scale) / 2;
+  const y = shape.y + (shape.h - ICON_VIEWBOX * scale) / 2;
+  const cx = shape.x + shape.w / 2;
+  const cy = shape.y + shape.h / 2;
+  const dash = DASH_PATTERN[shape.style.dash]?.map((value) => value / scale);
+  const transform = `rotate(${formatNumber(shape.rotation)} ${formatNumber(cx)} ${formatNumber(cy)}) translate(${formatNumber(x)} ${formatNumber(y)}) scale(${formatNumber(scale)})`;
+
+  return {
+    children: [],
+    paths: [
+      {
+        d: paths,
+        ...(dash === undefined ? {} : { dash }),
+        fill: 'none',
+        stroke: strokeOf(shape.style, context.theme, shape.opacity),
+        strokeWidth: shape.style.strokeWidth / scale,
+        transform,
+      },
+    ],
+  };
+};
+
+/**
  * The label a shape carries, in the foreground ink so its glyphs are never the
  * `none` that once made a Text tool invisible.
  */
@@ -208,7 +261,9 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
           ? paintGroup()
           : shape.kind === 'text'
             ? { children: [], paths: [] }
-            : paintFigure(shape, context);
+            : shape.kind === 'icon'
+              ? paintIcon(shape, context)
+              : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {

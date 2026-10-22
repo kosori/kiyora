@@ -18,9 +18,10 @@ export type Migration = {
 /**
  * One step that only owns the version it writes. The record's shape is
  * unchanged, so the marker is the whole migration: version 0 is the board
- * saved before the marker existed, and version 2 adds only an optional Source
- * on a frame and the group kind, neither of which needs a value stamped onto an
- * old board. The fixtures beside this file are the payloads on either side.
+ * saved before the marker existed, version 2 adds only an optional Source on a
+ * frame and the group kind, and version 3 adds only the icon kind — each
+ * additive, and none of them needs a value stamped onto an old board. The
+ * fixtures beside this file are the payloads on either side.
  */
 const stampVersion = (from: number): Migration => ({
   from,
@@ -39,6 +40,7 @@ const stampVersion = (from: number): Migration => ({
 export const MIGRATIONS: readonly Migration[] = [
   stampVersion(0),
   stampVersion(1),
+  stampVersion(2),
 ];
 
 /** What happened when a payload met the migration chain. */

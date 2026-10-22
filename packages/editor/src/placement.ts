@@ -5,6 +5,7 @@ import {
   type Endpoint,
   type FigureShape,
   type FrameShape,
+  type IconShape,
   NOTE_STYLE,
   nextId,
   type Shape,
@@ -78,7 +79,8 @@ export const shapeFromPlacement = (
   kind: Placeable,
   placement: Placement,
   style: Style,
-  existing: readonly Shape[]
+  existing: readonly Shape[],
+  icon?: string
 ): Shape => {
   const base = {
     id: nextShapeId(kind, existing),
@@ -143,6 +145,20 @@ export const shapeFromPlacement = (
     };
 
     return sticky;
+  }
+
+  if (kind === 'icon') {
+    if (icon === undefined) {
+      throw new Error('placing an icon needs the name it draws');
+    }
+    const shape: IconShape = {
+      ...base,
+      ...placementBox(placement),
+      kind: 'icon',
+      name: icon,
+    };
+
+    return shape;
   }
 
   const figure: FigureShape = {

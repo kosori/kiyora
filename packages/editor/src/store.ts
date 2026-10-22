@@ -95,6 +95,9 @@ export const createEditor = (board: Board): Editor => {
       core.setView({ ...core.view(), camera });
     },
     setConnector: edits.setConnector,
+    setIcon: (name) => {
+      core.setView({ ...core.view(), icon: name, tool: 'icon' });
+    },
     setLocked: edits.setLocked,
     setSelection: core.select,
     setSlideNotes: deck.setSlideNotes,
@@ -102,7 +105,7 @@ export const createEditor = (board: Board): Editor => {
     setText: label.setText,
     setTextStyle: label.setTextStyle,
     setTool: (tool) => {
-      core.setView({ ...core.view(), tool });
+      core.setView({ ...core.view(), icon: null, tool });
     },
     startPresent: present.start,
     stopPresent: present.stop,

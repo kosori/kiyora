@@ -25,6 +25,7 @@ import { SelectionFrame } from './selection-frame';
 import { TextEditor } from './text-editor';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
+import { useIconSet } from './use-icon-set';
 import { useShortcuts } from './use-shortcuts';
 
 type Props = {
@@ -78,6 +79,7 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const showPalette = useCallback(() => setPalette(true), []);
   const pointer = useBoardPointer(surface.hand, openEditor);
   const measure = useMemo(() => createTextMeasurer(), []);
+  const icons = useIconSet();
   const { copy: copyPng } = useCopyPng();
   const { camera } = surface.view;
 
@@ -143,11 +145,12 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
   const paint = useMemo(
     () =>
       paintBoard(board, {
+        icons,
         measure,
         theme: board.settings.theme,
         ...(view === null ? {} : { view }),
       }),
-    [board, measure, view]
+    [board, icons, measure, view]
   );
 
   return (

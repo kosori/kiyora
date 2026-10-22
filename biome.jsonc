@@ -9,12 +9,15 @@
     // packages/dsl/src is vendored (ADR-0005) and kept as it was from history,
     // so it is neither reformatted nor linted here.
     // `goldens` holds committed SVG artifacts, compared byte for byte; linting
-    // or reformatting them would break the comparison.
+    // or reformatting them would break the comparison. The icon dataset is
+    // generated output in the same position: `bun run icons` owns its bytes and
+    // `bun run check-icons` fails a hand edit.
     "includes": [
       "!!**/public",
       "!!**/node_modules",
       "!!**/.agents",
       "!!packages/dsl/src",
+      "!!packages/model/src/icons/dataset.ts",
       "!!**/goldens"
     ]
   },

@@ -35,6 +35,12 @@ import type { Tool } from './tools';
 export type View = {
   camera: Camera;
   tool: Tool;
+  /**
+   * The icon a pending icon tool will place. It lives beside the tool rather
+   * than in the document: choosing an icon arms the canvas, and the name only
+   * becomes authored state once the gesture places a shape.
+   */
+  icon: string | null;
 };
 
 /**
@@ -122,6 +128,12 @@ export type Editor = {
   setCamera: (camera: Camera) => void;
   /** Changes what the pointer does. The board's subscribers are untouched. */
   setTool: (tool: Tool) => void;
+  /**
+   * Arms the canvas to place one icon from the shipped dataset. The name lives
+   * in the view until a gesture places it, so nothing derived reaches the board
+   * and choosing an icon is never a history entry.
+   */
+  setIcon: (name: string) => void;
   /** The style the next shape wears: the last used one, or the default. */
   getStyle: () => Style;
   /**

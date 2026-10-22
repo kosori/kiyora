@@ -6,6 +6,7 @@ import { paintBoard, presentedSlides } from '@kiyora/model';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { PaintNode } from './paint-node';
+import { useIconSet } from './use-icon-set';
 import { usePlatform } from './use-platform';
 
 /** Seconds as `m:ss`, however long a talk runs. */
@@ -31,6 +32,7 @@ export const PresentOverlay = () => {
   const present = usePresent();
   const platform = usePlatform();
   const measure = useMemo(() => createTextMeasurer(), []);
+  const icons = useIconSet();
   const root = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<Element | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -46,11 +48,12 @@ export const PresentOverlay = () => {
       frame === undefined
         ? null
         : paintBoard(board, {
+            icons,
             measure,
             theme: board.settings.theme,
             view: frame,
           }),
-    [board, frame, measure]
+    [board, frame, icons, measure]
   );
 
   /**

@@ -94,8 +94,8 @@ export const createBoardCommands = ({
       core.publish(translateShapes(board, ids, dx, dy));
     },
     placeShape: (placement) => {
-      const { tool } = core.view();
-      if (!placesShape(tool)) {
+      const { icon, tool } = core.view();
+      if (!placesShape(tool) || (tool === 'icon' && icon === null)) {
         return null;
       }
       core.transactions.endNudgeRun();
@@ -104,10 +104,11 @@ export const createBoardCommands = ({
         tool,
         placement,
         core.style(),
-        before.shapes
+        before.shapes,
+        icon ?? undefined
       );
       core.adopt(addShape(before, shape));
-      core.setView({ ...core.view(), tool: 'select' });
+      core.setView({ ...core.view(), icon: null, tool: 'select' });
       label.place(before, shape, core.board());
       return shape;
     },

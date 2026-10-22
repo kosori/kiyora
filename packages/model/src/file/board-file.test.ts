@@ -55,7 +55,7 @@ const board = (overrides: Record<string, unknown> = {}): Board =>
  * a copy of whatever the serializer happens to emit.
  */
 const FIXTURE =
-  '{"camera":{"x":0,"y":0,"zoom":1},"createdAt":1700000000000,"deck":[],"id":"board-1","schemaVersion":2,"settings":{"theme":"light"},"shapes":[{"h":80,"id":"shape-1","locked":false,"opacity":1,"parentId":null,"rotation":0,"style":{"corner":"sharp","dash":"solid","fill":"blue","fillStyle":"pastel","stroke":"ink","strokeWidth":2},"w":120,"x":0,"y":0,"kind":"rectangle"}],"title":"Untitled","updatedAt":1700000000000}';
+  '{"camera":{"x":0,"y":0,"zoom":1},"createdAt":1700000000000,"deck":[],"id":"board-1","schemaVersion":3,"settings":{"theme":"light"},"shapes":[{"h":80,"id":"shape-1","locked":false,"opacity":1,"parentId":null,"rotation":0,"style":{"corner":"sharp","dash":"solid","fill":"blue","fillStyle":"pastel","stroke":"ink","strokeWidth":2},"w":120,"x":0,"y":0,"kind":"rectangle"}],"title":"Untitled","updatedAt":1700000000000}';
 
 /** The committed board one version before this build, read as the bytes a save left. */
 const older = (): string =>
@@ -114,7 +114,7 @@ describe('opening a board saved before this build', () => {
   it('paints the lifted board exactly as the newest fixture paints', () => {
     const newest = JSON.parse(
       readFileSync(
-        new URL('../board/fixtures/v2.json', import.meta.url),
+        new URL('../board/fixtures/v3.json', import.meta.url),
         'utf8'
       )
     );

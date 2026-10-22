@@ -9,7 +9,7 @@ import {
 import { textStyleSchema } from '../text/style';
 
 /** The board's schema version. A migration bumps it. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** How a shape's corners are drawn, taken from the grammar. */
 export const cornerSchema = z.enum(CORNERS);
@@ -260,6 +260,21 @@ export const groupSchema = shapeBaseSchema.extend({
 /** A group: shapes that move together, with no ink of their own. */
 export type GroupShape = z.infer<typeof groupSchema>;
 
+/**
+ * An icon: a shape that draws one figure from the shipped icon dataset. It
+ * carries only the icon's name, never its paths — the paths are generated,
+ * committed and fetched on demand, so a board stays small and the dataset stays
+ * out of the first paint. A name this build does not know paints its authored
+ * box rather than throwing, so an older or newer file still opens.
+ */
+export const iconSchema = shapeBaseSchema.extend({
+  kind: z.literal('icon'),
+  name: z.string().min(1),
+});
+
+/** An icon: a named figure from the shipped dataset, drawn in its box. */
+export type IconShape = z.infer<typeof iconSchema>;
+
 /** One item on the board. Inside a frame or a group, `parentId` names it. */
 export const shapeSchema = z.discriminatedUnion('kind', [
   figureSchema,
@@ -268,6 +283,7 @@ export const shapeSchema = z.discriminatedUnion('kind', [
   connectorSchema,
   stickySchema,
   groupSchema,
+  iconSchema,
 ]);
 
 /** One item on the board. */

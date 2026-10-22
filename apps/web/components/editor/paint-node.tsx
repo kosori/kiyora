@@ -28,6 +28,7 @@ export const PaintNode = ({ paint }: Props): ReactNode => {
           stroke={path.stroke}
           strokeDasharray={path.dash?.join(' ')}
           strokeWidth={path.strokeWidth}
+          transform={path.transform}
         />
       ))}
       <TextLayer paint={paint} />

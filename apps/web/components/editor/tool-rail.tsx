@@ -11,6 +11,7 @@ import {
   IconTypography,
   type TablerIcon,
 } from '@tabler/icons-react';
+import { IconPicker } from './icon-picker';
 import { ShapePicker } from './shape-picker';
 import { ToolRailButton } from './tool-rail-button';
 
@@ -53,6 +54,7 @@ export const ToolRail = () => (
         <ToolRailButton entry={entry} key={entry.tool} />
       ))}
       <ShapePicker />
+      <IconPicker />
     </div>
   </nav>
 );
