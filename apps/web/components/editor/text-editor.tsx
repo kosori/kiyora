@@ -9,9 +9,12 @@ import {
   DEFAULT_TEXT_STYLE,
   fitSticky,
   type Measurer,
+  type TableCell,
   TEXT_FONT_FAMILY,
   TEXT_LINE_HEIGHT,
   TEXT_PADDING,
+  tableCellBox,
+  tableCellText,
 } from '@kiyora/model';
 import type {
   ChangeEvent as ReactChangeEvent,
@@ -21,6 +24,8 @@ import type {
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Props = {
+  /** The cell of a table shape being edited, when the overlay is over one. */
+  cell?: TableCell;
   /** The shape whose label is being edited. */
   shapeId: string;
   /** Called when the edit finishes, so the overlay can close. */
@@ -35,13 +40,24 @@ type Props = {
  * store's edit transaction when it appears, and lands the whole label in one
  * store change on blur, so finishing an edit is one undo — not one per keystroke.
  * Escape cancels the edit, restoring the words the shape had before it opened.
+ * A table cell uses the same surface and the same transaction; the cell's box
+ * comes from the grid the canvas paints, so the overlay sits on the words it
+ * edits.
  */
-export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
+export const TextEditor = ({ cell, shapeId, onDone, measure }: Props) => {
   const editor = useEditor();
   const board = useBoard();
   const { camera } = useView();
   const shape = board.shapes.find((item) => item.id === shapeId);
-  const [value, setValue] = useState(shape?.text ?? '');
+  const [value, setValue] = useState(() =>
+    shape === undefined
+      ? ''
+      : cell === undefined
+        ? (shape.text ?? '')
+        : shape.kind === 'data-table'
+          ? tableCellText(shape, cell.row, cell.column)
+          : ''
+  );
   const [caret, setCaret] = useState(value.length);
   const input = useRef<HTMLTextAreaElement>(null);
 
@@ -64,10 +80,14 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
    * words, so the note shrinks back too.
    */
   const commit = useCallback(() => {
-    editor.setText(shapeId, value, measure);
+    if (cell === undefined) {
+      editor.setText(shapeId, value, measure);
+    } else {
+      editor.setTableCell(shapeId, cell, value);
+    }
     editor.endTextEdit();
     onDone();
-  }, [editor, measure, onDone, shapeId, value]);
+  }, [cell, editor, measure, onDone, shapeId, value]);
 
   /** Escape: the board goes back to the words it had, and nothing is pushed. */
   const cancel = useCallback(() => {
@@ -107,10 +127,15 @@ export const TextEditor = ({ shapeId, onDone, measure }: Props) => {
 
   const style = shape.textStyle ?? DEFAULT_TEXT_STYLE;
   const label = shape.kind === 'connector';
+  const cellBox =
+    shape.kind === 'data-table' && cell !== undefined
+      ? tableCellBox(shape, cell.row, cell.column)
+      : null;
   const box =
-    shape.kind === 'sticky'
+    cellBox ??
+    (shape.kind === 'sticky'
       ? fitSticky({ ...shape, text: value }, measure)
-      : shape;
+      : shape);
   const at = label
     ? toScreen(camera, connectorLabelPoint(shape, board.shapes))
     : toScreen(camera, { x: box.x, y: box.y });

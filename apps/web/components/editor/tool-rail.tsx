@@ -10,6 +10,7 @@ import {
   IconPencil,
   IconPointer,
   IconRectangle,
+  IconTable,
   IconTypography,
   type TablerIcon,
 } from '@tabler/icons-react';
@@ -36,6 +37,7 @@ const RAIL: readonly RailEntry[] = [
   { icon: IconArrowUpRight, label: 'Connector', tool: 'connector' },
   { icon: IconNote, label: 'Sticky', tool: 'sticky' },
   { icon: IconFrame, label: 'Frame', tool: 'frame' },
+  { icon: IconTable, label: 'Table', tool: 'data-table' },
   { icon: IconPencil, label: 'Ink', tool: 'ink' },
   { icon: IconHighlight, label: 'Highlighter', tool: 'highlighter' },
 ];

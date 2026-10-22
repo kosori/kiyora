@@ -5,6 +5,7 @@ import type {
   Measurer,
   Shape,
   Style,
+  TableCell,
   TextStyle,
   Theme,
 } from '@kiyora/model';
@@ -81,6 +82,19 @@ export type Editor = {
    */
   setText: (id: string, text: string, measure?: Measurer) => void;
   setTextStyle: (id: string, textStyle: TextStyle) => void;
+  /**
+   * Replaces one table cell's text. A write between `beginTextEdit` and
+   * `endTextEdit` joins that edit, so typing a cell is one undo; outside one it
+   * is its own gesture. A shape that is not a table, or a cell it does not
+   * have, writes nothing.
+   */
+  setTableCell: (id: string, cell: TableCell, text: string) => void;
+  /** Appends one empty row to a table as one gesture. */
+  addTableRow: (id: string) => void;
+  /** Appends one empty column to a table as one gesture. */
+  addTableColumn: (id: string) => void;
+  /** Turns a table's header row on or off as one gesture. */
+  setTableHeader: (id: string, headerRow: boolean) => void;
   /**
    * Applies diagram source to the frame `frameId` names. The shapes its last
    * Source generated are replaced, the new ones join the frame, and the text is

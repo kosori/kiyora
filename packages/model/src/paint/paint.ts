@@ -32,6 +32,7 @@ import {
 import { type PaintImage, paintImage } from './image';
 import { highlightersFirst, paintInk } from './ink';
 import { FOREGROUND, paintColour, type Theme } from './palette';
+import { paintTable } from './table';
 
 /** One path a renderer draws, in board coordinates. */
 export type PaintPath = {
@@ -312,15 +313,17 @@ export const paintShape = (shape: Shape, context: PaintContext): Paint => {
             ? { children: [], paths: [] }
             : shape.kind === 'icon'
               ? paintIcon(shape, context)
-              : shape.kind === 'ink'
-                ? paintInk(shape, context)
-                : shape.kind === 'image'
-                  ? paintImage(
-                      shape,
-                      context.files?.[shape.fileId],
-                      boxPath(shape, context)
-                    )
-                  : paintFigure(shape, context);
+              : shape.kind === 'data-table'
+                ? paintTable(shape, context)
+                : shape.kind === 'ink'
+                  ? paintInk(shape, context)
+                  : shape.kind === 'image'
+                    ? paintImage(
+                        shape,
+                        context.files?.[shape.fileId],
+                        boxPath(shape, context)
+                      )
+                    : paintFigure(shape, context);
   const text = labelOf(shape, context);
 
   return {

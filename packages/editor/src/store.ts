@@ -9,6 +9,7 @@ import { createPresent } from './present';
 import { createSourceCommands } from './source-commands';
 import type { Editor } from './state';
 import { createStoreCore } from './store-core';
+import { createTableEdit } from './table-edit';
 
 export type { ImagePlacement } from './placement';
 export type { Drag, Editor, Gesture, PresentState, View } from './state';
@@ -47,10 +48,18 @@ export const createEditor = (board: Board): Editor => {
   });
   const edits = createBoardCommands({ core, gestures, label });
   const source = createSourceCommands(core);
+  const table = createTableEdit({
+    board: core.board,
+    change: core.change,
+    publish: core.publish,
+    transactions: core.transactions,
+  });
 
   return {
     addSlide: deck.addSlide,
     addSlideFromTemplate: deck.addSlideFromTemplate,
+    addTableColumn: table.addColumn,
+    addTableRow: table.addRow,
     align: arrange.align,
     applySource: source.applySource,
     beginTextEdit: label.begin,
@@ -104,6 +113,8 @@ export const createEditor = (board: Board): Editor => {
     setSelection: core.select,
     setSlideNotes: deck.setSlideNotes,
     setStyle: core.setStyle,
+    setTableCell: table.setCell,
+    setTableHeader: table.setHeader,
     setText: label.setText,
     setTextStyle: label.setTextStyle,
     setTheme: edits.setTheme,

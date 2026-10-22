@@ -8,7 +8,7 @@ import {
   toWorld,
 } from '@kiyora/editor';
 import { useEditor, useView } from '@kiyora/editor/react';
-import type { Camera } from '@kiyora/model';
+import type { Camera, Shape } from '@kiyora/model';
 import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -57,7 +57,9 @@ const pressureOf = (
  * select tool becomes a move when it starts on a shape and a marquee when it
  * starts on empty canvas, so the engine owns that decision and the surface only
  * forwards where the pointer is — and, for a pen, the pressure it reports. A
- * double click on a shape opens its label for editing, on the canvas. Alt is
+ * double click on a shape opens its label for editing, on the canvas; on a
+ * table it opens the cell under the pointer, with the same overlay and the same
+ * one-gesture edit. Alt is
  * forwarded so a locked shape can be reached, which is the only way to unlock
  * it.
  *
@@ -69,11 +71,21 @@ const pressureOf = (
  */
 export const useBoardPointer = (
   panning: boolean,
-  onEditShape: (id: string) => void
+  onEditShape: (shape: Shape, point: Point) => void
 ): Handlers => {
   const editor = useEditor();
   const { camera, tool } = useView();
-  const placement = usePlacement(onEditShape);
+  const placement = usePlacement(
+    useCallback(
+      (id: string) => {
+        const shape = editor.getBoard().shapes.find((item) => item.id === id);
+        if (shape !== undefined) {
+          onEditShape(shape, { x: shape.x, y: shape.y });
+        }
+      },
+      [editor, onEditShape]
+    )
+  );
   const selecting = useRef<boolean>(false);
 
   const onPointerDown = useCallback(
@@ -147,9 +159,10 @@ export const useBoardPointer = (
       if (panning || tool !== 'select' || event.button !== 0) {
         return;
       }
-      const hit = shapeAt(editor.getBoard().shapes, boardPoint(event, camera));
+      const point = boardPoint(event, camera);
+      const hit = shapeAt(editor.getBoard().shapes, point);
       if (hit !== null) {
-        onEditShape(hit.id);
+        onEditShape(hit, point);
       }
     },
     [camera, editor, onEditShape, panning, tool]

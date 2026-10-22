@@ -64,6 +64,10 @@ _Avoid_: Widget, component, UI element
 **Image**:
 A shape kind: a PNG or JPEG carried inside the board file and drawn in its authored box. It names one entry in the board's files, so placing the same picture twice costs one payload.
 
+**Table**:
+A shape kind: rows and columns of typed cells inside its authored box, with an authored header row. The columns and the row count are authored; every cell size is derived by dividing the box evenly, so resizing a table scales the whole grid and no cell size is stored. An empty table paints its authored box and nothing else.
+_Avoid_: Grid, spreadsheet, data grid
+
 **Files**:
 A board's rasters, keyed by the content hash of their bytes. A board file is still one document when it holds them; nothing is fetched and nothing lives beside the board.
 _Avoid_: Blobs, assets, attachments
