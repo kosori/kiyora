@@ -4,8 +4,10 @@ export { subtreeIds } from '@kiyora/model';
 export {
   ALIGNMENTS,
   type Alignment,
+  type Arrangement,
   alignBoard,
   arrangeableShapes,
+  arrangementOf,
   DISTRIBUTE_AXES,
   type DistributeAxis,
   distributeBoard,
@@ -200,9 +202,11 @@ export {
 export {
   bindingKey,
   bindingLabel,
+  commandKeyFor,
   commandPalette,
   keyshortcutsFor,
   type PaletteEntry,
+  type Platform,
   type ReferenceRow,
   shortcutReference,
 } from './shortcut-reference';

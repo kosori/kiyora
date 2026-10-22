@@ -8,6 +8,21 @@ export type ReferenceRow = {
   label: string;
 };
 
+/**
+ * The keyboard whose command key the copy names. The editor has no DOM, so it
+ * cannot read the platform: the app decides and passes it, and nothing here
+ * sniffs a user agent.
+ */
+export type Platform = 'macos' | 'other';
+
+/** How the command key reads on `platform`: the sheet's symbol, and the name `aria-keyshortcuts` takes. */
+export const commandKeyFor = (
+  platform: Platform
+): { aria: string; label: string } =>
+  platform === 'macos'
+    ? { aria: 'Meta', label: '⌘' }
+    : { aria: 'Control', label: 'Ctrl' };
+
 /** How a key reads in the reference: the named keys as themselves, the rest as typed. */
 const KEY_NAMES: Readonly<Record<string, string>> = {
   arrowdown: '↓',
@@ -52,12 +67,12 @@ export const bindingKey = (command: Command): string | null =>
  * so a binding that differs by a modifier shows that modifier rather than a row
  * of its own.
  */
-export const bindingLabel = (binding: Binding): string => {
+export const bindingLabel = (binding: Binding, platform: Platform): string => {
   const rules = rulesFor(binding);
   const parts: string[] = [];
 
   if (rules.command === 'required') {
-    parts.push('Ctrl');
+    parts.push(commandKeyFor(platform).label);
   }
   if (rules.alt === 'required') {
     parts.push('Alt');
@@ -71,12 +86,12 @@ export const bindingLabel = (binding: Binding): string => {
 };
 
 /** The `aria-keyshortcuts` value for `binding`, read from the modifiers it requires. */
-const bindingShortcut = (binding: Binding): string => {
+const bindingShortcut = (binding: Binding, platform: Platform): string => {
   const rules = rulesFor(binding);
   const parts: string[] = [];
 
   if (rules.command === 'required') {
-    parts.push('Control');
+    parts.push(commandKeyFor(platform).aria);
   }
   if (rules.alt === 'required') {
     parts.push('Alt');
@@ -97,8 +112,13 @@ const bindingShortcut = (binding: Binding): string => {
  * declares it. A command with several bindings lists them all, so a control
  * cannot advertise one chord while the keymap answers another.
  */
-export const keyshortcutsFor = (command: Command): string | undefined => {
-  const shortcuts = bindingsFor(command).map(bindingShortcut);
+export const keyshortcutsFor = (
+  command: Command,
+  platform: Platform
+): string | undefined => {
+  const shortcuts = bindingsFor(command).map((binding) =>
+    bindingShortcut(binding, platform)
+  );
 
   return shortcuts.length === 0 ? undefined : shortcuts.join(' ');
 };
@@ -114,10 +134,10 @@ export type PaletteEntry = ReferenceRow & {
  * and the palette are generated from this one list, so neither can show a label
  * or a key the other lacks.
  */
-const shownRows = (): PaletteEntry[] =>
+const shownRows = (platform: Platform): PaletteEntry[] =>
   SHORTCUT_ROWS.flatMap((row) => {
     const keys = row.commands.flatMap((command) =>
-      bindingsFor(command).map((binding) => bindingLabel(binding))
+      bindingsFor(command).map((binding) => bindingLabel(binding, platform))
     );
 
     return keys.length === 0
@@ -129,11 +149,12 @@ const shownRows = (): PaletteEntry[] =>
  * The shortcut reference, generated from the keymap: every row of copy, each
  * carrying the keys its commands are bound to.
  */
-export const shortcutReference = (): ReferenceRow[] =>
-  shownRows().map(({ group, keys, label }) => ({ group, keys, label }));
+export const shortcutReference = (platform: Platform): ReferenceRow[] =>
+  shownRows(platform).map(({ group, keys, label }) => ({ group, keys, label }));
 
 /**
  * The commands the palette offers, in the reference's order and under its
  * labels, so the palette lists exactly what the keymap binds.
  */
-export const commandPalette = (): PaletteEntry[] => shownRows();
+export const commandPalette = (platform: Platform): PaletteEntry[] =>
+  shownRows(platform);

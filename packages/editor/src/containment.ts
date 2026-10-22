@@ -35,6 +35,33 @@ export const parentContainer = (
 };
 
 /**
+ * The shapes above `shapeId` in the containment chain, nearest first and the
+ * shape itself excluded. A `parentId` that names nothing on the board, or one
+ * that closes a cycle back onto the starting shape, ends the walk, so no caller
+ * can loop on a document a bug left inconsistent.
+ */
+export const ancestorsOf = (board: Board, shapeId: string): Shape[] => {
+  const byId = new Map(board.shapes.map((shape) => [shape.id, shape]));
+  const seen = new Set<string>([shapeId]);
+  const ancestors: Shape[] = [];
+  let current = byId.get(shapeId);
+
+  while (current !== undefined && current.parentId !== null) {
+    const { parentId } = current;
+    if (seen.has(parentId)) {
+      break;
+    }
+    seen.add(parentId);
+    current = byId.get(parentId);
+    if (current !== undefined) {
+      ancestors.push(current);
+    }
+  }
+
+  return ancestors;
+};
+
+/**
  * The outermost group `shapeId` belongs to, itself included, or `null` when it
  * belongs to none. A click on any member picks the group that holds it, so a
  * group reads as one thing until it is taken apart.
@@ -43,27 +70,12 @@ export const outermostGroup = (
   board: Board,
   shapeId: string
 ): string | null => {
-  const byId = new Map(board.shapes.map((shape) => [shape.id, shape]));
-  const seen = new Set<string>();
-  let shape = byId.get(shapeId);
-  let group = shape !== undefined && isGroup(shape) ? shape.id : null;
+  const self = board.shapes.find((shape) => shape.id === shapeId);
+  const chain =
+    self === undefined ? [] : [self, ...ancestorsOf(board, shapeId)];
+  const [outermost] = chain.filter(isGroup).slice(-1);
 
-  while (shape !== undefined && shape.parentId !== null) {
-    if (seen.has(shape.parentId)) {
-      break;
-    }
-    seen.add(shape.parentId);
-    const parent = byId.get(shape.parentId);
-    if (parent === undefined) {
-      break;
-    }
-    if (isGroup(parent)) {
-      group = parent.id;
-    }
-    shape = parent;
-  }
-
-  return group;
+  return outermost?.id ?? null;
 };
 
 /**

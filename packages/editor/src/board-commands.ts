@@ -80,9 +80,8 @@ export const createBoardCommands = ({
       return;
     }
     gestures.abandon();
-    core.replace(next);
+    core.adopt(next);
     core.select(core.selection());
-    core.announce();
   };
 
   return {
@@ -113,10 +112,9 @@ export const createBoardCommands = ({
         core.style(),
         before.shapes
       );
-      core.replace(addShape(before, shape));
+      core.adopt(addShape(before, shape));
       core.setView({ ...core.view(), tool: 'select' });
       label.place(before, shape, core.board());
-      core.announce();
       return shape;
     },
     redo: () => {
@@ -130,26 +128,21 @@ export const createBoardCommands = ({
       }
     },
     restyle: (change) => {
-      core.transactions.endNudgeRun();
-      const before = core.board();
-      const result = restyledBoard(before, core.selection(), change);
+      const result = restyledBoard(core.board(), core.selection(), change);
       if (result === null) {
         return;
       }
       const { board: nextBoard, style: nextStyle } = result;
-      core.replace(nextBoard);
+      core.change(nextBoard);
       if (nextStyle !== undefined) {
         core.setStyle(nextStyle);
       }
-      core.transactions.commit(before, core.board());
-      core.announce();
     },
     setBoard: (next) => {
       core.transactions.endNudgeRun();
-      core.replace(next);
+      core.adopt(next);
       core.select(core.selection());
       core.transactions.clear();
-      core.announce();
     },
     setConnector: (id, edit) => {
       core.change(editConnector(core.board(), id, edit));

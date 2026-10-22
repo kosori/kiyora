@@ -1,6 +1,7 @@
 import { keyshortcutsFor, type Tool } from '@kiyora/editor';
 import { Button } from '~/components/ui/button';
 import { AppearanceControl } from './appearance-control';
+import { usePlatform } from './use-platform';
 
 type Props = {
   fit: () => void;
@@ -21,63 +22,70 @@ export const CameraControls = ({
   zoom,
   zoomIn,
   zoomOut,
-}: Props) => (
-  <div
-    className='absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'
-    data-testid='camera-controls'
-  >
-    <Button
-      aria-label='Hand tool'
-      aria-pressed={tool === 'hand'}
-      data-testid='hand-tool'
-      onClick={toggleTool}
-      size='sm'
-      variant={tool === 'hand' ? 'secondary' : 'ghost'}
+}: Props) => {
+  const platform = usePlatform();
+
+  return (
+    <div
+      className='absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'
+      data-testid='camera-controls'
     >
-      Hand
-    </Button>
-    <Button
-      aria-keyshortcuts={keyshortcutsFor({
-        action: 'zoom-out',
-        kind: 'camera',
-      })}
-      aria-label='Zoom out'
-      data-testid='zoom-out'
-      onClick={zoomOut}
-      size='icon-sm'
-      variant='ghost'
-    >
-      {'\u2212'}
-    </Button>
-    <span
-      className='w-11 text-center text-xs tabular-nums'
-      data-testid='zoom-percentage'
-    >
-      {`${Math.round(zoom * 100)}%`}
-    </span>
-    <Button
-      aria-keyshortcuts={keyshortcutsFor({ action: 'zoom-in', kind: 'camera' })}
-      aria-label='Zoom in'
-      data-testid='zoom-in'
-      onClick={zoomIn}
-      size='icon-sm'
-      variant='ghost'
-    >
-      +
-    </Button>
-    <Button data-testid='fit' onClick={fit} size='sm' variant='ghost'>
-      Fit
-    </Button>
-    <Button
-      aria-label='Reset to one hundred percent'
-      data-testid='reset'
-      onClick={reset}
-      size='sm'
-      variant='ghost'
-    >
-      Reset
-    </Button>
-    <span aria-hidden='true' className='mx-1 h-4 w-px bg-border' />
-    <AppearanceControl />
-  </div>
-);
+      <Button
+        aria-label='Hand tool'
+        aria-pressed={tool === 'hand'}
+        data-testid='hand-tool'
+        onClick={toggleTool}
+        size='sm'
+        variant={tool === 'hand' ? 'secondary' : 'ghost'}
+      >
+        Hand
+      </Button>
+      <Button
+        aria-keyshortcuts={keyshortcutsFor(
+          { action: 'zoom-out', kind: 'camera' },
+          platform
+        )}
+        aria-label='Zoom out'
+        data-testid='zoom-out'
+        onClick={zoomOut}
+        size='icon-sm'
+        variant='ghost'
+      >
+        {'\u2212'}
+      </Button>
+      <span
+        className='w-11 text-center text-xs tabular-nums'
+        data-testid='zoom-percentage'
+      >
+        {`${Math.round(zoom * 100)}%`}
+      </span>
+      <Button
+        aria-keyshortcuts={keyshortcutsFor(
+          { action: 'zoom-in', kind: 'camera' },
+          platform
+        )}
+        aria-label='Zoom in'
+        data-testid='zoom-in'
+        onClick={zoomIn}
+        size='icon-sm'
+        variant='ghost'
+      >
+        +
+      </Button>
+      <Button data-testid='fit' onClick={fit} size='sm' variant='ghost'>
+        Fit
+      </Button>
+      <Button
+        aria-label='Reset to one hundred percent'
+        data-testid='reset'
+        onClick={reset}
+        size='sm'
+        variant='ghost'
+      >
+        Reset
+      </Button>
+      <span aria-hidden='true' className='mx-1 h-4 w-px bg-border' />
+      <AppearanceControl />
+    </div>
+  );
+};

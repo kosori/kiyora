@@ -1,4 +1,5 @@
 import { type Board, type Bounds, shapeBounds } from '@kiyora/model';
+import { ancestorsOf, isGroup } from '../containment';
 
 /**
  * Alignment guides: what a dragged edge lands on when the grid is not the
@@ -47,19 +48,13 @@ const excludedIds = (
   board: Board,
   moving: ReadonlySet<string>
 ): ReadonlySet<string> => {
-  const byId = new Map(board.shapes.map((shape) => [shape.id, shape]));
   const excluded = new Set(moving);
 
   for (const id of moving) {
-    const seen = new Set<string>();
-    let parent = byId.get(id)?.parentId ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const ancestor = byId.get(parent);
-      if (ancestor?.kind === 'group') {
-        excluded.add(parent);
+    for (const ancestor of ancestorsOf(board, id)) {
+      if (isGroup(ancestor)) {
+        excluded.add(ancestor.id);
       }
-      parent = ancestor?.parentId ?? null;
     }
   }
 
