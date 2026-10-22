@@ -109,12 +109,12 @@ test('typing into a cell repaints its words where the overlay sat, and one undo 
   await editCell(page, box, 'Plan');
 
   const line = board(page).locator('text', { hasText: 'Plan' });
-  await expect(line).toHaveCount(1);
+  await expect(line).toHaveText('Plan');
   expect(await textAt(page)).toEqual({ x: '360', y: '212.4' });
 
   await page.getByTestId('undo').click();
 
-  await expect(board(page).locator('text')).toHaveCount(0);
+  expect(await board(page).locator('text').allTextContents()).toEqual([]);
   await expect(tablePaths(page).first()).toHaveAttribute(
     'd',
     'M 300 180 L 660 180 L 660 360 L 300 360 Z'
@@ -139,7 +139,9 @@ test('a table and its cell text survive a reload', async ({ page }) => {
     'true'
   );
 
-  await expect(board(page).locator('text', { hasText: 'Plan' })).toHaveCount(1);
+  await expect(board(page).locator('text', { hasText: 'Plan' })).toHaveText(
+    'Plan'
+  );
   expect(await textAt(page)).toEqual(before);
   expect(await grid(page)).toContain('M 420 180 L 420 360');
 });
