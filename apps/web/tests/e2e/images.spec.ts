@@ -111,6 +111,57 @@ test('a picked PNG paints in its authored box, survives a reload and keeps its b
   await expect(image(page)).toHaveAttribute('width', '16');
 });
 
+test('a placed image resizes with the selection, and the box is what is stored', async ({
+  page,
+}) => {
+  await open(page);
+  await placeImage(page);
+  await saved(page);
+
+  const before = await storedBoard(page);
+  const placed = before?.shapes.find((one) => one.kind === 'image');
+  if (placed === undefined) {
+    throw new Error('the placed image is not on the board');
+  }
+
+  const painted = await image(page).boundingBox();
+  if (painted === null) {
+    throw new Error('the painted image has no box');
+  }
+  await page.mouse.click(
+    painted.x + painted.width / 2,
+    painted.y + painted.height / 2
+  );
+  await expect(page.getByTestId('selection-frame')).toBeVisible();
+
+  const handle = page.getByTestId('handle-se');
+  const corner = await handle.boundingBox();
+  if (corner === null) {
+    throw new Error('the corner handle has no box');
+  }
+  await page.mouse.move(
+    corner.x + corner.width / 2,
+    corner.y + corner.height / 2
+  );
+  await page.mouse.down();
+  await page.mouse.move(corner.x + 120, corner.y + 96, { steps: 10 });
+  await page.mouse.up();
+  await saved(page);
+
+  const after = await storedBoard(page);
+  const resized = after?.shapes.find((one) => one.kind === 'image');
+  if (resized === undefined) {
+    throw new Error('the image left the board');
+  }
+
+  expect(resized.w).toBeGreaterThan(placed.w);
+  expect(resized.h).toBeGreaterThan(placed.h);
+  await expect(image(page)).toHaveAttribute('width', String(resized.w));
+  await expect(image(page)).toHaveAttribute('height', String(resized.h));
+  await expect(image(page)).toHaveAttribute('x', String(resized.x));
+  await expect(image(page)).toHaveAttribute('y', String(resized.y));
+});
+
 test('placing the same raster twice keeps one payload and two shapes', async ({
   page,
 }) => {
