@@ -29,6 +29,7 @@ import { saveBoardSvg } from '~/lib/board-svg';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { useCopyPng } from './copy-png-context';
 import { OptionButtons } from './option-buttons';
+import { usePlatform } from './use-platform';
 
 type Option<T extends string> = { label: string; value: T };
 
@@ -72,6 +73,7 @@ export const FileControls = () => {
   const board = useBoard();
   const selection = useSelection();
   const { camera } = useView();
+  const platform = usePlatform();
   const input = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
   const { clearError, copy: copyPng, error: copyError } = useCopyPng();
@@ -220,7 +222,7 @@ export const FileControls = () => {
             Download PNG
           </Button>
           <Button
-            aria-keyshortcuts={keyshortcutsFor({ kind: 'copy-png' })}
+            aria-keyshortcuts={keyshortcutsFor({ kind: 'copy-png' }, platform)}
             data-testid='copy-png'
             disabled={selection.length === 0}
             onClick={copyPng}

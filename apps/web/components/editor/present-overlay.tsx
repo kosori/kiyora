@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { PaintNode } from './paint-node';
 import { PresentLaser } from './present-laser';
+import { usePlatform } from './use-platform';
 
 /** Seconds as `m:ss`, however long a talk runs. */
 const formatElapsed = (seconds: number): string => {
@@ -29,6 +30,7 @@ export const PresentOverlay = () => {
   const editor = useEditor();
   const board = useBoard();
   const present = usePresent();
+  const platform = usePlatform();
   const measure = useMemo(() => createTextMeasurer(), []);
   const root = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<Element | null>(null);
@@ -190,7 +192,10 @@ export const PresentOverlay = () => {
           {present.index + 1} / {slides.length}
         </span>
         <button
-          aria-keyshortcuts={keyshortcutsFor({ kind: 'present-exit' })}
+          aria-keyshortcuts={keyshortcutsFor(
+            { kind: 'present-exit' },
+            platform
+          )}
           className='rounded border border-border px-2 py-1 text-sm'
           data-testid='present-exit'
           onClick={onExit}
