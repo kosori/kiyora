@@ -161,8 +161,10 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
           )}
           data-ready={surface.ready ? 'true' : undefined}
           data-testid='canvas'
+          id='board'
           ref={surface.ref}
           role='img'
+          tabIndex={-1}
           xmlns='http://www.w3.org/2000/svg'
           {...surface.handlers}
         >

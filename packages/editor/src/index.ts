@@ -201,6 +201,7 @@ export {
   bindingKey,
   bindingLabel,
   commandPalette,
+  keyshortcutsFor,
   type PaletteEntry,
   type ReferenceRow,
   shortcutReference,

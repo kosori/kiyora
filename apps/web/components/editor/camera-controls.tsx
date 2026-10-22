@@ -1,4 +1,4 @@
-import type { Tool } from '@kiyora/editor';
+import { keyshortcutsFor, type Tool } from '@kiyora/editor';
 import { Button } from '~/components/ui/button';
 
 type Props = {
@@ -36,6 +36,10 @@ export const CameraControls = ({
       Hand
     </Button>
     <Button
+      aria-keyshortcuts={keyshortcutsFor({
+        action: 'zoom-out',
+        kind: 'camera',
+      })}
       aria-label='Zoom out'
       data-testid='zoom-out'
       onClick={zoomOut}
@@ -51,6 +55,7 @@ export const CameraControls = ({
       {`${Math.round(zoom * 100)}%`}
     </span>
     <Button
+      aria-keyshortcuts={keyshortcutsFor({ action: 'zoom-in', kind: 'camera' })}
       aria-label='Zoom in'
       data-testid='zoom-in'
       onClick={zoomIn}

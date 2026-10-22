@@ -374,6 +374,56 @@ test('presenting takes focus, keeps it inside, and gives it back on exit', async
     .toBe('present-button');
 });
 
+test('the skip link takes focus, shows itself, and moves focus to the board', async ({
+  page,
+}) => {
+  await open(page);
+  const skip = page.getByRole('link', { name: 'Skip to board' });
+
+  expect((await skip.boundingBox())?.width ?? 0).toBeLessThanOrEqual(1);
+
+  await page.keyboard.press('Tab');
+  await expect(skip).toBeFocused();
+  expect((await skip.boundingBox())?.width ?? 0).toBeGreaterThan(40);
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('canvas')).toBeFocused();
+});
+
+test('the tool rail and the panels are landmarks with reachable controls', async ({
+  page,
+}) => {
+  await open(page);
+  const tools = page.getByRole('navigation', { name: 'Board tools' });
+  await expect(tools).toBeVisible();
+  await expect(tools.getByRole('toolbar', { name: 'Tools' })).toBeVisible();
+
+  const panels = page.getByRole('complementary', { name: 'Panels' });
+  await expect(panels).toBeVisible();
+  const tabs = panels.getByRole('tablist', { name: 'Panel sections' });
+  await expect(tabs).toBeVisible();
+
+  const deck = tabs.getByRole('tab', { name: 'Deck' });
+  await deck.focus();
+  await page.keyboard.press('Enter');
+  await expect(panels.getByRole('tabpanel', { name: 'Deck' })).toBeVisible();
+});
+
+test('the live region announces the selection a gesture makes', async ({
+  page,
+}) => {
+  await open(page);
+  const announcer = page.getByTestId('selection-announcer');
+  await expect(announcer).toHaveText('Nothing selected');
+
+  const box = await canvasBox(page);
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await expect(announcer).toHaveText('Rectangle selected');
+
+  await page.mouse.click(box.x + 400, box.y + 300);
+  await expect(announcer).toHaveText('Nothing selected');
+});
+
 test('every focus stop paints a visible indicator', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);

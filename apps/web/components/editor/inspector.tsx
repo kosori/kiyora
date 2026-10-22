@@ -22,8 +22,7 @@ export const Inspector = () => {
   const hasLocked = board.shapes.some((shape) => shape.locked);
 
   return (
-    <aside
-      aria-label='Inspector'
+    <section
       className='flex h-full flex-col gap-3 overflow-y-auto p-3'
       data-testid='inspector'
     >
@@ -55,6 +54,6 @@ export const Inspector = () => {
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>
       )}
-    </aside>
+    </section>
   );
 };
