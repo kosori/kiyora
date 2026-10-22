@@ -1,5 +1,5 @@
 import type { Board } from '@kiyora/model';
-import { arrangeableShapes } from './align';
+import { arrangementOf } from './align';
 import type { Command } from './commands';
 import {
   type Selection,
@@ -44,9 +44,7 @@ export const contextMenu = ({
 }: ContextMenuState): ContextMenuSection[] => {
   const hasSelection = selection.length > 0;
   const roots = selectedRoots(board, selection);
-  const arrangeable = arrangeableShapes(board, selection);
-  const canArrange =
-    arrangeable.length >= 2 && arrangeable.some((shape) => !shape.locked);
+  const { canAlign } = arrangementOf(board, selection);
   const hasGroup = selectedShapes(board, selection).some(
     (shape) => shape.kind === 'group'
   );
@@ -80,27 +78,23 @@ export const contextMenu = ({
     },
     {
       items: [
-        entry({ alignment: 'left', kind: 'align' }, 'Align left', !canArrange),
+        entry({ alignment: 'left', kind: 'align' }, 'Align left', !canAlign),
         entry(
           { alignment: 'center-horizontal', kind: 'align' },
           'Align centre horizontally',
-          !canArrange
+          !canAlign
         ),
-        entry(
-          { alignment: 'right', kind: 'align' },
-          'Align right',
-          !canArrange
-        ),
-        entry({ alignment: 'top', kind: 'align' }, 'Align top', !canArrange),
+        entry({ alignment: 'right', kind: 'align' }, 'Align right', !canAlign),
+        entry({ alignment: 'top', kind: 'align' }, 'Align top', !canAlign),
         entry(
           { alignment: 'center-vertical', kind: 'align' },
           'Align centre vertically',
-          !canArrange
+          !canAlign
         ),
         entry(
           { alignment: 'bottom', kind: 'align' },
           'Align bottom',
-          !canArrange
+          !canAlign
         ),
       ],
       label: 'Align',

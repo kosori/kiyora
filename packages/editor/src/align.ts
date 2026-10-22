@@ -58,6 +58,14 @@ export const arrangeableShapes = (
 ): Shape[] =>
   selectedRoots(board, selection).filter((shape) => shape.kind !== 'connector');
 
+/** What a selection can be arranged with, so every surface asks one rule. */
+export type Arrangement = {
+  /** Whether there are two items to line up, at least one of them free to move. */
+  canAlign: boolean;
+  /** Whether three items can move, so the gaps between them can change. */
+  canDistribute: boolean;
+};
+
 const targetsOf = (board: Board, selection: Selection): Target[] =>
   arrangeableShapes(board, selection).map((shape) => ({
     box: shapeBounds(shape, board.shapes),
@@ -82,6 +90,26 @@ const movable = (board: Board, shape: Shape): boolean => {
     (member) =>
       member.id !== shape.id && member.locked && subtree.has(member.id)
   );
+};
+
+/**
+ * What the selection supports: the rule the Inspector and the menu read instead
+ * of counting shapes themselves. Alignment needs two targets and one that may
+ * move — a locked shape is still the edge the others line up with. Distribution
+ * needs three that may move, because the outer two stay put and only the ones
+ * between them travel.
+ */
+export const arrangementOf = (
+  board: Board,
+  selection: Selection
+): Arrangement => {
+  const targets = arrangeableShapes(board, selection);
+  const movableTargets = targets.filter((shape) => movable(board, shape));
+
+  return {
+    canAlign: targets.length >= 2 && movableTargets.length > 0,
+    canDistribute: movableTargets.length >= 3,
+  };
 };
 
 /** The distance a target's box must travel to satisfy `alignment`. */
