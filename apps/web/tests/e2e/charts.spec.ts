@@ -62,9 +62,7 @@ const placeChart = async (
 ): Promise<void> => {
   await page.getByRole('button', { name: 'Chart' }).click();
   await page.mouse.click(point.x, point.y);
-  await expect(
-    board(page).locator('path[data-shape^="chart-"]')
-  ).not.toHaveCount(0);
+  await expect.poll(() => chartPaths(page)).not.toEqual([]);
 };
 
 test('a placed chart repaints when its series changes, and one undo returns it', async ({
@@ -119,10 +117,7 @@ test('a changed chart survives a reload, and its paths match the SVG export', as
   // A repaint after the font settles, so the canvas is measured by the loaded face.
   await page.keyboard.press('=');
   await page.keyboard.press('-');
-  await expect(board(page).locator('path[data-shape^="chart-"]')).toHaveCount(
-    changed.length
-  );
-  expect(await chartPaths(page)).toEqual(changed);
+  await expect.poll(() => chartPaths(page)).toEqual(changed);
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),

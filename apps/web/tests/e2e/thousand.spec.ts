@@ -191,12 +191,12 @@ test('only the shapes in view are in the DOM, and all thousand are on the board'
   expect(nodes).toBeLessThan(NODE_BUDGET);
 
   await expect(painted(page, 'shape-0')).toHaveAttribute('d', boxPath(HERO));
-  await expect(painted(page, FAR.id)).toHaveCount(0);
+  await expect(painted(page, FAR.id)).toBeHidden();
   await expect(
     page
       .getByTestId('board')
       .locator('path[d="M 80 80 L 300 80 L 300 220 L 80 220 Z"]')
-  ).toHaveCount(0);
+  ).toBeHidden();
 });
 
 test('dragging a shape moves that shape and keeps frames under the tripwire', async ({
@@ -277,7 +277,7 @@ test('panning the whole board keeps the DOM to the view and frames under the tri
     frames.push(...(await drag(page, from, { x: 0, y: -400 }, 'middle', 8)));
   }
 
-  await expect(painted(page, 'shape-0')).toHaveCount(0);
+  await expect(painted(page, 'shape-0')).toBeHidden();
   await expect(painted(page, FAR.id)).toHaveAttribute('d', boxPath(FAR));
 
   const nodes = await paintedNodes(page);

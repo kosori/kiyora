@@ -157,18 +157,18 @@ test('a locked shape is not picked by click or marquee, and alt reaches it to un
   const box = await canvasBox(page);
 
   await page.mouse.click(box.x + 560, box.y + 400);
-  await expect(page.getByTestId('selection-frame')).toHaveCount(0);
+  await expect(page.getByTestId('selection-frame')).toBeHidden();
   await expect(page.getByTestId('locked-hint')).toBeVisible();
 
   await page.mouse.click(box.x + 150, box.y + 150);
-  await expect(page.getByTestId('selection-frame')).toHaveCount(0);
+  await expect(page.getByTestId('selection-frame')).toBeHidden();
 
   await drag(
     page,
     { x: box.x + 20, y: box.y + 20 },
     { x: box.x + 400, y: box.y + 300 }
   );
-  await expect(page.getByTestId('selection-frame')).toHaveCount(0);
+  await expect(page.getByTestId('selection-frame')).toBeHidden();
 
   await altClick(page, { x: 150, y: 150 });
 

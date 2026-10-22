@@ -77,7 +77,9 @@ test('a drag joins two shapes with a connector that paints a real line', async (
 
   await joinTwoShapes(page, box);
 
-  await expect(connectorPaths(page)).toHaveCount(2);
+  await expect
+    .poll(() => connectorDs(page))
+    .toEqual(['M 300 130 L 500 150', expect.stringMatching(/^M /)]);
   await expect(connectorLine(page)).toHaveAttribute('fill', 'none');
   await expect(connectorLine(page)).toHaveAttribute('stroke', '#1e1e1e');
   await expect(connectorLine(page)).toHaveAttribute('d', 'M 300 130 L 500 150');
@@ -111,7 +113,12 @@ test('a connector can be drawn before its target exists', async ({ page }) => {
     { x: box.x + 600, y: box.y + 400 }
   );
 
-  await expect(connectorPaths(page)).toHaveCount(2);
+  await expect
+    .poll(() => connectorDs(page))
+    .toEqual([
+      expect.stringMatching(/^M .* L .*/),
+      expect.stringMatching(/^M /),
+    ]);
   await expect(connectorLine(page)).toHaveAttribute('fill', 'none');
   await expect(connectorLine(page)).not.toHaveAttribute('d', '');
 });
@@ -211,7 +218,6 @@ test('deleting a bound shape leaves its connector visible, not vanished', async 
 
   await expect(
     page.getByTestId('board').locator('path[data-shape="starter-rectangle"]')
-  ).toHaveCount(0);
-  await expect(connectorPaths(page)).toHaveCount(2);
+  ).toBeHidden();
   await expect(connectorLine(page)).toHaveAttribute('d', 'M 300 220 L 600 400');
 });

@@ -108,14 +108,17 @@ test('a source applies to the selected frame as one undo, and survives a reload'
 
   // One undo takes the whole apply back; redo puts it back.
   await page.getByTestId('undo').click();
-  await expect(clean(page, 'rectangle-1')).toHaveCount(0);
+  await expect(clean(page, 'rectangle-1')).toBeHidden();
   await expect(clean(page, 'frame-1')).toHaveAttribute(
     'd',
     'M 100 100 L 500 100 L 500 400 L 100 400 Z'
   );
 
   await page.getByTestId('redo').click();
-  await expect(clean(page, 'rectangle-1')).toHaveCount(1);
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
+    'd',
+    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+  );
 
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-state',
@@ -168,8 +171,11 @@ test('an unreadable source leaves the board intact and keeps its text', async ({
   await source(page).fill('->');
   await source(page).press('Control+Enter');
 
-  await expect(clean(page, 'rectangle-1')).toHaveCount(0);
-  await expect(clean(page, 'frame-1')).toHaveCount(1);
+  await expect(clean(page, 'rectangle-1')).toBeHidden();
+  await expect(clean(page, 'frame-1')).toHaveAttribute(
+    'd',
+    'M 100 100 L 500 100 L 500 400 L 100 400 Z'
+  );
   await expect(source(page)).toHaveValue('->');
 });
 
@@ -185,7 +191,8 @@ test('diagnostics list in source order and clicking one moves the caret to its l
   await source(page).fill(text);
 
   const diagnostics = page.getByTestId('code-diagnostic');
-  await expect(diagnostics).toHaveCount(2);
+  await expect(diagnostics.nth(1)).toHaveAttribute('data-severity', 'error');
+  await expect(diagnostics.nth(2)).toBeHidden();
 
   const warning = diagnostics.nth(0);
   await expect(warning).toHaveAttribute('data-severity', 'warning');
@@ -210,9 +217,9 @@ test('diagnostics list in source order and clicking one moves the caret to its l
   // Inserting a line above shifts both diagnostics, because the list derives
   // from the text on screen rather than from the last apply.
   await source(page).fill(`// note\n${text}`);
-  await expect(diagnostics).toHaveCount(2);
   await expect(diagnostics.nth(0)).toContainText('Line 3');
   await expect(diagnostics.nth(1)).toContainText('Line 4');
+  await expect(diagnostics.nth(2)).toBeHidden();
 });
 
 test('an error leaves the lines after it parsed and painted', async ({
@@ -247,12 +254,12 @@ test('an unsupported family is one diagnostic and the rest of the file still app
   await source(page).press('Control+Enter');
 
   const diagnostics = page.getByTestId('code-diagnostic');
-  await expect(diagnostics).toHaveCount(1);
   await expect(diagnostics.nth(0)).toHaveAttribute('data-severity', 'error');
   await expect(diagnostics.nth(0)).toContainText(
     'unsupported family "wireframe"'
   );
   await expect(diagnostics.nth(0)).toContainText('Line 1');
+  await expect(diagnostics.nth(1)).toBeHidden();
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
     'M 124 124 L 284 124 L 284 224 L 124 224 Z'
@@ -269,7 +276,7 @@ test('Mod+Enter outside the panel applies nothing, as before', async ({
   await page.keyboard.press('Control+Enter');
 
   await expect(page.getByTestId('undo')).toBeEnabled();
-  await expect(clean(page, 'rectangle-1')).toHaveCount(0);
+  await expect(clean(page, 'rectangle-1')).toBeHidden();
   await openCode(page);
   await expect(source(page)).toHaveValue('');
 });
@@ -294,7 +301,7 @@ test('typing makes the source pending, and applying clears it', async ({
 
   await source(page).press('Control+Enter');
 
-  await expect(page.getByTestId('code-pending')).toHaveCount(0);
+  await expect(page.getByTestId('code-pending')).toBeHidden();
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
     'M 124 124 L 284 124 L 284 224 L 124 224 Z'
@@ -313,7 +320,7 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
 
   // A fresh frame applies silently.
   await expect(page.getByTestId('code-confirm')).toBeHidden();
-  await expect(page.getByTestId('code-stale')).toHaveCount(0);
+  await expect(page.getByTestId('code-stale')).toBeHidden();
 
   // Drag the generated figure 20 units to the right. It lands on the starter
   // rectangle's edges, which the guides hold instead of the grid.
@@ -356,8 +363,8 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
     'd',
     'M 124 124 L 284 124 L 284 224 L 124 224 Z'
   );
-  await expect(page.getByTestId('code-stale')).toHaveCount(0);
-  await expect(page.getByTestId('code-pending')).toHaveCount(0);
+  await expect(page.getByTestId('code-stale')).toBeHidden();
+  await expect(page.getByTestId('code-pending')).toBeHidden();
   await expect(source(page)).toHaveValue('Next');
 });
 

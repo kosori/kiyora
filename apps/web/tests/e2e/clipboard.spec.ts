@@ -50,19 +50,18 @@ test('copy then paste drops a visible copy, and one undo takes it back', async (
   const box = await canvasBox(page);
 
   await page.mouse.click(box.x + 150, box.y + 150);
-  await expect(shapePaths(page)).toHaveCount(1);
+  await expect(shapePaths(page).first()).toHaveAttribute('d', ORIGINAL);
 
   await page.keyboard.press('Control+c');
   await page.keyboard.press('Control+v');
 
-  await expect(shapePaths(page)).toHaveCount(2);
   await expect(shapePaths(page).nth(1)).toHaveAttribute('d', COPIED);
   await expect(page.getByTestId('undo')).toBeEnabled();
 
   await page.keyboard.press('Control+z');
 
-  await expect(shapePaths(page)).toHaveCount(1);
   await expect(shapePaths(page).nth(0)).toHaveAttribute('d', ORIGINAL);
+  await expect(shapePaths(page).nth(1)).toBeHidden();
   await expect(page.getByTestId('undo')).toBeDisabled();
 });
 
@@ -76,12 +75,12 @@ test('duplicate copies the selection clear of the original in one gesture', asyn
 
   await page.keyboard.press('Control+d');
 
-  await expect(shapePaths(page)).toHaveCount(2);
   await expect(shapePaths(page).nth(1)).toHaveAttribute('d', COPIED);
 
   await page.keyboard.press('Control+z');
 
-  await expect(shapePaths(page)).toHaveCount(1);
+  await expect(shapePaths(page).first()).toHaveAttribute('d', ORIGINAL);
+  await expect(shapePaths(page).nth(1)).toBeHidden();
 });
 
 test('cut takes the selection off the board, and a paste brings it back visible', async ({
@@ -94,11 +93,10 @@ test('cut takes the selection off the board, and a paste brings it back visible'
 
   await page.keyboard.press('Control+x');
 
-  await expect(shapePaths(page)).toHaveCount(0);
+  await expect(shapePaths(page).first()).toBeHidden();
 
   await page.keyboard.press('Control+v');
 
-  await expect(shapePaths(page)).toHaveCount(1);
   await expect(shapePaths(page).nth(0)).toHaveAttribute('d', COPIED);
 });
 

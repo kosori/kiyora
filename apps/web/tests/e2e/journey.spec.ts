@@ -185,7 +185,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
   await page.getByTestId('rail-tab-deck').click();
   await page.getByTestId('template-title').click();
   await page.getByTestId('template-blank').click();
-  await expect(page.getByTestId('slide')).toHaveCount(2);
+  await expect(page.getByTestId('slide').nth(1)).toContainText('2.');
 
   await page.getByTestId('present-button').click();
   const overlay = page.getByTestId('present-overlay');

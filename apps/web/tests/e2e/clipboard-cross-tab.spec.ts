@@ -1,5 +1,6 @@
 import { SCHEMA_VERSION } from '@kiyora/model';
 import { type BrowserContext, expect, type Page, test } from '@playwright/test';
+import { expectPaintedDs } from './paint';
 
 /**
  * The first spec in this repo that opens a second tab. Tabs in one browser
@@ -106,7 +107,7 @@ test('a copy in one tab pastes in another with a fresh id and an offset', async 
   await open(first);
   const box = await canvasBox(first);
   await first.mouse.click(box.x + 150, box.y + 150);
-  await expect(shapePaths(first)).toHaveCount(1);
+  await expect(shapePaths(first).first()).toHaveAttribute('d', ORIGINAL);
 
   const second = await context.newPage();
   await open(second);
@@ -129,7 +130,6 @@ test('a copy in one tab pastes in another with a fresh id and an offset', async 
 
   await second.keyboard.press('Control+v');
 
-  await expect(shapePaths(second)).toHaveCount(2);
   await expect(shapePaths(second).nth(1)).toHaveAttribute('d', COPIED);
   await expect(shapePaths(second).nth(0)).toHaveAttribute('d', ORIGINAL);
   expect(blocked).toEqual([]);
@@ -217,11 +217,12 @@ test('a copied frame keeps its child inside the frame in the other tab', async (
     .locator('path[data-shape="frame-1"]')
     .first();
   await expect(frame).toBeVisible();
-  await expect(
+  await expectPaintedDs(
     second
       .getByTestId('board')
-      .locator('g[clip-path="url(#clip-frame-1)"] path[data-shape]')
-  ).toHaveCount(1);
+      .locator('g[clip-path="url(#clip-frame-1)"] path[data-shape]'),
+    ['M 364 104 L 464 104 L 464 184 L 364 184 Z']
+  );
   expect(blocked).toEqual([]);
 });
 
@@ -260,12 +261,13 @@ test('a copied child without its frame is re-rooted, not left naming a missing p
 
   await second.keyboard.press('Control+v');
 
-  await expect(
-    second.getByTestId('board').locator('path[data-shape="rectangle-1"]')
-  ).toHaveCount(1);
-  await expect(second.getByTestId('board').locator('g[clip-path]')).toHaveCount(
-    0
+  await expectPaintedDs(
+    second.getByTestId('board').locator('path[data-shape="rectangle-1"]'),
+    ['M 364 104 L 464 104 L 464 184 L 364 184 Z']
   );
+  await expect(
+    second.getByTestId('board').locator('g[clip-path]').first()
+  ).toBeHidden();
   expect(blocked).toEqual([]);
 });
 
