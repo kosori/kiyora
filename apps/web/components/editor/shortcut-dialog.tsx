@@ -2,10 +2,12 @@
 
 import {
   GESTURE_REFERENCE,
+  type Platform,
   type ReferenceRow,
   shortcutReference,
 } from '@kiyora/editor';
 import { useCallback, useEffect, useRef } from 'react';
+import { usePlatform } from './use-platform';
 
 type Props = {
   onOpenChange: (open: boolean) => void;
@@ -17,10 +19,10 @@ type Props = {
  * pointer gestures' modifiers follow the keymap's rows, so the dialog teaches
  * what alt and shift do to a drag as well as to a key.
  */
-const groupRows = (): Map<string, ReferenceRow[]> => {
+const groupRows = (platform: Platform): Map<string, ReferenceRow[]> => {
   const groups = new Map<string, ReferenceRow[]>();
 
-  for (const row of [...shortcutReference(), ...GESTURE_REFERENCE]) {
+  for (const row of [...shortcutReference(platform), ...GESTURE_REFERENCE]) {
     const rows = groups.get(row.group) ?? [];
     rows.push(row);
     groups.set(row.group, rows);
@@ -34,6 +36,7 @@ const groupRows = (): Map<string, ReferenceRow[]> => {
  * the sheet can only ever show a key the app actually runs.
  */
 export const ShortcutDialog = ({ onOpenChange, open }: Props) => {
+  const platform = usePlatform();
   const dialog = useRef<HTMLDialogElement>(null);
 
   const close = useCallback(() => {
@@ -66,7 +69,7 @@ export const ShortcutDialog = ({ onOpenChange, open }: Props) => {
       <h2 className='mb-4 font-heading font-semibold text-lg'>
         Keyboard shortcuts
       </h2>
-      {[...groupRows()].map(([group, rows]) => (
+      {[...groupRows(platform)].map(([group, rows]) => (
         <section key={group}>
           <h3 className='mb-2 font-medium text-muted-foreground text-xs uppercase'>
             {group}

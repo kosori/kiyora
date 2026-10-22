@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { SCROLLABLE } from './overlay-fit';
+import { usePlatform } from './use-platform';
 
 type Props = {
   host: CommandHost;
@@ -48,12 +49,13 @@ const optionId = (index: number): string => `command-palette-option-${index}`;
  */
 export const CommandPalette = ({ host, onOpenChange, open }: Props) => {
   const editor = useEditor();
+  const platform = usePlatform();
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
 
-  const entries = useMemo(() => commandPalette(), []);
+  const entries = useMemo(() => commandPalette(platform), [platform]);
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
