@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
+import { paintedDs } from './paint';
 
 /** The control these tests place, and the two paths its paint consists of. */
 const OUTLINE = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
@@ -84,7 +85,6 @@ test('a placed button paints its own geometry, reloads, and exports the same pat
   await placeButton(page);
 
   const paths = placed(page);
-  await expect(paths).toHaveCount(2);
   await expect(paths.first()).toHaveAttribute('d', OUTLINE);
   await expect(paths.first()).toHaveAttribute(
     'fill',
@@ -92,6 +92,7 @@ test('a placed button paints its own geometry, reloads, and exports the same pat
   );
   await expect(paths.nth(1)).toHaveAttribute('d', DETAIL);
   await expect(paths.nth(1)).toHaveAttribute('fill', 'none');
+  expect(await paintedDs(paths)).toEqual([OUTLINE, DETAIL]);
 
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-state',

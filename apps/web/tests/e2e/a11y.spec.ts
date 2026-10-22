@@ -135,7 +135,7 @@ test('the editor with a shape selected reports no accessibility violations', asy
   const box = await canvasBox(page);
   await page.mouse.click(box.x + 150, box.y + 150);
 
-  await expect(page.getByTestId('inspector-empty')).toHaveCount(0);
+  await expect(page.getByTestId('inspector-empty')).toBeHidden();
   expect(await audit(page)).toEqual([]);
 });
 

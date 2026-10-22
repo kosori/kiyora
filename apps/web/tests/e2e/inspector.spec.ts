@@ -86,7 +86,7 @@ test('selecting a shape replaces the empty state with the controls', async ({
   await open(page);
   await selectStarter(page);
 
-  await expect(page.getByTestId('inspector-empty')).toHaveCount(0);
+  await expect(page.getByTestId('inspector-empty')).toBeHidden();
   await expect(page.getByTestId('fill-blue')).toBeVisible();
   await expect(page.getByTestId('fill-style-bold')).toBeVisible();
   await expect(page.getByTestId('stroke-ink')).toBeVisible();

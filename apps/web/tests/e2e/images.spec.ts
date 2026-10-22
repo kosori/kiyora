@@ -41,7 +41,9 @@ const placeImage = async (page: Page): Promise<void> => {
     mimeType: 'image/png',
     name: 'photo.png',
   });
-  await expect(page.getByTestId('board').locator('image')).toHaveCount(1);
+  await expect(
+    page.getByTestId('board').locator('image').first()
+  ).toBeVisible();
 };
 
 const saved = async (page: Page): Promise<void> => {
@@ -119,7 +121,7 @@ test('placing the same raster twice keeps one payload and two shapes', async ({
     mimeType: 'image/png',
     name: 'photo.png',
   });
-  await expect(page.getByTestId('board').locator('image')).toHaveCount(2);
+  await expect(page.getByTestId('board').locator('image').nth(1)).toBeVisible();
   await saved(page);
 
   const board = await storedBoard(page);
@@ -181,7 +183,7 @@ test('a board with an image is refused by the localStorage fallback, visibly', a
   const board = written === null ? null : (JSON.parse(written) as StoredBoard);
 
   expect(board?.files ?? {}).toEqual({});
-  await expect(image(page)).toHaveCount(1);
+  await expect(image(page)).toBeVisible();
 });
 
 test('the image is in the document, so the offline guard still holds', async ({

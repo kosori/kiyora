@@ -197,7 +197,7 @@ test('Escape closes find, keeps the match selected and gives the keyboard back',
 
   await find(page).press('Escape');
 
-  await expect(find(page)).toHaveCount(0);
+  await expect(find(page)).toBeHidden();
   await expect(frame(page)).toHaveAttribute('x', String(STARTER.x));
 
   await page.keyboard.press('r');

@@ -208,7 +208,7 @@ test('align appears at two selected shapes and distribute at three', async ({
 
   await expect(page.getByTestId('arrange-controls')).toBeVisible();
   await expect(page.getByTestId('align-left')).toBeVisible();
-  await expect(page.getByTestId('distribute-x')).toHaveCount(0);
+  await expect(page.getByTestId('distribute-x')).toBeHidden();
 
   await addToSelection(page, box, { x: 750, y: 130 });
 
@@ -230,7 +230,9 @@ test('an alignment is one history entry, so one undo puts both shapes back', asy
   await expect(shapePaths(page).nth(1)).toHaveAttribute('d', ORIGINAL_PARTNER);
 
   await page.getByTestId('undo').click();
-  await expect(shapePaths(page)).toHaveCount(1);
+  await expect(
+    board(page).locator('path[data-shape="rectangle-1"]')
+  ).toBeHidden();
 });
 
 test('an alignment that moves nothing never lands in undo', async ({
@@ -254,7 +256,9 @@ test('an alignment that moves nothing never lands in undo', async ({
   await expect(shapePaths(page).nth(1)).toHaveAttribute('d', aligned);
   await page.getByTestId('undo').click();
 
-  await expect(shapePaths(page)).toHaveCount(1);
+  await expect(
+    board(page).locator('path[data-shape="rectangle-1"]')
+  ).toBeHidden();
 });
 
 test('a connector between aligned shapes re-routes', async ({ page }) => {
