@@ -119,6 +119,9 @@ IndexedDB keeps the database `kiyora` and the out-of-line-keyed store `boards`, 
 
 A storage fault is reported by the board that caused it; the record is not consulted for the fault, so the rest of the library still lists and opens.
 
+### Rename, duplicate and delete
+
+A rename writes the payload with the new name and the new `updatedAt`, then the record, so the two cannot disagree after a reload. The editor's title field commits through the same rename and adopts the name without a history entry. A duplicate keeps the payload's shapes, files, deck and camera under an id minted in the browser, resets both times, and names itself `<title> copy`. Delete removes the payload, the snapshot, the quarantine and the record entry, after a confirm that names the board.
 
 ## The render seam
 
@@ -206,7 +209,7 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 5. **Offline by construction.** Every request that is not to localhost is aborted, by a test.
 6. **The export path sees only a board.** Nothing display-only can reach an artifact.
 7. **No silent failures.** Every user-visible failure has a surface.
-8. **One gesture, one history entry.** Undo never restores the camera, the selection or the save time.
+8. **One gesture, one history entry.** Undo never restores the camera, the selection, the save time or the board's name.
 9. **Only authored state is stored.** The camera snapshot and the save time are written by the save, never edited as state.
 10. **New source files stay under the size budget** (400 lines; tests 600). `packages/dsl/src` is vendored and exempt.
 

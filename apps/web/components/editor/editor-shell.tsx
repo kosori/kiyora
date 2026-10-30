@@ -1,8 +1,10 @@
 'use client';
 
+import type { LibraryEntry } from '@kiyora/editor';
 import { useEditor, useView } from '@kiyora/editor/react';
 import { useCallback, useState } from 'react';
 import { BoardCanvas } from './board-canvas';
+import { BoardTitle } from './board-title';
 import { CrashProbe } from './crash-probe';
 import { PanelBoundary } from './error-boundary';
 import { FileControls } from './file-controls';
@@ -23,11 +25,17 @@ import { type AutosaveSetup, useAutosave } from './use-autosave';
  *
  * Zen mode is a view flag, so hiding the chrome is a render, not a board write.
  * What counts as chrome is everything that frames the board: the tool rail, the
- * right rail, the file, history and camera clusters, and the status pill. The
- * skip link and the heading stay, because they are how a keyboard or a screen
- * reader reaches the board at all.
+ * right rail, the title, the file, history and camera clusters, and the status
+ * pill. The skip link and the heading stay, because they are how a keyboard or a
+ * screen reader reaches the board at all.
  */
-export const EditorShell = ({ autosave }: { autosave: AutosaveSetup }) => {
+export const EditorShell = ({
+  autosave,
+  rename,
+}: {
+  autosave: AutosaveSetup;
+  rename: (title: string) => Promise<LibraryEntry | null>;
+}) => {
   const editor = useEditor();
   const { zen } = useView();
   const [shortcuts, setShortcuts] = useState(false);
@@ -59,6 +67,7 @@ export const EditorShell = ({ autosave }: { autosave: AutosaveSetup }) => {
           <BoardCanvas onShowShortcuts={toggleShortcuts} />
           {zen ? null : (
             <>
+              <BoardTitle rename={rename} />
               <FileControls />
               <HistoryControls />
               <PanelBoundary label='Status'>

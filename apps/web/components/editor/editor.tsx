@@ -3,6 +3,7 @@
 import {
   type BoardStorage,
   createEditor,
+  type LibraryEntry,
   type StorageFault,
 } from '@kiyora/editor';
 import { EditorProvider } from '@kiyora/editor/react';
@@ -14,6 +15,8 @@ import { EditorShell } from './editor-shell';
 export type EditorProps = {
   board: Board;
   storage: BoardStorage;
+  /** Commits a new name through the library, payload first. */
+  rename: (title: string) => Promise<LibraryEntry | null>;
   fault?: StorageFault | null;
   migratedFrom?: number | null;
   writable?: boolean;
@@ -29,6 +32,7 @@ export type EditorProps = {
 export const Editor = ({
   board,
   storage,
+  rename,
   fault = null,
   migratedFrom = null,
   writable = true,
@@ -47,6 +51,7 @@ export const Editor = ({
             storage,
             writable,
           }}
+          rename={rename}
         />
       </CopyPngProvider>
     </EditorProvider>

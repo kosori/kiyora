@@ -1,6 +1,7 @@
 import {
   boardKey,
   boardQuarantineKey,
+  boardSnapshotKey,
   createAutosave,
   createEditor,
   createLibrary,
@@ -182,5 +183,176 @@ describe('the library', () => {
     expect(recordOf(held).boards).toEqual([
       { id: 'open', title: 'Open', updatedAt: 5000 },
     ]);
+  });
+});
+
+const international = {
+  bytes: 1,
+  dataURL:
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  mime: 'image/png',
+} as const;
+
+const carried = (): Board =>
+  parseBoard({
+    camera: { x: 30, y: 40, zoom: 2 },
+    createdAt: 1_600_000_000_000,
+    deck: [{ frameId: 'frame-1', notes: 'Welcome', skipped: false }],
+    files: { picture: international },
+    id: 'source',
+    schemaVersion: SCHEMA_VERSION,
+    settings: { theme: 'dark' },
+    shapes: [rectangle],
+    title: 'Original',
+    updatedAt: 1_700_000_000_000,
+  });
+
+const payloadOf = (held: Map<string, string>, id: string): Board =>
+  parseBoard(JSON.parse(held.get(boardKey(id)) ?? 'null'));
+
+describe('renaming a board', () => {
+  it('writes the payload first, then the record, and moves the board to the top', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { now: () => 30 });
+    await library.create(board('older', 'Older', 10, [rectangle]));
+    await library.create(board('newer', 'Newer', 20));
+    const writes: string[] = [];
+    const watched: KeyValueStore = {
+      ...store,
+      put: async (key, value) => {
+        writes.push(key);
+        await store.put(key, value);
+      },
+    };
+
+    const entry = await createLibrary(watched, { now: () => 30 }).rename(
+      'older',
+      'Renamed'
+    );
+
+    expect(entry).toEqual({ id: 'older', title: 'Renamed', updatedAt: 30 });
+    expect(writes).toEqual([boardKey('older'), LIBRARY_KEY]);
+    const payload = payloadOf(held, 'older');
+    expect(payload.title).toBe('Renamed');
+    expect(payload.updatedAt).toBe(30);
+    expect(payload.shapes).toEqual([rectangle]);
+    expect((await createLibrary(store).entries()).map(({ id }) => id)).toEqual([
+      'older',
+      'newer',
+    ]);
+  });
+
+  it('is a no-op the caller can report when the library does not hold the board', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { now: () => 30 });
+    await library.create(board('held', 'Held', 10));
+    const before = held.get(LIBRARY_KEY);
+
+    expect(await library.rename('missing', 'Nowhere')).toBeNull();
+    expect(held.get(LIBRARY_KEY)).toBe(before);
+    expect(held.has(boardKey('missing'))).toBe(false);
+  });
+});
+
+describe('duplicating a board', () => {
+  it('keeps the shapes, files, deck and camera, and resets the times', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, {
+      mintId: () => 'copy',
+      now: () => 5000,
+    });
+    await library.create(carried());
+    const original = held.get(boardKey('source'));
+
+    expect(await library.duplicate('source')).toBe('copy');
+
+    const copy = payloadOf(held, 'copy');
+    expect(copy).toEqual({
+      ...carried(),
+      createdAt: 5000,
+      id: 'copy',
+      title: 'Original copy',
+      updatedAt: 5000,
+    });
+    expect(held.get(boardKey('source'))).toBe(original);
+    expect(recordOf(held).boards.find(({ id }) => id === 'copy')).toEqual({
+      id: 'copy',
+      title: 'Original copy',
+      updatedAt: 5000,
+    });
+  });
+
+  it('editing the copy leaves the original byte-for-byte unchanged', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, {
+      mintId: () => 'copy',
+      now: () => 5000,
+    });
+    await library.create(carried());
+    await library.duplicate('source');
+    const original = held.get(boardKey('source'));
+
+    const copy = payloadOf(held, 'copy');
+    const editor = createEditor(copy);
+    const autosave = createAutosave({
+      editor,
+      now: () => 6000,
+      storage: library.storage('copy'),
+    });
+    editor.setTheme('light');
+    await autosave.flush();
+
+    expect(held.get(boardKey('source'))).toBe(original);
+    expect(payloadOf(held, 'copy').settings.theme).toBe('light');
+  });
+
+  it('titles an empty board Untitled copy', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, {
+      mintId: () => 'copy',
+      now: () => 5000,
+    });
+    await library.create(board('source', ''));
+
+    await library.duplicate('source');
+
+    expect(payloadOf(held, 'copy').title).toBe('Untitled copy');
+  });
+
+  it('is a no-op the caller can report when the source is not held', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { mintId: () => 'copy' });
+
+    expect(await library.duplicate('missing')).toBeNull();
+    expect(held.size).toBe(0);
+  });
+});
+
+describe('removing a board', () => {
+  it('deletes the payload, the snapshot, the quarantine and the record entry', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('doomed', 'Doomed', 10));
+    await library.create(board('kept', 'Kept', 20));
+    held.set(boardSnapshotKey('doomed'), 'snapshot');
+    held.set(boardQuarantineKey('doomed'), 'quarantine');
+
+    expect(await library.remove('doomed')).toBe(true);
+
+    expect(held.has(boardKey('doomed'))).toBe(false);
+    expect(held.has(boardSnapshotKey('doomed'))).toBe(false);
+    expect(held.has(boardQuarantineKey('doomed'))).toBe(false);
+    expect(recordOf(held).boards.map(({ id }) => id)).toEqual(['kept']);
+    expect(await library.holds('doomed')).toBe(false);
+  });
+
+  it('reports that nothing was removed when the board is not held', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('kept', 'Kept', 20));
+    const before = held.get(LIBRARY_KEY);
+
+    expect(await library.remove('missing')).toBe(false);
+    expect(held.get(LIBRARY_KEY)).toBe(before);
   });
 });
