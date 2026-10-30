@@ -1,3 +1,4 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -6,11 +7,7 @@ import { expect, type Page, test } from '../fixtures/offline';
  * to say it can act.
  */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's place on the screen, so board coordinates can be clicked exactly. */

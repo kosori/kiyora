@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -48,11 +49,7 @@ const pngSize = (bytes: Buffer): { height: number; width: number } => ({
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const canvasBox = async (page: Page) => {

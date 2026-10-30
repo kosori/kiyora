@@ -1,3 +1,4 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Locator, type Page, test } from '../fixtures/offline';
 
 /**
@@ -15,11 +16,7 @@ import { expect, type Locator, type Page, test } from '../fixtures/offline';
 
 /** Wait for the surface to say it can act, so the chrome is painted before it is read. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** A slide on the deck, playing, so the laser has a surface to paint on. */

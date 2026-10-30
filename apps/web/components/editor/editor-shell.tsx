@@ -13,7 +13,7 @@ import { SaveIndicator } from './save-indicator';
 import { SelectionAnnouncer } from './selection-announcer';
 import { ShortcutDialog } from './shortcut-dialog';
 import { ToolRail } from './tool-rail';
-import { useAutosave } from './use-autosave';
+import { type AutosaveSetup, useAutosave } from './use-autosave';
 
 /**
  * The editor's chrome and the board between it: the rail and the inspector are
@@ -27,11 +27,11 @@ import { useAutosave } from './use-autosave';
  * skip link and the heading stay, because they are how a keyboard or a screen
  * reader reaches the board at all.
  */
-export const EditorShell = () => {
+export const EditorShell = ({ autosave }: { autosave: AutosaveSetup }) => {
   const editor = useEditor();
   const { zen } = useView();
   const [shortcuts, setShortcuts] = useState(false);
-  const health = useAutosave(editor);
+  const health = useAutosave(editor, autosave);
 
   const toggleShortcuts = useCallback(() => {
     setShortcuts((open) => !open);

@@ -37,7 +37,10 @@ const POINTS = [
 
 export type ShapeJson = Record<string, unknown> & { id: string };
 
-export type BoardJson = Record<string, unknown> & { shapes: ShapeJson[] };
+export type BoardJson = Record<string, unknown> & {
+  id: string;
+  shapes: ShapeJson[];
+};
 
 /** The board of many strokes, ready to seed into storage. */
 export const boardOfManyStrokes = (): BoardJson => {

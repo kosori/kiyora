@@ -1,6 +1,6 @@
 # Architecture
 
-Kiyora is an offline whiteboard: one board, in this browser, drawn by hand, with a diagram-code panel. This document is the map to read before changing code — the package boundaries, the document model, the render seam, and the invariants every change must keep.
+Kiyora is an offline whiteboard: a library of boards, in this browser, drawn by hand, with a diagram-code panel. This document is the map to read before changing code — the package boundaries, the document model, the render seam, and the invariants every change must keep.
 
 ## Why the app runs a server
 
@@ -88,6 +88,38 @@ Paint order is array order: index 0 paints first. There is no `z` number, so a z
 
 The selection lives outside the document, in `editor`. The camera does too while a board is open: the board's `camera` is only the snapshot the last save wrote from the view, and undo never restores the view. Panning is therefore never undoable and never triggers a save.
 
+`updatedAt` is stamped the same way. It lives in the document header because a file carries it, but the engine never moves it: autosave writes the save time beside the camera at serialization time. A history entry therefore cannot hold a different save time, and undo cannot put an older one back. `createdAt` is stamped once, when the board is created.
+
+## The library
+
+A browser holds a library: many boards, each with its own record. A board's id is minted in `apps/web` with `crypto.randomUUID()` before anything is stored; `editor` and any server only ever read it. Two boards therefore never share an id, and a board exists with the network off.
+
+### Routes
+
+`/` lists the library, newest change first, and offers New board. `/b/<id>` opens that board. The editor is keyed by the id, so moving between boards cannot reuse the previous engine, history or autosave. An id the library does not hold is reported as not found; it is never created by opening its address. Next 16 route params arrive as a Promise, so the page awaits `params` before reading `id`.
+
+### Keys
+
+```
+kiyora:library                     the record: { version: 1, boards: LibraryEntry[] }
+kiyora:boards:<id>                 one board's payload
+kiyora:boards:<id>:snapshot        the bytes a migration replaced
+kiyora:boards:<id>:quarantine      bytes that will not read
+```
+
+Every board's storage is a `BoardStorage` over those keys, handed out by the library per id, so autosave still takes a single board's port and a save for one board can never touch another's bytes. IndexedDB, localStorage and memory all implement the same key scheme.
+
+### The record is a cache
+
+The record carries `{ id, title, updatedAt }` and never the board itself, so the list opens no payload. A write stores the payload first, then refreshes the record with the same `updatedAt` in the same save. If the record is missing or unreadable, `createLibrary().entries()` scans the `kiyora:boards:` prefix, parses each payload once and writes the record back; a payload that will not parse is quarantined under that board's own key and skipped, so one damaged board cannot hide the rest.
+
+### One upgrade
+
+IndexedDB keeps the database `kiyora` and the out-of-line-keyed store `boards`, and moves to version 2. In `onupgradeneeded` the single board at `kiyora:board` is adopted under its stored id, its snapshot and quarantine move beside it, and the legacy keys are deleted only after the record naming it has been written. The whole upgrade is one transaction, so a record that cannot be written leaves the board where it was. A second upgrade with no legacy keys changes nothing.
+
+A storage fault is reported by the board that caused it; the record is not consulted for the fault, so the rest of the library still lists and opens.
+
+
 ## The render seam
 
 There is one walker and two backends, so the canvas and the exporter can never disagree:
@@ -159,9 +191,9 @@ Tests fail if a binding has no row in the reference, if a row names a command th
 
 ## Persistence
 
-IndexedDB is primary, localStorage the fallback, memory the last resort. Autosave is debounced roughly 500 ms after the last change, with a flush on `pagehide` and `visibilitychange`.
+IndexedDB is primary, localStorage the fallback, memory the last resort. Each is a per-board store under the library's key scheme. Autosave is debounced roughly 500 ms after the last change, with a flush on `pagehide` and `visibilitychange`.
 
-A migration chain keys off `schemaVersion`: ordered pure functions, each with a fixture. Before migrating, the previous payload is kept as a recovery snapshot. Unreadable data is quarantined rather than overwritten. Storage faults are a typed value — `quota`, `blocked`, `corrupt`, `unavailable` — surfaced in the status bar. A second tab warns instead of clobbering. All keys are namespaced `kiyora:`.
+A migration chain keys off `schemaVersion`: ordered pure functions, each with a fixture. Before migrating, the previous payload is kept as a recovery snapshot. Unreadable data is quarantined rather than overwritten. Storage faults are a typed value — `quota`, `blocked`, `corrupt`, `unavailable` — surfaced in the status bar for the board they concern. A second tab warns instead of clobbering. All keys are namespaced `kiyora:`.
 
 ## Invariants
 
@@ -174,8 +206,8 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 5. **Offline by construction.** Every request that is not to localhost is aborted, by a test.
 6. **The export path sees only a board.** Nothing display-only can reach an artifact.
 7. **No silent failures.** Every user-visible failure has a surface.
-8. **One gesture, one history entry.** Undo never restores the camera or the selection.
-9. **Only authored state is stored.**
+8. **One gesture, one history entry.** Undo never restores the camera, the selection or the save time.
+9. **Only authored state is stored.** The camera snapshot and the save time are written by the save, never edited as state.
 10. **New source files stay under the size budget** (400 lines; tests 600). `packages/dsl/src` is vendored and exempt.
 
 ## Where things live
@@ -195,6 +227,9 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | Keymap, shortcut reference | `packages/editor/src/keymap.ts` |
 | Hit-testing, snapping | `packages/editor/src/geometry/` |
 | Persistence, autosave, faults | `packages/editor/src/persistence/` |
+| Library record, keys and legacy adoption | `packages/editor/src/persistence/library.ts`, `storage.ts` |
+| Browser store: IndexedDB, fallbacks and the v2 upgrade | `apps/web/lib/board-storage.ts` |
+| Library list and the board route | `apps/web/app/`, `apps/web/components/library/`, `apps/web/components/editor/board-route.tsx` |
 | React adapter | `packages/editor/src/react/` |
 | Canvas surface, tool rail, inspector | `apps/web/app/`, `apps/web/components/` |
 | Parser, diagnostics, vocabulary | `packages/dsl/src/` |

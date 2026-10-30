@@ -1,3 +1,4 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
@@ -78,11 +79,7 @@ const gridStep = async (page: Page): Promise<number> => {
  * to say it can act.
  */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 test('the view opens at one hundred percent, and says so', async ({ page }) => {

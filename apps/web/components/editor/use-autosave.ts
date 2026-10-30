@@ -2,20 +2,18 @@
 
 import {
   type Autosave,
+  type BoardStorage,
   type ClipboardRelay,
   createAutosave,
   createClipboardRelay,
   createPresence,
   type Editor,
-  loadBoard,
   type Presence,
-  restoreBoard,
   type SaveStatus,
   type StorageFault,
 } from '@kiyora/editor';
 import { useEffect, useState } from 'react';
 import { openBoardChannel } from '~/lib/board-channel';
-import { openBoardStorage } from '~/lib/board-storage';
 
 /** Everything the shell needs to tell the truth about where the board is. */
 export type StorageHealth = {
@@ -29,6 +27,19 @@ export type StorageHealth = {
   secondary: boolean;
 };
 
+/** What the route hands the hook after it has opened and read one board. */
+export type AutosaveSetup = {
+  storage: BoardStorage;
+  /** The fault that stood in the way of opening the board, if any. */
+  fault?: StorageFault | null;
+  /** The version the board was lifted from, when a migration ran. */
+  migratedFrom?: number | null;
+  /** Whether this board may be written. False when storage could not be read. */
+  writable?: boolean;
+  /** Whether opening should write what is on screen at once, after a rescue. */
+  rewrite?: boolean;
+};
+
 const initialHealth: StorageHealth = {
   fault: null,
   migratedFrom: null,
@@ -37,20 +48,37 @@ const initialHealth: StorageHealth = {
 };
 
 /**
- * Opens the saved board into the engine, then keeps it saved. Returns the health
+ * Keeps the board in `editor` saved through its own storage. Returns the health
  * the status surface reads.
  *
- * The board is read once, on mount. A stored board replaces the starter and
- * brings the view back to where it was left; an older one is lifted and reports
- * the version it came from; unreadable bytes are parked and reported. Only when
- * the bytes were either read or safely quarantined does autosave start watching,
- * so a bad read can never be papered over by a fresh board. A second tab on the
- * same board warns rather than writing over the first.
+ * Autosave starts only when the route says the board is writable: a bad read
+ * that could not be quarantined never gets papered over by a fresh board. After
+ * a migration or a quarantine the route asks for a rewrite, so the next open is
+ * a clean one rather than another rescue. A second tab on the same board warns
+ * rather than writing over the first.
  */
-export const useAutosave = (editor: Editor): StorageHealth => {
-  const [health, setHealth] = useState<StorageHealth>(initialHealth);
+export const useAutosave = (
+  editor: Editor,
+  {
+    storage,
+    fault: initialFault = null,
+    migratedFrom = null,
+    writable = true,
+    rewrite = false,
+  }: AutosaveSetup
+): StorageHealth => {
+  const [health, setHealth] = useState<StorageHealth>({
+    ...initialHealth,
+    fault: initialFault,
+    migratedFrom,
+    status: writable ? initialHealth.status : 'unsaved',
+  });
 
   useEffect(() => {
+    if (!writable) {
+      return;
+    }
+
     let cancelled = false;
     let autosave: Autosave | null = null;
     let clipboard: ClipboardRelay | null = null;
@@ -69,79 +97,47 @@ export const useAutosave = (editor: Editor): StorageHealth => {
       }
     };
 
-    (async () => {
-      try {
-        const { fault: openFault, storage } = await openBoardStorage();
-        const loaded = await loadBoard(storage);
-        if (cancelled) {
-          return;
-        }
+    const channel = openBoardChannel();
+    const self = { id: crypto.randomUUID(), openedAt: Date.now() };
+    const mine = createPresence({ channel, self });
+    presence = mine;
+    clipboard = createClipboardRelay({
+      channel,
+      editor,
+      origin: self.id,
+    });
 
-        const fault = loaded.status === 'fault' ? loaded.fault : openFault;
-        const migratedFrom =
-          loaded.status === 'loaded' ? loaded.migratedFrom : null;
-        const quarantined = loaded.status === 'fault' && loaded.quarantined;
-        if (loaded.status === 'loaded') {
-          restoreBoard(editor, loaded.board);
-        }
+    const created = createAutosave({
+      editor,
+      presence: mine,
+      storage,
+    });
+    autosave = created;
 
-        const writable = loaded.status !== 'fault' || quarantined;
-        if (!writable) {
-          setHealth({
-            fault,
-            migratedFrom,
-            secondary: false,
-            status: 'unsaved',
-          });
-          return;
-        }
-
-        const channel = openBoardChannel();
-        const self = { id: crypto.randomUUID(), openedAt: Date.now() };
-        const mine = createPresence({ channel, self });
-        presence = mine;
-        clipboard = createClipboardRelay({
-          channel,
-          editor,
-          origin: self.id,
-        });
-
-        const created = createAutosave({
-          editor,
-          presence: mine,
-          storage,
-        });
-        autosave = created;
-
-        const sync = (): void => {
-          if (cancelled) {
-            return;
-          }
-          setHealth({
-            fault: created.getFault() ?? fault,
-            migratedFrom,
-            secondary: !mine.isPrimary(),
-            status: created.getStatus(),
-          });
-        };
-        stops.push(created.subscribe(sync), mine.subscribe(sync));
-        sync();
-
-        if (migratedFrom !== null || quarantined) {
-          // The bytes this replaced are in the snapshot or the quarantine, so
-          // the board key is free: write what is now on screen, so the next
-          // open is a clean one rather than another rescue.
-          await created.flush();
-        }
-
-        window.addEventListener('pagehide', flush);
-        window.addEventListener('pagehide', leave);
-        document.addEventListener('visibilitychange', onVisibility);
-      } catch {
-        // A browser with no usable storage is reported by the storage opener's
-        // fault; the starter board stays on screen and usable either way.
+    const sync = (): void => {
+      if (cancelled) {
+        return;
       }
-    })();
+      setHealth({
+        fault: created.getFault() ?? initialFault,
+        migratedFrom,
+        secondary: !mine.isPrimary(),
+        status: created.getStatus(),
+      });
+    };
+    stops.push(created.subscribe(sync), mine.subscribe(sync));
+    sync();
+
+    if (rewrite) {
+      // The bytes this replaced are in the snapshot or the quarantine, so the
+      // board key is free: write what is now on screen, so the next open is a
+      // clean one rather than another rescue.
+      created.flush().catch(() => undefined);
+    }
+
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('pagehide', leave);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       cancelled = true;
@@ -155,7 +151,7 @@ export const useAutosave = (editor: Editor): StorageHealth => {
       presence?.leave();
       autosave?.stop();
     };
-  }, [editor]);
+  }, [editor, initialFault, migratedFrom, rewrite, storage, writable]);
 
   return health;
 };

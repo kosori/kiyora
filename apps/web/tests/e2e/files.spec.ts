@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Locator, type Page, test } from '../fixtures/offline';
 
 const drawn = {
@@ -10,11 +11,7 @@ const drawn = {
 const drawnSecond = 'M 60 320 L 260 320 L 260 470 L 60 470 Z';
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const drawRectangle = async (

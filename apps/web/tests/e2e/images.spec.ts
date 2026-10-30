@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -28,11 +29,7 @@ type StoredBoard = {
 };
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const placeImage = async (page: Page): Promise<void> => {
@@ -57,7 +54,7 @@ const saved = async (page: Page): Promise<void> => {
 const storedBoard = (page: Page): Promise<StoredBoard | null> =>
   page.evaluate(async (): Promise<StoredBoard | null> => {
     const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 1);
+      const opening = indexedDB.open('kiyora', 2);
       opening.onerror = () => reject(opening.error);
       opening.onsuccess = () => {
         const database = opening.result;
@@ -68,7 +65,7 @@ const storedBoard = (page: Page): Promise<StoredBoard | null> =>
         const request = database
           .transaction('boards', 'readonly')
           .objectStore('boards')
-          .get('kiyora:board');
+          .get('kiyora:boards:starter-board');
         request.onerror = () => reject(request.error);
         request.onsuccess = () =>
           resolve((request.result as string | undefined) ?? null);
@@ -213,14 +210,7 @@ test('the board leaves as an SVG and a PNG with the raster inside it', async ({
 test('a board with an image is refused by the localStorage fallback, visibly', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-  });
-
-  await open(page);
+  await openStarterBoard(page, { storage: 'local' });
   await placeImage(page);
 
   const status = page.getByTestId('save-status');
@@ -229,7 +219,7 @@ test('a board with an image is refused by the localStorage fallback, visibly', a
   await expect(status).toContainText(/not saved/);
 
   const written = await page.evaluate(() =>
-    localStorage.getItem('kiyora:board')
+    localStorage.getItem('kiyora:boards:starter-board')
   );
   const board = written === null ? null : (JSON.parse(written) as StoredBoard);
 

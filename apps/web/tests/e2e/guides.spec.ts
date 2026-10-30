@@ -1,3 +1,4 @@
+import { openBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -56,20 +57,7 @@ const board = () => ({
 });
 
 const open = async (page: Page): Promise<void> => {
-  const bytes = JSON.stringify(board());
-
-  await page.addInitScript((stored: string) => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', stored);
-  }, bytes);
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openBoard(page, board(), { storage: 'local' });
 };
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;

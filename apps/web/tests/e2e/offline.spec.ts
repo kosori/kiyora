@@ -1,6 +1,7 @@
 import { copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
 
 test.describe('with the network off', () => {
@@ -9,7 +10,7 @@ test.describe('with the network off', () => {
   test('the editor works with every non-localhost request aborted', async ({
     page,
   }) => {
-    await page.goto('/');
+    await openStarterBoard(page);
 
     await expect(
       page.getByTestId('canvas').locator('path').first()
@@ -21,11 +22,7 @@ test('the exported board opens as a file with the network off, and shows the boa
   context,
   page,
 }) => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),

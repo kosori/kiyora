@@ -1,24 +1,53 @@
 'use client';
 
-import { createEditor } from '@kiyora/editor';
+import {
+  type BoardStorage,
+  createEditor,
+  type StorageFault,
+} from '@kiyora/editor';
 import { EditorProvider } from '@kiyora/editor/react';
+import type { Board } from '@kiyora/model';
 import { useState } from 'react';
-import { starterBoard } from '~/lib/starter-board';
 import { CopyPngProvider } from './copy-png-context';
 import { EditorShell } from './editor-shell';
 
+export type EditorProps = {
+  board: Board;
+  storage: BoardStorage;
+  fault?: StorageFault | null;
+  migratedFrom?: number | null;
+  writable?: boolean;
+  rewrite?: boolean;
+};
+
 /**
- * The editor route: it owns the engine and gives it to the shell through the
+ * One board's editor: it owns the engine and gives it to the shell through the
  * provider, so the shell can read the view and the board with the hooks rather
- * than through props.
+ * than through props. The route remounts it by board id, so a different board
+ * never inherits this engine, its history or its autosave.
  */
-export const Editor = () => {
-  const [editor] = useState(() => createEditor(starterBoard()));
+export const Editor = ({
+  board,
+  storage,
+  fault = null,
+  migratedFrom = null,
+  writable = true,
+  rewrite = false,
+}: EditorProps) => {
+  const [editor] = useState(() => createEditor(board));
 
   return (
     <EditorProvider editor={editor}>
       <CopyPngProvider>
-        <EditorShell />
+        <EditorShell
+          autosave={{
+            fault,
+            migratedFrom,
+            rewrite,
+            storage,
+            writable,
+          }}
+        />
       </CopyPngProvider>
     </EditorProvider>
   );

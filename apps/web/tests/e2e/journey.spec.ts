@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -68,11 +69,7 @@ const drawFromPicker = async (
 test('the whole journey passes with every non-localhost request aborted', async ({
   page,
 }) => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
   const box = await canvasBox(page);
 
   // Draw a rectangle and an ellipse, clear of the starter board and the panels.

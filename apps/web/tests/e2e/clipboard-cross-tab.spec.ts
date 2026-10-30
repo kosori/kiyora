@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION } from '@kiyora/model';
+import { openExistingBoard, openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 import { expectPaintedDs } from './paint';
 
@@ -10,11 +11,7 @@ import { expectPaintedDs } from './paint';
  */
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's place on screen, so a click lands at a board coordinate. */
@@ -92,7 +89,7 @@ test('a copy in one tab pastes in another with a fresh id and an offset', async 
   await expect(shapePaths(first).first()).toHaveAttribute('d', ORIGINAL);
 
   const second = await context.newPage();
-  await open(second);
+  await openExistingBoard(second, 'starter-board');
   await watchChannel(second);
 
   await first.keyboard.press('Control+c');
@@ -123,7 +120,7 @@ test('a connector between two copied shapes keeps both ends across tabs', async 
   await open(first);
   const box = await canvasBox(first);
   const second = await context.newPage();
-  await open(second);
+  await openExistingBoard(second, 'starter-board');
   await watchChannel(second);
 
   await first.keyboard.press('r');
@@ -167,7 +164,7 @@ test('a copied frame keeps its child inside the frame in the other tab', async (
   await open(first);
   const box = await canvasBox(first);
   const second = await context.newPage();
-  await open(second);
+  await openExistingBoard(second, 'starter-board');
   await watchChannel(second);
 
   await first.keyboard.press('f');
@@ -210,7 +207,7 @@ test('a copied child without its frame is re-rooted, not left naming a missing p
   await open(first);
   const box = await canvasBox(first);
   const second = await context.newPage();
-  await open(second);
+  await openExistingBoard(second, 'starter-board');
   await watchChannel(second);
 
   await first.keyboard.press('f');

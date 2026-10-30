@@ -1,7 +1,8 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
 
 test('the rectangle is painted with its fill and stroke', async ({ page }) => {
-  await page.goto('/');
+  await openStarterBoard(page);
 
   const rectangle = page.getByTestId('canvas').locator('path').first();
 
