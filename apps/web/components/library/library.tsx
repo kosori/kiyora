@@ -8,7 +8,9 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AccountControl } from '~/components/auth/account-control';
 import { Button } from '~/components/ui/button';
+import type { AccountSummary } from '~/lib/auth/account';
 import { openStore } from '~/lib/board-storage';
 import { newBoard } from '~/lib/new-board';
 
@@ -30,13 +32,17 @@ const changedAt = (updatedAt: number): string =>
     timeStyle: 'short',
   }).format(updatedAt);
 
+type Props = {
+  account: AccountSummary | null;
+};
+
 /**
  * Every board this browser holds, newest change first. A row names the board and
  * when it last changed, and opens that board's own address. New board writes an
  * empty board at a fresh id and goes to it, so the list never has to guess which
  * board a person meant.
  */
-export const Library = () => {
+export const Library = ({ account }: Props) => {
   const router = useRouter();
   const [entries, setEntries] = useState<LibraryEntry[] | null>(null);
   const [fault, setFault] = useState<StorageFault | null>(null);
@@ -86,9 +92,12 @@ export const Library = () => {
     <main className='mx-auto flex h-svh w-full max-w-3xl flex-col gap-6 p-6'>
       <header className='flex items-center justify-between gap-4'>
         <h1 className='font-semibold text-xl'>Boards</h1>
-        <Button data-testid='new-board' disabled={creating} onClick={start}>
-          New board
-        </Button>
+        <div className='flex items-center gap-4'>
+          <AccountControl account={account} />
+          <Button data-testid='new-board' disabled={creating} onClick={start}>
+            New board
+          </Button>
+        </div>
       </header>
       {fault === null ? null : (
         <p className='text-destructive text-sm' role='alert'>

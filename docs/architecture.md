@@ -6,7 +6,17 @@ Kiyora is an offline whiteboard: a library of boards, in this browser, drawn by 
 
 `apps/web` is a Next.js app that runs normally. It is not a static export, and `output: 'export'` must stay off: auth, an assistant proxy and MCP all need server routes, and static export forbids them.
 
-**Offline means the editor makes no network request except fetching its own assets.** Every end-to-end spec inherits one guard that aborts anything else; a spec that needs a network double opts out per test, never per file. In v1 the server does nothing but serve files.
+**Offline means the editor makes no network request except fetching its own assets.** Every end-to-end spec inherits one guard that aborts anything else; a spec that needs a network double opts out per test, never per file.
+
+The server is optional. With no account variables set, it serves the library and the editor and never opens Postgres. With accounts configured, it validates every required variable at boot, refuses to serve on a schema it has not migrated, and answers sign-in only through Better Auth's route.
+
+### Accounts
+
+Better Auth owns four tables — `user`, `session`, `account`, `verification` — generated into `apps/web/lib/db/schema.ts` and migrated by committed SQL under `apps/web/drizzle/`. `bun run db:migrate` applies them; the boot hook (`apps/web/instrumentation.ts`) reads the committed journal and fails the start when the database is behind it. There is one `postgres.js` client per process, kept on `globalThis` so a development reload does not leak a pool.
+
+Google and GitHub are the only providers. `emailAndPassword` exists only when `AUTH_DEV_CREDENTIALS=1` and `NODE_ENV` is not production; a production boot with that flag set is refused. OAuth callbacks are smoke-tested on a hosted deploy, not walked in CI: the `server` Playwright project signs in through the dev-credentials provider against the real database.
+
+The library reads the session on the server with `auth.api.getSession({ headers: await headers() })`, so a signed-out page makes no request to its own API. Signing out drops the cookie and nothing else: every local copy and its bytes stay untouched. The board editor renders without a session and never asks who is signed in.
 
 ## Workspaces
 
@@ -230,6 +240,9 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | Library record, keys and legacy adoption | `packages/editor/src/persistence/library.ts`, `storage.ts` |
 | Browser store: IndexedDB, fallbacks and the v2 upgrade | `apps/web/lib/board-storage.ts` |
 | Library list and the board route | `apps/web/app/`, `apps/web/components/library/`, `apps/web/components/editor/board-route.tsx` |
+| Accounts: configuration, session, Better Auth route | `apps/web/lib/auth/`, `apps/web/app/api/auth/` |
+| Postgres client, auth schema, migrations, boot check | `apps/web/lib/db/`, `apps/web/drizzle/`, `apps/web/instrumentation.ts` |
+| Sign-in surface and account control | `apps/web/app/sign-in/`, `apps/web/components/auth/` |
 | React adapter | `packages/editor/src/react/` |
 | Canvas surface, tool rail, inspector | `apps/web/app/`, `apps/web/components/` |
 | Parser, diagnostics, vocabulary | `packages/dsl/src/` |
