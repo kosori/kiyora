@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -10,11 +11,7 @@ import { expect, type Page, test } from '../fixtures/offline';
 
 /** Wait for the surface to say it can act, so the chrome is painted before it is read. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** A slide on the deck, so presenting has something to play. */
@@ -40,7 +37,7 @@ const storedBoard = (page: Page) =>
   page.evaluate(
     async (): Promise<string | null> =>
       new Promise<string | null>((resolve, reject) => {
-        const opening = indexedDB.open('kiyora', 1);
+        const opening = indexedDB.open('kiyora', 2);
         opening.onerror = () => reject(opening.error);
         opening.onsuccess = () => {
           const database = opening.result;
@@ -51,7 +48,7 @@ const storedBoard = (page: Page) =>
           const request = database
             .transaction('boards', 'readonly')
             .objectStore('boards')
-            .get('kiyora:board');
+            .get('kiyora:boards:starter-board');
           request.onerror = () => reject(request.error);
           request.onsuccess = () =>
             resolve((request.result as string | undefined) ?? null);

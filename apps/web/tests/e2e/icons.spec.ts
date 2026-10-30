@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { ICONS } from '@kiyora/model/icons';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /** The icon these tests place, and the path the dataset holds for it. */
@@ -8,11 +9,7 @@ const PATH = ICONS[ICON];
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's place on the screen, so board coordinates can be exact. */

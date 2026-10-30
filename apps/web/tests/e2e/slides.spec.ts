@@ -1,12 +1,9 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
   await page.getByTestId('rail-tab-deck').click();
 };
 
@@ -86,7 +83,7 @@ const storedBoard = (page: Page) =>
   page.evaluate(
     async (): Promise<string | null> =>
       new Promise<string | null>((resolve, reject) => {
-        const opening = indexedDB.open('kiyora', 1);
+        const opening = indexedDB.open('kiyora', 2);
         opening.onerror = () => reject(opening.error);
         opening.onsuccess = () => {
           const database = opening.result;
@@ -97,7 +94,7 @@ const storedBoard = (page: Page) =>
           const request = database
             .transaction('boards', 'readonly')
             .objectStore('boards')
-            .get('kiyora:board');
+            .get('kiyora:boards:starter-board');
           request.onerror = () => reject(request.error);
           request.onsuccess = () =>
             resolve((request.result as string | undefined) ?? null);

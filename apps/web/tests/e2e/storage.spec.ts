@@ -1,3 +1,10 @@
+import {
+  boardStorageKey,
+  openExistingBoard,
+  openStarterBoard,
+  quarantineKey,
+  seedBoards,
+} from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -38,14 +45,8 @@ const LEGACY = {
 };
 
 const legacyPath = 'M 8 8 L 128 8 L 128 88 L 8 88 Z';
-
-const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
-};
+const BOARD_ID = 'starter-board';
+const BOARD_KEY = boardStorageKey(BOARD_ID);
 
 const canvasBox = async (page: Page) => {
   const box = await page.getByTestId('canvas').boundingBox();
@@ -74,9 +75,9 @@ const status = (page: Page) => page.getByTestId('save-status');
 
 /** The shapes the browser has actually written, read from IndexedDB. */
 const storedShapes = (page: Page) =>
-  page.evaluate(async (): Promise<{ x: number; y: number }[]> => {
+  page.evaluate(async (key): Promise<{ x: number; y: number }[]> => {
     const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 1);
+      const opening = indexedDB.open('kiyora', 2);
       opening.onerror = () => reject(opening.error);
       opening.onsuccess = () => {
         const database = opening.result;
@@ -87,7 +88,7 @@ const storedShapes = (page: Page) =>
         const request = database
           .transaction('boards', 'readonly')
           .objectStore('boards')
-          .get('kiyora:board');
+          .get(key);
         request.onerror = () => reject(request.error);
         request.onsuccess = () =>
           resolve((request.result as string | undefined) ?? null);
@@ -99,20 +100,28 @@ const storedShapes = (page: Page) =>
     }
     const board = JSON.parse(bytes) as { shapes: { x: number; y: number }[] };
     return board.shapes.map(({ x, y }) => ({ x, y }));
-  });
+  }, BOARD_KEY);
+
+/** A library record that names `BOARD_ID`, for bytes that are not a board. */
+const corruptSeed = (bytes: string) => ({
+  raw: {
+    'kiyora:library': JSON.stringify({
+      boards: [{ id: BOARD_ID, title: 'Kiyora', updatedAt: 1 }],
+      version: 1,
+    }),
+    [BOARD_KEY]: bytes,
+  },
+  record: false,
+});
 
 test('an older board is lifted rather than discarded, and its bytes are snapshotted', async ({
   page,
 }) => {
-  await page.addInitScript((seed) => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', seed);
-  }, JSON.stringify(LEGACY));
-
-  await open(page);
+  await seedBoards(page, [], {
+    legacy: JSON.stringify(LEGACY),
+    open: '/b/board-legacy',
+    storage: 'local',
+  });
 
   const lifted = page.getByTestId('board').locator(`path[d="${legacyPath}"]`);
   await expect(lifted).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
@@ -121,37 +130,36 @@ test('an older board is lifted rather than discarded, and its bytes are snapshot
   await expect(status(page)).toHaveAttribute('data-migrated', '0');
   await expect
     .poll(() =>
-      page.evaluate(() => localStorage.getItem('kiyora:board:snapshot'))
+      page.evaluate(
+        (key) => localStorage.getItem(key),
+        'kiyora:boards:board-legacy:snapshot'
+      )
     )
     .toBe(JSON.stringify(LEGACY));
 });
 
-test('a corrupt board is set aside, never overwritten by a fresh one', async ({
+test('a corrupt board is set aside, and a fresh empty one takes its place', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', 'this is not a board');
+  await seedBoards(page, [], {
+    ...corruptSeed('this is not a board'),
+    open: `/b/${BOARD_ID}`,
+    storage: 'local',
   });
-
-  await open(page);
 
   await expect(status(page)).toHaveAttribute('data-fault', 'corrupt');
   await expect(status(page)).toContainText('set aside');
 
   await expect
     .poll(() =>
-      page.evaluate(() => localStorage.getItem('kiyora:board:quarantine'))
+      page.evaluate((key) => localStorage.getItem(key), quarantineKey(BOARD_ID))
     )
     .toBe('this is not a board');
 
   await expect
     .poll(() =>
-      page.evaluate(() => {
-        const bytes = localStorage.getItem('kiyora:board');
+      page.evaluate((key) => {
+        const bytes = localStorage.getItem(key);
         if (bytes === null) {
           return null;
         }
@@ -160,12 +168,14 @@ test('a corrupt board is set aside, never overwritten by a fresh one', async ({
         } catch {
           return null;
         }
-      })
+      }, BOARD_KEY)
     )
     .toBe(3);
 
-  const fresh = page.getByTestId('board').locator('path[fill="#2f9e44"]');
-  await expect(fresh).toBeVisible();
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
 });
 
 test('a board from a newer release is set aside rather than guessed at', async ({
@@ -173,20 +183,16 @@ test('a board from a newer release is set aside rather than guessed at', async (
 }) => {
   const future = JSON.stringify({ ...LEGACY, schemaVersion: 99 });
 
-  await page.addInitScript((seed) => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', seed);
-  }, future);
-
-  await open(page);
+  await seedBoards(page, [], {
+    ...corruptSeed(future),
+    open: `/b/${BOARD_ID}`,
+    storage: 'local',
+  });
 
   await expect(status(page)).toHaveAttribute('data-fault', 'corrupt');
   await expect
     .poll(() =>
-      page.evaluate(() => localStorage.getItem('kiyora:board:quarantine'))
+      page.evaluate((key) => localStorage.getItem(key), quarantineKey(BOARD_ID))
     )
     .toBe(future);
 });
@@ -194,21 +200,23 @@ test('a board from a newer release is set aside rather than guessed at', async (
 test('a full disk is reported as quota, and the board stays on screen', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
+  await openStarterBoard(page, { storage: 'local' });
+
+  await page.addInitScript((key) => {
     const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = function setItem(key, value) {
-      if (key === 'kiyora:board') {
+    Storage.prototype.setItem = function setItem(name, value) {
+      if (name === key) {
         throw new DOMException('full', 'QuotaExceededError');
       }
-      return original.call(this, key, value);
+      return original.call(this, name, value);
     };
-  });
+  }, BOARD_KEY);
+  await page.reload();
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
 
-  await open(page);
   await drawRectangle(page, { x: 200, y: 150 }, { x: 400, y: 300 });
 
   await expect(status(page)).toHaveAttribute('data-fault', 'quota');
@@ -239,7 +247,11 @@ test('blocked storage is reported distinctly from a full one', async ({
     });
   });
 
-  await open(page);
+  await page.goto(`/b/${BOARD_ID}`);
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
 
   await expect(status(page)).toHaveAttribute('data-fault', 'blocked');
   await expect(status(page)).toContainText('allow site data');
@@ -259,28 +271,33 @@ test('missing storage is reported as unavailable, and the board still works', as
     });
   });
 
-  await open(page);
+  await page.goto(`/b/${BOARD_ID}`);
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
 
   await expect(status(page)).toHaveAttribute('data-fault', 'unavailable');
-  await expect(
-    page.getByTestId('board').locator('path[fill="#2f9e44"]')
-  ).toBeVisible();
+  await drawRectangle(page, { x: 200, y: 150 }, { x: 400, y: 300 });
+  const drawn = page
+    .getByTestId('board')
+    .locator('path[fill="rgba(25, 113, 194, 0.2)"]');
+  await expect(drawn).toHaveAttribute(
+    'd',
+    'M 200 150 L 400 150 L 400 300 L 200 300 Z'
+  );
 });
 
 test('a second tab warns instead of clobbering the first', async ({
   context,
   page,
 }) => {
-  await open(page);
+  await openStarterBoard(page);
   await drawRectangle(page, { x: 200, y: 150 }, { x: 400, y: 300 });
   await expect(status(page)).toHaveAttribute('data-state', 'saved');
 
   const second = await context.newPage();
-  await second.goto('/');
-  await expect(second.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openExistingBoard(second, BOARD_ID);
 
   await expect(status(second)).toHaveAttribute('data-secondary', 'true');
   await expect(status(second)).toContainText('another tab');
@@ -301,7 +318,7 @@ test('a panel that throws leaves the board intact and says what to do next', asy
     localStorage.setItem('kiyora:test:crash-panel:tools', '1');
   });
 
-  await open(page);
+  await openStarterBoard(page);
 
   const panel = page.getByTestId('panel-error');
   await expect(panel).toBeVisible();

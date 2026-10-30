@@ -1,3 +1,4 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
@@ -24,11 +25,7 @@ const camera = async (page: Page): Promise<Camera> => {
 };
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const canvasBox = async (page: Page) => {
@@ -85,7 +82,7 @@ const pan = async (
 const storedCamera = (page: Page) =>
   page.evaluate(async (): Promise<Camera | null> => {
     const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 1);
+      const opening = indexedDB.open('kiyora', 2);
       opening.onerror = () => reject(opening.error);
       opening.onsuccess = () => {
         const database = opening.result;
@@ -96,7 +93,7 @@ const storedCamera = (page: Page) =>
         const request = database
           .transaction('boards', 'readonly')
           .objectStore('boards')
-          .get('kiyora:board');
+          .get('kiyora:boards:starter-board');
         request.onerror = () => reject(request.error);
         request.onsuccess = () =>
           resolve((request.result as string | undefined) ?? null);
@@ -244,21 +241,16 @@ test('a pan alone is flushed as the page goes away, so the view comes back', asy
 test('a board is saved and read back without IndexedDB, through the fallback', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-  });
-
-  await open(page);
+  await openStarterBoard(page, { storage: 'local' });
   await drawRectangle(page);
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-state',
     'saved'
   );
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('kiyora:board')))
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem('kiyora:boards:starter-board'))
+    )
     .not.toBeNull();
 
   await page.reload();

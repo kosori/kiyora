@@ -1,3 +1,4 @@
+import { boardStorageKey, openBoard } from '../fixtures/library';
 import { expect, type Page, type TestInfo, test } from '../fixtures/offline';
 import {
   boardOfAThousandShapes,
@@ -36,24 +37,13 @@ const NODE_BUDGET = 250;
  */
 const MEDIAN_FRAME_CEILING_MS = 250;
 
-/** The board the test opens: a thousand shapes, seeded before any app code runs. */
+/** The board the test opens: a thousand shapes, seeded into local storage before any app code runs. */
 const openThousand = async (page: Page): Promise<void> => {
-  const board = JSON.stringify(boardOfAThousandShapes());
-
-  await page.addInitScript((bytes: string) => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', bytes);
-  }, board);
-
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true',
-    { timeout: 30_000 }
-  );
+  await openBoard(page, boardOfAThousandShapes(), {
+    storage: 'local',
+    timeout: 30_000,
+    waitFor: 'canvas',
+  });
 };
 
 const canvasBox = async (page: Page) => {
@@ -221,8 +211,8 @@ test('dragging a shape moves that shape and keeps frames under the tripwire', as
   expect(measured.median).toBeLessThan(MEDIAN_FRAME_CEILING_MS);
 
   const stored = () =>
-    page.evaluate(() => {
-      const bytes = localStorage.getItem('kiyora:board');
+    page.evaluate((key) => {
+      const bytes = localStorage.getItem(key);
       const board =
         bytes === null
           ? null
@@ -231,19 +221,19 @@ test('dragging a shape moves that shape and keeps frames under the tripwire', as
             });
 
       return board?.shapes.find((shape) => shape.id === 'shape-0') ?? null;
-    });
+    }, boardStorageKey('thousand-shapes'));
 
   await expect.poll(async () => (await stored())?.x).toBe(moved.x);
 
-  const saved = await page.evaluate(() => {
-    const bytes = localStorage.getItem('kiyora:board');
+  const saved = await page.evaluate((key) => {
+    const bytes = localStorage.getItem(key);
     const board =
       bytes === null
         ? null
         : (JSON.parse(bytes) as { shapes: { kind: string }[] });
 
     return board?.shapes.map((shape) => shape.kind) ?? [];
-  });
+  }, boardStorageKey('thousand-shapes'));
   const kinds = [...new Set(saved)].sort();
 
   expect(saved).toHaveLength(SHAPE_COUNT);

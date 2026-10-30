@@ -1,4 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
+import {
+  boardStorageKey,
+  openStarterBoard,
+  seedBoards,
+} from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -11,11 +16,7 @@ import { expect, type Page, test } from '../fixtures/offline';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The deck is a tab in the right rail; open it before reaching for a slide. */
@@ -212,14 +213,18 @@ test('the present overlay reports no accessibility violations', async ({
 test('a storage fault reports no accessibility violations', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', 'this is not a board');
+  await seedBoards(page, [], {
+    open: '/b/starter-board',
+    raw: {
+      'kiyora:library': JSON.stringify({
+        boards: [{ id: 'starter-board', title: 'Kiyora', updatedAt: 1 }],
+        version: 1,
+      }),
+      [boardStorageKey('starter-board')]: 'this is not a board',
+    },
+    record: false,
+    storage: 'local',
   });
-  await open(page);
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-fault',
     'corrupt'

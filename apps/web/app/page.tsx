@@ -1,9 +1,5 @@
-import { Editor } from '~/components/editor/editor';
+import { Library } from '~/components/library/library';
 
-const Page = () => (
-  <main className='h-svh overflow-hidden'>
-    <Editor />
-  </main>
-);
+const Page = () => <Library />;
 
 export default Page;

@@ -1,3 +1,4 @@
+import { openStarterBoard } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
 
 /**
@@ -14,11 +15,7 @@ test.describe('the offline guard', () => {
     page,
     blockedRequests,
   }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('canvas')).toHaveAttribute(
-      'data-ready',
-      'true'
-    );
+    await openStarterBoard(page);
 
     const thirdParty = 'https://example.com/kiyora-canary';
     const api = new URL('/api/kiyora-canary', page.url()).href;

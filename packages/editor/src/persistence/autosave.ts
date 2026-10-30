@@ -15,6 +15,12 @@ export type AutosaveOptions = {
   /** How long to wait after the last change. Defaults to `AUTOSAVE_DELAY`. */
   delay?: number;
   /**
+   * When this save happened. Defaults to `Date.now`. The value is stamped into
+   * the payload at write time, never into the editor's board, so it cannot be
+   * captured by a history entry or restored by undo.
+   */
+  now?: () => number;
+  /**
    * Whether this tab may write. When another tab holds the board, this one
    * yields rather than clobbering it, and takes over once the holder leaves.
    */
@@ -58,6 +64,7 @@ export const createAutosave = ({
   editor,
   storage,
   delay = AUTOSAVE_DELAY,
+  now = Date.now,
   presence,
 }: AutosaveOptions): Autosave => {
   let status: SaveStatus = 'saved';
@@ -99,10 +106,16 @@ export const createAutosave = ({
    * The bytes to write: the board file, so what autosave stores and what a file
    * save stores are one shape. The camera comes from the view, not from the
    * board: the view is the one that moves, and the board's copy is only the
-   * snapshot the previous save left behind.
+   * snapshot the previous save left behind. The save time is stamped here for
+   * the same reason: it belongs to the write, not to the document, so undo can
+   * never put an older time back.
    */
   const snapshot = (board: Board): string =>
-    serializeBoard({ ...board, camera: editor.getView().camera });
+    serializeBoard({
+      ...board,
+      camera: editor.getView().camera,
+      updatedAt: now(),
+    });
 
   const write = async (): Promise<void> => {
     if (presence !== undefined && !presence.isPrimary()) {

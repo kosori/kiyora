@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 import { paintedDs } from './paint';
 
@@ -8,11 +9,7 @@ const DETAIL = 'M 260 225 L 340 225';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's place on the screen, so board coordinates can be dragged to exactly. */
