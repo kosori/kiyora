@@ -41,13 +41,13 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
     let cancelled = false;
 
     (async () => {
-      const { fault: openFault, store, volatile } = await openStore();
+      const { fault: openFault, store } = await openStore();
       const library = createLibrary(store);
       const entry = (await library.entries()).find(
         (board) => board.id === boardId
       );
       const stored = await store.get(boardKey(boardId));
-      if (entry === undefined && stored === null && !volatile) {
+      if (entry === undefined && stored === null) {
         if (!cancelled) {
           setState({ status: 'missing' });
         }

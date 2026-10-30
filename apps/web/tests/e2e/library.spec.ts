@@ -282,3 +282,43 @@ test('a save moves updatedAt forward, and undo never puts the old time back', as
     'shape-clock',
   ]);
 });
+
+test('the memory fallback keeps a board between the library and its address', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('blocked', 'SecurityError');
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('new-board').click();
+  await expect(page.getByTestId('canvas')).toHaveAttribute(
+    'data-ready',
+    'true'
+  );
+
+  await drawRectangle(page);
+  await expect(page.getByTestId('save-status')).toHaveAttribute(
+    'data-state',
+    'saved'
+  );
+
+  await page.goBack();
+  await expect(page.getByTestId('library-board')).toContainText('Untitled');
+  await page.getByTestId('library-board').first().click();
+
+  await expect(
+    page
+      .getByTestId('board')
+      .locator('path[d="M 300 250 L 440 250 L 440 350 L 300 350 Z"]')
+  ).toBeVisible();
+});

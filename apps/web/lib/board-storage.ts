@@ -240,12 +240,17 @@ const memoryStore = (): KeyValueStore => {
   };
 };
 
+/**
+ * The memory store is created once per tab, not once per read. The library and
+ * the board route each open storage, and a fresh map per call would lose the
+ * board a person just created the moment they navigated to it.
+ */
+const volatileStore = memoryStore();
+
 /** The library's storage, and the fault standing in the way of a durable save. */
 export type OpenedStore = {
   store: KeyValueStore;
   fault: StorageFault | null;
-  /** Whether this store loses its boards with the tab (the memory fallback). */
-  volatile: boolean;
 };
 
 /**
@@ -264,7 +269,7 @@ export const openStore = async (): Promise<OpenedStore> => {
 
   if (typeof indexedDB !== 'undefined') {
     try {
-      return { fault: null, store: await indexedDbStore(), volatile: false };
+      return { fault: null, store: await indexedDbStore() };
     } catch (error) {
       fault = faultFromException(error);
     }
@@ -279,12 +284,11 @@ export const openStore = async (): Promise<OpenedStore> => {
     } catch (error) {
       fault = faultFromException(error);
     }
-    return { fault, store, volatile: false };
+    return { fault, store };
   } catch (error) {
     return {
       fault: fault ?? faultFromException(error),
-      store: memoryStore(),
-      volatile: true,
+      store: volatileStore,
     };
   }
 };
