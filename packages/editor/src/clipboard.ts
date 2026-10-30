@@ -30,6 +30,8 @@ export const CLIPBOARD_VERSION = SCHEMA_VERSION;
  */
 export type ClipboardMessage = {
   type: 'clipboard';
+  /** The board it was copied from, so another board's relay refuses it. */
+  boardId: string;
   /** The tab that copied it, so a tab never takes back its own broadcast. */
   origin: string;
   schemaVersion: number;
@@ -60,11 +62,12 @@ export const portableFragment = (fragment: Clipboard): Clipboard => {
   };
 };
 
-/** `fragment` as the message a tab broadcasts for the others. */
+/** `fragment` as the message a tab broadcasts to the others on `boardId`. */
 export const clipboardMessage = (
   fragment: Clipboard,
-  origin: string
+  { boardId, origin }: { boardId: string; origin: string }
 ): ClipboardMessage => ({
+  boardId,
   origin,
   schemaVersion: CLIPBOARD_VERSION,
   shapes: portableFragment(fragment).shapes,
@@ -74,19 +77,24 @@ export const clipboardMessage = (
 const fragments = shapeSchema.array();
 
 /**
- * `input` as a clipboard this build can paste, or `null` when it is not. A
+ * `input` as a clipboard `boardId` can paste, or `null` when it is not. A
  * version other than this build's is refused rather than migrated: migrations
  * lift whole boards, and a fragment arrives with no board around it to reason
- * about. Every shape is validated, so a message cannot put a record the schema
- * rejects on the board.
+ * about. A fragment copied in another board is refused too, so a paste never
+ * lands in the wrong document. Every shape is validated, so a message cannot
+ * put a record the schema rejects on the board.
  */
-export const readClipboardMessage = (input: unknown): Clipboard | null => {
+export const readClipboardMessage = (
+  input: unknown,
+  boardId: string
+): Clipboard | null => {
   if (typeof input !== 'object' || input === null) {
     return null;
   }
   const message = input as Record<string, unknown>;
   if (
     message.type !== 'clipboard' ||
+    message.boardId !== boardId ||
     message.schemaVersion !== CLIPBOARD_VERSION
   ) {
     return null;

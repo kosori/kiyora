@@ -13,6 +13,8 @@ import { EditorShell } from './editor-shell';
 
 export type EditorProps = {
   board: Board;
+  /** The board's address, so presence and the clipboard stay on this board. */
+  boardId: string;
   storage: BoardStorage;
   fault?: StorageFault | null;
   migratedFrom?: number | null;
@@ -28,6 +30,7 @@ export type EditorProps = {
  */
 export const Editor = ({
   board,
+  boardId,
   storage,
   fault = null,
   migratedFrom = null,
@@ -41,6 +44,7 @@ export const Editor = ({
       <CopyPngProvider>
         <EditorShell
           autosave={{
+            boardId,
             fault,
             migratedFrom,
             rewrite,

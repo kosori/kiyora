@@ -29,6 +29,8 @@ export type StorageHealth = {
 
 /** What the route hands the hook after it has opened and read one board. */
 export type AutosaveSetup = {
+  /** The board this tab has open; presence and the clipboard are scoped to it. */
+  boardId: string;
   storage: BoardStorage;
   /** The fault that stood in the way of opening the board, if any. */
   fault?: StorageFault | null;
@@ -60,6 +62,7 @@ const initialHealth: StorageHealth = {
 export const useAutosave = (
   editor: Editor,
   {
+    boardId,
     storage,
     fault: initialFault = null,
     migratedFrom = null,
@@ -97,11 +100,12 @@ export const useAutosave = (
       }
     };
 
-    const channel = openBoardChannel();
+    const channel = openBoardChannel(boardId);
     const self = { id: crypto.randomUUID(), openedAt: Date.now() };
     const mine = createPresence({ channel, self });
     presence = mine;
     clipboard = createClipboardRelay({
+      boardId,
       channel,
       editor,
       origin: self.id,
@@ -151,7 +155,7 @@ export const useAutosave = (
       presence?.leave();
       autosave?.stop();
     };
-  }, [editor, initialFault, migratedFrom, rewrite, storage, writable]);
+  }, [boardId, editor, initialFault, migratedFrom, rewrite, storage, writable]);
 
   return health;
 };
