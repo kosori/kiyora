@@ -85,3 +85,24 @@ describe('two tabs on one board', () => {
     expect(solo.isPrimary()).toBe(true);
   });
 });
+
+describe('two tabs on two boards', () => {
+  it('elects each board separately, so neither tab rivals the other', () => {
+    const first = createPresence({
+      channel: sharedChannel(),
+      self: { id: 'a', openedAt: 1 },
+    });
+    const second = createPresence({
+      channel: sharedChannel(),
+      self: { id: 'b', openedAt: 2 },
+    });
+
+    expect(first.isPrimary()).toBe(true);
+    expect(second.isPrimary()).toBe(true);
+
+    first.leave();
+
+    expect(second.isPrimary()).toBe(true);
+    expect(second.leader()).toBeNull();
+  });
+});
