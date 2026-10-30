@@ -1,30 +1,13 @@
 import { SCHEMA_VERSION } from '@kiyora/model';
-import { type BrowserContext, expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 import { expectPaintedDs } from './paint';
 
 /**
  * The first spec in this repo that opens a second tab. Tabs in one browser
  * context share a `BroadcastChannel`, which is how the clipboard crosses; the
  * board never leaves the machine and no request is made to carry it. Every test
- * here aborts non-localhost requests, so the feature has to work offline.
+ * here runs behind the shared offline guard, so the feature has to work offline.
  */
-
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
-
-const blockRemote = async (context: BrowserContext): Promise<string[]> => {
-  const blocked: string[] = [];
-
-  await context.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (LOCAL_HOSTS.has(hostname)) {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
-  return blocked;
-};
 
 const open = async (page: Page): Promise<void> => {
   await page.goto('/');
@@ -102,7 +85,6 @@ test('a copy in one tab pastes in another with a fresh id and an offset', async 
   browserName,
 }) => {
   test.skip(browserName !== 'chromium', 'the clipboard is proven in Chromium');
-  const blocked = await blockRemote(context);
   const first = await context.newPage();
   await open(first);
   const box = await canvasBox(first);
@@ -132,13 +114,11 @@ test('a copy in one tab pastes in another with a fresh id and an offset', async 
 
   await expect(shapePaths(second).nth(1)).toHaveAttribute('d', COPIED);
   await expect(shapePaths(second).nth(0)).toHaveAttribute('d', ORIGINAL);
-  expect(blocked).toEqual([]);
 });
 
 test('a connector between two copied shapes keeps both ends across tabs', async ({
   context,
 }) => {
-  const blocked = await blockRemote(context);
   const first = await context.newPage();
   await open(first);
   const box = await canvasBox(first);
@@ -178,13 +158,11 @@ test('a connector between two copied shapes keeps both ends across tabs', async 
     .locator('path[data-shape="connector-1"]')
     .first();
   await expect(copiedLine).toHaveAttribute('d', 'M 324 154 L 524 174');
-  expect(blocked).toEqual([]);
 });
 
 test('a copied frame keeps its child inside the frame in the other tab', async ({
   context,
 }) => {
-  const blocked = await blockRemote(context);
   const first = await context.newPage();
   await open(first);
   const box = await canvasBox(first);
@@ -223,13 +201,11 @@ test('a copied frame keeps its child inside the frame in the other tab', async (
       .locator('g[clip-path="url(#clip-frame-1)"] path[data-shape]'),
     ['M 364 104 L 464 104 L 464 184 L 364 184 Z']
   );
-  expect(blocked).toEqual([]);
 });
 
 test('a copied child without its frame is re-rooted, not left naming a missing parent', async ({
   context,
 }) => {
-  const blocked = await blockRemote(context);
   const first = await context.newPage();
   await open(first);
   const box = await canvasBox(first);
@@ -268,7 +244,6 @@ test('a copied child without its frame is re-rooted, not left naming a missing p
   await expect(
     second.getByTestId('board').locator('g[clip-path]').first()
   ).toBeHidden();
-  expect(blocked).toEqual([]);
 });
 
 test('copy as PNG puts the selection on the clipboard at its own size', async ({
@@ -277,7 +252,6 @@ test('copy as PNG puts the selection on the clipboard at its own size', async ({
   browserName,
 }) => {
   test.skip(browserName !== 'chromium', 'the clipboard is proven in Chromium');
-  const blocked = await blockRemote(context);
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await open(page);
   const box = await canvasBox(page);
@@ -308,5 +282,4 @@ test('copy as PNG puts the selection on the clipboard at its own size', async ({
   });
 
   expect(size).toEqual({ height: 140, width: 220 });
-  expect(blocked).toEqual([]);
 });

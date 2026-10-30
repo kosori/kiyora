@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Images, driven at the browser seam: a real file input hands in a real PNG, the
@@ -240,20 +240,8 @@ test('a board with an image is refused by the localStorage fallback, visibly', a
 test('the image is in the document, so the offline guard still holds', async ({
   page,
 }) => {
-  const blocked: string[] = [];
-
-  await page.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
   await open(page);
   await placeImage(page);
 
   await expect(image(page)).toHaveAttribute('href', /^data:image\/png;base64,/);
-  expect(blocked).toEqual([]);
 });

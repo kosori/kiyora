@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '../fixtures/offline';
 
 const drawn = {
   d: 'M 200 150 L 400 150 L 400 300 L 200 300 Z',

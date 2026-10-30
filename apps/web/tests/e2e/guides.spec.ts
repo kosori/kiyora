@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Alignment guides (#58): a dragged edge lands on another shape's edge, a guide

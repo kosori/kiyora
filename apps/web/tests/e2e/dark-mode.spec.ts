@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Dark mode is two settings, not one. These tests drive both at the browser
@@ -7,8 +7,6 @@ import { expect, type Page, test } from '@playwright/test';
  * repaints, a PNG whose pixels carry the theme. The chrome's appearance is read
  * from the rail, and the board's theme from the canvas fill it names.
  */
-
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 const open = async (page: Page): Promise<void> => {
   await page.goto('/');
@@ -227,17 +225,6 @@ test('a dark chrome keeps a light board, and the reverse holds', async ({
 });
 
 test('neither setting makes a request', async ({ page }) => {
-  const blocked: string[] = [];
-
-  await page.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (LOCAL_HOSTS.has(hostname)) {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
   await open(page);
   await pick(page, 'appearance', 'dark');
   await pick(page, 'board-theme', 'dark');
@@ -245,6 +232,4 @@ test('neither setting makes a request', async ({ page }) => {
   await page.getByTestId('png-options').click();
   await pick(page, 'png-background', 'solid');
   await exportSolid(page);
-
-  expect(blocked).toEqual([]);
 });

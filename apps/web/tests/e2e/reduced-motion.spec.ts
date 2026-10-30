@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '../fixtures/offline';
 
 /**
  * Reduced motion, proven at the browser seam. The preference is emulated on the

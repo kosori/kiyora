@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 import { boardOfManyStrokes, STROKE_COUNT } from './ink-board';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */

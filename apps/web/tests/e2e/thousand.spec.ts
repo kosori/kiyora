@@ -1,4 +1,4 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test';
+import { expect, type Page, type TestInfo, test } from '../fixtures/offline';
 import {
   boardOfAThousandShapes,
   boxPath,

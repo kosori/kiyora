@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The cut's acceptance journey: one test that walks the code panel the way a
@@ -12,8 +12,6 @@ import { expect, type Page, test } from '@playwright/test';
  * screen, a diagnostic's words, and the PNG's own IHDR. Element counts prove
  * nothing here, and none are asserted.
  */
-
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 /** The frame the whole journey writes into, clear of the starter rectangle. */
 const FRAME = { h: 300, w: 400, x: 500, y: 160 } as const;
@@ -131,17 +129,6 @@ const confirmApply = async (page: Page) => {
 test('the cut journey passes with every non-localhost request aborted', async ({
   page,
 }) => {
-  const blocked: string[] = [];
-
-  await page.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (LOCAL_HOSTS.has(hostname)) {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
   await open(page);
   await drawFrame(page);
   await selectFrame(page);
@@ -226,6 +213,4 @@ test('the cut journey passes with every non-localhost request aborted', async ({
   expect(pixels.width).toBe(Math.round((viewBox[2] ?? 0) * 2));
   expect(pixels.height).toBe(Math.round((viewBox[3] ?? 0) * 2));
   expect(svg).toContain('stroke="#1e1e1e"');
-
-  expect(blocked).toEqual([]);
 });
