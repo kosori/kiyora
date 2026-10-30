@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The pixel box a PNG declares in its own IHDR chunk, read from the file the
@@ -351,22 +351,10 @@ test('a board past the size cap is refused, and no file is written', async ({
 test('a PNG export asks the network for nothing but the app’s own assets', async ({
   page,
 }) => {
-  const blocked: string[] = [];
-
-  await page.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
   await open(page);
   await page.getByTestId('png-options').click();
   const bytes = await exportPng(page);
 
-  expect(blocked).toEqual([]);
   expect(pngSize(bytes)).toEqual({ height: 280, width: 440 });
 });
 

@@ -6,7 +6,7 @@ Kiyora is an offline whiteboard: one board, in this browser, drawn by hand, with
 
 `apps/web` is a Next.js app that runs normally. It is not a static export, and `output: 'export'` must stay off: auth, an assistant proxy and MCP all need server routes, and static export forbids them.
 
-**Offline means the editor makes no network request except fetching its own assets.** A test enforces it. In v1 the server does nothing but serve files.
+**Offline means the editor makes no network request except fetching its own assets.** Every end-to-end spec inherits one guard that aborts anything else; a spec that needs a network double opts out per test, never per file. In v1 the server does nothing but serve files.
 
 ## Workspaces
 

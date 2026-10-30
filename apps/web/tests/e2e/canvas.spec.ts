@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/offline';
 
 test('the rectangle is painted with its fill and stroke', async ({ page }) => {
   await page.goto('/');

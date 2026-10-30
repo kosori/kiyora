@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The acceptance journey: one test that walks the whole product the way a
@@ -8,8 +8,6 @@ import { expect, type Page, test } from '@playwright/test';
  * guard is not a separate claim here: the journey runs behind it, so the board
  * is proven to survive the whole walk with the network off.
  */
-
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 /** The pixel box a PNG declares in its own IHDR chunk, read from the file a person would get. */
 const pngSize = (bytes: Buffer): { height: number; width: number } => ({
@@ -70,17 +68,6 @@ const drawFromPicker = async (
 test('the whole journey passes with every non-localhost request aborted', async ({
   page,
 }) => {
-  const blocked: string[] = [];
-
-  await page.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (LOCAL_HOSTS.has(hostname)) {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
   await page.goto('/');
   await expect(page.getByTestId('canvas')).toHaveAttribute(
     'data-ready',
@@ -198,6 +185,4 @@ test('the whole journey passes with every non-localhost request aborted', async 
   await page.keyboard.press('Escape');
   await expect(overlay).toBeHidden();
   await expect(page.getByTestId('deck')).toBeVisible();
-
-  expect(blocked).toEqual([]);
 });

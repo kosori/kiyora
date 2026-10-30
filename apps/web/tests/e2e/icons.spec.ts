@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { ICONS } from '@kiyora/model/icons';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /** The icon these tests place, and the path the dataset holds for it. */
 const ICON = 'star';

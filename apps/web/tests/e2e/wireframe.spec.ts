@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '../fixtures/offline';
 import { paintedDs } from './paint';
 
 /** The control these tests place, and the two paths its paint consists of. */
