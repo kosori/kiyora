@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Button } from '~/components/ui/button';
+import { Button, buttonVariants } from '~/components/ui/button';
 import { BoardPreview } from './board-preview';
 import { changedAt } from './changed-at';
 
@@ -133,6 +133,16 @@ export const BoardRow = ({
         </Link>
       )}
       <div className='flex shrink-0 items-center gap-1'>
+        {entry.conflict === undefined ? null : (
+          <Link
+            aria-label={`Resolve the conflict on ${name}`}
+            className={buttonVariants({ size: 'sm', variant: 'outline' })}
+            data-testid='resolve-conflict'
+            href={`/b/${entry.id}?conflict=1`}
+          >
+            Resolve
+          </Link>
+        )}
         <Button
           aria-label={`Rename ${name}`}
           data-testid='rename-board'

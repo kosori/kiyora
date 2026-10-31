@@ -12,6 +12,7 @@ import {
 } from './library-record';
 import {
   type BoardStorage,
+  boardConflictKey,
   boardKey,
   boardQuarantineKey,
   boardSnapshotKey,
@@ -206,6 +207,7 @@ export const createLibrary = (
       await Promise.all([
         store.delete(boardKey(id)),
         store.delete(boardSnapshotKey(id)),
+        store.delete(boardConflictKey(id)),
         store.delete(boardQuarantineKey(id)),
       ]);
       if (record !== null) {

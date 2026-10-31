@@ -1,6 +1,8 @@
 import {
+  boardConflictKey,
   boardKey,
   boardQuarantineKey,
+  boardSnapshotKey,
   LEGACY_BOARD_KEY,
   LEGACY_QUARANTINE_KEY,
   LEGACY_SNAPSHOT_KEY,
@@ -111,6 +113,8 @@ export const boardStorageKey = boardKey;
 
 /** The key one board's quarantine lives under. */
 export const quarantineKey = boardQuarantineKey;
+export const snapshotKey = boardSnapshotKey;
+export const conflictKey = boardConflictKey;
 
 /** The bytes and extra keys a seed writes, in the order the helper writes them. */
 export const seedEntries = (

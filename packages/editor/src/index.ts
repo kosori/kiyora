@@ -202,6 +202,7 @@ export {
 export {
   BOARD_PREFIX,
   type BoardStorage,
+  boardConflictKey,
   boardKey,
   boardQuarantineKey,
   boardSnapshotKey,

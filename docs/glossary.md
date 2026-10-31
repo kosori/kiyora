@@ -176,6 +176,10 @@ _Avoid_: Version, etag, commit
 A sync refused because the remote copy is at a later revision than the local copy was built on. It is resolved by a person, never by merging.
 _Avoid_: Collision, clash, merge
 
+**Recovery snapshot**:
+The bytes kept beside a board before a write replaces them: a migration, or taking the remote copy in a conflict. They stay reachable as a `kiyora:boards:<id>:snapshot` key and, for a conflict, as a downloadable board file.
+_Avoid_: Backup, trash, history
+
 **Share link**:
 An unlisted, revocable address that shows one board read-only.
 _Avoid_: Public link, permalink, guest link

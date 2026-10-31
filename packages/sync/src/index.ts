@@ -1,4 +1,11 @@
 export {
+  type ConflictCache,
+  type ConflictCopy,
+  type ConflictPorts,
+  type ConflictResolutions,
+  createConflictResolutions,
+} from './conflict';
+export {
   decideSync,
   type PayloadProblem,
   readSyncPayload,

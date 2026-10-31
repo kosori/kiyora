@@ -57,6 +57,10 @@ export const boardKey = (id: string): string => `${BOARD_PREFIX}${id}`;
 export const boardSnapshotKey = (id: string): string =>
   `${boardKey(id)}:snapshot`;
 
+/** Where the remote copy of `id` waits while a conflict is unresolved. */
+export const boardConflictKey = (id: string): string =>
+  `${boardKey(id)}:conflict`;
+
 /** Where bytes for `id` that will not read are parked. */
 export const boardQuarantineKey = (id: string): string =>
   `${boardKey(id)}:quarantine`;

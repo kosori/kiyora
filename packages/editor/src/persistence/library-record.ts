@@ -88,10 +88,11 @@ export const writeRecord = (
 export const newestFirst = (boards: LibraryEntry[]): LibraryEntry[] =>
   [...boards].sort((left, right) => right.updatedAt - left.updatedAt);
 
-/** Whether a store key holds a board payload, rather than its snapshot or quarantine. */
+/** Whether a store key holds a board payload, rather than its snapshot, conflict or quarantine. */
 const isPayloadKey = (key: string): boolean =>
   key.startsWith(BOARD_PREFIX) &&
   !key.endsWith(':snapshot') &&
+  !key.endsWith(':conflict') &&
   !key.endsWith(':quarantine');
 
 /**
