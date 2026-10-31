@@ -1,4 +1,5 @@
 import type { Board } from '@kiyora/model';
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   index,
@@ -7,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 /** One account holder. Better Auth's user table. */
@@ -116,4 +118,28 @@ export const board = pgTable(
       .notNull(),
   },
   (table) => [index('board_owner_id_idx').on(table.ownerId)]
+);
+
+/**
+ * One unlisted address for a board's remote copy. A token is live while its
+ * `revoked_at` is null, and the partial unique index keeps at most one live
+ * token per board; regenerating revokes the old row before it inserts the new
+ * one, so an address that was shared stops resolving.
+ */
+export const shareLink = pgTable(
+  'share_link',
+  {
+    boardId: text('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    revokedAt: timestamp('revoked_at'),
+    token: text('token').primaryKey(),
+  },
+  (table) => [
+    index('share_link_board_id_idx').on(table.boardId),
+    uniqueIndex('share_link_live_board_id_idx')
+      .on(table.boardId)
+      .where(sql`${table.revokedAt} is null`),
+  ]
 );

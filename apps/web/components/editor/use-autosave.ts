@@ -55,6 +55,8 @@ export type ConflictView = {
 export type SyncView = {
   /** Where the local copy stands against the remote one. */
   state: SyncState;
+  /** Whether the board has a remote copy, so sharing and syncing have a target. */
+  linked: boolean;
   /** Links this board: the only path from local to remote. */
   link: () => void;
   conflict: ConflictView;
@@ -179,6 +181,7 @@ export const useAutosave = (
   const [syncState, setSyncState] = useState<SyncState>(() =>
     machine.getState()
   );
+  const [linked, setLinked] = useState<boolean>(sync.record.linked);
   const [conflictCopy, setConflictCopy] = useState<ConflictCopy | null>(() =>
     machine.conflict.getCopy()
   );
@@ -187,6 +190,7 @@ export const useAutosave = (
     () =>
       machine.subscribe(() => {
         setSyncState(machine.getState());
+        setLinked(machine.isLinked());
         setConflictCopy(machine.conflict.getCopy());
       }),
     [machine]
@@ -362,6 +366,7 @@ export const useAutosave = (
         takeTheirs,
       },
       link,
+      linked,
       localPreview,
       state: syncState,
     },

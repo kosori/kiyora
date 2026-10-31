@@ -56,6 +56,8 @@ export type SyncMachineOptions = {
 /** The reconciler for one board, driven by the surface that owns it. */
 export type SyncMachine = {
   getState: () => SyncState;
+  /** Whether the board has a remote copy, including after a successful link. */
+  isLinked: () => boolean;
   subscribe: (listener: () => void) => () => void;
   /** Links this board explicitly: one upload at `baseRevision: null`. */
   link: () => Promise<void>;
@@ -261,6 +263,7 @@ export const createSyncMachine = ({
   return {
     conflict: resolutions,
     getState: () => state,
+    isLinked: () => record.linked,
     link: async () => {
       if (record.linked) {
         return;

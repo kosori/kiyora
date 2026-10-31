@@ -93,6 +93,8 @@ export const EditorShell = ({
                 <PanelBoundary label='Status'>
                   <CrashProbe name='status'>
                     <SyncIndicator
+                      boardId={autosave.boardId}
+                      linked={sync.linked}
                       onLink={sync.link}
                       onResolve={openConflict}
                       signedIn={autosave.sync.signedIn}

@@ -2,11 +2,14 @@
 
 import type { SyncState } from '@kiyora/sync';
 import { cn } from 'cn';
+import { ShareControl } from '~/components/share/share-control';
 import { Button } from '~/components/ui/button';
 
 type Props = {
+  boardId: string;
   state: SyncState;
   signedIn: boolean;
+  linked: boolean;
   onLink: () => void;
   /** Opens the surface that names the three resolutions. */
   onResolve: () => void;
@@ -74,8 +77,10 @@ const revisionOf = (state: SyncState): number | undefined => {
  * pretending a request is coming.
  */
 export const SyncIndicator = ({
+  boardId,
   state,
   signedIn,
+  linked,
   onLink,
   onResolve,
 }: Props) => {
@@ -116,6 +121,7 @@ export const SyncIndicator = ({
           Sync this board
         </Button>
       ) : null}
+      <ShareControl boardId={boardId} linked={linked} />
       {conflict ? (
         <Button
           data-testid='open-conflict'
