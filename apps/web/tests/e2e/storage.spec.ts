@@ -247,7 +247,8 @@ test('blocked storage is reported distinctly from a full one', async ({
     });
   });
 
-  await page.goto(`/b/${BOARD_ID}`);
+  await page.goto('/');
+  await page.getByTestId('new-board').click();
   await expect(page.getByTestId('canvas')).toHaveAttribute(
     'data-ready',
     'true'
@@ -271,7 +272,8 @@ test('missing storage is reported as unavailable, and the board still works', as
     });
   });
 
-  await page.goto(`/b/${BOARD_ID}`);
+  await page.goto('/');
+  await page.getByTestId('new-board').click();
   await expect(page.getByTestId('canvas')).toHaveAttribute(
     'data-ready',
     'true'
