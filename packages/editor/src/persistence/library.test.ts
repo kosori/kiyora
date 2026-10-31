@@ -71,7 +71,12 @@ const memoryStore = (seed: Record<string, string> = {}) => {
 
 const recordOf = (held: Map<string, string>) =>
   JSON.parse(held.get(LIBRARY_KEY) ?? 'null') as {
-    boards: { id: string; title: string; updatedAt: number }[];
+    boards: {
+      id: string;
+      preview?: string;
+      title: string;
+      updatedAt: number;
+    }[];
     version: number;
   };
 
@@ -209,6 +214,81 @@ const carried = (): Board =>
 
 const payloadOf = (held: Map<string, string>, id: string): Board =>
   parseBoard(JSON.parse(held.get(boardKey(id)) ?? 'null'));
+
+describe('saving a preview with the board', () => {
+  const PREVIEW =
+    '<svg xmlns="http://www.w3.org/2000/svg"><path d="M 0 0"/></svg>';
+
+  it('writes the preview into the record beside the payload', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    const editor = createEditor(open);
+    const autosave = createAutosave({
+      editor,
+      now: () => 5000,
+      preview: () => PREVIEW,
+      storage: library.storage('open'),
+    });
+
+    editor.setTheme('dark');
+    await autosave.flush();
+
+    expect(recordOf(held).boards).toEqual([
+      { id: 'open', preview: PREVIEW, title: 'Open', updatedAt: 5000 },
+    ]);
+    expect((await library.entries())[0]?.preview).toBe(PREVIEW);
+    expect(
+      parseBoard(JSON.parse(held.get(boardKey('open')) ?? 'null')).id
+    ).toBe('open');
+  });
+
+  it('omits a preview over the cap without failing the save', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    const editor = createEditor(open);
+    const autosave = createAutosave({
+      editor,
+      now: () => 5000,
+      preview: () => null,
+      storage: library.storage('open'),
+    });
+
+    editor.setTheme('dark');
+    await autosave.flush();
+
+    expect(autosave.getStatus()).toBe('saved');
+    expect(recordOf(held).boards).toEqual([
+      { id: 'open', title: 'Open', updatedAt: 5000 },
+    ]);
+    expect(
+      parseBoard(JSON.parse(held.get(boardKey('open')) ?? 'null')).settings
+        .theme
+    ).toBe('dark');
+  });
+
+  it('keeps the stored preview when a rename does not touch the paint', async () => {
+    const { store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    const editor = createEditor(open);
+    await createAutosave({
+      editor,
+      now: () => 5000,
+      preview: () => PREVIEW,
+      storage: library.storage('open'),
+    }).flush();
+
+    const renamed = await library.rename('open', 'Renamed');
+
+    expect(renamed?.preview).toBe(PREVIEW);
+    expect((await library.entries())[0]?.preview).toBe(PREVIEW);
+  });
+});
 
 describe('renaming a board', () => {
   it('writes the payload first, then the record, and moves the board to the top', async () => {

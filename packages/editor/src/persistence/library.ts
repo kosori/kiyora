@@ -1,7 +1,15 @@
 import { type Board, serializeBoard } from '@kiyora/model';
 import { type BoardLoad, loadBoard } from './board';
 import {
-  BOARD_PREFIX,
+  entryOf,
+  type LibraryEntry,
+  newestFirst,
+  readRecord,
+  rebuild,
+  upsert,
+  writeRecord,
+} from './library-record';
+import {
   type BoardStorage,
   boardKey,
   boardQuarantineKey,
@@ -11,27 +19,9 @@ import {
   LEGACY_BOARD_KEY,
   LEGACY_QUARANTINE_KEY,
   LEGACY_SNAPSHOT_KEY,
-  LIBRARY_KEY,
 } from './storage';
 
-/**
- * One row of the library. The record never carries the board itself, only what
- * the list shows, so listing a hundred boards opens no payload.
- */
-export type LibraryEntry = {
-  id: string;
-  title: string;
-  updatedAt: number;
-  linked?: boolean;
-  tooLarge?: boolean;
-  preview?: string;
-};
-
-/** The library record: a cache of the entries, ordered by last change when read. */
-export type LibraryRecord = {
-  version: 1;
-  boards: LibraryEntry[];
-};
+export type { LibraryEntry, LibraryRecord } from './library-record';
 
 /** The library over one store: the list, each board's storage, and its load. */
 export type Library = {
@@ -72,8 +62,6 @@ export type LibraryOptions = {
   mintId?: () => string;
 };
 
-const RECORD_VERSION = 1;
-
 /** The title a duplicate wears, the way a file manager names a second copy. */
 const copyTitle = (title: string): string =>
   title.trim() === '' ? 'Untitled copy' : `${title} copy`;
@@ -93,138 +81,6 @@ const readPayload = (bytes: string | null): Record<string, unknown> | null => {
   }
 };
 
-const isEntry = (value: unknown): value is LibraryEntry => {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const entry = value as Record<string, unknown>;
-  return (
-    typeof entry.id === 'string' &&
-    typeof entry.title === 'string' &&
-    typeof entry.updatedAt === 'number'
-  );
-};
-
-const readRecord = async (
-  store: KeyValueStore
-): Promise<LibraryRecord | null> => {
-  const bytes = await store.get(LIBRARY_KEY);
-  if (bytes === null) {
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(bytes) as {
-      version?: unknown;
-      boards?: unknown;
-    };
-    if (parsed.version !== RECORD_VERSION || !Array.isArray(parsed.boards)) {
-      return null;
-    }
-    if (!parsed.boards.every(isEntry)) {
-      return null;
-    }
-    return { boards: parsed.boards, version: RECORD_VERSION };
-  } catch {
-    return null;
-  }
-};
-
-const writeRecord = (
-  store: KeyValueStore,
-  boards: LibraryEntry[]
-): Promise<void> =>
-  store.put(LIBRARY_KEY, JSON.stringify({ boards, version: RECORD_VERSION }));
-
-const newestFirst = (boards: LibraryEntry[]): LibraryEntry[] =>
-  [...boards].sort((left, right) => right.updatedAt - left.updatedAt);
-
-/** Whether a store key holds a board payload, rather than its snapshot or quarantine. */
-const isPayloadKey = (key: string): boolean =>
-  key.startsWith(BOARD_PREFIX) &&
-  !key.endsWith(':snapshot') &&
-  !key.endsWith(':quarantine');
-
-/**
- * The record entry a payload names, read without validating the whole board:
- * the list only needs a title and a time, and an older schema is still listed
- * until it is opened and lifted. Bytes that are not JSON have no entry.
- */
-const entryOf = (id: string, bytes: string): LibraryEntry | null => {
-  try {
-    const parsed = JSON.parse(bytes) as {
-      title?: unknown;
-      updatedAt?: unknown;
-    } | null;
-    if (parsed === null) {
-      return null;
-    }
-    return {
-      id,
-      title: typeof parsed.title === 'string' ? parsed.title : '',
-      updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0,
-    };
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Every board the store holds, found by scanning the board prefix. A payload
- * that will not parse is parked under that board's quarantine key and skipped,
- * so one damaged board cannot hide the rest. Nothing is written here except
- * those quarantines.
- */
-const scanEntries = async (store: KeyValueStore): Promise<LibraryEntry[]> => {
-  const keys = await store.keys();
-  const found = await Promise.all(
-    keys.filter(isPayloadKey).map(async (key): Promise<LibraryEntry | null> => {
-      const id = key.slice(BOARD_PREFIX.length);
-      const bytes = await store.get(key);
-      if (bytes === null) {
-        return null;
-      }
-      const entry = entryOf(id, bytes);
-      if (entry !== null) {
-        return entry;
-      }
-      try {
-        await store.put(boardQuarantineKey(id), bytes);
-        await store.delete(key);
-      } catch {
-        // The bytes stay where they are; the next rebuild tries again.
-      }
-      return null;
-    })
-  );
-
-  return found.filter((entry): entry is LibraryEntry => entry !== null);
-};
-
-/** Rebuilds the record from the board keys, and returns what it found. */
-const rebuild = async (store: KeyValueStore): Promise<LibraryEntry[]> => {
-  const boards = newestFirst(await scanEntries(store));
-  try {
-    await writeRecord(store, boards);
-  } catch {
-    // The record is a cache: the list is still good without it.
-  }
-  return boards;
-};
-
-/** Writes one entry over the record, rebuilding a lost record first. */
-const upsert = async (
-  store: KeyValueStore,
-  entry: LibraryEntry
-): Promise<void> => {
-  const record = await readRecord(store);
-  const boards = record?.boards ?? (await scanEntries(store));
-  const next = newestFirst([
-    ...boards.filter((board) => board.id !== entry.id),
-    entry,
-  ]);
-  await writeRecord(store, next);
-};
-
 /**
  * The library over `store`. Every board's payload, snapshot and quarantine sit
  * under its own id, so a write for one board can never touch another's bytes.
@@ -240,11 +96,11 @@ export const createLibrary = (
 
     return {
       ...board,
-      write: async (value) => {
+      write: async (value, preview) => {
         await board.write(value);
         const entry = entryOf(id, value);
         if (entry !== null) {
-          await upsert(store, entry);
+          await upsert(store, entry, preview);
         }
       },
     };
@@ -253,13 +109,13 @@ export const createLibrary = (
   /** Writes one board's bytes, then the record entry they name. */
   const writePayload = async (
     id: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    preview?: string
   ): Promise<LibraryEntry> => {
     const bytes = JSON.stringify(payload);
     await store.put(boardKey(id), bytes);
     const entry = entryOf(id, bytes) ?? { id, title: '', updatedAt: 0 };
-    await upsert(store, entry);
-    return entry;
+    return upsert(store, entry, preview);
   };
 
   const entries = async (): Promise<LibraryEntry[]> => {
@@ -284,21 +140,30 @@ export const createLibrary = (
       await storage(board.id).write(serializeBoard(board));
     },
     duplicate: async (id) => {
-      const payload = readPayload(await store.get(boardKey(id)));
+      const [bytes, record] = await Promise.all([
+        store.get(boardKey(id)),
+        readRecord(store),
+      ]);
+      const payload = readPayload(bytes);
       if (payload === null) {
         return null;
       }
       const copyId = mintId();
       const stamp = now();
-      await writePayload(copyId, {
-        ...payload,
-        createdAt: stamp,
-        id: copyId,
-        title: copyTitle(
-          typeof payload.title === 'string' ? payload.title : ''
-        ),
-        updatedAt: stamp,
-      });
+      const preview = record?.boards.find((board) => board.id === id)?.preview;
+      await writePayload(
+        copyId,
+        {
+          ...payload,
+          createdAt: stamp,
+          id: copyId,
+          title: copyTitle(
+            typeof payload.title === 'string' ? payload.title : ''
+          ),
+          updatedAt: stamp,
+        },
+        preview
+      );
       return copyId;
     },
     entries,

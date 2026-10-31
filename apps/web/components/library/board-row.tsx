@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { Button } from '~/components/ui/button';
+import { BoardPreview } from './board-preview';
 
 export type BoardRowProps = {
   entry: LibraryEntry;
@@ -119,18 +120,21 @@ export const BoardRow = ({
         />
       ) : (
         <Link
-          className='flex min-w-0 flex-1 items-baseline justify-between gap-4 px-4 py-3 hover:bg-muted'
+          className='flex min-w-0 flex-1 items-center gap-4 px-4 py-3 hover:bg-muted'
           data-board-id={entry.id}
           data-testid='library-board'
           href={`/b/${entry.id}`}
         >
-          <span className='truncate font-medium'>{name}</span>
-          <time
-            className='shrink-0 text-muted-foreground text-xs'
-            dateTime={new Date(entry.updatedAt).toISOString()}
-          >
-            {changedAt(entry.updatedAt)}
-          </time>
+          <BoardPreview svg={entry.preview} />
+          <span className='flex min-w-0 flex-1 items-baseline justify-between gap-4'>
+            <span className='truncate font-medium'>{name}</span>
+            <time
+              className='shrink-0 text-muted-foreground text-xs'
+              dateTime={new Date(entry.updatedAt).toISOString()}
+            >
+              {changedAt(entry.updatedAt)}
+            </time>
+          </span>
         </Link>
       )}
       <div className='flex shrink-0 items-center gap-1'>

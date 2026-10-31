@@ -244,7 +244,16 @@ export {
   NOTE_STYLE,
 } from './paint/sticky';
 export { type Point, turn } from './paint/turn';
-export { projectBoard } from './projection/svg';
+export {
+  PREVIEW_LIMIT_BYTES,
+  PREVIEW_WIDTH,
+  type PreviewOptions,
+  previewBoard,
+} from './preview/preview';
+export {
+  type ProjectionOptions,
+  projectBoard,
+} from './projection/svg';
 export {
   DEFAULT_TABLE_COLUMNS,
   DEFAULT_TABLE_ROWS,
