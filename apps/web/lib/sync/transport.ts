@@ -1,5 +1,6 @@
 import type { Board } from '@kiyora/model';
 import type {
+  DownloadedBoard,
   RemoteBoardSummary,
   RemoveResult,
   SyncTransport,
@@ -81,7 +82,7 @@ const list = async (): Promise<RemoteBoardSummary[]> => {
   return body.boards ?? [];
 };
 
-const download = async (id: string): Promise<Board | null> => {
+const download = async (id: string): Promise<DownloadedBoard | null> => {
   const response = await fetch(`/api/boards/${encodeURIComponent(id)}`);
 
   if (response.status === 404) {
@@ -91,9 +92,19 @@ const download = async (id: string): Promise<Board | null> => {
     throw new Error(`downloading a board failed with ${response.status}`);
   }
 
-  const body = (await response.json()) as { payload?: Board };
+  const body = (await response.json()) as {
+    payload?: Board;
+    revision?: number;
+  };
 
-  return body.payload ?? null;
+  if (body.payload === undefined) {
+    return null;
+  }
+
+  return {
+    payload: body.payload,
+    revision: typeof body.revision === 'number' ? body.revision : 0,
+  };
 };
 
 const remove = async (id: string): Promise<RemoveResult> => {
@@ -116,7 +127,7 @@ const remove = async (id: string): Promise<RemoveResult> => {
   return { kind: 'failed' };
 };
 
-/** The browser's transport: the sync route, its delete, and the two reads #75 will use. */
+/** The browser's transport: the sync route, the remote listing, a download and a delete. */
 export const httpSyncTransport: SyncTransport = {
   download,
   list,
