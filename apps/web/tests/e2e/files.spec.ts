@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { LIBRARY_KEY } from '@kiyora/editor';
 import {
   boardFileBytes,
   openBoard,
@@ -277,7 +278,7 @@ test('an invalid or over-cap file says why and adds nothing', async ({
     'data-state',
     'saved'
   );
-  const listBefore = await readStoredKey(page, 'kiyora:library');
+  const listBefore = await readStoredKey(page, LIBRARY_KEY);
   const boardBefore = await readStoredBoard(page, 'starter-board');
 
   await importFile(page, 'board', 'notes.txt', 'this is not a board');
@@ -308,13 +309,13 @@ test('an invalid or over-cap file says why and adds nothing', async ({
   );
 
   await expect(rectangle(page)).toHaveAttribute('fill', drawn.fill);
-  expect(await readStoredKey(page, 'kiyora:library')).toBe(listBefore);
+  expect(await readStoredKey(page, LIBRARY_KEY)).toBe(listBefore);
   expect(await readStoredBoard(page, 'starter-board')).toBe(boardBefore);
 
   await page.goto('/');
   await importFile(page, 'library', 'notes.txt', 'this is not a board');
   await expect(page.getByTestId('import-error')).toContainText(/JSON/);
-  expect(await readStoredKey(page, 'kiyora:library')).toBe(listBefore);
+  expect(await readStoredKey(page, LIBRARY_KEY)).toBe(listBefore);
 });
 
 test('a board saved before this build imports and saves as the newest version', async ({

@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
+import { LIBRARY_KEY } from '@kiyora/editor';
 import {
   boardStorageKey,
+  libraryRecord,
   openStarterBoard,
   seedBoards,
 } from '../fixtures/library';
@@ -216,10 +218,9 @@ test('a storage fault reports no accessibility violations', async ({
   await seedBoards(page, [], {
     open: '/b/starter-board',
     raw: {
-      'kiyora:library': JSON.stringify({
-        boards: [{ id: 'starter-board', title: 'Kiyora', updatedAt: 1 }],
-        version: 1,
-      }),
+      [LIBRARY_KEY]: libraryRecord([
+        { id: 'starter-board', title: 'Kiyora', updatedAt: 1 },
+      ]),
       [boardStorageKey('starter-board')]: 'this is not a board',
     },
     record: false,
