@@ -52,6 +52,7 @@ const isEntry = (value: unknown): value is LibraryEntry => {
   );
 };
 
+/** Reads the record, or `null` when it is absent, unreadable or from another version. */
 export const readRecord = async (
   store: KeyValueStore
 ): Promise<LibraryRecord | null> => {
@@ -76,12 +77,14 @@ export const readRecord = async (
   }
 };
 
+/** Writes the record over every entry it names. */
 export const writeRecord = (
   store: KeyValueStore,
   boards: LibraryEntry[]
 ): Promise<void> =>
   store.put(LIBRARY_KEY, JSON.stringify({ boards, version: RECORD_VERSION }));
 
+/** The entries ordered by last change, newest first. */
 export const newestFirst = (boards: LibraryEntry[]): LibraryEntry[] =>
   [...boards].sort((left, right) => right.updatedAt - left.updatedAt);
 

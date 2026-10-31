@@ -43,6 +43,12 @@ export type Library = {
   /** Records what sync learned about one board, keeping its other fields. */
   setSync: (id: string, sync: LibrarySyncRecord) => Promise<void>;
   /**
+   * Adds a board from a file. Its id is kept when the library does not hold it;
+   * when it does, a new client id is minted, so two boards never share one.
+   * Returns the entry as stored.
+   */
+  importBoard: (board: Board) => Promise<LibraryEntry>;
+  /**
    * Renames a held board: the payload carries the new title and time before the
    * record names it, so the two cannot disagree after a reload. Returns the
    * updated entry, or `null` when the library does not hold the board.
@@ -142,6 +148,17 @@ export const createLibrary = (
     return rebuilt.some((board) => board.id === id);
   };
 
+  const freeId = async (preferred: string): Promise<string> => {
+    if (!(await holds(preferred))) {
+      return preferred;
+    }
+    const mintFree = async (): Promise<string> => {
+      const candidate = mintId();
+      return (await holds(candidate)) ? mintFree() : candidate;
+    };
+    return mintFree();
+  };
+
   return {
     create: async (board) => {
       await storage(board.id).write(serializeBoard(board));
@@ -175,6 +192,10 @@ export const createLibrary = (
     },
     entries,
     holds,
+    importBoard: async (board) => {
+      const id = await freeId(board.id);
+      return writePayload(id, { ...board, id });
+    },
     load: (id) => loadBoard(boardStorage(store, id)),
     remove: async (id) => {
       const [payload, record] = await Promise.all([

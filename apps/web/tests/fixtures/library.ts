@@ -70,6 +70,9 @@ const bytesOf = (board: SeededBoard): string => {
   });
 };
 
+/** A seeded board as the bytes of a `.kyr.json` file. */
+export const boardFileBytes = (board: SeededBoard): string => bytesOf(board);
+
 /** One seeded board as the full board the app will read. */
 export const seededBoard = (board: SeededBoard): Board =>
   parseBoard(JSON.parse(bytesOf(board)));
