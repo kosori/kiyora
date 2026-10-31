@@ -10,12 +10,14 @@ export type RemoteBoardSummary = {
   preview: string | null;
 };
 
-/** One board's bytes offered to the server. */
+/** One board's bytes offered to the server, with the picture the client saved. */
 export type UploadRequest = {
   id: string;
   /** The revision the local copy was built on, or null when linking. */
   baseRevision: number | null;
   payload: Board;
+  /** The preview the last save stored, or null when there is none to send. */
+  preview: string | null;
 };
 
 /** What the server answered to one upload. */

@@ -121,12 +121,22 @@ export const useAutosave = (
   });
   const autosaveRef = useRef<Autosave | null>(null);
 
-  const read = useCallback(
-    (): SyncSnapshot =>
-      autosaveRef.current?.getLastWrite() ??
-      savedBoard(editor.getBoard(), editor.getView().camera, Date.now()),
-    [editor]
-  );
+  const read = useCallback((): SyncSnapshot => {
+    const saved = autosaveRef.current?.getLastWrite() ?? null;
+
+    if (saved !== null) {
+      return {
+        board: saved.board,
+        bytes: saved.bytes,
+        preview: saved.preview ?? null,
+      };
+    }
+
+    return {
+      ...savedBoard(editor.getBoard(), editor.getView().camera, Date.now()),
+      preview: null,
+    };
+  }, [editor]);
 
   const [machine] = useState(() =>
     createSyncMachine({

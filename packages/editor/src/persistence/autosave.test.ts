@@ -451,6 +451,23 @@ describe('a store that cannot hold images', () => {
 
     expect(autosave.getLastWrite()?.bytes).toBe(writes[1]);
     expect(autosave.getLastWrite()?.board.title).toBe('Second');
+    expect(autosave.getLastWrite()?.preview).toBeNull();
+  });
+
+  it('keeps the picture the save wrote with its bytes', async () => {
+    const editor = createEditor(board('First'));
+    const { storage } = memoryStorage();
+    const autosave = createAutosave({
+      editor,
+      preview: () => '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+      storage,
+    });
+
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.preview).toBe(
+      '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+    );
   });
 
   it('previews the next write without storing it', () => {

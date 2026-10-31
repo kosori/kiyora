@@ -25,6 +25,7 @@ type Upload = {
     shapes: { kind?: string; x?: number }[];
     title: string;
   };
+  preview: string | null;
 };
 
 type Reply = {
@@ -124,6 +125,7 @@ test('signing in uploads nothing until the board is linked, then it uploads once
   expect(uploads).toHaveLength(1);
   expect(uploads[0]?.baseRevision).toBeNull();
   expect(uploads[0]?.payload.id).toBe(LINKED_ID);
+  expect(uploads[0]?.preview).toContain('<svg');
 
   const entry = (await recordOf(page)).boards.find(
     (board) => board.id === LINKED_ID

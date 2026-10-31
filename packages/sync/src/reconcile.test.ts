@@ -18,9 +18,13 @@ const board = (overrides: Record<string, unknown> = {}): Board =>
     ...overrides,
   });
 
-const snapshot = (bytes = '{"board":1}'): SyncSnapshot => ({
+const snapshot = (
+  bytes = '{"board":1}',
+  preview: string | null = null
+): SyncSnapshot => ({
   board: board(),
   bytes,
+  preview,
 });
 
 const unlinked: SyncRecord = {
@@ -129,7 +133,7 @@ describe('the sync state machine', () => {
     const saved: SyncRecord[] = [];
     const machine = createSyncMachine({
       boardId: 'board-1',
-      read: () => snapshot(),
+      read: () => snapshot(undefined, '<svg></svg>'),
       record: unlinked,
       saveRecord: (record) => saved.push(record),
       signedIn: true,
@@ -141,6 +145,7 @@ describe('the sync state machine', () => {
     expect(fake.uploads).toHaveLength(1);
     expect(fake.uploads[0]?.baseRevision).toBeNull();
     expect(fake.uploads[0]?.payload.id).toBe('board-1');
+    expect(fake.uploads[0]?.preview).toBe('<svg></svg>');
     expect(machine.getState()).toEqual(
       expected({ revision: 1, status: 'synced' })
     );

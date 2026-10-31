@@ -18,11 +18,12 @@ const upload = async ({
   id,
   baseRevision,
   payload,
+  preview,
 }: UploadRequest): Promise<UploadResult> => {
   let response: Response;
   try {
     response = await fetch(`/api/boards/${encodeURIComponent(id)}/sync`, {
-      body: JSON.stringify({ baseRevision, payload }),
+      body: JSON.stringify({ baseRevision, payload, preview }),
       headers: { 'content-type': 'application/json' },
       method: 'POST',
     });

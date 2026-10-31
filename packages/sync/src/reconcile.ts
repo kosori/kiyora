@@ -2,10 +2,12 @@ import { type Board, utf8Length } from '@kiyora/model';
 import { SYNC_LIMIT_BYTES } from './protocol';
 import type { SyncTransport, UploadResult } from './transport';
 
-/** The local copy as the reconciler reads it: the board and the bytes it stores. */
+/** The local copy as the reconciler reads it: the board, its bytes and its picture. */
 export type SyncSnapshot = {
   board: Board;
   bytes: string;
+  /** The preview the last save stored, or null when it had none to offer. */
+  preview: string | null;
 };
 
 /** What the library record remembers about a board's remote copy. */
@@ -123,7 +125,7 @@ export const createSyncMachine = ({
     state.status === 'error' && state.reason === 'unauthorized';
 
   const upload = async (baseRevision: number | null): Promise<void> => {
-    const { board, bytes } = read();
+    const { board, bytes, preview } = read();
     const size = utf8Length(bytes);
 
     if (size > limit) {
@@ -139,6 +141,7 @@ export const createSyncMachine = ({
         baseRevision,
         id: boardId,
         payload: board,
+        preview,
       });
     } catch {
       setState({ reason: 'network', status: 'error' });

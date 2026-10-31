@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
-import { type Board, projectBoard } from '@kiyora/model';
+import type { Board } from '@kiyora/model';
 import { decideSync } from '@kiyora/sync';
 import { eq } from 'drizzle-orm';
 import { readAuthEnv } from '../auth/env';
 import { getDatabase } from './index';
 import { board } from './schema';
 
-/** The most preview a row keeps; a larger one is omitted rather than cut. */
+/** The most preview this server stores; a larger one is refused, never cut. */
 export const PREVIEW_LIMIT_BYTES = 32 * 1024;
 
 /** One write offered to the server, after the route has read who is asking. */
@@ -15,6 +15,8 @@ export type BoardWrite = {
   ownerId: string;
   baseRevision: number | null;
   payload: unknown;
+  /** The picture the client saved, already validated by the route. */
+  preview: string | null;
 };
 
 /** What the store decided and, on a conflict, the copy that refused the write. */
@@ -28,24 +30,37 @@ export type BoardWriteResult =
 const hashOf = (bytes: string): string =>
   createHash('sha256').update(bytes).digest('hex');
 
-/** The preview a row caches, derived from the payload the server just validated. */
-const previewOf = (payload: Board): string | null => {
-  const svg = projectBoard(payload, { theme: payload.settings.theme });
+/**
+ * The preview a write may store, or null when it is not one this server will
+ * keep. The server has no measurer, so it never paints a board itself: it only
+ * checks the shape the client saved and the cap, and a preview that fails
+ * either is dropped rather than failing the write.
+ */
+export const readPreview = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  if (!(value.startsWith('<svg') && value.endsWith('</svg>'))) {
+    return null;
+  }
 
-  return Buffer.byteLength(svg, 'utf8') > PREVIEW_LIMIT_BYTES ? null : svg;
+  return Buffer.byteLength(value, 'utf8') > PREVIEW_LIMIT_BYTES ? null : value;
 };
 
 /**
  * Writes one board's remote copy under a revision check. The row is locked
  * before it is read, so two writes that name the same revision cannot both be
- * accepted. The title, byte size, preview and hash all come from the payload
- * this call validated, never from the client's claims about them.
+ * accepted. The title, byte size and hash come from the payload this call
+ * validated; the preview is the picture the client saved, because the server
+ * has no measurer to paint one. Nothing is trusted from the client's claims
+ * about a payload's columns.
  */
 export const writeBoard = ({
   id,
   ownerId,
   baseRevision,
   payload,
+  preview,
 }: BoardWrite): Promise<BoardWriteResult> => {
   const config = readAuthEnv();
 
@@ -104,7 +119,7 @@ export const writeBoard = ({
       bytes,
       payload: decision.board,
       payloadHash,
-      previewSvg: previewOf(decision.board),
+      previewSvg: preview,
       revision: decision.revision,
       title: decision.board.title,
       updatedAt: new Date(),

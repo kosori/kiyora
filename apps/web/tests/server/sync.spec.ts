@@ -38,13 +38,50 @@ const signUp = async (email: string): Promise<APIRequestContext> => {
   return context;
 };
 
+const STYLE = {
+  corner: 'sharp',
+  dash: 'solid',
+  fill: 'green',
+  fillStyle: 'bold',
+  stroke: 'green',
+  strokeWidth: 2,
+} as const;
+
+const PREVIEW_LIMIT = 32 * 1024;
+
 const sync = (
   context: APIRequestContext,
-  body: { baseRevision: number | null; payload: unknown }
+  body: {
+    baseRevision: number | null;
+    payload: unknown;
+    preview?: string | null;
+  }
 ) =>
   context.post(`/api/boards/${BOARD_ID}/sync`, {
     data: body,
     headers: { origin: E2E_BASE_URL },
+  });
+
+/** One board whose only shape carries a label, so painting it needs a measurer. */
+const labelled = (overrides: Record<string, unknown> = {}): object =>
+  payload({
+    shapes: [
+      {
+        h: 80,
+        id: 'rectangle',
+        kind: 'rectangle',
+        locked: false,
+        opacity: 1,
+        parentId: null,
+        rotation: 0,
+        style: STYLE,
+        text: 'Label',
+        w: 120,
+        x: 40,
+        y: 40,
+      },
+    ],
+    ...overrides,
   });
 
 /** One board carrying a raster whose encoded bytes push it over the sync limit. */
@@ -126,7 +163,44 @@ test('creates revision 1, accepts the next, and does not bump a retry', async ()
   expect(row.revision).toBe(2);
   expect(row.bytes).toBe(Buffer.byteLength(JSON.stringify(second), 'utf8'));
   expect(row.payload_hash).toMatch(/^[a-f0-9]{64}$/);
-  expect(row.preview_svg).toContain('<svg');
+  expect(row.preview_svg).toBeNull();
+});
+
+test('stores the preview the client sent, and none when it sent none', async () => {
+  const owner = await signUp('preview@kiyora.test');
+
+  const without = await sync(owner, {
+    baseRevision: null,
+    payload: labelled(),
+  });
+  expect(without.status()).toBe(200);
+  expect((await committedRow()).preview_svg).toBeNull();
+
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>';
+  const withPreview = await sync(owner, {
+    baseRevision: 1,
+    payload: labelled({ title: 'With preview', updatedAt: 1_700_000_000_001 }),
+    preview: svg,
+  });
+  expect(withPreview.status()).toBe(200);
+  expect((await committedRow()).preview_svg).toBe(svg);
+
+  const malformed = await sync(owner, {
+    baseRevision: 2,
+    payload: labelled({ title: 'Malformed', updatedAt: 1_700_000_000_002 }),
+    preview: 'not an svg',
+  });
+  expect(malformed.status()).toBe(200);
+  expect((await committedRow()).preview_svg).toBeNull();
+
+  const oversized = await sync(owner, {
+    baseRevision: 3,
+    payload: labelled({ title: 'Oversized', updatedAt: 1_700_000_000_003 }),
+    preview: `<svg>${'a'.repeat(PREVIEW_LIMIT)}</svg>`,
+  });
+  expect(oversized.status()).toBe(200);
+  expect((await committedRow()).preview_svg).toBeNull();
 });
 
 test('refuses a stale write and carries the remote copy back', async () => {

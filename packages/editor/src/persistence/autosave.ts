@@ -7,10 +7,12 @@ import type { BoardStorage, SaveStatus } from './storage';
 /** How long autosave waits after the last change before it writes. */
 export const AUTOSAVE_DELAY = 500;
 
-/** One board as a save wrote it: the bytes stored and the board they carry. */
+/** One board as a save wrote it: the bytes stored, the board they carry, its picture. */
 export type SavedBoard = {
   board: Board;
   bytes: string;
+  /** The preview derived when the save was made, or null when there is none. */
+  preview?: string | null;
 };
 
 /**
@@ -186,8 +188,9 @@ export const createAutosave = ({
     setStatus('saving');
     try {
       const saved = snapshot();
-      await storage.write(saved.bytes, await previewOf(board));
-      lastWrite = saved;
+      const picture = await previewOf(board);
+      await storage.write(saved.bytes, picture);
+      lastWrite = { ...saved, preview: picture ?? null };
       changed = false;
       setFault(null);
       setStatus(revision === writing ? 'saved' : 'unsaved');

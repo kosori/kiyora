@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { currentUserId } from '~/lib/auth/session';
-import { writeBoard } from '~/lib/db/board-store';
+import { readPreview, writeBoard } from '~/lib/db/board-store';
 
 type Body = {
   baseRevision: number | null;
   payload: unknown;
+  preview: string | null;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -28,7 +29,11 @@ const readBody = (value: unknown): Body | null => {
     return null;
   }
 
-  return { baseRevision, payload: value.payload };
+  return {
+    baseRevision,
+    payload: value.payload,
+    preview: readPreview(value.preview),
+  };
 };
 
 /**
@@ -69,6 +74,7 @@ export const POST = async (
     id,
     ownerId,
     payload: body.payload,
+    preview: body.preview,
   });
 
   if (result.status === 'written') {
