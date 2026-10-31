@@ -23,6 +23,7 @@
         "@kiyora/dsl": "*",
         "@kiyora/editor": "*",
         "@kiyora/model": "*",
+        "@kiyora/sync": "*",
         "@tabler/icons-react": "^3.49.0",
         "@tailwindcss/postcss": "4.3.3",
         "better-auth": "1.7.14",
@@ -84,6 +85,19 @@
       "dependencies": {
         "@kiyora/dsl": "*",
         "zod": "4.6.7",
+      },
+      "devDependencies": {
+        "@kiyora/typescript": "*",
+        "@types/node": "26.4.1",
+        "typescript": "7.0.2",
+        "vitest": "5.0.5",
+      },
+    },
+    "packages/sync": {
+      "name": "@kiyora/sync",
+      "version": "0.1.0",
+      "dependencies": {
+        "@kiyora/model": "*",
       },
       "devDependencies": {
         "@kiyora/typescript": "*",
@@ -347,6 +361,8 @@
     "@kiyora/editor": ["@kiyora/editor@workspace:packages/editor"],
 
     "@kiyora/model": ["@kiyora/model@workspace:packages/model"],
+
+    "@kiyora/sync": ["@kiyora/sync@workspace:packages/sync"],
 
     "@kiyora/typescript": ["@kiyora/typescript@workspace:tooling/typescript"],
 

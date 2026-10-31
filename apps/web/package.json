@@ -28,6 +28,7 @@
     "@kiyora/dsl": "*",
     "@kiyora/editor": "*",
     "@kiyora/model": "*",
+    "@kiyora/sync": "*",
     "@tabler/icons-react": "^3.49.0",
     "@tailwindcss/postcss": "4.3.3",
     "better-auth": "1.7.14",

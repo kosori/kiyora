@@ -14,6 +14,7 @@ import { RightRail } from './right-rail';
 import { SaveIndicator } from './save-indicator';
 import { SelectionAnnouncer } from './selection-announcer';
 import { ShortcutDialog } from './shortcut-dialog';
+import { SyncIndicator } from './sync-indicator';
 import { ToolRail } from './tool-rail';
 import { type AutosaveSetup, useAutosave } from './use-autosave';
 
@@ -39,7 +40,7 @@ export const EditorShell = ({
   const editor = useEditor();
   const { zen } = useView();
   const [shortcuts, setShortcuts] = useState(false);
-  const health = useAutosave(editor, autosave);
+  const { health, sync } = useAutosave(editor, autosave);
 
   const toggleShortcuts = useCallback(() => {
     setShortcuts((open) => !open);
@@ -77,6 +78,11 @@ export const EditorShell = ({
                 <HistoryControls />
                 <PanelBoundary label='Status'>
                   <CrashProbe name='status'>
+                    <SyncIndicator
+                      onLink={sync.link}
+                      signedIn={autosave.sync.signedIn}
+                      state={sync.state}
+                    />
                     <SaveIndicator {...health} />
                   </CrashProbe>
                 </PanelBoundary>

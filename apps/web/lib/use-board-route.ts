@@ -8,6 +8,7 @@ import {
   type StorageFault,
 } from '@kiyora/editor';
 import type { Board } from '@kiyora/model';
+import type { SyncRecord } from '@kiyora/sync';
 import { useEffect, useState } from 'react';
 import { openStore } from './board-storage';
 import { emptyBoard, UNTITLED } from './new-board';
@@ -24,12 +25,24 @@ export type BoardRouteState =
       migratedFrom: number | null;
       writable: boolean;
       rewrite: boolean;
+      /** What the library record remembers about the remote copy. */
+      sync: SyncRecord;
+      /** Persists what the reconciler learned, beside the board's record. */
+      recordSync: (record: SyncRecord) => void;
       /**
        * Commits a new name through the same library the list reads, payload
        * first. Null when the library no longer holds the board.
        */
       rename: (title: string) => Promise<LibraryEntry | null>;
     };
+
+/** The sync record a library entry carries, read without opening a payload. */
+const syncOf = (entry: LibraryEntry | undefined): SyncRecord => ({
+  conflict: entry?.conflict ?? null,
+  linked: entry?.linked === true && typeof entry.revision === 'number',
+  revision: entry?.revision ?? null,
+  tooLarge: entry?.tooLarge === true,
+});
 
 /**
  * Opens one board by id. A board the library does not hold is reported as
@@ -60,6 +73,14 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
         return;
       }
 
+      const sync = syncOf(entry);
+      const recordSync = async (record: SyncRecord): Promise<void> => {
+        try {
+          await library.setSync(boardId, record);
+        } catch {
+          // The record is a cache: the next save writes it again.
+        }
+      };
       const loaded = await library.load(boardId);
       if (cancelled) {
         return;
@@ -71,10 +92,12 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
           board: loaded.board,
           fault: openFault,
           migratedFrom: loaded.migratedFrom,
+          recordSync,
           rename: (title) => library.rename(boardId, title),
           rewrite: loaded.migratedFrom !== null,
           status: 'ready',
           storage: library.storage(boardId),
+          sync,
           writable: true,
         });
         return;
@@ -85,10 +108,12 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
           board: emptyBoard(boardId, Date.now(), title),
           fault: openFault,
           migratedFrom: null,
+          recordSync,
           rename: (title) => library.rename(boardId, title),
           rewrite: true,
           status: 'ready',
           storage: library.storage(boardId),
+          sync,
           writable: true,
         });
         return;
@@ -98,10 +123,12 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
         board: emptyBoard(boardId, Date.now(), title),
         fault: loaded.fault,
         migratedFrom: null,
+        recordSync,
         rename: (title) => library.rename(boardId, title),
         rewrite: loaded.quarantined,
         status: 'ready',
         storage: library.storage(boardId),
+        sync,
         writable: loaded.quarantined,
       });
     })().catch(() => {

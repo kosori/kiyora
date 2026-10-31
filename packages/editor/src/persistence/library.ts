@@ -3,6 +3,7 @@ import { type BoardLoad, loadBoard } from './board';
 import {
   entryOf,
   type LibraryEntry,
+  type LibrarySyncRecord,
   newestFirst,
   readRecord,
   rebuild,
@@ -21,7 +22,11 @@ import {
   LEGACY_SNAPSHOT_KEY,
 } from './storage';
 
-export type { LibraryEntry, LibraryRecord } from './library-record';
+export type {
+  LibraryEntry,
+  LibraryRecord,
+  LibrarySyncRecord,
+} from './library-record';
 
 /** The library over one store: the list, each board's storage, and its load. */
 export type Library = {
@@ -35,6 +40,8 @@ export type Library = {
   storage: (id: string) => BoardStorage;
   /** Adds a board: its payload first, then its record entry. */
   create: (board: Board) => Promise<void>;
+  /** Records what sync learned about one board, keeping its other fields. */
+  setSync: (id: string, sync: LibrarySyncRecord) => Promise<void>;
   /**
    * Adds a board from a file. Its id is kept when the library does not hold it;
    * when it does, a new client id is minted, so two boards never share one.
@@ -215,6 +222,21 @@ export const createLibrary = (
         return null;
       }
       return writePayload(id, { ...payload, title, updatedAt: now() });
+    },
+    setSync: async (id, sync) => {
+      const record = await readRecord(store);
+      const boards = record?.boards ?? (await rebuild(store));
+      const previous = boards.find((board) => board.id === id);
+      if (previous === undefined) {
+        return;
+      }
+      await upsert(store, {
+        ...previous,
+        conflict: sync.conflict ?? undefined,
+        linked: sync.linked ? true : undefined,
+        revision: sync.linked ? (sync.revision ?? undefined) : undefined,
+        tooLarge: sync.tooLarge ? true : undefined,
+      });
     },
     storage,
   };

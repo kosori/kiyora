@@ -31,6 +31,13 @@ export type SeededBoard = {
   schemaVersion?: number;
   settings?: { theme: string };
   shapes?: unknown[];
+  /** What the library record says about the board's remote copy. */
+  sync?: {
+    linked?: boolean;
+    revision?: number;
+    conflict?: number;
+    tooLarge?: boolean;
+  };
   /** The picture the record lists, when the spec seeds one. */
   preview?: string;
 };
@@ -58,8 +65,10 @@ export type SeedOptions = {
 
 const SENTINEL = '/__kiyora_seed__';
 
-const bytesOf = (board: SeededBoard): string =>
-  JSON.stringify({
+const bytesOf = (board: SeededBoard): string => {
+  const { preview, sync, ...payload } = board;
+
+  return JSON.stringify({
     camera: { x: 0, y: 0, zoom: 1 },
     createdAt: 1_700_000_000_000,
     deck: [],
@@ -69,8 +78,9 @@ const bytesOf = (board: SeededBoard): string =>
     shapes: [],
     title: 'Untitled',
     updatedAt: 1_700_000_000_000,
-    ...board,
+    ...payload,
   });
+};
 
 /** A seeded board as the bytes of a `.kyr.json` file. */
 export const boardFileBytes = (board: SeededBoard): string => bytesOf(board);
@@ -83,6 +93,7 @@ const entryOf = (board: SeededBoard) => ({
   id: board.id,
   title: board.title ?? 'Untitled',
   updatedAt: board.updatedAt ?? 1_700_000_000_000,
+  ...board.sync,
   ...(board.preview === undefined ? {} : { preview: board.preview }),
 });
 

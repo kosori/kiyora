@@ -435,4 +435,71 @@ describe('a store that cannot hold images', () => {
     expect(autosave.getFault()).toBeNull();
     expect(autosave.getStatus()).toBe('saved');
   });
+
+  it('keeps the bytes the last save wrote and the board they carry', async () => {
+    const editor = createEditor(board('First'));
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ editor, storage });
+
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.bytes).toBe(writes[0]);
+    expect(autosave.getLastWrite()?.board.title).toBe('First');
+
+    editor.setBoard(board('Second'));
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.bytes).toBe(writes[1]);
+    expect(autosave.getLastWrite()?.board.title).toBe('Second');
+    expect(autosave.getLastWrite()?.preview).toBeNull();
+  });
+
+  it('keeps the picture the save wrote with its bytes', async () => {
+    const editor = createEditor(board('First'));
+    const { storage } = memoryStorage();
+    const autosave = createAutosave({
+      editor,
+      preview: () => '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+      storage,
+    });
+
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.preview).toBe(
+      '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+    );
+  });
+
+  it('previews the next write without storing it', () => {
+    const editor = createEditor(board('First'));
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ editor, storage });
+
+    editor.setBoard(board('Second'));
+
+    expect(autosave.snapshot().board.title).toBe('Second');
+    expect(writes).toEqual([]);
+  });
+
+  it('reports only a write that followed a change, not a bare flush', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(board('First'));
+    const { storage } = memoryStorage();
+    const saved: string[] = [];
+    const autosave = createAutosave({
+      delay: 50,
+      editor,
+      onSaved: (value) => saved.push(value.board.title),
+      storage,
+    });
+
+    editor.setBoard(board('Second'));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(saved).toEqual(['Second']);
+
+    await autosave.flush();
+
+    expect(saved).toEqual(['Second']);
+  });
 });

@@ -8,7 +8,12 @@ import {
   type KeyValueStore,
   LIBRARY_KEY,
 } from '@kiyora/editor';
-import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
+import {
+  type Board,
+  parseBoard,
+  SCHEMA_VERSION,
+  serializeBoard,
+} from '@kiyora/model';
 import { describe, expect, it } from 'vitest';
 
 const board = (
@@ -188,6 +193,48 @@ describe('the library', () => {
     expect(recordOf(held).boards).toEqual([
       { id: 'open', title: 'Open', updatedAt: 5000 },
     ]);
+  });
+
+  it('keeps what sync recorded when the board is saved again', async () => {
+    const { store } = memoryStore();
+    const library = createLibrary(store);
+    const first = board('first', 'First', 10);
+    await library.create(first);
+    await library.setSync('first', {
+      conflict: null,
+      linked: true,
+      revision: 1,
+      tooLarge: false,
+    });
+
+    await library
+      .storage('first')
+      .write(serializeBoard({ ...first, title: 'Renamed', updatedAt: 20 }));
+
+    expect((await library.entries()).at(0)).toMatchObject({
+      linked: true,
+      revision: 1,
+      title: 'Renamed',
+    });
+  });
+
+  it('records the remote revision a stale write conflicted with', async () => {
+    const { store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('first', 'First', 10));
+
+    await library.setSync('first', {
+      conflict: 7,
+      linked: true,
+      revision: 2,
+      tooLarge: false,
+    });
+
+    expect((await library.entries()).at(0)).toMatchObject({
+      conflict: 7,
+      linked: true,
+      revision: 2,
+    });
   });
 });
 

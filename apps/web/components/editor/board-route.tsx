@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { httpSyncTransport } from '~/lib/sync/transport';
 import { useBoardRoute } from '~/lib/use-board-route';
 import { Editor } from '../editor/editor';
 
@@ -10,7 +11,13 @@ import { Editor } from '../editor/editor';
  * through the previous board's storage. A board that is not in the library says
  * so and offers the way back; it is never invented here.
  */
-export const BoardRoute = ({ boardId }: { boardId: string }) => {
+export const BoardRoute = ({
+  boardId,
+  signedIn,
+}: {
+  boardId: string;
+  signedIn: boolean;
+}) => {
   const state = useBoardRoute(boardId);
 
   if (state.status === 'loading') {
@@ -54,6 +61,12 @@ export const BoardRoute = ({ boardId }: { boardId: string }) => {
         rename={state.rename}
         rewrite={state.rewrite}
         storage={state.storage}
+        sync={{
+          record: state.sync,
+          saveRecord: state.recordSync,
+          signedIn,
+          transport: httpSyncTransport,
+        }}
         writable={state.writable}
       />
     </main>

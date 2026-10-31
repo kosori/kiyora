@@ -11,9 +11,17 @@ import {
   type Presence,
   type SaveStatus,
   type StorageFault,
+  savedBoard,
 } from '@kiyora/editor';
 import { type Board, previewBoard } from '@kiyora/model';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  createSyncMachine,
+  type SyncRecord,
+  type SyncSnapshot,
+  type SyncState,
+  type SyncTransport,
+} from '@kiyora/sync';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openBoardChannel } from '~/lib/board-channel';
 import { iconSetFor } from '~/lib/icon-set';
 import { createTextMeasurer } from '~/lib/text-measurer';
@@ -30,6 +38,14 @@ export type StorageHealth = {
   secondary: boolean;
 };
 
+/** What the shell needs to show and start a board's remote copy. */
+export type SyncView = {
+  /** Where the local copy stands against the remote one. */
+  state: SyncState;
+  /** Links this board: the only path from local to remote. */
+  link: () => void;
+};
+
 /** What the route hands the hook after it has opened and read one board. */
 export type AutosaveSetup = {
   /** The board this tab has open; presence and the clipboard are scoped to it. */
@@ -43,6 +59,19 @@ export type AutosaveSetup = {
   writable?: boolean;
   /** Whether opening should write what is on screen at once, after a rescue. */
   rewrite?: boolean;
+  /** The account the server read, and the record sync keeps for this board. */
+  sync: {
+    signedIn: boolean;
+    record: SyncRecord;
+    saveRecord: (record: SyncRecord) => void;
+    transport: SyncTransport;
+  };
+};
+
+/** What the shell gets back: where the board is saved, and where it is synced. */
+export type AutosaveHandle = {
+  health: StorageHealth;
+  sync: SyncView;
 };
 
 const initialHealth: StorageHealth = {
@@ -52,15 +81,25 @@ const initialHealth: StorageHealth = {
   status: 'saved',
 };
 
+const retryable = (state: SyncState): boolean =>
+  state.status === 'pending' ||
+  (state.status === 'error' && state.reason === 'network');
+
 /**
- * Keeps the board in `editor` saved through its own storage. Returns the health
- * the status surface reads.
+ * Keeps the board in `editor` saved through its own storage, and reconciles a
+ * linked board's remote copy after a save. Returns the health the status
+ * surface reads and the sync state beside it.
  *
  * Autosave starts only when the route says the board is writable: a bad read
  * that could not be quarantined never gets papered over by a fresh board. After
  * a migration or a quarantine the route asks for a rewrite, so the next open is
  * a clean one rather than another rescue. A second tab on the same board warns
  * rather than writing over the first.
+ *
+ * A changed save wakes the reconciler in the background. A bare flush — the
+ * page hiding, or a rescue rewrite — carries nothing new and does not upload.
+ * The reconciler never blocks an edit and runs one upload at a time; online and
+ * a returned tab retry a pending upload.
  */
 export const useAutosave = (
   editor: Editor,
@@ -71,14 +110,61 @@ export const useAutosave = (
     migratedFrom = null,
     writable = true,
     rewrite = false,
+    sync,
   }: AutosaveSetup
-): StorageHealth => {
+): AutosaveHandle => {
   const [health, setHealth] = useState<StorageHealth>({
     ...initialHealth,
     fault: initialFault,
     migratedFrom,
     status: writable ? initialHealth.status : 'unsaved',
   });
+  const autosaveRef = useRef<Autosave | null>(null);
+
+  const read = useCallback((): SyncSnapshot => {
+    const saved = autosaveRef.current?.getLastWrite() ?? null;
+
+    if (saved !== null) {
+      return {
+        board: saved.board,
+        bytes: saved.bytes,
+        preview: saved.preview ?? null,
+      };
+    }
+
+    return {
+      ...savedBoard(editor.getBoard(), editor.getView().camera, Date.now()),
+      preview: null,
+    };
+  }, [editor]);
+
+  const [machine] = useState(() =>
+    createSyncMachine({
+      boardId,
+      read,
+      record: sync.record,
+      saveRecord: sync.saveRecord,
+      signedIn: sync.signedIn,
+      transport: sync.transport,
+    })
+  );
+  const [syncState, setSyncState] = useState<SyncState>(() =>
+    machine.getState()
+  );
+
+  useEffect(
+    () => machine.subscribe(() => setSyncState(machine.getState())),
+    [machine]
+  );
+
+  const link = useCallback(() => {
+    const run = async (): Promise<void> => {
+      await autosaveRef.current?.flush();
+      await machine.link();
+    };
+
+    run().catch(() => undefined);
+  }, [machine]);
 
   const measure = useMemo(() => createTextMeasurer(), []);
   const preview = useCallback(
@@ -113,6 +199,17 @@ export const useAutosave = (
         flush();
       }
     };
+    const retry = (): void => {
+      machine.reconcile().catch(() => undefined);
+    };
+    const onVisible = (): void => {
+      if (
+        document.visibilityState === 'visible' &&
+        retryable(machine.getState())
+      ) {
+        retry();
+      }
+    };
 
     const channel = openBoardChannel(boardId);
     const self = { id: crypto.randomUUID(), openedAt: Date.now() };
@@ -127,13 +224,18 @@ export const useAutosave = (
 
     const created = createAutosave({
       editor,
+      onSaved: () => {
+        machine.markPending();
+        machine.reconcile().catch(() => undefined);
+      },
       presence: mine,
       preview,
       storage,
     });
     autosave = created;
+    autosaveRef.current = created;
 
-    const sync = (): void => {
+    const update = (): void => {
       if (cancelled) {
         return;
       }
@@ -144,8 +246,8 @@ export const useAutosave = (
         status: created.getStatus(),
       });
     };
-    stops.push(created.subscribe(sync), mine.subscribe(sync));
-    sync();
+    stops.push(created.subscribe(update), mine.subscribe(update));
+    update();
 
     if (rewrite) {
       // The bytes this replaced are in the snapshot or the quarantine, so the
@@ -156,24 +258,30 @@ export const useAutosave = (
 
     window.addEventListener('pagehide', flush);
     window.addEventListener('pagehide', leave);
+    window.addEventListener('online', retry);
     document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       cancelled = true;
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('pagehide', leave);
+      window.removeEventListener('online', retry);
       document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('visibilitychange', onVisible);
       for (const stop of stops) {
         stop();
       }
       clipboard?.close();
       presence?.leave();
       autosave?.stop();
+      autosaveRef.current = null;
     };
   }, [
     boardId,
     editor,
     initialFault,
+    machine,
     migratedFrom,
     preview,
     rewrite,
@@ -181,5 +289,5 @@ export const useAutosave = (
     writable,
   ]);
 
-  return health;
+  return { health, sync: { link, state: syncState } };
 };

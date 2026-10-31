@@ -13,9 +13,23 @@ export type LibraryEntry = {
   id: string;
   title: string;
   updatedAt: number;
+  /** Whether this board has a remote copy the local one is kept in step with. */
   linked?: boolean;
+  /** The revision the local copy was built on, when it is linked. */
+  revision?: number;
+  /** The remote revision that refused a write, until a person resolves it. */
+  conflict?: number;
+  /** Whether the board is too large for the sync limit. */
   tooLarge?: boolean;
   preview?: string;
+};
+
+/** What sync learned about one board, as the record keeps it. */
+export type LibrarySyncRecord = {
+  linked: boolean;
+  revision: number | null;
+  conflict: number | null;
+  tooLarge: boolean;
 };
 
 /** The library record: a cache of the entries, ordered by last change when read. */
@@ -167,6 +181,36 @@ const withPreview = (
 };
 
 /**
+ * The entry with what sync already knew carried over. A save's entry names only
+ * the title and time a payload carries, so an absent field means "unchanged";
+ * a field that is present — even as `undefined` — is the caller clearing it.
+ */
+const withSync = (
+  entry: LibraryEntry,
+  previous: LibraryEntry | undefined
+): LibraryEntry => {
+  if (previous === undefined) {
+    return entry;
+  }
+  const next = { ...entry };
+
+  if (!('linked' in entry)) {
+    next.linked = previous.linked;
+  }
+  if (!('revision' in entry)) {
+    next.revision = previous.revision;
+  }
+  if (!('conflict' in entry)) {
+    next.conflict = previous.conflict;
+  }
+  if (!('tooLarge' in entry)) {
+    next.tooLarge = previous.tooLarge;
+  }
+
+  return next;
+};
+
+/**
  * Writes one entry over the record, rebuilding a lost record first. `preview`
  * says what happens to the entry's picture: a string replaces it, `null` drops
  * it because the board outgrew the cap, and `undefined` keeps whatever the
@@ -181,7 +225,7 @@ export const upsert = async (
   const boards = record?.boards ?? (await scanEntries(store));
   const previous = boards.find((board) => board.id === entry.id);
   const next = withPreview(
-    entry,
+    withSync(entry, previous),
     preview === undefined ? previous?.preview : preview
   );
   await writeRecord(
