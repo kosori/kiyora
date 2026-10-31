@@ -147,7 +147,7 @@ A storage fault is reported by the board that caused it; the record is not consu
 
 ### Rename, duplicate and delete
 
-A rename writes the payload with the new name and the new `updatedAt`, then the record, so the two cannot disagree after a reload. The editor's title field commits through the same rename and adopts the name without a history entry. A duplicate keeps the payload's shapes, files, deck and camera under an id minted in the browser, resets both times, and names itself `<title> copy`. Delete removes the payload, the snapshot, the quarantine and the record entry, after a confirm that names the board.
+A rename writes the payload with the new name and the new `updatedAt`, then the record, so the two cannot disagree after a reload. The editor's title field commits through the same rename and adopts the name without a history entry. A duplicate keeps the payload's shapes, files, deck and camera under an id minted in the browser, resets both times, and names itself `<title> copy`. Delete removes the payload, the snapshot, the quarantine and the record entry, after a confirm that names the board. A linked board's confirm names both copies and deletes the remote row first; a remote failure keeps the local copy and surfaces the error, so the person can retry. A remote `404` still allows the local delete, because the remote copy is already gone.
 
 ## The render seam
 
