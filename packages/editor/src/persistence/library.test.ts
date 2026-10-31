@@ -1,0 +1,540 @@
+import {
+  boardConflictKey,
+  boardKey,
+  boardQuarantineKey,
+  boardSnapshotKey,
+  createAutosave,
+  createEditor,
+  createLibrary,
+  type KeyValueStore,
+  LIBRARY_KEY,
+} from '@kiyora/editor';
+import {
+  type Board,
+  parseBoard,
+  SCHEMA_VERSION,
+  serializeBoard,
+} from '@kiyora/model';
+import { describe, expect, it } from 'vitest';
+
+const board = (
+  id: string,
+  title: string,
+  updatedAt = 1_700_000_000_000,
+  shapes: Board['shapes'] = []
+): Board =>
+  parseBoard({
+    camera: { x: 0, y: 0, zoom: 1 },
+    createdAt: 1_600_000_000_000,
+    deck: [],
+    id,
+    schemaVersion: SCHEMA_VERSION,
+    settings: { theme: 'light' },
+    shapes,
+    title,
+    updatedAt,
+  });
+
+const rectangle = {
+  h: 80,
+  id: 'rectangle',
+  kind: 'rectangle',
+  locked: false,
+  opacity: 1,
+  parentId: null,
+  rotation: 0,
+  style: {
+    corner: 'sharp',
+    dash: 'solid',
+    fill: 'green',
+    fillStyle: 'bold',
+    stroke: 'green',
+    strokeWidth: 2,
+  },
+  w: 120,
+  x: 0,
+  y: 0,
+} as const;
+
+/** A store that records what it holds, standing in for IndexedDB. */
+const memoryStore = (seed: Record<string, string> = {}) => {
+  const held = new Map(Object.entries(seed));
+  const store: KeyValueStore = {
+    delete: (key) => {
+      held.delete(key);
+      return Promise.resolve();
+    },
+    get: (key) => Promise.resolve(held.get(key) ?? null),
+    keys: () => Promise.resolve([...held.keys()]),
+    put: (key, value) => {
+      held.set(key, value);
+      return Promise.resolve();
+    },
+  };
+
+  return { held, store };
+};
+
+const recordOf = (held: Map<string, string>) =>
+  JSON.parse(held.get(LIBRARY_KEY) ?? 'null') as {
+    boards: {
+      id: string;
+      preview?: string;
+      title: string;
+      updatedAt: number;
+    }[];
+    version: number;
+  };
+
+describe('the library', () => {
+  it('lists every board newest change first, without opening a payload', async () => {
+    const older = board('older', 'Older', 10);
+    const newer = board('newer', 'Newer', 20);
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+
+    await library.create(older);
+    await library.create(newer);
+
+    const entries = await library.entries();
+
+    expect(entries.map(({ id }) => id)).toEqual(['newer', 'older']);
+    expect(entries.map(({ title }) => title)).toEqual(['Newer', 'Older']);
+    expect(recordOf(held).boards.map(({ id }) => id)).toEqual([
+      'newer',
+      'older',
+    ]);
+  });
+
+  it('rebuilds a lost record from the board keys without listing a conflict copy', async () => {
+    const first = board('first', 'First', 10, [rectangle]);
+    const second = board('second', 'Second', 20);
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(first);
+    await library.create(second);
+    held.set(
+      boardConflictKey('first'),
+      JSON.stringify({ payload: board('first', 'Remote'), revision: 7 })
+    );
+
+    held.delete(LIBRARY_KEY);
+
+    expect((await library.entries()).map(({ id }) => id)).toEqual([
+      'second',
+      'first',
+    ]);
+    expect(recordOf(held).boards).toHaveLength(2);
+    expect(held.has(boardConflictKey('first'))).toBe(true);
+  });
+
+  it('quarantines one unreadable payload and keeps the rest of the library', async () => {
+    const good = board('good', 'Good');
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(good);
+
+    held.set(boardKey('broken'), 'this is not a board');
+    held.delete(LIBRARY_KEY);
+
+    expect((await library.entries()).map(({ id }) => id)).toEqual(['good']);
+    expect(held.get(boardKey('broken'))).toBeUndefined();
+    expect(held.get(boardQuarantineKey('broken'))).toBe('this is not a board');
+    expect(held.has(boardKey('good'))).toBe(true);
+  });
+
+  it('says whether it holds a board the record names, or a payload it finds', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('held', 'Held'));
+
+    expect(await library.holds('held')).toBe(true);
+    expect(await library.holds('never-created')).toBe(false);
+
+    held.delete(LIBRARY_KEY);
+
+    expect(await library.holds('held')).toBe(true);
+  });
+
+  it('writes only the open board, so another board is byte-for-byte unchanged', async () => {
+    const open = board('open', 'Open');
+    const other = board('other', 'Other', 30, [rectangle]);
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(open);
+    await library.create(other);
+    const untouched = held.get(boardKey('other'));
+
+    const editor = createEditor(open);
+    const autosave = createAutosave({
+      editor,
+      now: () => 4000,
+      storage: library.storage('open'),
+    });
+    editor.setTheme('dark');
+    await autosave.flush();
+
+    expect(held.get(boardKey('other'))).toBe(untouched);
+    expect(held.get(boardKey('open'))).not.toBe(JSON.stringify(open));
+  });
+
+  it('updates the record with the same save time the payload carries', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    held.delete(LIBRARY_KEY);
+
+    const editor = createEditor(open);
+    const autosave = createAutosave({
+      editor,
+      now: () => 5000,
+      storage: library.storage('open'),
+    });
+    editor.setTheme('dark');
+    await autosave.flush();
+
+    const payload = JSON.parse(held.get(boardKey('open')) ?? 'null') as Board;
+    expect(payload.updatedAt).toBe(5000);
+    expect(recordOf(held).boards).toEqual([
+      { id: 'open', title: 'Open', updatedAt: 5000 },
+    ]);
+  });
+
+  it('keeps what sync recorded when the board is saved again', async () => {
+    const { store } = memoryStore();
+    const library = createLibrary(store);
+    const first = board('first', 'First', 10);
+    await library.create(first);
+    await library.setSync('first', {
+      conflict: null,
+      linked: true,
+      pending: true,
+      revision: 1,
+      tooLarge: false,
+    });
+
+    await library
+      .storage('first')
+      .write(serializeBoard({ ...first, title: 'Renamed', updatedAt: 20 }));
+
+    expect((await library.entries()).at(0)).toMatchObject({
+      linked: true,
+      pending: true,
+      revision: 1,
+      title: 'Renamed',
+    });
+  });
+
+  it('records the remote revision a stale write conflicted with', async () => {
+    const { store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('first', 'First', 10));
+
+    await library.setSync('first', {
+      conflict: 7,
+      linked: true,
+      pending: false,
+      revision: 2,
+      tooLarge: false,
+    });
+
+    expect((await library.entries()).at(0)).toMatchObject({
+      conflict: 7,
+      linked: true,
+      revision: 2,
+    });
+  });
+});
+
+const international = {
+  bytes: 1,
+  dataURL:
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  mime: 'image/png',
+} as const;
+
+const carried = (): Board =>
+  parseBoard({
+    camera: { x: 30, y: 40, zoom: 2 },
+    createdAt: 1_600_000_000_000,
+    deck: [{ frameId: 'frame-1', notes: 'Welcome', skipped: false }],
+    files: { picture: international },
+    id: 'source',
+    schemaVersion: SCHEMA_VERSION,
+    settings: { theme: 'dark' },
+    shapes: [rectangle],
+    title: 'Original',
+    updatedAt: 1_700_000_000_000,
+  });
+
+const payloadOf = (held: Map<string, string>, id: string): Board =>
+  parseBoard(JSON.parse(held.get(boardKey(id)) ?? 'null'));
+
+describe('saving a preview with the board', () => {
+  const PREVIEW =
+    '<svg xmlns="http://www.w3.org/2000/svg"><path d="M 0 0"/></svg>';
+
+  it('writes the preview into the record beside the payload', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    const editor = createEditor(open);
+    const autosave = createAutosave({
+      editor,
+      now: () => 5000,
+      preview: () => PREVIEW,
+      storage: library.storage('open'),
+    });
+
+    editor.setTheme('dark');
+    await autosave.flush();
+
+    expect(recordOf(held).boards).toEqual([
+      { id: 'open', preview: PREVIEW, title: 'Open', updatedAt: 5000 },
+    ]);
+    expect((await library.entries())[0]?.preview).toBe(PREVIEW);
+    expect(
+      parseBoard(JSON.parse(held.get(boardKey('open')) ?? 'null')).id
+    ).toBe('open');
+  });
+
+  it('omits a preview over the cap without failing the save', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    const editor = createEditor(open);
+    const autosave = createAutosave({
+      editor,
+      now: () => 5000,
+      preview: () => null,
+      storage: library.storage('open'),
+    });
+
+    editor.setTheme('dark');
+    await autosave.flush();
+
+    expect(autosave.getStatus()).toBe('saved');
+    expect(recordOf(held).boards).toEqual([
+      { id: 'open', title: 'Open', updatedAt: 5000 },
+    ]);
+    expect(
+      parseBoard(JSON.parse(held.get(boardKey('open')) ?? 'null')).settings
+        .theme
+    ).toBe('dark');
+  });
+
+  it('keeps the stored preview when a rename does not touch the paint', async () => {
+    const { store } = memoryStore();
+    const library = createLibrary(store);
+    const open = board('open', 'Open', 10);
+    await library.create(open);
+    const editor = createEditor(open);
+    await createAutosave({
+      editor,
+      now: () => 5000,
+      preview: () => PREVIEW,
+      storage: library.storage('open'),
+    }).flush();
+
+    const renamed = await library.rename('open', 'Renamed');
+
+    expect(renamed?.preview).toBe(PREVIEW);
+    expect((await library.entries())[0]?.preview).toBe(PREVIEW);
+  });
+});
+
+describe('renaming a board', () => {
+  it('writes the payload first, then the record, and moves the board to the top', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { now: () => 30 });
+    await library.create(board('older', 'Older', 10, [rectangle]));
+    await library.create(board('newer', 'Newer', 20));
+    const writes: string[] = [];
+    const watched: KeyValueStore = {
+      ...store,
+      put: async (key, value) => {
+        writes.push(key);
+        await store.put(key, value);
+      },
+    };
+
+    const entry = await createLibrary(watched, { now: () => 30 }).rename(
+      'older',
+      'Renamed'
+    );
+
+    expect(entry).toEqual({ id: 'older', title: 'Renamed', updatedAt: 30 });
+    expect(writes).toEqual([boardKey('older'), LIBRARY_KEY]);
+    const payload = payloadOf(held, 'older');
+    expect(payload.title).toBe('Renamed');
+    expect(payload.updatedAt).toBe(30);
+    expect(payload.shapes).toEqual([rectangle]);
+    expect((await createLibrary(store).entries()).map(({ id }) => id)).toEqual([
+      'older',
+      'newer',
+    ]);
+  });
+
+  it('is a no-op the caller can report when the library does not hold the board', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { now: () => 30 });
+    await library.create(board('held', 'Held', 10));
+    const before = held.get(LIBRARY_KEY);
+
+    expect(await library.rename('missing', 'Nowhere')).toBeNull();
+    expect(held.get(LIBRARY_KEY)).toBe(before);
+    expect(held.has(boardKey('missing'))).toBe(false);
+  });
+});
+
+describe('duplicating a board', () => {
+  it('keeps the shapes, files, deck and camera, and resets the times', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, {
+      mintId: () => 'copy',
+      now: () => 5000,
+    });
+    await library.create(carried());
+    const original = held.get(boardKey('source'));
+
+    expect(await library.duplicate('source')).toBe('copy');
+
+    const copy = payloadOf(held, 'copy');
+    expect(copy).toEqual({
+      ...carried(),
+      createdAt: 5000,
+      id: 'copy',
+      title: 'Original copy',
+      updatedAt: 5000,
+    });
+    expect(held.get(boardKey('source'))).toBe(original);
+    expect(recordOf(held).boards.find(({ id }) => id === 'copy')).toEqual({
+      id: 'copy',
+      title: 'Original copy',
+      updatedAt: 5000,
+    });
+  });
+
+  it('editing the copy leaves the original byte-for-byte unchanged', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, {
+      mintId: () => 'copy',
+      now: () => 5000,
+    });
+    await library.create(carried());
+    await library.duplicate('source');
+    const original = held.get(boardKey('source'));
+
+    const copy = payloadOf(held, 'copy');
+    const editor = createEditor(copy);
+    const autosave = createAutosave({
+      editor,
+      now: () => 6000,
+      storage: library.storage('copy'),
+    });
+    editor.setTheme('light');
+    await autosave.flush();
+
+    expect(held.get(boardKey('source'))).toBe(original);
+    expect(payloadOf(held, 'copy').settings.theme).toBe('light');
+  });
+
+  it('titles an empty board Untitled copy', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, {
+      mintId: () => 'copy',
+      now: () => 5000,
+    });
+    await library.create(board('source', ''));
+
+    await library.duplicate('source');
+
+    expect(payloadOf(held, 'copy').title).toBe('Untitled copy');
+  });
+
+  it('is a no-op the caller can report when the source is not held', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { mintId: () => 'copy' });
+
+    expect(await library.duplicate('missing')).toBeNull();
+    expect(held.size).toBe(0);
+  });
+});
+
+describe('importing a board', () => {
+  it('keeps the file id when the library does not hold it', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+
+    const entry = await library.importBoard(carried());
+
+    expect(entry).toEqual({
+      id: 'source',
+      title: 'Original',
+      updatedAt: 1_700_000_000_000,
+    });
+    expect(payloadOf(held, 'source')).toEqual(carried());
+    expect((await createLibrary(store).entries()).map(({ id }) => id)).toEqual([
+      'source',
+    ]);
+  });
+
+  it('mints a new id when the library already holds the file id, and both keep their own bytes', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { mintId: () => 'second' });
+    await library.create(board('source', 'First', 10, [rectangle]));
+    const first = held.get(boardKey('source'));
+
+    const entry = await library.importBoard(carried());
+
+    expect(entry.id).toBe('second');
+    expect(payloadOf(held, 'source').title).toBe('First');
+    expect(payloadOf(held, 'second')).toEqual({ ...carried(), id: 'second' });
+    expect(held.get(boardKey('source'))).toBe(first);
+    expect((await library.entries()).map(({ id }) => id)).toEqual([
+      'second',
+      'source',
+    ]);
+  });
+});
+
+describe('removing a board', () => {
+  it('deletes the payload, the snapshot, the conflict copy, the quarantine and the record entry', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('doomed', 'Doomed', 10));
+    await library.create(board('kept', 'Kept', 20));
+    await library.setSync('doomed', {
+      conflict: null,
+      linked: true,
+      pending: true,
+      revision: 1,
+      tooLarge: false,
+    });
+    held.set(boardSnapshotKey('doomed'), 'snapshot');
+    held.set(boardConflictKey('doomed'), 'conflict');
+    held.set(boardQuarantineKey('doomed'), 'quarantine');
+
+    expect(await library.remove('doomed')).toBe(true);
+
+    expect(held.has(boardKey('doomed'))).toBe(false);
+    expect(held.has(boardSnapshotKey('doomed'))).toBe(false);
+    expect(held.has(boardConflictKey('doomed'))).toBe(false);
+    expect(held.has(boardQuarantineKey('doomed'))).toBe(false);
+    expect(recordOf(held).boards.map(({ id }) => id)).toEqual(['kept']);
+    expect(await library.holds('doomed')).toBe(false);
+  });
+
+  it('reports that nothing was removed when the board is not held', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+    await library.create(board('kept', 'Kept', 20));
+    const before = held.get(LIBRARY_KEY);
+
+    expect(await library.remove('missing')).toBe(false);
+    expect(held.get(LIBRARY_KEY)).toBe(before);
+  });
+});

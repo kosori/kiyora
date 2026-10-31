@@ -1,5 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import {
+  boardStorageKey,
+  openStarterBoard,
+  readStoredBoard,
+} from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Images, driven at the browser seam: a real file input hands in a real PNG, the
@@ -28,11 +33,7 @@ type StoredBoard = {
 };
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const placeImage = async (page: Page): Promise<void> => {
@@ -54,29 +55,11 @@ const saved = async (page: Page): Promise<void> => {
 };
 
 /** The board IndexedDB actually holds. */
-const storedBoard = (page: Page): Promise<StoredBoard | null> =>
-  page.evaluate(async (): Promise<StoredBoard | null> => {
-    const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 1);
-      opening.onerror = () => reject(opening.error);
-      opening.onsuccess = () => {
-        const database = opening.result;
-        if (!database.objectStoreNames.contains('boards')) {
-          resolve(null);
-          return;
-        }
-        const request = database
-          .transaction('boards', 'readonly')
-          .objectStore('boards')
-          .get('kiyora:board');
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () =>
-          resolve((request.result as string | undefined) ?? null);
-      };
-    });
+const storedBoard = async (page: Page): Promise<StoredBoard | null> => {
+  const bytes = await readStoredBoard(page, 'starter-board');
 
-    return bytes === null ? null : (JSON.parse(bytes) as StoredBoard);
-  });
+  return bytes === null ? null : (JSON.parse(bytes) as StoredBoard);
+};
 
 const image = (page: Page) => page.getByTestId('board').locator('image');
 
@@ -213,14 +196,7 @@ test('the board leaves as an SVG and a PNG with the raster inside it', async ({
 test('a board with an image is refused by the localStorage fallback, visibly', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-  });
-
-  await open(page);
+  await openStarterBoard(page, { storage: 'local' });
   await placeImage(page);
 
   const status = page.getByTestId('save-status');
@@ -228,8 +204,9 @@ test('a board with an image is refused by the localStorage fallback, visibly', a
   await expect(status).toContainText(/Images need IndexedDB/);
   await expect(status).toContainText(/not saved/);
 
-  const written = await page.evaluate(() =>
-    localStorage.getItem('kiyora:board')
+  const written = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    boardStorageKey('starter-board')
   );
   const board = written === null ? null : (JSON.parse(written) as StoredBoard);
 
@@ -240,20 +217,8 @@ test('a board with an image is refused by the localStorage fallback, visibly', a
 test('the image is in the document, so the offline guard still holds', async ({
   page,
 }) => {
-  const blocked: string[] = [];
-
-  await page.route('**/*', (route) => {
-    const { hostname } = new URL(route.request().url());
-    if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) {
-      return route.continue();
-    }
-    blocked.push(route.request().url());
-    return route.abort();
-  });
-
   await open(page);
   await placeImage(page);
 
   await expect(image(page)).toHaveAttribute('href', /^data:image\/png;base64,/);
-  expect(blocked).toEqual([]);
 });

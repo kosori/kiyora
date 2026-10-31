@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard, readStoredBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The laser is present-scoped display state: a circle beside the slide, never
@@ -10,11 +11,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 /** Wait for the surface to say it can act, so the chrome is painted before it is read. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** A slide on the deck, so presenting has something to play. */
@@ -36,28 +33,7 @@ const starterGeometry = (page: Page) =>
     .getAttribute('d');
 
 /** The board bytes the browser has written, read straight from IndexedDB. */
-const storedBoard = (page: Page) =>
-  page.evaluate(
-    async (): Promise<string | null> =>
-      new Promise<string | null>((resolve, reject) => {
-        const opening = indexedDB.open('kiyora', 1);
-        opening.onerror = () => reject(opening.error);
-        opening.onsuccess = () => {
-          const database = opening.result;
-          if (!database.objectStoreNames.contains('boards')) {
-            resolve(null);
-            return;
-          }
-          const request = database
-            .transaction('boards', 'readonly')
-            .objectStore('boards')
-            .get('kiyora:board');
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () =>
-            resolve((request.result as string | undefined) ?? null);
-        };
-      })
-  );
+const storedBoard = (page: Page) => readStoredBoard(page, 'starter-board');
 
 /** The SVG a person would download, as bytes. */
 const exportSvg = async (page: Page): Promise<string> => {

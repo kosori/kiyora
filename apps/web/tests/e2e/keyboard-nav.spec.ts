@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
 
@@ -11,11 +12,7 @@ const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const canvasBox = async (page: Page) => {

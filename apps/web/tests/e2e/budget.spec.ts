@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The payload and first-paint budget.
@@ -60,11 +61,7 @@ const firstPaintMs = (page: Page): Promise<number> =>
 test('the editor loads within its JavaScript and first-paint budget', async ({
   page,
 }) => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 
   const bytes = await scriptBytes(page);
   const paint = await firstPaintMs(page);

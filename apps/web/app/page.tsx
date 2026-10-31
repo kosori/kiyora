@@ -1,9 +1,10 @@
-import { Editor } from '~/components/editor/editor';
+import { Library } from '~/components/library/library';
+import { currentAccount } from '~/lib/auth/session';
 
-const Page = () => (
-  <main className='h-svh overflow-hidden'>
-    <Editor />
-  </main>
-);
+const Page = async () => {
+  const account = await currentAccount();
+
+  return <Library account={account} />;
+};
 
 export default Page;

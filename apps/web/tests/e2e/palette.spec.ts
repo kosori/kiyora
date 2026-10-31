@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The command palette's rows come from the same list the shortcut reference
@@ -9,11 +10,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 /** The board is server-rendered, so its paint is on screen before React is listening. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const canvasBox = async (page: Page) => {

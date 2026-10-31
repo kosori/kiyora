@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard, readStoredBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Zen mode is a view state: the chrome goes and the board stays. The proof is
@@ -8,11 +9,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 /** Wait for the surface to say it can act, so the chrome is painted before it is read. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's width on the screen, which is what the chrome takes away from it. */
@@ -27,28 +24,7 @@ const canvasWidth = async (page: Page): Promise<number> => {
 };
 
 /** The board bytes the browser has written, read straight from IndexedDB. */
-const storedBoard = (page: Page) =>
-  page.evaluate(
-    async (): Promise<string | null> =>
-      new Promise<string | null>((resolve, reject) => {
-        const opening = indexedDB.open('kiyora', 1);
-        opening.onerror = () => reject(opening.error);
-        opening.onsuccess = () => {
-          const database = opening.result;
-          if (!database.objectStoreNames.contains('boards')) {
-            resolve(null);
-            return;
-          }
-          const request = database
-            .transaction('boards', 'readonly')
-            .objectStore('boards')
-            .get('kiyora:board');
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () =>
-            resolve((request.result as string | undefined) ?? null);
-        };
-      })
-  );
+const storedBoard = (page: Page) => readStoredBoard(page, 'starter-board');
 
 /** The starter rectangle's clean geometry, so the board can be read by what it paints. */
 const starterGeometry = (page: Page) =>

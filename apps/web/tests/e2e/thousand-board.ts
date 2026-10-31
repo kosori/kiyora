@@ -29,7 +29,10 @@ const FIGURES = ['rectangle', 'ellipse', 'diamond', 'triangle'] as const;
 
 export type ShapeJson = Record<string, unknown> & { id: string };
 
-export type BoardJson = Record<string, unknown> & { shapes: ShapeJson[] };
+export type BoardJson = Record<string, unknown> & {
+  id: string;
+  shapes: ShapeJson[];
+};
 
 /** The board's origin cell, in board units: the first figure a drag can grab. */
 export const HERO = { h: HEIGHT, w: WIDTH, x: MARGIN, y: MARGIN };

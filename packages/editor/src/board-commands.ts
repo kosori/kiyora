@@ -44,6 +44,11 @@ export type BoardCommands = {
    * nothing.
    */
   setTheme: (theme: Theme) => void;
+  /**
+   * Renames the board. One board write and one save, with no history entry: a
+   * name is not canvas state, so undo never puts an older one back.
+   */
+  setTitle: (title: string) => void;
   /** Moves the selection in paint order as one gesture, writing nothing when it cannot move. */
   reorder: (move: OrderMove) => void;
   /** Replaces the board and notifies every board subscriber. */
@@ -96,13 +101,16 @@ export const createBoardCommands = ({
   gestures,
   label,
 }: Options): BoardCommands => {
-  /** Opens the board `next` replaces, keeping the selection honest and repainting. */
+  /** Opens the board `next` replaces, keeping the selection and the name honest. */
   const restore = (next: Board | null): void => {
     if (next === null) {
       return;
     }
     gestures.abandon();
-    core.adopt(next);
+    const current = core.board();
+    core.adopt(
+      next.title === current.title ? next : { ...next, title: current.title }
+    );
     core.select(core.selection());
   };
 
@@ -213,6 +221,13 @@ export const createBoardCommands = ({
         ...board,
         settings: { ...board.settings, theme },
       });
+    },
+    setTitle: (title) => {
+      const board = core.board();
+      if (board.title === title) {
+        return;
+      }
+      core.adopt({ ...board, title });
     },
     undo: () => {
       restore(core.transactions.undo(core.board()));

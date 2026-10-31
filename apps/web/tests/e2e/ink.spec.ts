@@ -1,14 +1,11 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { openBoard, openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 import { boardOfManyStrokes, STROKE_COUNT } from './ink-board';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's place on the screen, so board coordinates can be exact. */
@@ -222,15 +219,7 @@ test('a highlighter is translucent and paints behind the words it crosses', asyn
 });
 
 test('a board of many strokes keeps the DOM to the view', async ({ page }) => {
-  await page.addInitScript((bytes: string) => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-    localStorage.setItem('kiyora:board', bytes);
-  }, JSON.stringify(boardOfManyStrokes()));
-
-  await open(page);
+  await openBoard(page, boardOfManyStrokes(), { storage: 'local' });
 
   const nodes = await board(page).evaluate(
     (element) => element.querySelectorAll('*').length

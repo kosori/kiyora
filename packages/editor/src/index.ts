@@ -170,6 +170,8 @@ export {
   type Autosave,
   type AutosaveOptions,
   createAutosave,
+  type SavedBoard,
+  savedBoard,
 } from './persistence/autosave';
 export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
 export {
@@ -183,6 +185,14 @@ export {
   type StorageFault,
 } from './persistence/faults';
 export {
+  adoptLegacyBoard,
+  createLibrary,
+  type Library,
+  type LibraryEntry,
+  type LibraryRecord,
+  type LibrarySyncRecord,
+} from './persistence/library';
+export {
   type BoardChannel,
   type BoardMessage,
   createPresence,
@@ -190,11 +200,19 @@ export {
   type PresenceMessage,
 } from './persistence/presence';
 export {
-  BOARD_KEY,
+  BOARD_PREFIX,
   type BoardStorage,
-  QUARANTINE_KEY,
+  boardConflictKey,
+  boardKey,
+  boardQuarantineKey,
+  boardSnapshotKey,
+  boardStorage,
+  type KeyValueStore,
+  LEGACY_BOARD_KEY,
+  LEGACY_QUARANTINE_KEY,
+  LEGACY_SNAPSHOT_KEY,
+  LIBRARY_KEY,
   type SaveStatus,
-  SNAPSHOT_KEY,
 } from './persistence/storage';
 export type { Placement } from './placement';
 export {

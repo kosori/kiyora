@@ -2,20 +2,31 @@
 
 import {
   type Autosave,
+  type BoardStorage,
   type ClipboardRelay,
   createAutosave,
   createClipboardRelay,
   createPresence,
   type Editor,
-  loadBoard,
   type Presence,
-  restoreBoard,
   type SaveStatus,
   type StorageFault,
+  savedBoard,
 } from '@kiyora/editor';
-import { useEffect, useState } from 'react';
+import { type Board, previewBoard } from '@kiyora/model';
+import {
+  type ConflictCopy,
+  type ConflictPorts,
+  createSyncMachine,
+  type SyncRecord,
+  type SyncSnapshot,
+  type SyncState,
+  type SyncTransport,
+} from '@kiyora/sync';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openBoardChannel } from '~/lib/board-channel';
-import { openBoardStorage } from '~/lib/board-storage';
+import { iconSetFor } from '~/lib/icon-set';
+import { createTextMeasurer } from '~/lib/text-measurer';
 
 /** Everything the shell needs to tell the truth about where the board is. */
 export type StorageHealth = {
@@ -29,6 +40,62 @@ export type StorageHealth = {
   secondary: boolean;
 };
 
+/** The conflict surface's state and the three resolutions it can name. */
+export type ConflictView = {
+  copy: ConflictCopy | null;
+  /** Loads or refreshes the remote copy the person is comparing against. */
+  open: () => void;
+  keepMine: () => Promise<boolean>;
+  /** Resolves to the replaced local board, so it can be downloaded. */
+  takeTheirs: () => Promise<Board | null>;
+  duplicateMine: () => Promise<boolean>;
+};
+
+/** What the shell needs to show and start a board's remote copy. */
+export type SyncView = {
+  /** Where the local copy stands against the remote one. */
+  state: SyncState;
+  /** Whether the board has a remote copy, so sharing and syncing have a target. */
+  linked: boolean;
+  /** Links this board: the only path from local to remote. */
+  link: () => void;
+  conflict: ConflictView;
+  /** The picture the last save stored for this board, when it has one. */
+  localPreview: string | null;
+};
+
+/** What the route hands the hook after it has opened and read one board. */
+export type AutosaveSetup = {
+  /** The board this tab has open; presence and the clipboard are scoped to it. */
+  boardId: string;
+  storage: BoardStorage;
+  /** The fault that stood in the way of opening the board, if any. */
+  fault?: StorageFault | null;
+  /** The version the board was lifted from, when a migration ran. */
+  migratedFrom?: number | null;
+  /** Whether this board may be written. False when storage could not be read. */
+  writable?: boolean;
+  /** Whether opening should write what is on screen at once, after a rescue. */
+  rewrite?: boolean;
+  /** The picture the library already lists for this board, before the first save. */
+  preview?: string;
+  /** The account the server read, and the record sync keeps for this board. */
+  sync: {
+    signedIn: boolean;
+    record: SyncRecord;
+    saveRecord: (record: SyncRecord) => void;
+    transport: SyncTransport;
+    /** The storage a conflict resolution writes through. */
+    conflict: Omit<ConflictPorts, 'adoptLocal'>;
+  };
+};
+
+/** What the shell gets back: where the board is saved, and where it is synced. */
+export type AutosaveHandle = {
+  health: StorageHealth;
+  sync: SyncView;
+};
+
 const initialHealth: StorageHealth = {
   fault: null,
   migratedFrom: null,
@@ -36,21 +103,148 @@ const initialHealth: StorageHealth = {
   status: 'saved',
 };
 
+const retryable = (state: SyncState): boolean =>
+  state.status === 'pending' ||
+  (state.status === 'error' && state.reason === 'network');
+
 /**
- * Opens the saved board into the engine, then keeps it saved. Returns the health
- * the status surface reads.
+ * Keeps the board in `editor` saved through its own storage, and reconciles a
+ * linked board's remote copy after a save. Returns the health the status
+ * surface reads and the sync state beside it.
  *
- * The board is read once, on mount. A stored board replaces the starter and
- * brings the view back to where it was left; an older one is lifted and reports
- * the version it came from; unreadable bytes are parked and reported. Only when
- * the bytes were either read or safely quarantined does autosave start watching,
- * so a bad read can never be papered over by a fresh board. A second tab on the
- * same board warns rather than writing over the first.
+ * Autosave starts only when the route says the board is writable: a bad read
+ * that could not be quarantined never gets papered over by a fresh board. After
+ * a migration or a quarantine the route asks for a rewrite, so the next open is
+ * a clean one rather than another rescue. A second tab on the same board warns
+ * rather than writing over the first.
+ *
+ * A changed save wakes the reconciler in the background. A bare flush — the
+ * page hiding, or a rescue rewrite — carries nothing new and does not upload.
+ * The reconciler never blocks an edit and runs one upload at a time; online and
+ * a returned tab retry a pending upload. A board reopened with an upload still
+ * waiting reconciles once when the browser is online.
  */
-export const useAutosave = (editor: Editor): StorageHealth => {
-  const [health, setHealth] = useState<StorageHealth>(initialHealth);
+export const useAutosave = (
+  editor: Editor,
+  {
+    boardId,
+    storage,
+    fault: initialFault = null,
+    migratedFrom = null,
+    writable = true,
+    rewrite = false,
+    preview: initialPreview,
+    sync,
+  }: AutosaveSetup
+): AutosaveHandle => {
+  const [health, setHealth] = useState<StorageHealth>({
+    ...initialHealth,
+    fault: initialFault,
+    migratedFrom,
+    status: writable ? initialHealth.status : 'unsaved',
+  });
+  const [localPreview, setLocalPreview] = useState<string | null>(
+    initialPreview ?? null
+  );
+  const autosaveRef = useRef<Autosave | null>(null);
+
+  const read = useCallback((): SyncSnapshot => {
+    const saved = autosaveRef.current?.getLastWrite() ?? null;
+
+    if (saved !== null) {
+      return {
+        board: saved.board,
+        bytes: saved.bytes,
+        preview: saved.preview ?? null,
+      };
+    }
+
+    return {
+      ...savedBoard(editor.getBoard(), editor.getView().camera, Date.now()),
+      preview: null,
+    };
+  }, [editor]);
+
+  const [machine] = useState(() =>
+    createSyncMachine({
+      boardId,
+      conflict: {
+        ...sync.conflict,
+        adoptLocal: (next) => editor.setBoard(next),
+      },
+      read,
+      record: sync.record,
+      saveRecord: sync.saveRecord,
+      signedIn: sync.signedIn,
+      transport: sync.transport,
+    })
+  );
+  const [syncState, setSyncState] = useState<SyncState>(() =>
+    machine.getState()
+  );
+  const [linked, setLinked] = useState<boolean>(sync.record.linked);
+  const [conflictCopy, setConflictCopy] = useState<ConflictCopy | null>(() =>
+    machine.conflict.getCopy()
+  );
+
+  useEffect(
+    () =>
+      machine.subscribe(() => {
+        setSyncState(machine.getState());
+        setLinked(machine.isLinked());
+        setConflictCopy(machine.conflict.getCopy());
+      }),
+    [machine]
+  );
+
+  const flush = useCallback(async (): Promise<void> => {
+    await autosaveRef.current?.flush();
+  }, []);
+
+  const link = useCallback(() => {
+    const run = async (): Promise<void> => {
+      await flush();
+      await machine.link();
+    };
+
+    run().catch(() => undefined);
+  }, [flush, machine]);
+
+  const openConflict = useCallback(() => {
+    machine.conflict.open().catch(() => undefined);
+  }, [machine]);
+
+  const keepMine = useCallback(async (): Promise<boolean> => {
+    await flush();
+    return machine.conflict.keepMine();
+  }, [flush, machine]);
+
+  const takeTheirs = useCallback(async (): Promise<Board | null> => {
+    await flush();
+    return machine.conflict.takeTheirs();
+  }, [flush, machine]);
+
+  const duplicateMine = useCallback(async (): Promise<boolean> => {
+    await flush();
+    return machine.conflict.duplicateMine();
+  }, [flush, machine]);
+
+  const measure = useMemo(() => createTextMeasurer(), []);
+  const preview = useCallback(
+    async (board: Board): Promise<string | null> =>
+      previewBoard(board, {
+        icons: await iconSetFor(board),
+        measure,
+        theme: board.settings.theme,
+      }),
+    [measure]
+  );
 
   useEffect(() => {
+    if (!writable) {
+      return;
+    }
+
     let cancelled = false;
     let autosave: Autosave | null = null;
     let clipboard: ClipboardRelay | null = null;
@@ -68,94 +262,118 @@ export const useAutosave = (editor: Editor): StorageHealth => {
         flush();
       }
     };
-
-    (async () => {
-      try {
-        const { fault: openFault, storage } = await openBoardStorage();
-        const loaded = await loadBoard(storage);
-        if (cancelled) {
-          return;
-        }
-
-        const fault = loaded.status === 'fault' ? loaded.fault : openFault;
-        const migratedFrom =
-          loaded.status === 'loaded' ? loaded.migratedFrom : null;
-        const quarantined = loaded.status === 'fault' && loaded.quarantined;
-        if (loaded.status === 'loaded') {
-          restoreBoard(editor, loaded.board);
-        }
-
-        const writable = loaded.status !== 'fault' || quarantined;
-        if (!writable) {
-          setHealth({
-            fault,
-            migratedFrom,
-            secondary: false,
-            status: 'unsaved',
-          });
-          return;
-        }
-
-        const channel = openBoardChannel();
-        const self = { id: crypto.randomUUID(), openedAt: Date.now() };
-        const mine = createPresence({ channel, self });
-        presence = mine;
-        clipboard = createClipboardRelay({
-          channel,
-          editor,
-          origin: self.id,
-        });
-
-        const created = createAutosave({
-          editor,
-          presence: mine,
-          storage,
-        });
-        autosave = created;
-
-        const sync = (): void => {
-          if (cancelled) {
-            return;
-          }
-          setHealth({
-            fault: created.getFault() ?? fault,
-            migratedFrom,
-            secondary: !mine.isPrimary(),
-            status: created.getStatus(),
-          });
-        };
-        stops.push(created.subscribe(sync), mine.subscribe(sync));
-        sync();
-
-        if (migratedFrom !== null || quarantined) {
-          // The bytes this replaced are in the snapshot or the quarantine, so
-          // the board key is free: write what is now on screen, so the next
-          // open is a clean one rather than another rescue.
-          await created.flush();
-        }
-
-        window.addEventListener('pagehide', flush);
-        window.addEventListener('pagehide', leave);
-        document.addEventListener('visibilitychange', onVisibility);
-      } catch {
-        // A browser with no usable storage is reported by the storage opener's
-        // fault; the starter board stays on screen and usable either way.
+    const retry = (): void => {
+      machine.reconcile().catch(() => undefined);
+    };
+    const onVisible = (): void => {
+      if (
+        document.visibilityState === 'visible' &&
+        retryable(machine.getState())
+      ) {
+        retry();
       }
-    })();
+    };
+
+    const channel = openBoardChannel(boardId);
+    const self = { id: crypto.randomUUID(), openedAt: Date.now() };
+    const mine = createPresence({ channel, self });
+    presence = mine;
+    clipboard = createClipboardRelay({
+      boardId,
+      channel,
+      editor,
+      origin: self.id,
+    });
+
+    const created = createAutosave({
+      editor,
+      onSaved: () => {
+        machine.markPending();
+        machine.reconcile().catch(() => undefined);
+      },
+      presence: mine,
+      preview,
+      storage,
+    });
+    autosave = created;
+    autosaveRef.current = created;
+
+    const update = (): void => {
+      if (cancelled) {
+        return;
+      }
+      setHealth({
+        fault: created.getFault() ?? initialFault,
+        migratedFrom,
+        secondary: !mine.isPrimary(),
+        status: created.getStatus(),
+      });
+      setLocalPreview(
+        created.getLastWrite()?.preview ?? initialPreview ?? null
+      );
+    };
+    stops.push(created.subscribe(update), mine.subscribe(update));
+    update();
+
+    if (rewrite) {
+      // The bytes this replaced are in the snapshot or the quarantine, so the
+      // board key is free: write what is now on screen, so the next open is a
+      // clean one rather than another rescue.
+      created.flush().catch(() => undefined);
+    }
+
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('pagehide', leave);
+    window.addEventListener('online', retry);
+    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener('visibilitychange', onVisible);
+
+    if (navigator.onLine && machine.getState().status === 'pending') {
+      retry();
+    }
 
     return () => {
       cancelled = true;
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('pagehide', leave);
+      window.removeEventListener('online', retry);
       document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('visibilitychange', onVisible);
       for (const stop of stops) {
         stop();
       }
       clipboard?.close();
       presence?.leave();
       autosave?.stop();
+      autosaveRef.current = null;
     };
-  }, [editor]);
+  }, [
+    boardId,
+    editor,
+    initialFault,
+    initialPreview,
+    machine,
+    migratedFrom,
+    preview,
+    rewrite,
+    storage,
+    writable,
+  ]);
 
-  return health;
+  return {
+    health,
+    sync: {
+      conflict: {
+        copy: conflictCopy,
+        duplicateMine,
+        keepMine,
+        open: openConflict,
+        takeTheirs,
+      },
+      link,
+      linked,
+      localPreview,
+      state: syncState,
+    },
+  };
 };

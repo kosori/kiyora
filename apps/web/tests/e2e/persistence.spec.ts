@@ -1,4 +1,9 @@
-import { expect, type Page, test } from '@playwright/test';
+import {
+  boardStorageKey,
+  openStarterBoard,
+  readStoredBoard,
+} from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
 
@@ -24,11 +29,7 @@ const camera = async (page: Page): Promise<Camera> => {
 };
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 const canvasBox = async (page: Page) => {
@@ -82,31 +83,13 @@ const pan = async (
 };
 
 /** The camera the browser has actually written, read from IndexedDB. */
-const storedCamera = (page: Page) =>
-  page.evaluate(async (): Promise<Camera | null> => {
-    const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 1);
-      opening.onerror = () => reject(opening.error);
-      opening.onsuccess = () => {
-        const database = opening.result;
-        if (!database.objectStoreNames.contains('boards')) {
-          resolve(null);
-          return;
-        }
-        const request = database
-          .transaction('boards', 'readonly')
-          .objectStore('boards')
-          .get('kiyora:board');
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () =>
-          resolve((request.result as string | undefined) ?? null);
-      };
-    });
+const storedCamera = async (page: Page): Promise<Camera | null> => {
+  const bytes = await readStoredBoard(page, 'starter-board');
 
-    return bytes === null
-      ? null
-      : (JSON.parse(bytes) as { camera: Camera }).camera;
-  });
+  return bytes === null
+    ? null
+    : (JSON.parse(bytes) as { camera: Camera }).camera;
+};
 
 const WATCH_SAVE_STATE = () => {
   const key = '__kiyoraSaveStates';
@@ -244,21 +227,19 @@ test('a pan alone is flushed as the page goes away, so the view comes back', asy
 test('a board is saved and read back without IndexedDB, through the fallback', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      configurable: true,
-      value: undefined,
-    });
-  });
-
-  await open(page);
+  await openStarterBoard(page, { storage: 'local' });
   await drawRectangle(page);
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-state',
     'saved'
   );
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('kiyora:board')))
+    .poll(() =>
+      page.evaluate(
+        (key) => localStorage.getItem(key),
+        boardStorageKey('starter-board')
+      )
+    )
     .not.toBeNull();
 
   await page.reload();

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Tables at the browser seam: the grid paints inside the authored box, a cell's
@@ -9,11 +10,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The canvas's place on the screen, so board coordinates can be exact. */
