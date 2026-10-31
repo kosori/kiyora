@@ -186,17 +186,26 @@ test('stores the preview the client sent, and none when it sent none', async () 
   expect(withPreview.status()).toBe(200);
   expect((await committedRow()).preview_svg).toBe(svg);
 
-  const malformed = await sync(owner, {
+  const projected = `${svg}\n`;
+  const withNewline = await sync(owner, {
     baseRevision: 2,
-    payload: labelled({ title: 'Malformed', updatedAt: 1_700_000_000_002 }),
+    payload: labelled({ title: 'Projected', updatedAt: 1_700_000_000_002 }),
+    preview: projected,
+  });
+  expect(withNewline.status()).toBe(200);
+  expect((await committedRow()).preview_svg).toBe(projected);
+
+  const malformed = await sync(owner, {
+    baseRevision: 3,
+    payload: labelled({ title: 'Malformed', updatedAt: 1_700_000_000_003 }),
     preview: 'not an svg',
   });
   expect(malformed.status()).toBe(200);
   expect((await committedRow()).preview_svg).toBeNull();
 
   const oversized = await sync(owner, {
-    baseRevision: 3,
-    payload: labelled({ title: 'Oversized', updatedAt: 1_700_000_000_003 }),
+    baseRevision: 4,
+    payload: labelled({ title: 'Oversized', updatedAt: 1_700_000_000_004 }),
     preview: `<svg>${'a'.repeat(PREVIEW_LIMIT)}</svg>`,
   });
   expect(oversized.status()).toBe(200);

@@ -37,13 +37,16 @@ const hashOf = (bytes: string): string =>
  * The preview a write may store, or null when it is not one this server will
  * keep. The server has no measurer, so it never paints a board itself: it only
  * checks the shape the client saved and the cap, and a preview that fails
- * either is dropped rather than failing the write.
+ * either is dropped rather than failing the write. The client's projection ends
+ * with a newline, so surrounding whitespace is allowed and the bytes are kept
+ * as sent.
  */
 export const readPreview = (value: unknown): string | null => {
   if (typeof value !== 'string') {
     return null;
   }
-  if (!(value.startsWith('<svg') && value.endsWith('</svg>'))) {
+  const trimmed = value.trim();
+  if (!(trimmed.startsWith('<svg') && trimmed.endsWith('</svg>'))) {
     return null;
   }
 
