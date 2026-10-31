@@ -21,8 +21,40 @@ export const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
  */
 export const E2E_SERVER = process.env.E2E_SERVER === 'prod' ? 'prod' : 'dev';
 
-/** The command that serves the app under test. */
-export const E2E_SERVER_COMMAND =
+/**
+ * Whether the run includes the `server` project. It is opt-in so a contributor
+ * without Postgres can still run every browser spec.
+ */
+export const E2E_SERVER_DB = process.env.E2E_SERVER_DB === '1';
+
+const serve = (): string =>
   E2E_SERVER === 'prod'
     ? `bunx next start --port ${E2E_PORT}`
     : `bun run dev --port ${E2E_PORT}`;
+
+/** The command that serves the app under test. */
+export const E2E_SERVER_COMMAND = E2E_SERVER_DB
+  ? `bun run db:migrate && ${serve()}`
+  : serve();
+
+/** The Postgres the server project owns. Defaults to the documented local one. */
+export const E2E_DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgres://kiyora:kiyora@localhost:5432/kiyora';
+
+/**
+ * The account configuration the server project starts with. The OAuth pairs are
+ * placeholders: CI never walks a provider's callback, and the dev-credentials
+ * provider is the seam it does walk.
+ */
+export const E2E_AUTH_ENV: Record<string, string> = E2E_SERVER_DB
+  ? {
+      AUTH_DEV_CREDENTIALS: '1',
+      BETTER_AUTH_SECRET: 'kiyora-e2e-secret-not-for-production',
+      BETTER_AUTH_URL: E2E_BASE_URL,
+      DATABASE_URL: E2E_DATABASE_URL,
+      GITHUB_CLIENT_ID: 'kiyora-e2e-github-client',
+      GITHUB_CLIENT_SECRET: 'kiyora-e2e-github-secret',
+      GOOGLE_CLIENT_ID: 'kiyora-e2e-google-client',
+      GOOGLE_CLIENT_SECRET: 'kiyora-e2e-google-secret',
+    }
+  : {};
