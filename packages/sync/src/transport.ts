@@ -20,6 +20,12 @@ export type UploadRequest = {
   preview: string | null;
 };
 
+/** One remote copy as a download carries it: the bytes and the revision they are. */
+export type DownloadedBoard = {
+  payload: Board;
+  revision: number;
+};
+
 /** What the server answered to one upload. */
 export type UploadResult =
   | { kind: 'accepted'; revision: number }
@@ -47,6 +53,6 @@ export type RemoveResult =
 export type SyncTransport = {
   upload: (request: UploadRequest) => Promise<UploadResult>;
   list: () => Promise<RemoteBoardSummary[]>;
-  download: (id: string) => Promise<Board | null>;
+  download: (id: string) => Promise<DownloadedBoard | null>;
   remove: (id: string) => Promise<RemoveResult>;
 };

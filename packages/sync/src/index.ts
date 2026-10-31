@@ -16,6 +16,7 @@ export {
   type SyncState,
 } from './reconcile';
 export type {
+  DownloadedBoard,
   RemoteBoardSummary,
   RemoveResult,
   SyncTransport,

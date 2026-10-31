@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { Button } from '~/components/ui/button';
 import { BoardPreview } from './board-preview';
+import { changedAt } from './changed-at';
 
 export type BoardRowProps = {
   entry: LibraryEntry;
@@ -21,12 +22,6 @@ export type BoardRowProps = {
 };
 
 const nameOf = (entry: LibraryEntry): string => entry.title || 'Untitled';
-
-const changedAt = (updatedAt: number): string =>
-  new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(updatedAt);
 
 /**
  * One board in the list: its name and last change, and the actions that change
