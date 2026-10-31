@@ -42,6 +42,8 @@ export type StorageHealth = {
 export type SyncView = {
   /** Where the local copy stands against the remote one. */
   state: SyncState;
+  /** Whether the board has a remote copy, so sharing and syncing have a target. */
+  linked: boolean;
   /** Links this board: the only path from local to remote. */
   link: () => void;
 };
@@ -151,9 +153,14 @@ export const useAutosave = (
   const [syncState, setSyncState] = useState<SyncState>(() =>
     machine.getState()
   );
+  const [linked, setLinked] = useState<boolean>(sync.record.linked);
 
   useEffect(
-    () => machine.subscribe(() => setSyncState(machine.getState())),
+    () =>
+      machine.subscribe(() => {
+        setSyncState(machine.getState());
+        setLinked(machine.isLinked());
+      }),
     [machine]
   );
 
@@ -289,5 +296,5 @@ export const useAutosave = (
     writable,
   ]);
 
-  return { health, sync: { link, state: syncState } };
+  return { health, sync: { link, linked, state: syncState } };
 };

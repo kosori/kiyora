@@ -2,11 +2,14 @@
 
 import type { SyncState } from '@kiyora/sync';
 import { cn } from 'cn';
+import { ShareControl } from '~/components/share/share-control';
 import { Button } from '~/components/ui/button';
 
 type Props = {
+  boardId: string;
   state: SyncState;
   signedIn: boolean;
+  linked: boolean;
   onLink: () => void;
 };
 
@@ -71,7 +74,13 @@ const revisionOf = (state: SyncState): number | undefined => {
  * nowhere else; a signed-out board shows that it is paused rather than
  * pretending a request is coming.
  */
-export const SyncIndicator = ({ state, signedIn, onLink }: Props) => {
+export const SyncIndicator = ({
+  boardId,
+  state,
+  signedIn,
+  linked,
+  onLink,
+}: Props) => {
   const canLink = signedIn && state.status === 'local';
   const attention =
     state.status === 'conflict' ||
@@ -108,6 +117,7 @@ export const SyncIndicator = ({ state, signedIn, onLink }: Props) => {
           Sync this board
         </Button>
       ) : null}
+      <ShareControl boardId={boardId} linked={linked} />
     </div>
   );
 };

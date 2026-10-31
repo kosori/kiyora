@@ -149,6 +149,7 @@ describe('the sync state machine', () => {
     expect(machine.getState()).toEqual(
       expected({ revision: 1, status: 'synced' })
     );
+    expect(machine.isLinked()).toBe(true);
     expect(saved.at(-1)).toEqual(linkedAt(1));
   });
 
@@ -167,6 +168,7 @@ describe('the sync state machine', () => {
 
     expect(fake.uploads).toEqual([]);
     expect(machine.getState()).toEqual(expected({ status: 'signed-out' }));
+    expect(machine.isLinked()).toBe(false);
   });
 
   it('moves a later save through pending to synced at the next revision', async () => {

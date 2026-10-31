@@ -15,6 +15,13 @@
       "when": 1793408637176,
       "tag": "0001_red_harrier",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793419019124,
+      "tag": "0002_funny_ravenous",
+      "breakpoints": true
     }
   ]
 }
