@@ -1,6 +1,6 @@
 'use client';
 
-import { restoreBoard } from '@kiyora/editor';
+import type { LibraryEntry } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
 import { boardBounds, fitImageSize } from '@kiyora/model';
 import {
@@ -10,8 +10,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { BoardFileImport } from '~/components/board-file-import';
 import { Button } from '~/components/ui/button';
-import { openBoardFile, saveBoardFile } from '~/lib/board-file';
+import { saveBoardFile } from '~/lib/board-file';
 import { saveBoardSvg } from '~/lib/board-svg';
 import { IMAGE_PLACEMENT_SIDE, importImage } from '~/lib/image-import';
 import { createTextMeasurer } from '~/lib/text-measurer';
@@ -22,20 +23,20 @@ const messageOf = (thrown: unknown): string =>
   thrown instanceof Error ? thrown.message : String(thrown);
 
 /**
- * The board as a file: save the open board, open one in its place, or take it
- * out as an SVG or a PNG. A refused file names what was wrong and leaves the
- * open board exactly where it was; a refused export names why it could not be
- * written.
+ * The board as a file: save the open board, import one into the library beside
+ * it, or take this board out as an SVG or a PNG. A refused file names what was
+ * wrong and leaves the open board exactly where it was; a refused export names
+ * why it could not be written.
  */
 export const FileControls = () => {
   const editor = useEditor();
   const board = useBoard();
   const { camera } = useView();
-  const input = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
   const { clearError, error: copyError } = useCopyPng();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const shownError = error ?? copyError;
   const [png, setPng] = useState(false);
 
@@ -49,21 +50,26 @@ export const FileControls = () => {
     [clearError]
   );
 
-  const open = useCallback(
-    async (file: File): Promise<void> => {
-      try {
-        restoreBoard(editor, await openBoardFile(file));
-        report(null);
-      } catch (thrown) {
-        report(messageOf(thrown));
-      }
+  const importFailed = useCallback(
+    (message: string) => {
+      setNotice(null);
+      report(message);
     },
-    [editor, report]
+    [report]
   );
 
-  const choose = useCallback(() => {
-    input.current?.click();
-  }, []);
+  const importStarted = useCallback(() => {
+    setNotice(null);
+    report(null);
+  }, [report]);
+
+  const importImported = useCallback(
+    (entry: LibraryEntry) => {
+      setNotice(`Imported “${entry.title || 'Untitled'}” to the library`);
+      report(null);
+    },
+    [report]
+  );
 
   const chooseImage = useCallback(() => {
     imageInput.current?.click();
@@ -91,17 +97,6 @@ export const FileControls = () => {
   const togglePng = useCallback(() => {
     setPng((open) => !open);
   }, []);
-
-  const pick = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = '';
-      if (file !== undefined) {
-        await open(file);
-      }
-    },
-    [open]
-  );
 
   const place = useCallback(
     async (file: File) => {
@@ -153,14 +148,13 @@ export const FileControls = () => {
   return (
     <div className='absolute top-3 right-3 z-10 flex max-w-xs flex-col items-end gap-1'>
       <div className='flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'>
-        <Button
-          data-testid='open-file'
-          onClick={choose}
-          size='sm'
-          variant='ghost'
-        >
-          Open file
-        </Button>
+        <BoardFileImport
+          buttonTestId='import-file'
+          inputTestId='file-input'
+          onFailed={importFailed}
+          onImported={importImported}
+          onStarted={importStarted}
+        />
         <Button
           data-testid='save-file'
           onClick={save}
@@ -197,14 +191,6 @@ export const FileControls = () => {
       </div>
       {png ? <ExportPngPanel onError={report} /> : null}
       <input
-        accept='.kyr.json,application/json'
-        className='hidden'
-        data-testid='file-input'
-        onChange={pick}
-        ref={input}
-        type='file'
-      />
-      <input
         accept='image/png,image/jpeg'
         className='hidden'
         data-testid='image-input'
@@ -212,6 +198,15 @@ export const FileControls = () => {
         ref={imageInput}
         type='file'
       />
+      {notice === null ? null : (
+        <p
+          className='rounded-lg border border-border bg-background/95 px-2 py-1 text-xs shadow-sm'
+          data-testid='import-notice'
+          role='status'
+        >
+          {notice}
+        </p>
+      )}
       {shownError === null ? null : (
         <p
           className='whitespace-pre-line rounded-lg border border-destructive/40 bg-background/95 px-2 py-1 text-destructive text-xs shadow-sm'

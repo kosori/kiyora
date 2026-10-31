@@ -57,6 +57,9 @@ const bytesOf = (board: SeededBoard): string =>
     ...board,
   });
 
+/** A seeded board as the bytes of a `.kyr.json` file. */
+export const boardFileBytes = (board: SeededBoard): string => bytesOf(board);
+
 const entryOf = (board: SeededBoard) => ({
   id: board.id,
   title: board.title ?? 'Untitled',
