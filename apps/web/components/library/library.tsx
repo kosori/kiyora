@@ -6,6 +6,7 @@ import {
   type Library as LibraryStore,
   type StorageFault,
 } from '@kiyora/editor';
+import type { RemoteBoardSummary } from '@kiyora/sync';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AccountControl } from '~/components/auth/account-control';
@@ -14,8 +15,10 @@ import { Button } from '~/components/ui/button';
 import type { AccountSummary } from '~/lib/auth/account';
 import { openStore } from '~/lib/board-storage';
 import { newBoard } from '~/lib/new-board';
+import { downloadRemoteBoard } from '~/lib/remote-board';
 import { BoardRow } from './board-row';
 import { DeleteBoardDialog } from './delete-board-dialog';
+import { RemoteBoards } from './remote-boards';
 
 /** The fault a library carries when its storage would not open. */
 const faultMessage = (fault: StorageFault): string => {
@@ -118,6 +121,19 @@ export const Library = ({ account }: Props) => {
     create().catch(() => undefined);
   };
 
+  const openRemote = useCallback(
+    async (summary: RemoteBoardSummary): Promise<boolean> => {
+      const entry = await downloadRemoteBoard(summary);
+      await reload();
+      if (entry === null) {
+        return false;
+      }
+      router.push(`/b/${entry.id}`);
+      return true;
+    },
+    [reload, router]
+  );
+
   const remove = (entry: LibraryEntry): void => {
     setDeleting(null);
     act((library) => library.remove(entry.id)).catch(() => undefined);
@@ -198,6 +214,12 @@ export const Library = ({ account }: Props) => {
           </ul>
         )}
       </div>
+      {account === null || entries === null ? null : (
+        <RemoteBoards
+          held={entries.map((entry) => entry.id)}
+          onOpen={openRemote}
+        />
+      )}
       <DeleteBoardDialog
         onConfirm={confirmDelete}
         onOpenChange={answerDelete}

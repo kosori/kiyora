@@ -30,6 +30,8 @@ The remote copy is one `board` row: the client's id as the primary key, `owner_i
 
 The local copy stays the only editable one. A save marks a linked board pending and wakes the reconciler in the background; a bare flush uploads nothing, and one upload runs at a time. Reconnect and a returned tab retry a pending upload. A board over the limit is refused on the client before anything is sent, stays local and says so. A conflict is recorded with the local board — the marker and the remote revision live in the library record — and resolving it is a later cut. `LibraryEntry` carries `linked`, `revision`, `conflict` and `tooLarge`; a save keeps them, because the record merges the board's own title and time with what sync already knows.
 
+`GET /api/boards` lists the owner's remote copies from the columns a write maintains, and never selects a payload. `GET /api/boards/:id` returns one remote copy's payload and revision, `404` for a board another account owns and `401` when signed out. A signed-in library shows **Your boards** — remote copies whose id this browser does not hold — and reads the list when the library opens. Opening one downloads its bytes, lifts them through the board-file path, stores a local copy under the same id and records it linked at the revision that came with the bytes. Nothing is mirrored unasked, a failed listing leaves the local library usable, and signing out removes the section without a request.
+
 ## Workspaces
 
 ```

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Board } from '@kiyora/model';
-import { decideSync } from '@kiyora/sync';
-import { eq } from 'drizzle-orm';
+import { decideSync, type RemoteBoardSummary } from '@kiyora/sync';
+import { and, desc, eq } from 'drizzle-orm';
 import { readAuthEnv } from '../auth/env';
 import { getDatabase } from './index';
 import { board } from './schema';
@@ -45,6 +45,68 @@ export const readPreview = (value: unknown): string | null => {
   }
 
   return Buffer.byteLength(value, 'utf8') > PREVIEW_LIMIT_BYTES ? null : value;
+};
+
+/** One board's remote copy as a download carries it. */
+export type BoardDownload = {
+  payload: Board;
+  revision: number;
+};
+
+const database = () => {
+  const config = readAuthEnv();
+
+  if (config === null) {
+    throw new Error('Board sync needs the account configuration to be set.');
+  }
+
+  return getDatabase(config.databaseUrl).db;
+};
+
+/**
+ * Every remote copy this owner holds, newest change first. Only the columns the
+ * library lists are selected, so listing never reads or parses a payload.
+ */
+export const listBoards = async (
+  ownerId: string
+): Promise<RemoteBoardSummary[]> => {
+  const rows = await database()
+    .select({
+      bytes: board.bytes,
+      id: board.id,
+      preview: board.previewSvg,
+      revision: board.revision,
+      title: board.title,
+      updatedAt: board.updatedAt,
+    })
+    .from(board)
+    .where(eq(board.ownerId, ownerId))
+    .orderBy(desc(board.updatedAt));
+
+  return rows.map((row) => ({
+    ...row,
+    updatedAt: row.updatedAt.toISOString(),
+  }));
+};
+
+/**
+ * One remote copy's payload and revision for its owner, or `null` when this
+ * account owns no board at that id. A board another account owns is reported
+ * as absent rather than as forbidden, so a download cannot confirm its id.
+ */
+export const readBoard = async ({
+  id,
+  ownerId,
+}: {
+  id: string;
+  ownerId: string;
+}): Promise<BoardDownload | null> => {
+  const [row] = await database()
+    .select({ payload: board.payload, revision: board.revision })
+    .from(board)
+    .where(and(eq(board.id, id), eq(board.ownerId, ownerId)));
+
+  return row ?? null;
 };
 
 /**
