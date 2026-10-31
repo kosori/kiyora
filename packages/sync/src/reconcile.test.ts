@@ -75,6 +75,7 @@ const fakeTransport = (): Fake => {
     transport: {
       download: () => Promise.resolve(null),
       list: () => Promise.resolve([]),
+      remove: () => Promise.resolve({ kind: 'removed' }),
       upload: async (request) => {
         uploads.push(request);
         active += 1;

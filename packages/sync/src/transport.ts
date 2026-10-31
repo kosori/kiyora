@@ -30,6 +30,16 @@ export type UploadResult =
   | { kind: 'network' };
 
 /**
+ * What the server answered to one delete. `absent` is a board the server does
+ * not hold, which still lets the caller drop its local copy; `failed` is any
+ * answer that leaves the remote copy possibly alive.
+ */
+export type RemoveResult =
+  | { kind: 'removed' }
+  | { kind: 'absent' }
+  | { kind: 'failed' };
+
+/**
  * The wire the reconciler speaks. A transport maps these operations onto one
  * server's routes; the reconciler never sees a status code or a URL, so a fake
  * can stand in for the network in a unit test.
@@ -38,4 +48,5 @@ export type SyncTransport = {
   upload: (request: UploadRequest) => Promise<UploadResult>;
   list: () => Promise<RemoteBoardSummary[]>;
   download: (id: string) => Promise<Board | null>;
+  remove: (id: string) => Promise<RemoveResult>;
 };

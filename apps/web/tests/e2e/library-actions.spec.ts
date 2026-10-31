@@ -212,6 +212,8 @@ test('delete asks first, and cancelling leaves the board and its bytes untouched
   const dialog = page.getByTestId('delete-dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('Doomed');
+  await expect(dialog).toContainText('removed from this browser');
+  await expect(dialog).not.toContainText('remote copy');
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
