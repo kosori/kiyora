@@ -8,6 +8,8 @@ export type DeleteBoardDialogProps = {
   title: string;
   /** A longer explanation, so a linked board can name both of its copies. */
   body?: ReactNode;
+  /** Why the last attempt removed nothing, when the remote copy refused. */
+  error?: string | null;
   open: boolean;
   onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
@@ -24,6 +26,7 @@ const DEFAULT_BODY =
  */
 export const DeleteBoardDialog = ({
   body = DEFAULT_BODY,
+  error = null,
   onConfirm,
   onOpenChange,
   open,
@@ -66,6 +69,15 @@ export const DeleteBoardDialog = ({
       <div className='mb-6 text-muted-foreground text-sm' id={description}>
         {body}
       </div>
+      {error === null ? null : (
+        <p
+          className='mb-4 text-destructive text-sm'
+          data-testid='delete-error'
+          role='alert'
+        >
+          {error}
+        </p>
+      )}
       <div className='flex justify-end gap-2'>
         <Button
           data-testid='cancel-delete'

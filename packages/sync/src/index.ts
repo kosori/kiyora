@@ -17,6 +17,7 @@ export {
 } from './reconcile';
 export type {
   RemoteBoardSummary,
+  RemoveResult,
   SyncTransport,
   UploadRequest,
   UploadResult,
