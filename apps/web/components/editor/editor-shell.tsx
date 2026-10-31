@@ -63,20 +63,26 @@ export const EditorShell = ({
             </CrashProbe>
           </PanelBoundary>
         )}
-        <div className='relative h-full min-w-0 flex-1'>
-          <BoardCanvas onShowShortcuts={toggleShortcuts} />
+        <div className='flex h-full min-w-0 flex-1 flex-col'>
           {zen ? null : (
-            <>
+            <header className='flex shrink-0 items-center border-border border-b px-3 py-1.5'>
               <BoardTitle rename={rename} />
-              <FileControls />
-              <HistoryControls />
-              <PanelBoundary label='Status'>
-                <CrashProbe name='status'>
-                  <SaveIndicator {...health} />
-                </CrashProbe>
-              </PanelBoundary>
-            </>
+            </header>
           )}
+          <div className='relative min-h-0 flex-1'>
+            <BoardCanvas onShowShortcuts={toggleShortcuts} />
+            {zen ? null : (
+              <>
+                <FileControls />
+                <HistoryControls />
+                <PanelBoundary label='Status'>
+                  <CrashProbe name='status'>
+                    <SaveIndicator {...health} />
+                  </CrashProbe>
+                </PanelBoundary>
+              </>
+            )}
+          </div>
         </div>
         {zen ? null : (
           <PanelBoundary label='Rail'>

@@ -82,10 +82,10 @@ export const BoardTitle = ({ rename }: BoardTitleProps) => {
   };
 
   return (
-    <div className='absolute top-3 left-3 z-10 flex max-w-56 items-center rounded-lg border border-border bg-background/90 shadow-sm backdrop-blur'>
+    <div className='flex min-w-0 items-center'>
       <input
         aria-label='Board title'
-        className='min-w-0 rounded-lg bg-transparent px-2 py-1 font-medium text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+        className='w-56 min-w-0 rounded-lg bg-transparent px-2 py-1 font-medium text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
         data-testid='board-title'
         onBlur={blur}
         onChange={change}
