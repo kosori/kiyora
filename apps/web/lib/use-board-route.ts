@@ -4,6 +4,7 @@ import {
   type BoardStorage,
   boardKey,
   createLibrary,
+  type LibraryEntry,
   type StorageFault,
 } from '@kiyora/editor';
 import type { Board } from '@kiyora/model';
@@ -23,6 +24,11 @@ export type BoardRouteState =
       migratedFrom: number | null;
       writable: boolean;
       rewrite: boolean;
+      /**
+       * Commits a new name through the same library the list reads, payload
+       * first. Null when the library no longer holds the board.
+       */
+      rename: (title: string) => Promise<LibraryEntry | null>;
     };
 
 /**
@@ -65,6 +71,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
           board: loaded.board,
           fault: openFault,
           migratedFrom: loaded.migratedFrom,
+          rename: (title) => library.rename(boardId, title),
           rewrite: loaded.migratedFrom !== null,
           status: 'ready',
           storage: library.storage(boardId),
@@ -78,6 +85,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
           board: emptyBoard(boardId, Date.now(), title),
           fault: openFault,
           migratedFrom: null,
+          rename: (title) => library.rename(boardId, title),
           rewrite: true,
           status: 'ready',
           storage: library.storage(boardId),
@@ -90,6 +98,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
         board: emptyBoard(boardId, Date.now(), title),
         fault: loaded.fault,
         migratedFrom: null,
+        rename: (title) => library.rename(boardId, title),
         rewrite: loaded.quarantined,
         status: 'ready',
         storage: library.storage(boardId),
