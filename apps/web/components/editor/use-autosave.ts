@@ -15,6 +15,8 @@ import {
 } from '@kiyora/editor';
 import { type Board, previewBoard } from '@kiyora/model';
 import {
+  type ConflictCopy,
+  type ConflictPorts,
   createSyncMachine,
   type SyncRecord,
   type SyncSnapshot,
@@ -38,12 +40,26 @@ export type StorageHealth = {
   secondary: boolean;
 };
 
+/** The conflict surface's state and the three resolutions it can name. */
+export type ConflictView = {
+  copy: ConflictCopy | null;
+  /** Loads or refreshes the remote copy the person is comparing against. */
+  open: () => void;
+  keepMine: () => Promise<boolean>;
+  /** Resolves to the replaced local board, so it can be downloaded. */
+  takeTheirs: () => Promise<Board | null>;
+  duplicateMine: () => Promise<boolean>;
+};
+
 /** What the shell needs to show and start a board's remote copy. */
 export type SyncView = {
   /** Where the local copy stands against the remote one. */
   state: SyncState;
   /** Links this board: the only path from local to remote. */
   link: () => void;
+  conflict: ConflictView;
+  /** The picture the last save stored for this board, when it has one. */
+  localPreview: string | null;
 };
 
 /** What the route hands the hook after it has opened and read one board. */
@@ -59,12 +75,16 @@ export type AutosaveSetup = {
   writable?: boolean;
   /** Whether opening should write what is on screen at once, after a rescue. */
   rewrite?: boolean;
+  /** The picture the library already lists for this board, before the first save. */
+  preview?: string;
   /** The account the server read, and the record sync keeps for this board. */
   sync: {
     signedIn: boolean;
     record: SyncRecord;
     saveRecord: (record: SyncRecord) => void;
     transport: SyncTransport;
+    /** The storage a conflict resolution writes through. */
+    conflict: Omit<ConflictPorts, 'adoptLocal'>;
   };
 };
 
@@ -110,6 +130,7 @@ export const useAutosave = (
     migratedFrom = null,
     writable = true,
     rewrite = false,
+    preview: initialPreview,
     sync,
   }: AutosaveSetup
 ): AutosaveHandle => {
@@ -119,6 +140,9 @@ export const useAutosave = (
     migratedFrom,
     status: writable ? initialHealth.status : 'unsaved',
   });
+  const [localPreview, setLocalPreview] = useState<string | null>(
+    initialPreview ?? null
+  );
   const autosaveRef = useRef<Autosave | null>(null);
 
   const read = useCallback((): SyncSnapshot => {
@@ -141,6 +165,10 @@ export const useAutosave = (
   const [machine] = useState(() =>
     createSyncMachine({
       boardId,
+      conflict: {
+        ...sync.conflict,
+        adoptLocal: (next) => editor.setBoard(next),
+      },
       read,
       record: sync.record,
       saveRecord: sync.saveRecord,
@@ -151,20 +179,50 @@ export const useAutosave = (
   const [syncState, setSyncState] = useState<SyncState>(() =>
     machine.getState()
   );
+  const [conflictCopy, setConflictCopy] = useState<ConflictCopy | null>(() =>
+    machine.conflict.getCopy()
+  );
 
   useEffect(
-    () => machine.subscribe(() => setSyncState(machine.getState())),
+    () =>
+      machine.subscribe(() => {
+        setSyncState(machine.getState());
+        setConflictCopy(machine.conflict.getCopy());
+      }),
     [machine]
   );
 
+  const flush = useCallback(async (): Promise<void> => {
+    await autosaveRef.current?.flush();
+  }, []);
+
   const link = useCallback(() => {
     const run = async (): Promise<void> => {
-      await autosaveRef.current?.flush();
+      await flush();
       await machine.link();
     };
 
     run().catch(() => undefined);
+  }, [flush, machine]);
+
+  const openConflict = useCallback(() => {
+    machine.conflict.open().catch(() => undefined);
   }, [machine]);
+
+  const keepMine = useCallback(async (): Promise<boolean> => {
+    await flush();
+    return machine.conflict.keepMine();
+  }, [flush, machine]);
+
+  const takeTheirs = useCallback(async (): Promise<Board | null> => {
+    await flush();
+    return machine.conflict.takeTheirs();
+  }, [flush, machine]);
+
+  const duplicateMine = useCallback(async (): Promise<boolean> => {
+    await flush();
+    return machine.conflict.duplicateMine();
+  }, [flush, machine]);
 
   const measure = useMemo(() => createTextMeasurer(), []);
   const preview = useCallback(
@@ -245,6 +303,9 @@ export const useAutosave = (
         secondary: !mine.isPrimary(),
         status: created.getStatus(),
       });
+      setLocalPreview(
+        created.getLastWrite()?.preview ?? initialPreview ?? null
+      );
     };
     stops.push(created.subscribe(update), mine.subscribe(update));
     update();
@@ -281,6 +342,7 @@ export const useAutosave = (
     boardId,
     editor,
     initialFault,
+    initialPreview,
     machine,
     migratedFrom,
     preview,
@@ -289,5 +351,19 @@ export const useAutosave = (
     writable,
   ]);
 
-  return { health, sync: { link, state: syncState } };
+  return {
+    health,
+    sync: {
+      conflict: {
+        copy: conflictCopy,
+        duplicateMine,
+        keepMine,
+        open: openConflict,
+        takeTheirs,
+      },
+      link,
+      localPreview,
+      state: syncState,
+    },
+  };
 };

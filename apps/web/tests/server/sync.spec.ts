@@ -224,6 +224,11 @@ test('refuses a stale write and carries the remote copy back', async () => {
   const moved = await sync(owner, { baseRevision: 2, payload: stale });
   expect(moved.status()).toBe(200);
   await expect(moved.json()).resolves.toEqual({ revision: 3 });
+
+  const row = await committedRow();
+  expect(row.revision).toBe(3);
+  expect(row.title).toBe('Mine');
+  expect(row.bytes).toBe(Buffer.byteLength(JSON.stringify(stale), 'utf8'));
 });
 
 test('refuses a board over the sync limit with the numbers', async () => {

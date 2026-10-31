@@ -1,4 +1,5 @@
 import {
+  boardConflictKey,
   boardKey,
   boardQuarantineKey,
   boardSnapshotKey,
@@ -105,13 +106,17 @@ describe('the library', () => {
     ]);
   });
 
-  it('rebuilds a lost record from the board keys', async () => {
+  it('rebuilds a lost record from the board keys without listing a conflict copy', async () => {
     const first = board('first', 'First', 10, [rectangle]);
     const second = board('second', 'Second', 20);
     const { held, store } = memoryStore();
     const library = createLibrary(store);
     await library.create(first);
     await library.create(second);
+    held.set(
+      boardConflictKey('first'),
+      JSON.stringify({ payload: board('first', 'Remote'), revision: 7 })
+    );
 
     held.delete(LIBRARY_KEY);
 
@@ -120,6 +125,7 @@ describe('the library', () => {
       'first',
     ]);
     expect(recordOf(held).boards).toHaveLength(2);
+    expect(held.has(boardConflictKey('first'))).toBe(true);
   });
 
   it('quarantines one unreadable payload and keeps the rest of the library', async () => {
@@ -493,18 +499,20 @@ describe('importing a board', () => {
 });
 
 describe('removing a board', () => {
-  it('deletes the payload, the snapshot, the quarantine and the record entry', async () => {
+  it('deletes the payload, the snapshot, the conflict copy, the quarantine and the record entry', async () => {
     const { held, store } = memoryStore();
     const library = createLibrary(store);
     await library.create(board('doomed', 'Doomed', 10));
     await library.create(board('kept', 'Kept', 20));
     held.set(boardSnapshotKey('doomed'), 'snapshot');
+    held.set(boardConflictKey('doomed'), 'conflict');
     held.set(boardQuarantineKey('doomed'), 'quarantine');
 
     expect(await library.remove('doomed')).toBe(true);
 
     expect(held.has(boardKey('doomed'))).toBe(false);
     expect(held.has(boardSnapshotKey('doomed'))).toBe(false);
+    expect(held.has(boardConflictKey('doomed'))).toBe(false);
     expect(held.has(boardQuarantineKey('doomed'))).toBe(false);
     expect(recordOf(held).boards.map(({ id }) => id)).toEqual(['kept']);
     expect(await library.holds('doomed')).toBe(false);
