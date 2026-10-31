@@ -1,13 +1,10 @@
 import { createHash } from 'node:crypto';
-import type { Board } from '@kiyora/model';
+import { type Board, PREVIEW_LIMIT_BYTES } from '@kiyora/model';
 import { decideSync, type RemoteBoardSummary } from '@kiyora/sync';
 import { and, desc, eq } from 'drizzle-orm';
 import { readAuthEnv } from '../auth/env';
 import { getDatabase } from './index';
 import { board } from './schema';
-
-/** The most preview this server stores; a larger one is refused, never cut. */
-export const PREVIEW_LIMIT_BYTES = 32 * 1024;
 
 /** One write offered to the server, after the route has read who is asking. */
 export type BoardWrite = {

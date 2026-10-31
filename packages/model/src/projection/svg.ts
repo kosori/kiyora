@@ -164,3 +164,33 @@ export const projectBoard = (
 
   return `${lines.join('\n')}\n`;
 };
+
+/** How much room a viewer leaves around the content it fits. */
+const VIEW_PADDING_MIN = 32;
+const VIEW_PADDING_RATIO = 0.06;
+
+/**
+ * The `viewBox` a viewer fits a board into: the board's content bounds with
+ * breathing room around them, so nothing touches the edge of the window. An
+ * empty board still has a frame to look at. The padding is a projection
+ * constant, not a layout decision, so it lives here rather than in the app.
+ */
+export const boardViewBox = (board: Board): string => {
+  const bounds = boardBounds(board);
+
+  if (bounds === null) {
+    return '0 0 1000 700';
+  }
+
+  const padding = Math.max(
+    VIEW_PADDING_MIN,
+    Math.max(bounds.w, bounds.h) * VIEW_PADDING_RATIO
+  );
+
+  return [
+    bounds.x - padding,
+    bounds.y - padding,
+    bounds.w + padding * 2,
+    bounds.h + padding * 2,
+  ].join(' ');
+};

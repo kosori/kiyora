@@ -94,6 +94,7 @@ export const SyncIndicator = ({
   return (
     <div className='absolute right-3 bottom-11 z-10 flex items-center gap-2'>
       <p
+        aria-live='polite'
         className={cn(
           'rounded-full border px-2.5 py-1 text-xs shadow-sm backdrop-blur',
           attention
@@ -107,6 +108,7 @@ export const SyncIndicator = ({
         data-revision={revisionOf(state)}
         data-state={state.status}
         data-testid='sync-status'
+        role='status'
         title={detailOf(state)}
       >
         {messageOf(state)}
@@ -121,7 +123,10 @@ export const SyncIndicator = ({
           Sync this board
         </Button>
       ) : null}
-      <ShareControl boardId={boardId} linked={linked} />
+      <ShareControl
+        boardId={boardId}
+        linked={linked && state.status !== 'too-large'}
+      />
       {conflict ? (
         <Button
           data-testid='open-conflict'

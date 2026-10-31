@@ -2,7 +2,7 @@
 
 import type { Board } from '@kiyora/model';
 import {
-  boardBounds,
+  boardViewBox,
   CANVAS_ENTRY,
   type IconSet,
   paintBoard,
@@ -14,23 +14,6 @@ import { createTextMeasurer } from '~/lib/text-measurer';
 
 type Props = {
   board: Board;
-};
-
-const paddedViewBox = (board: Board): string => {
-  const bounds = boardBounds(board);
-
-  if (bounds === null) {
-    return '0 0 1000 700';
-  }
-
-  const padding = Math.max(32, Math.max(bounds.w, bounds.h) * 0.06);
-
-  return [
-    bounds.x - padding,
-    bounds.y - padding,
-    bounds.w + padding * 2,
-    bounds.h + padding * 2,
-  ].join(' ');
 };
 
 /**
@@ -97,7 +80,7 @@ export const ShareViewer = ({ board }: Props) => {
         data-testid='share-board'
         preserveAspectRatio='xMidYMid meet'
         role='img'
-        viewBox={paddedViewBox(board)}
+        viewBox={boardViewBox(board)}
         xmlns='http://www.w3.org/2000/svg'
       >
         {paint === null ? null : <PaintNode paint={paint} />}

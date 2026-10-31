@@ -252,6 +252,7 @@ export {
   previewBoard,
 } from './preview/preview';
 export {
+  boardViewBox,
   type ProjectionOptions,
   projectBoard,
 } from './projection/svg';

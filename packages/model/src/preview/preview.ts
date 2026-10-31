@@ -9,11 +9,12 @@ import type { Measurer } from '../text/wrap';
 export const PREVIEW_WIDTH = 240;
 
 /**
- * The most bytes one preview may reach. A board that projects past it stores no
- * preview rather than a truncated one, because a tile that lies about its board
- * is worse than a tile that is neutral.
+ * The most bytes one preview may reach. One cap for the local record and the
+ * remote row, so a preview the library shows is one a remote list can keep. A
+ * board that projects past it stores no preview rather than a truncated one,
+ * because a tile that lies about its board is worse than a tile that is neutral.
  */
-export const PREVIEW_LIMIT_BYTES = 64 * 1024;
+export const PREVIEW_LIMIT_BYTES = 32 * 1024;
 
 /** What a preview needs beyond the board: the canvas, text and icons it paints with. */
 export type PreviewOptions = {
@@ -28,8 +29,8 @@ export type PreviewOptions = {
  * One board as a small SVG document, through the same paint walker and
  * projection an export uses. It is clipped to the board's content bounds and
  * renders at a fixed width, so the tile shows the board's own paint rather than
- * a screenshot. `null` means the board would pass the cap: a preview is omitted,
- * never truncated.
+ * a screenshot. `null` means the board would exceed the cap: a preview is
+ * omitted, never truncated.
  */
 export const previewBoard = (
   board: Board,
