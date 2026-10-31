@@ -1,4 +1,8 @@
-import { openStarterBoard } from '../fixtures/library';
+import {
+  boardStorageKey,
+  openStarterBoard,
+  readStoredBoard,
+} from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
@@ -79,31 +83,13 @@ const pan = async (
 };
 
 /** The camera the browser has actually written, read from IndexedDB. */
-const storedCamera = (page: Page) =>
-  page.evaluate(async (): Promise<Camera | null> => {
-    const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 2);
-      opening.onerror = () => reject(opening.error);
-      opening.onsuccess = () => {
-        const database = opening.result;
-        if (!database.objectStoreNames.contains('boards')) {
-          resolve(null);
-          return;
-        }
-        const request = database
-          .transaction('boards', 'readonly')
-          .objectStore('boards')
-          .get('kiyora:boards:starter-board');
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () =>
-          resolve((request.result as string | undefined) ?? null);
-      };
-    });
+const storedCamera = async (page: Page): Promise<Camera | null> => {
+  const bytes = await readStoredBoard(page, 'starter-board');
 
-    return bytes === null
-      ? null
-      : (JSON.parse(bytes) as { camera: Camera }).camera;
-  });
+  return bytes === null
+    ? null
+    : (JSON.parse(bytes) as { camera: Camera }).camera;
+};
 
 const WATCH_SAVE_STATE = () => {
   const key = '__kiyoraSaveStates';
@@ -249,7 +235,10 @@ test('a board is saved and read back without IndexedDB, through the fallback', a
   );
   await expect
     .poll(() =>
-      page.evaluate(() => localStorage.getItem('kiyora:boards:starter-board'))
+      page.evaluate(
+        (key) => localStorage.getItem(key),
+        boardStorageKey('starter-board')
+      )
     )
     .not.toBeNull();
 

@@ -1,5 +1,7 @@
+import { LIBRARY_KEY } from '@kiyora/editor';
 import {
   boardStorageKey,
+  deleteStoredKey,
   openBoard,
   openExistingBoard,
   openLibrary,
@@ -7,6 +9,7 @@ import {
   readStoredBoard,
   readStoredKey,
   type SeededBoard,
+  writeStoredKey,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -170,20 +173,7 @@ test('a lost library record is rebuilt from the stored boards', async ({
 
   await openLibrary(page, [first, second]);
 
-  await page.evaluate(async () => {
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 2);
-      opening.onsuccess = () => resolve(opening.result);
-      opening.onerror = () => reject(opening.error);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction('boards', 'readwrite');
-      transaction.objectStore('boards').delete('kiyora:library');
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    database.close();
-  });
+  await deleteStoredKey(page, LIBRARY_KEY);
 
   await page.reload();
 
@@ -203,20 +193,7 @@ test('a corrupt board is reported alone, and the rest of the library still opens
 
   await openLibrary(page, [good, broken]);
 
-  await page.evaluate(async (key) => {
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 2);
-      opening.onsuccess = () => resolve(opening.result);
-      opening.onerror = () => reject(opening.error);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction('boards', 'readwrite');
-      transaction.objectStore('boards').put('not a board', key);
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    database.close();
-  }, boardStorageKey('board-broken'));
+  await writeStoredKey(page, boardStorageKey('board-broken'), 'not a board');
 
   await openExistingBoard(page, 'board-broken');
   await expect(page.getByTestId('save-status')).toHaveAttribute(

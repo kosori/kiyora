@@ -1,6 +1,23 @@
+import {
+  boardKey,
+  boardQuarantineKey,
+  LEGACY_BOARD_KEY,
+  LEGACY_QUARANTINE_KEY,
+  LEGACY_SNAPSHOT_KEY,
+  LIBRARY_KEY,
+} from '@kiyora/editor';
 import { type Board, parseBoard } from '@kiyora/model';
 import { expect, type Page } from '@playwright/test';
 import { STARTER_PATH, starterBoard } from './starter-board';
+
+/** The IndexedDB database the web adapter opens. */
+export const DATABASE = 'kiyora';
+
+/** Its version, which the upgrade test raises by seeding the legacy keys at 1. */
+export const DATABASE_VERSION = 2;
+
+/** The object store every library key lives in. */
+export const BOARD_STORE = 'boards';
 
 /** One board the helper can seed, before the bytes carry the schema's defaults. */
 export type SeededBoard = {
@@ -39,11 +56,6 @@ export type SeedOptions = {
   timeout?: number;
 };
 
-const BOARD_PREFIX = 'kiyora:boards:';
-const LIBRARY_KEY = 'kiyora:library';
-const LEGACY_BOARD_KEY = 'kiyora:board';
-const LEGACY_SNAPSHOT_KEY = 'kiyora:board:snapshot';
-const LEGACY_QUARANTINE_KEY = 'kiyora:board:quarantine';
 const SENTINEL = '/__kiyora_seed__';
 
 const bytesOf = (board: SeededBoard): string =>
@@ -74,12 +86,20 @@ const entryOf = (board: SeededBoard) => ({
   ...(board.preview === undefined ? {} : { preview: board.preview }),
 });
 
+/** The library record's bytes, for a spec that has to keep the payload itself. */
+export const libraryRecord = (boards: SeededBoard[]): string =>
+  JSON.stringify({
+    boards: boards
+      .map(entryOf)
+      .sort((left, right) => right.updatedAt - left.updatedAt),
+    version: 1,
+  });
+
 /** The key one board's payload lives under. */
-export const boardStorageKey = (id: string): string => `${BOARD_PREFIX}${id}`;
+export const boardStorageKey = boardKey;
 
 /** The key one board's quarantine lives under. */
-export const quarantineKey = (id: string): string =>
-  `${boardStorageKey(id)}:quarantine`;
+export const quarantineKey = boardQuarantineKey;
 
 /** The bytes and extra keys a seed writes, in the order the helper writes them. */
 export const seedEntries = (
@@ -89,10 +109,7 @@ export const seedEntries = (
   const entries: [string, string][] = [];
 
   if (record) {
-    const listed = boards
-      .map(entryOf)
-      .sort((left, right) => right.updatedAt - left.updatedAt);
-    entries.push([LIBRARY_KEY, JSON.stringify({ boards: listed, version: 1 })]);
+    entries.push([LIBRARY_KEY, libraryRecord(boards)]);
   }
   for (const board of boards) {
     entries.push([boardStorageKey(board.id), bytesOf(board)]);
@@ -110,12 +127,12 @@ const writeIndexedDb = async (
   entries: [string, string][]
 ): Promise<void> => {
   await page.evaluate(
-    async ({ databaseVersion, pairs }) => {
+    async ({ databaseName, databaseVersion, storeName, pairs }) => {
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
-        const opening = indexedDB.open('kiyora', databaseVersion);
+        const opening = indexedDB.open(databaseName, databaseVersion);
         opening.onupgradeneeded = () => {
-          if (!opening.result.objectStoreNames.contains('boards')) {
-            opening.result.createObjectStore('boards');
+          if (!opening.result.objectStoreNames.contains(storeName)) {
+            opening.result.createObjectStore(storeName);
           }
         };
         opening.onblocked = () => reject(new Error('indexedDB blocked'));
@@ -124,8 +141,8 @@ const writeIndexedDb = async (
       });
 
       await new Promise<void>((resolve, reject) => {
-        const transaction = database.transaction('boards', 'readwrite');
-        const store = transaction.objectStore('boards');
+        const transaction = database.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
         for (const [key, value] of pairs) {
           store.put(value, key);
         }
@@ -135,7 +152,12 @@ const writeIndexedDb = async (
       });
       database.close();
     },
-    { databaseVersion: version, pairs: entries }
+    {
+      databaseName: DATABASE,
+      databaseVersion: version,
+      pairs: entries,
+      storeName: BOARD_STORE,
+    }
   );
 };
 
@@ -214,7 +236,7 @@ export const seedBoards = async (
     await page.goto(open);
   } else {
     await page.goto(SENTINEL);
-    await writeIndexedDb(page, legacy.length === 0 ? 2 : 1, [
+    await writeIndexedDb(page, legacy.length === 0 ? DATABASE_VERSION : 1, [
       ...entries,
       ...legacy,
     ]);
@@ -267,24 +289,93 @@ export const readStoredKey = async (
   page: Page,
   key: string
 ): Promise<string | null> =>
-  page.evaluate(async (storedKey) => {
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 2);
-      opening.onsuccess = () => resolve(opening.result);
-      opening.onerror = () => reject(opening.error);
-    });
-    const value = await new Promise<string | null>((resolve, reject) => {
-      const request = database
-        .transaction('boards', 'readonly')
-        .objectStore('boards')
-        .get(storedKey);
-      request.onsuccess = () =>
-        resolve((request.result as string | undefined) ?? null);
-      request.onerror = () => reject(request.error);
-    });
-    database.close();
-    return value;
-  }, key);
+  page.evaluate(
+    async ({ databaseName, databaseVersion, storeName, storedKey }) => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const opening = indexedDB.open(databaseName, databaseVersion);
+        opening.onsuccess = () => resolve(opening.result);
+        opening.onerror = () => reject(opening.error);
+      });
+      const value = await new Promise<string | null>((resolve, reject) => {
+        const request = database
+          .transaction(storeName, 'readonly')
+          .objectStore(storeName)
+          .get(storedKey);
+        request.onsuccess = () =>
+          resolve((request.result as string | undefined) ?? null);
+        request.onerror = () => reject(request.error);
+      });
+      database.close();
+      return value;
+    },
+    {
+      databaseName: DATABASE,
+      databaseVersion: DATABASE_VERSION,
+      storedKey: key,
+      storeName: BOARD_STORE,
+    }
+  );
+
+/** Writes one key through IndexedDB, for a seed whose bytes the helper would not produce. */
+export const writeStoredKey = async (
+  page: Page,
+  key: string,
+  value: string
+): Promise<void> =>
+  page.evaluate(
+    async ({
+      databaseName,
+      databaseVersion,
+      storeName,
+      storedKey,
+      storedValue,
+    }) => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const opening = indexedDB.open(databaseName, databaseVersion);
+        opening.onsuccess = () => resolve(opening.result);
+        opening.onerror = () => reject(opening.error);
+      });
+      await new Promise<void>((resolve, reject) => {
+        const transaction = database.transaction(storeName, 'readwrite');
+        transaction.objectStore(storeName).put(storedValue, storedKey);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+      database.close();
+    },
+    {
+      databaseName: DATABASE,
+      databaseVersion: DATABASE_VERSION,
+      storedKey: key,
+      storedValue: value,
+      storeName: BOARD_STORE,
+    }
+  );
+
+/** Deletes one key through IndexedDB. */
+export const deleteStoredKey = async (page: Page, key: string): Promise<void> =>
+  page.evaluate(
+    async ({ databaseName, databaseVersion, storeName, storedKey }) => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const opening = indexedDB.open(databaseName, databaseVersion);
+        opening.onsuccess = () => resolve(opening.result);
+        opening.onerror = () => reject(opening.error);
+      });
+      await new Promise<void>((resolve, reject) => {
+        const transaction = database.transaction(storeName, 'readwrite');
+        transaction.objectStore(storeName).delete(storedKey);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+      database.close();
+    },
+    {
+      databaseName: DATABASE,
+      databaseVersion: DATABASE_VERSION,
+      storedKey: key,
+      storeName: BOARD_STORE,
+    }
+  );
 
 /** Reads one board's stored bytes through IndexedDB. */
 export const readStoredBoard = (
