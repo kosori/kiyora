@@ -18,6 +18,7 @@ export {
 export type {
   DownloadedBoard,
   RemoteBoardSummary,
+  RemoveResult,
   SyncTransport,
   UploadRequest,
   UploadResult,
