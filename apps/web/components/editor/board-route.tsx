@@ -13,9 +13,11 @@ import { Editor } from '../editor/editor';
  */
 export const BoardRoute = ({
   boardId,
+  conflictOpen = false,
   signedIn,
 }: {
   boardId: string;
+  conflictOpen?: boolean;
   signedIn: boolean;
 }) => {
   const state = useBoardRoute(boardId);
@@ -55,13 +57,16 @@ export const BoardRoute = ({
       <Editor
         board={state.board}
         boardId={boardId}
+        conflictOpen={conflictOpen}
         fault={state.fault}
         key={boardId}
         migratedFrom={state.migratedFrom}
+        preview={state.preview}
         rename={state.rename}
         rewrite={state.rewrite}
         storage={state.storage}
         sync={{
+          conflict: state.conflict,
           record: state.sync,
           saveRecord: state.recordSync,
           signedIn,

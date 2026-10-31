@@ -11,6 +11,8 @@ type Props = {
   signedIn: boolean;
   linked: boolean;
   onLink: () => void;
+  /** Opens the surface that names the three resolutions. */
+  onResolve: () => void;
 };
 
 const MIB = 1024 * 1024;
@@ -49,7 +51,7 @@ const detailOf = (state: SyncState): string | undefined => {
     case 'too-large':
       return `${sizeOf(state.bytes)} is over the ${sizeOf(state.limit)} sync limit. The board stays in this browser.`;
     case 'conflict':
-      return `The remote copy is at revision ${state.remote}; this one was built on ${state.local}. Resolving the conflict comes next.`;
+      return `The remote copy is at revision ${state.remote}; this one was built on ${state.local}. Choose which copy stays here.`;
     case 'signed-out':
       return 'Sign in to sync this board. Nothing is sent while signed out.';
     default:
@@ -80,8 +82,10 @@ export const SyncIndicator = ({
   signedIn,
   linked,
   onLink,
+  onResolve,
 }: Props) => {
   const canLink = signedIn && state.status === 'local';
+  const conflict = state.status === 'conflict';
   const attention =
     state.status === 'conflict' ||
     state.status === 'too-large' ||
@@ -118,6 +122,16 @@ export const SyncIndicator = ({
         </Button>
       ) : null}
       <ShareControl boardId={boardId} linked={linked} />
+      {conflict ? (
+        <Button
+          data-testid='open-conflict'
+          onClick={onResolve}
+          size='sm'
+          variant='outline'
+        >
+          Resolve
+        </Button>
+      ) : null}
     </div>
   );
 };

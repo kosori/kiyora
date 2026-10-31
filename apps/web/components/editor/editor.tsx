@@ -20,6 +20,10 @@ export type EditorProps = {
   storage: BoardStorage;
   /** Commits a new name through the library, payload first. */
   rename: (title: string) => Promise<LibraryEntry | null>;
+  /** Whether the route asked for the conflict surface on open. */
+  conflictOpen?: boolean;
+  /** The stored preview the conflict surface shows beside the remote one. */
+  preview?: string;
   fault?: StorageFault | null;
   migratedFrom?: number | null;
   writable?: boolean;
@@ -39,6 +43,8 @@ export const Editor = ({
   boardId,
   storage,
   rename,
+  conflictOpen = false,
+  preview,
   fault = null,
   migratedFrom = null,
   writable = true,
@@ -55,11 +61,13 @@ export const Editor = ({
             boardId,
             fault,
             migratedFrom,
+            preview,
             rewrite,
             storage,
             sync,
             writable,
           }}
+          conflictOpen={conflictOpen}
           rename={rename}
         />
       </CopyPngProvider>

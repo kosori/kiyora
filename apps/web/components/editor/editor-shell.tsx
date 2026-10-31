@@ -1,10 +1,11 @@
 'use client';
 
 import type { LibraryEntry } from '@kiyora/editor';
-import { useEditor, useView } from '@kiyora/editor/react';
-import { useCallback, useState } from 'react';
+import { useBoard, useEditor, useView } from '@kiyora/editor/react';
+import { useCallback, useEffect, useState } from 'react';
 import { BoardCanvas } from './board-canvas';
 import { BoardTitle } from './board-title';
+import { ConflictDialog } from './conflict-dialog';
 import { CrashProbe } from './crash-probe';
 import { PanelBoundary } from './error-boundary';
 import { FileControls } from './file-controls';
@@ -33,14 +34,27 @@ import { type AutosaveSetup, useAutosave } from './use-autosave';
 export const EditorShell = ({
   autosave,
   rename,
+  conflictOpen = false,
 }: {
   autosave: AutosaveSetup;
   rename: (title: string) => Promise<LibraryEntry | null>;
+  conflictOpen?: boolean;
 }) => {
   const editor = useEditor();
+  const board = useBoard();
   const { zen } = useView();
   const [shortcuts, setShortcuts] = useState(false);
+  const [resolving, setResolving] = useState(conflictOpen);
   const { health, sync } = useAutosave(editor, autosave);
+
+  useEffect(() => {
+    if (conflictOpen) {
+      setResolving(true);
+    }
+  }, [conflictOpen]);
+
+  const openConflict = useCallback(() => setResolving(true), []);
+  const closeConflict = useCallback(() => setResolving(false), []);
 
   const toggleShortcuts = useCallback(() => {
     setShortcuts((open) => !open);
@@ -82,6 +96,7 @@ export const EditorShell = ({
                       boardId={autosave.boardId}
                       linked={sync.linked}
                       onLink={sync.link}
+                      onResolve={openConflict}
                       signedIn={autosave.sync.signedIn}
                       state={sync.state}
                     />
@@ -101,6 +116,18 @@ export const EditorShell = ({
         )}
       </div>
       <PresentOverlay />
+      <ConflictDialog
+        copy={sync.conflict.copy}
+        localPreview={sync.localPreview ?? undefined}
+        localTitle={board.title}
+        onClose={closeConflict}
+        onDuplicateMine={sync.conflict.duplicateMine}
+        onKeepMine={sync.conflict.keepMine}
+        onOpen={sync.conflict.open}
+        onTakeTheirs={sync.conflict.takeTheirs}
+        open={resolving}
+        signedIn={autosave.sync.signedIn}
+      />
       <ShortcutDialog onOpenChange={setShortcuts} open={shortcuts} />
     </>
   );

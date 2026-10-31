@@ -1,4 +1,9 @@
 import { type Board, utf8Length } from '@kiyora/model';
+import {
+  type ConflictPorts,
+  type ConflictResolutions,
+  createConflictResolutions,
+} from './conflict';
 import { SYNC_LIMIT_BYTES } from './protocol';
 import type { SyncTransport, UploadResult } from './transport';
 
@@ -42,6 +47,8 @@ export type SyncMachineOptions = {
   record: SyncRecord;
   /** Persists what the machine learned, so a conflict survives a reload. */
   saveRecord: (record: SyncRecord) => void;
+  /** The storage and editor ports a conflict resolution needs. */
+  conflict: ConflictPorts;
   /** Room for a test to lower the limit. Defaults to `SYNC_LIMIT_BYTES`. */
   limit?: number;
 };
@@ -58,6 +65,8 @@ export type SyncMachine = {
   markPending: () => void;
   /** Uploads a linked board after a save, on reconnect or on visibility. */
   reconcile: () => Promise<void>;
+  /** The three ways out of a conflict, and the remote copy they compare against. */
+  conflict: ConflictResolutions;
 };
 
 const sameState = (left: SyncState, right: SyncState): boolean =>
@@ -77,12 +86,19 @@ export const createSyncMachine = ({
   signedIn,
   record: initialRecord,
   saveRecord,
+  conflict: conflictPorts,
   limit = SYNC_LIMIT_BYTES,
 }: SyncMachineOptions): SyncMachine => {
   let record = initialRecord;
   let inFlight: Promise<void> | null = null;
   let queued = false;
   const listeners = new Set<() => void>();
+
+  const publish = (): void => {
+    for (const listener of listeners) {
+      listener();
+    }
+  };
 
   const initial = (): SyncState => {
     const size = utf8Length(read().bytes);
@@ -112,14 +128,29 @@ export const createSyncMachine = ({
       return;
     }
     state = next;
-    for (const listener of listeners) {
-      listener();
-    }
+    publish();
   };
 
-  const setTooLarge = (bytes: number): void => {
-    record = { ...record, tooLarge: true };
+  const setRecord = (next: SyncRecord): void => {
+    record = next;
     saveRecord(record);
+  };
+
+  const resolutions = createConflictResolutions({
+    boardId,
+    limit,
+    ports: conflictPorts,
+    publish,
+    read,
+    record: () => record,
+    setRecord,
+    setState,
+    signedIn: () => signedIn,
+    transport,
+  });
+
+  const setTooLarge = (bytes: number): void => {
+    setRecord({ ...record, tooLarge: true });
     setState({ bytes, limit, status: 'too-large' });
   };
 
@@ -151,20 +182,24 @@ export const createSyncMachine = ({
     }
 
     if (result.kind === 'accepted') {
-      record = {
+      setRecord({
         conflict: null,
         linked: true,
         revision: result.revision,
         tooLarge: false,
-      };
-      saveRecord(record);
+      });
       setState({ revision: result.revision, status: 'synced' });
       return;
     }
 
     if (result.kind === 'conflict') {
-      record = { ...record, conflict: result.revision, linked: true };
-      saveRecord(record);
+      setRecord({ ...record, conflict: result.revision, linked: true });
+      if (result.payload !== null) {
+        await resolutions.remember({
+          payload: result.payload,
+          revision: result.revision,
+        });
+      }
       setState({
         local: baseRevision ?? 0,
         remote: result.revision,
@@ -226,6 +261,7 @@ export const createSyncMachine = ({
   };
 
   return {
+    conflict: resolutions,
     getState: () => state,
     isLinked: () => record.linked,
     link: async () => {

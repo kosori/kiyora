@@ -1,8 +1,21 @@
 import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
 import { describe, expect, it, vi } from 'vitest';
+import type { ConflictPorts } from './conflict';
 import type { SyncRecord, SyncSnapshot, SyncState } from './reconcile';
 import { createSyncMachine } from './reconcile';
 import type { SyncTransport, UploadRequest, UploadResult } from './transport';
+
+const conflictPorts = (): ConflictPorts => ({
+  adoptLocal: () => undefined,
+  cache: {
+    clear: () => Promise.resolve(),
+    read: () => Promise.resolve(null),
+    write: () => Promise.resolve(),
+  },
+  duplicateLocal: () => Promise.resolve(null),
+  replaceLocal: (remote) => Promise.resolve(remote),
+  saveRecordFor: () => Promise.resolve(),
+});
 
 const board = (overrides: Record<string, unknown> = {}): Board =>
   parseBoard({
@@ -103,6 +116,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: unlinked,
       saveRecord: () => undefined,
@@ -117,6 +131,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(4),
       saveRecord: () => undefined,
@@ -134,6 +149,7 @@ describe('the sync state machine', () => {
     const saved: SyncRecord[] = [];
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(undefined, '<svg></svg>'),
       record: unlinked,
       saveRecord: (record) => saved.push(record),
@@ -158,6 +174,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: unlinked,
       saveRecord: () => undefined,
@@ -176,6 +193,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(1),
       saveRecord: () => undefined,
@@ -209,6 +227,7 @@ describe('the sync state machine', () => {
     fake.reply({ kind: 'conflict', payload: board(), revision: 7 });
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(2),
       saveRecord: (record) => saved.push(record),
@@ -235,6 +254,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: { ...linkedAt(2), conflict: 7 },
       saveRecord: () => undefined,
@@ -255,6 +275,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       limit: 10,
       read: () => snapshot('x'.repeat(11)),
       record: linkedAt(1),
@@ -276,6 +297,7 @@ describe('the sync state machine', () => {
     let bytes = 'x';
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       limit: 10,
       read: () => snapshot(bytes),
       record: linkedAt(1),
@@ -297,6 +319,7 @@ describe('the sync state machine', () => {
     fake.reply({ kind: 'unauthorized' });
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(1),
       saveRecord: () => undefined,
@@ -320,6 +343,7 @@ describe('the sync state machine', () => {
     fake.reply({ kind: 'network' });
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(1),
       saveRecord: () => undefined,
@@ -344,6 +368,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(1),
       saveRecord: () => undefined,
@@ -374,6 +399,7 @@ describe('the sync state machine', () => {
     const fake = fakeTransport();
     const machine = createSyncMachine({
       boardId: 'board-1',
+      conflict: conflictPorts(),
       read: () => snapshot(),
       record: linkedAt(1),
       saveRecord: () => undefined,
