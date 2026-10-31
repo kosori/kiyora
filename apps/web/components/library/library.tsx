@@ -14,6 +14,7 @@ import { Button } from '~/components/ui/button';
 import type { AccountSummary } from '~/lib/auth/account';
 import { openStore } from '~/lib/board-storage';
 import { newBoard } from '~/lib/new-board';
+import { httpSyncTransport } from '~/lib/sync/transport';
 import { BoardRow } from './board-row';
 import { DeleteBoardDialog } from './delete-board-dialog';
 
@@ -28,6 +29,14 @@ const faultMessage = (fault: StorageFault): string => {
       return 'Storage is unavailable — this browser cannot keep boards';
   }
 };
+
+/** Why a linked board's delete stopped before either copy was touched. */
+const REMOTE_FAILED =
+  'The remote copy could not be deleted. Nothing was removed — try again.';
+
+/** The account a linked board's remote copy lives in, as the confirm names it. */
+const accountName = (account: AccountSummary | null): string =>
+  account === null ? 'your account' : account.name || account.email;
 
 type Props = {
   account: AccountSummary | null;
@@ -50,6 +59,7 @@ export const Library = ({ account }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<LibraryEntry | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,9 +128,19 @@ export const Library = ({ account }: Props) => {
     create().catch(() => undefined);
   };
 
-  const remove = (entry: LibraryEntry): void => {
+  const remove = async (entry: LibraryEntry): Promise<void> => {
+    setDeleteError(null);
+
+    if (entry.linked) {
+      const result = await httpSyncTransport.remove(entry.id);
+      if (result.kind === 'failed') {
+        setDeleteError(REMOTE_FAILED);
+        return;
+      }
+    }
+
+    await act((library) => library.remove(entry.id));
     setDeleting(null);
-    act((library) => library.remove(entry.id)).catch(() => undefined);
   };
 
   const renameBoard = (id: string, title: string): Promise<void> =>
@@ -131,18 +151,20 @@ export const Library = ({ account }: Props) => {
   };
 
   const askDelete = (entry: LibraryEntry): void => {
+    setDeleteError(null);
     setDeleting(entry);
   };
 
   const answerDelete = (open: boolean): void => {
     if (!open) {
+      setDeleteError(null);
       setDeleting(null);
     }
   };
 
   const confirmDelete = (): void => {
     if (deleting !== null) {
-      remove(deleting);
+      remove(deleting).catch(() => setDeleteError(REMOTE_FAILED));
     }
   };
 
@@ -199,6 +221,15 @@ export const Library = ({ account }: Props) => {
         )}
       </div>
       <DeleteBoardDialog
+        body={
+          deleting?.linked === true ? (
+            <>
+              Both copies are removed: the local copy in this browser, and the
+              remote copy in {accountName(account)}. This cannot be undone.
+            </>
+          ) : undefined
+        }
+        error={deleteError}
         onConfirm={confirmDelete}
         onOpenChange={answerDelete}
         open={deleting !== null}

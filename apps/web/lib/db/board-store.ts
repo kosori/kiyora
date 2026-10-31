@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Board } from '@kiyora/model';
 import { decideSync } from '@kiyora/sync';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { readAuthEnv } from '../auth/env';
 import { getDatabase } from './index';
 import { board } from './schema';
@@ -26,6 +26,9 @@ export type BoardWriteResult =
   | { status: 'too-large'; bytes: number; limit: number }
   | { status: 'invalid'; reason: 'schema' | 'version' }
   | { status: 'forbidden' };
+
+/** What the store decided about one delete. */
+export type BoardDeleteResult = { status: 'deleted' } | { status: 'absent' };
 
 const hashOf = (bytes: string): string =>
   createHash('sha256').update(bytes).digest('hex');
@@ -133,4 +136,31 @@ export const writeBoard = ({
 
     return { revision: decision.revision, status: 'written' };
   });
+};
+
+/**
+ * Deletes one board's remote copy when it belongs to `ownerId`. A board that is
+ * absent and a board owned by someone else are both `absent`, so the route
+ * cannot be used to learn which ids another account holds.
+ */
+export const deleteBoard = async ({
+  id,
+  ownerId,
+}: {
+  id: string;
+  ownerId: string;
+}): Promise<BoardDeleteResult> => {
+  const config = readAuthEnv();
+
+  if (config === null) {
+    throw new Error('Board sync needs the account configuration to be set.');
+  }
+
+  const { db } = getDatabase(config.databaseUrl);
+  const removed = await db
+    .delete(board)
+    .where(and(eq(board.id, id), eq(board.ownerId, ownerId)))
+    .returning({ id: board.id });
+
+  return removed.length === 0 ? { status: 'absent' } : { status: 'deleted' };
 };

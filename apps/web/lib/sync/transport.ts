@@ -1,6 +1,7 @@
 import type { Board } from '@kiyora/model';
 import type {
   RemoteBoardSummary,
+  RemoveResult,
   SyncTransport,
   UploadRequest,
   UploadResult,
@@ -95,5 +96,30 @@ const download = async (id: string): Promise<Board | null> => {
   return body.payload ?? null;
 };
 
-/** The browser's transport: the sync route, and the two reads #75 will use. */
-export const httpSyncTransport: SyncTransport = { download, list, upload };
+const remove = async (id: string): Promise<RemoveResult> => {
+  let response: Response;
+  try {
+    response = await fetch(`/api/boards/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  } catch {
+    return { kind: 'failed' };
+  }
+
+  if (response.status === 204) {
+    return { kind: 'removed' };
+  }
+  if (response.status === 404) {
+    return { kind: 'absent' };
+  }
+
+  return { kind: 'failed' };
+};
+
+/** The browser's transport: the sync route, its delete, and the two reads #75 will use. */
+export const httpSyncTransport: SyncTransport = {
+  download,
+  list,
+  remove,
+  upload,
+};
