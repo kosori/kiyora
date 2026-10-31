@@ -34,6 +34,12 @@ export type Editor = {
   getBoard: () => Board;
   /** Replaces the board and notifies every board subscriber. */
   setBoard: (board: Board) => void;
+  /**
+   * Renames the board without a canvas gesture: one board write, one save, and
+   * no history entry. Undo never puts an older name back, because a name is not
+   * canvas state.
+   */
+  setTitle: (title: string) => void;
   /** Where the board is looked at from, and what the pointer does. */
   getView: () => View;
   /** The active tool: `getView().tool`, for a surface that only reads the tool. */

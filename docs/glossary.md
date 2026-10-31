@@ -7,7 +7,7 @@ An offline whiteboard for diagrams, notes and slides. Draw by hand, or type a di
 ### The board
 
 **Board**:
-The document of record: one ordered list of shapes, plus its files, deck, camera, settings and schema version.
+The document of record: one ordered list of shapes, plus its files, deck, camera, settings and schema version. Its id names the same board in every copy.
 _Avoid_: Document, diagram, scene, file
 
 **Shape**:
@@ -137,6 +137,60 @@ One diagram kind the source language can express — architecture, bpmn, flowcha
 **Diagnostic**:
 A non-fatal note from the parser about one line of source: a warning (the line is ignored) or an error (the line is unparsed). The build always continues.
 _Avoid_: Error, lint, problem
+
+### The library and the account
+
+**Library**:
+Every board this browser holds, each with its own record.
+_Avoid_: Board list, dashboard, workspace
+
+**Local copy**:
+A board as stored in this browser. It is the copy a person edits.
+_Avoid_: Draft, instance, unsynced board
+
+**Remote copy**:
+A board as stored on the server for an account.
+_Avoid_: Cloud board, server board
+
+**Linked**:
+A board whose local copy and remote copy are kept in step by sync.
+_Avoid_: Synced board, connected board
+
+**Account**:
+The owner a remote copy belongs to. Optional: the editor and the library work without one.
+_Avoid_: User, profile, login
+
+**Save**:
+Writing the local copy shortly after it changes.
+_Avoid_: Sync, upload, persist
+
+**Sync**:
+Writing the remote copy from the local one, refused when the remote copy has moved past the revision the local copy was built on.
+_Avoid_: Save, upload, backup, publish
+
+**Revision**:
+The server's count of how many times a remote copy has changed. A sync names the revision its local copy was built on.
+_Avoid_: Version, etag, commit
+
+**Conflict**:
+A sync refused because the remote copy is at a later revision than the local copy was built on. It is resolved by a person, never by merging.
+_Avoid_: Collision, clash, merge
+
+**Recovery snapshot**:
+The bytes kept beside a board before a write replaces them: a migration, or taking the remote copy in a conflict. They stay reachable as a `kiyora:boards:<id>:snapshot` key and, for a conflict, as a downloadable board file.
+_Avoid_: Backup, trash, history
+
+**Share link**:
+An unlisted, revocable address that shows one board read-only.
+_Avoid_: Public link, permalink, guest link
+
+**Preview**:
+A small picture of a board, derived from the board's paint and kept beside its record so the library lists without opening it.
+_Avoid_: Thumbnail, snapshot
+
+**Sync limit**:
+The largest board that can be synced. A board above it is still saved locally, and says so.
+_Avoid_: Cloud cap, size cap
 
 ### Storage and files
 

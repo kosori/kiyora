@@ -371,3 +371,31 @@ describe('the board theme', () => {
     expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: false });
   });
 });
+
+describe('the board title', () => {
+  it('renames the board without a history entry, and undo keeps the new name', () => {
+    const editor = createEditor(board('Before'));
+    editor.setTheme('dark');
+
+    editor.setTitle('After');
+
+    expect(editor.getBoard().title).toBe('After');
+    expect(editor.getHistory()).toEqual({ canRedo: false, canUndo: true });
+
+    editor.undo();
+
+    expect(editor.getBoard().settings.theme).toBe('light');
+    expect(editor.getBoard().title).toBe('After');
+  });
+
+  it('publishes the new name so a save can follow it, and writes nothing when it is unchanged', () => {
+    const editor = createEditor(board('Same'));
+    const seen: string[] = [];
+    editor.subscribe(() => seen.push(editor.getBoard().title));
+
+    editor.setTitle('Same');
+    editor.setTitle('Different');
+
+    expect(seen).toEqual(['Different']);
+  });
+});

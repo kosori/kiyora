@@ -1,12 +1,38 @@
 # Architecture
 
-Kiyora is an offline whiteboard: one board, in this browser, drawn by hand, with a diagram-code panel. This document is the map to read before changing code — the package boundaries, the document model, the render seam, and the invariants every change must keep.
+Kiyora is an offline whiteboard: a library of boards, in this browser, drawn by hand, with a diagram-code panel. This document is the map to read before changing code — the package boundaries, the document model, the render seam, and the invariants every change must keep.
 
 ## Why the app runs a server
 
 `apps/web` is a Next.js app that runs normally. It is not a static export, and `output: 'export'` must stay off: auth, an assistant proxy and MCP all need server routes, and static export forbids them.
 
-**Offline means the editor makes no network request except fetching its own assets.** A test enforces it. In v1 the server does nothing but serve files.
+**Offline means the editor makes no network request except fetching its own assets.** Every end-to-end spec inherits one guard that aborts anything else; a spec that needs a network double opts out per test, never per file.
+
+The server is optional. With no account variables set, it serves the library and the editor and never opens Postgres. With accounts configured, it validates every required variable at boot, refuses to serve on a schema it has not migrated, and answers sign-in only through Better Auth's route.
+
+### Accounts
+
+Better Auth owns four tables — `user`, `session`, `account`, `verification` — generated into `apps/web/lib/db/schema.ts` and migrated by committed SQL under `apps/web/drizzle/`. `bun run db:migrate` applies them; the boot hook (`apps/web/instrumentation.ts`) reads the committed journal and fails the start when the database is behind it. There is one `postgres.js` client per process, kept on `globalThis` so a development reload does not leak a pool.
+
+Google and GitHub are the only providers. `emailAndPassword` exists only when `AUTH_DEV_CREDENTIALS=1` and `NODE_ENV` is not production; a production boot with that flag set is refused. OAuth callbacks are smoke-tested on a hosted deploy, not walked in CI: the `server` Playwright project signs in through the dev-credentials provider against the real database.
+
+The library reads the session on the server with `auth.api.getSession({ headers: await headers() })`, so a signed-out page makes no request to its own API. Signing out drops the cookie and nothing else: every local copy and its bytes stay untouched. The board page reads the same session on the server too, so the editor learns whether sync is possible without a client request.
+
+### Sync
+
+A board with an account gets a second copy. Linking is explicit: signing in uploads nothing, and the board's own **Sync this board** action is the only path from local to remote. The board page reads the session on the server, so signing out pauses sync without a request from the client.
+
+`packages/sync` is DOM-free and depends on `model` only. It owns the protocol both copies agree on — `decideSync` answers create, accept, idempotent retry, conflict, too large or invalid from the stored revision, the base revision, the payload hash and the byte count — and the state machine that runs it: local, pending, syncing, synced, conflict, too large, signed out, error. The wire is a `SyncTransport` port; `apps/web` maps it onto the route and a unit test uses a fake.
+
+The remote copy is one `board` row: the client's id as the primary key, `owner_id`, `revision`, `payload` (jsonb), `title`, `bytes`, `preview_svg`, `payload_hash`, `created_at`, `updated_at`. `title`, `bytes` and `payload_hash` are extracted from the payload the server just validated; `preview_svg` is the picture the client saved, validated and capped, because the server has no measurer. Listing a board never parses it. Migrations under `apps/web/drizzle/` are committed and required before the app serves traffic.
+
+`POST /api/boards/:id/sync` takes `{ baseRevision, payload }`. The session is read before the database, `401` means signed out, `403` another owner's board, `413` a payload over the 4 MiB sync limit, `400` a payload the board schema rejects or one whose `schemaVersion` is not current, and `200 { revision }` on create and accept. A write built on a revision the server has moved past is `409 { revision, payload }` with the remote copy: nothing merges and nothing is last-write-wins. A retry whose hash equals the stored hash is `200` at the current revision and does not bump it. The row is locked before that revision check, so two writes cannot both be accepted from the same revision.
+
+The local copy stays the only editable one. A save marks a linked board pending in its library record and wakes the reconciler in the background; a bare flush uploads nothing, and one upload runs at a time. Reconnect and a returned tab retry a pending upload, and a board reopened with an upload still waiting reconciles once when the browser is online. A board over the limit is refused on the client before anything is sent, stays local and says so. A conflict is recorded with the local board — the marker and the remote revision live in the library record — and the remote payload is cached beside it under `kiyora:boards:<id>:conflict` until the person resolves it. `LibraryEntry` carries `linked`, `revision`, `pending`, `conflict` and `tooLarge`; a save keeps them, because the record merges the board's own title and time with what sync already knows.
+
+A conflict offers three resolutions and never merges. **Keep mine** uploads the local bytes at the remote revision, so another refusal is a second conflict rather than a silent loop. **Take theirs** writes the local bytes to the board's recovery snapshot, writes the remote payload in their place through the editor's board-replacement path (which clears history), and offers the replaced bytes as a `.kyr.json` download. **Duplicate mine** copies the local bytes to a new linked board uploaded at `baseRevision: null`, then takes the remote copy for the original. The surface shows both copies as their stored previews and names each one; it is reachable from the board's sync state and from a conflict row in the library. Opening it without a cached payload fetches the remote copy once; offline without a cache it says to come back later, and the conflict survives a reload either way.
+
+`GET /api/boards` lists the owner's remote copies from the columns a write maintains, and never selects a payload. `GET /api/boards/:id` returns one remote copy's payload and revision, `404` for a board another account owns and `401` when signed out. A signed-in library shows **Your boards** — remote copies whose id this browser does not hold — and reads the list when the library opens. Opening one downloads its bytes, lifts them through the board-file path, stores a local copy under the same id and records it linked at the revision that came with the bytes. Nothing is mirrored unasked, a failed listing leaves the local library usable, and signing out removes the section without a request.
 
 ## Workspaces
 
@@ -15,6 +41,7 @@ apps/web           the Next.js app: canvas, chrome, panels
 packages/dsl       the source grammar: text to AST with diagnostics
 packages/model     the board: schema, geometry, paint, projection and export
 packages/editor    the engine: store, gestures, persistence
+packages/sync      the reconciler: the shared protocol and its state machine
 tooling/typescript shared tsconfigs
 ```
 
@@ -22,10 +49,13 @@ Dependencies run one way and never backwards:
 
 ```
 dsl  ←  model  ←  editor  ←  apps/web
+          ↑
+         sync  ←  apps/web
 ```
 
 - A package never imports from `apps/`.
 - `model` is React-free and DOM-free. `editor` is DOM-free, with a thin React adapter under `editor/react`.
+- `sync` is DOM-free too, depends on `model` only, and never imports `editor`.
 - Packages export TypeScript source directly. There is no package build step, and therefore no stale `dist` to rebuild before the app sees a change.
 
 ## The document
@@ -87,6 +117,42 @@ Only authored state is stored. Group boxes, connector paths, text wrapping, hit-
 Paint order is array order: index 0 paints first. There is no `z` number, so a z-collision cannot exist. Reordering is a splice.
 
 The selection lives outside the document, in `editor`. The camera does too while a board is open: the board's `camera` is only the snapshot the last save wrote from the view, and undo never restores the view. Panning is therefore never undoable and never triggers a save.
+
+`updatedAt` is stamped the same way. It lives in the document header because a file carries it, but the engine never moves it: autosave writes the save time beside the camera at serialization time. A history entry therefore cannot hold a different save time, and undo cannot put an older one back. `createdAt` is stamped once, when the board is created.
+
+## The library
+
+A browser holds a library: many boards, each with its own record. A board's id is minted in `apps/web` with `crypto.randomUUID()` before anything is stored; `editor` and any server only ever read it. Two boards therefore never share an id, and a board exists with the network off.
+
+### Routes
+
+`/` lists the library, newest change first, and offers New board. `/b/<id>` opens that board. The editor is keyed by the id, so moving between boards cannot reuse the previous engine, history or autosave. An id the library does not hold is reported as not found; it is never created by opening its address. Next 16 route params arrive as a Promise, so the page awaits `params` before reading `id`.
+
+### Keys
+
+```
+kiyora:library                     the record: { version: 1, boards: LibraryEntry[] }
+kiyora:boards:<id>                 one board's payload
+kiyora:boards:<id>:snapshot        the bytes a migration or a conflict replaced
+kiyora:boards:<id>:conflict        the cached remote copy while a conflict is open
+kiyora:boards:<id>:quarantine      bytes that will not read
+```
+
+Every board's storage is a `BoardStorage` over those keys, handed out by the library per id, so autosave still takes a single board's port and a save for one board can never touch another's bytes. IndexedDB, localStorage and memory all implement the same key scheme.
+
+### The record is a cache
+
+The record carries `{ id, title, updatedAt }` and never the board itself, so the list opens no payload. A write stores the payload first, then refreshes the record with the same `updatedAt` in the same save. If the record is missing or unreadable, `createLibrary().entries()` scans the `kiyora:boards:` prefix, parses each payload once and writes the record back; a payload that will not parse is quarantined under that board's own key and skipped, so one damaged board cannot hide the rest.
+
+### One upgrade
+
+IndexedDB keeps the database `kiyora` and the out-of-line-keyed store `boards`, and moves to version 2. In `onupgradeneeded` the single board at `kiyora:board` is adopted under its stored id, its snapshot and quarantine move beside it, and the legacy keys are deleted only after the record naming it has been written. The whole upgrade is one transaction, so a record that cannot be written leaves the board where it was. A second upgrade with no legacy keys changes nothing.
+
+A storage fault is reported by the board that caused it; the record is not consulted for the fault, so the rest of the library still lists and opens.
+
+### Rename, duplicate and delete
+
+A rename writes the payload with the new name and the new `updatedAt`, then the record, so the two cannot disagree after a reload. The editor's title field commits through the same rename and adopts the name without a history entry. A duplicate keeps the payload's shapes, files, deck and camera under an id minted in the browser, resets both times, and names itself `<title> copy`. Delete removes the payload, the snapshot, the quarantine and the record entry, after a confirm that names the board. A linked board's confirm names both copies and deletes the remote row first; a remote failure keeps the local copy and surfaces the error, so the person can retry. A remote `404` still allows the local delete, because the remote copy is already gone.
 
 ## The render seam
 
@@ -159,9 +225,9 @@ Tests fail if a binding has no row in the reference, if a row names a command th
 
 ## Persistence
 
-IndexedDB is primary, localStorage the fallback, memory the last resort. Autosave is debounced roughly 500 ms after the last change, with a flush on `pagehide` and `visibilitychange`.
+IndexedDB is primary, localStorage the fallback, memory the last resort. Each is a per-board store under the library's key scheme. Autosave is debounced roughly 500 ms after the last change, with a flush on `pagehide` and `visibilitychange`.
 
-A migration chain keys off `schemaVersion`: ordered pure functions, each with a fixture. Before migrating, the previous payload is kept as a recovery snapshot. Unreadable data is quarantined rather than overwritten. Storage faults are a typed value — `quota`, `blocked`, `corrupt`, `unavailable` — surfaced in the status bar. A second tab warns instead of clobbering. All keys are namespaced `kiyora:`.
+A migration chain keys off `schemaVersion`: ordered pure functions, each with a fixture. Before migrating, the previous payload is kept as a recovery snapshot. Unreadable data is quarantined rather than overwritten. Storage faults are a typed value — `quota`, `blocked`, `corrupt`, `unavailable` — surfaced in the status bar for the board they concern. A second tab warns instead of clobbering. All keys are namespaced `kiyora:`.
 
 ## Invariants
 
@@ -174,8 +240,8 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 5. **Offline by construction.** Every request that is not to localhost is aborted, by a test.
 6. **The export path sees only a board.** Nothing display-only can reach an artifact.
 7. **No silent failures.** Every user-visible failure has a surface.
-8. **One gesture, one history entry.** Undo never restores the camera or the selection.
-9. **Only authored state is stored.**
+8. **One gesture, one history entry.** Undo never restores the camera, the selection, the save time or the board's name.
+9. **Only authored state is stored.** The camera snapshot and the save time are written by the save, never edited as state.
 10. **New source files stay under the size budget** (400 lines; tests 600). `packages/dsl/src` is vendored and exempt.
 
 ## Where things live
@@ -195,6 +261,12 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | Keymap, shortcut reference | `packages/editor/src/keymap.ts` |
 | Hit-testing, snapping | `packages/editor/src/geometry/` |
 | Persistence, autosave, faults | `packages/editor/src/persistence/` |
+| Library record, keys and legacy adoption | `packages/editor/src/persistence/library.ts`, `storage.ts` |
+| Browser store: IndexedDB, fallbacks and the v2 upgrade | `apps/web/lib/board-storage.ts` |
+| Library list and the board route | `apps/web/app/`, `apps/web/components/library/`, `apps/web/components/editor/board-route.tsx` |
+| Accounts: configuration, session, Better Auth route | `apps/web/lib/auth/`, `apps/web/app/api/auth/` |
+| Postgres client, auth schema, migrations, boot check | `apps/web/lib/db/`, `apps/web/drizzle/`, `apps/web/instrumentation.ts` |
+| Sign-in surface and account control | `apps/web/app/sign-in/`, `apps/web/components/auth/` |
 | React adapter | `packages/editor/src/react/` |
 | Canvas surface, tool rail, inspector | `apps/web/app/`, `apps/web/components/` |
 | Parser, diagnostics, vocabulary | `packages/dsl/src/` |

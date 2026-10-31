@@ -1,6 +1,6 @@
 import type { Board } from '../board/schema';
 import { formatNumber } from '../format';
-import { boardBounds } from '../paint/figures';
+import { type Bounds, boardBounds } from '../paint/figures';
 import type { PaintImage } from '../paint/image';
 import {
   type Paint,
@@ -120,24 +120,77 @@ const markup = (paint: Paint, depth: number): string[] => {
   ];
 };
 
-const viewBox = (board: Board): string => {
-  const bounds = boardBounds(board);
-
-  return bounds === null
+const viewBox = (bounds: Bounds | null): string =>
+  bounds === null
     ? '0 0 0 0'
     : [bounds.x, bounds.y, bounds.w, bounds.h].map(formatNumber).join(' ');
+
+/**
+ * The size an artifact renders at when its caller asks for one. The height
+ * follows the board's own aspect, so a wide board stays wide; a board that
+ * paints nothing is a square, because it has no aspect to follow.
+ */
+const size = (bounds: Bounds | null, width: number | undefined): string => {
+  if (width === undefined) {
+    return '';
+  }
+  const height =
+    bounds === null || bounds.w <= 0 ? width : (width * bounds.h) / bounds.w;
+
+  return ` width="${formatNumber(width)}" height="${formatNumber(height)}"`;
+};
+
+/** What a caller may choose about the projection. The board is painted whole otherwise. */
+export type ProjectionOptions = {
+  /** The rendered width, in CSS pixels. Absent leaves the document to its viewer. */
+  width?: number;
 };
 
 /**
  * The board as an SVG document. A board and the canvas it is painted on are the
  * only inputs, so nothing display-only can reach the artifact.
  */
-export const projectBoard = (board: Board, context: PaintContext): string => {
+export const projectBoard = (
+  board: Board,
+  context: PaintContext,
+  options: ProjectionOptions = {}
+): string => {
+  const bounds = boardBounds(board);
   const lines = [
-    `<svg xmlns="${SVG_NAMESPACE}" viewBox="${viewBox(board)}">`,
+    `<svg xmlns="${SVG_NAMESPACE}"${size(bounds, options.width)} viewBox="${viewBox(bounds)}">`,
     ...markup(paintBoard(board, context), 0),
     '</svg>',
   ];
 
   return `${lines.join('\n')}\n`;
+};
+
+/** How much room a viewer leaves around the content it fits. */
+const VIEW_PADDING_MIN = 32;
+const VIEW_PADDING_RATIO = 0.06;
+
+/**
+ * The `viewBox` a viewer fits a board into: the board's content bounds with
+ * breathing room around them, so nothing touches the edge of the window. An
+ * empty board still has a frame to look at. The padding is a projection
+ * constant, not a layout decision, so it lives here rather than in the app.
+ */
+export const boardViewBox = (board: Board): string => {
+  const bounds = boardBounds(board);
+
+  if (bounds === null) {
+    return '0 0 1000 700';
+  }
+
+  const padding = Math.max(
+    VIEW_PADDING_MIN,
+    Math.max(bounds.w, bounds.h) * VIEW_PADDING_RATIO
+  );
+
+  return [
+    bounds.x - padding,
+    bounds.y - padding,
+    bounds.w + padding * 2,
+    bounds.h + padding * 2,
+  ].join(' ');
 };

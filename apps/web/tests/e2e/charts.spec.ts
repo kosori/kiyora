@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * Charts, driven at the browser seam: a chart is placed, its authored series is
@@ -17,11 +18,7 @@ const fontsReady = async (page: Page): Promise<void> => {
 };
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
   await fontsReady(page);
 };
 

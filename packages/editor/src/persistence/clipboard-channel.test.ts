@@ -5,6 +5,7 @@ import {
   createClipboardRelay,
   createEditor,
   createPresence,
+  readClipboardMessage,
 } from '@kiyora/editor';
 import {
   type Board,
@@ -98,6 +99,7 @@ describe('cross-tab clipboard', () => {
     channel.subscribe((message) => seen.push(message));
     const first = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
     const relay = createClipboardRelay({
+      boardId: 'board-1',
       channel,
       editor: first,
       origin: 'one',
@@ -108,6 +110,7 @@ describe('cross-tab clipboard', () => {
 
     const message = seen.find((entry) => entry.type === 'clipboard');
     expect(message).toMatchObject({
+      boardId: 'board-1',
       schemaVersion: SCHEMA_VERSION,
       type: 'clipboard',
     });
@@ -125,8 +128,18 @@ describe('cross-tab clipboard', () => {
     const first = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
     const second = createEditor(board([]));
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
 
     first.setSelection(['a']);
@@ -152,8 +165,18 @@ describe('cross-tab clipboard', () => {
     first.placeShape({ from: { x: 50, y: 30 }, to: { x: 350, y: 30 } });
     const second = createEditor(board([]));
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
 
     first.setSelection(['a', 'b']);
@@ -182,8 +205,18 @@ describe('cross-tab clipboard', () => {
     first.placeShape({ from: { x: 50, y: 30 }, to: { x: 350, y: 30 } });
     const second = createEditor(board([]));
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
 
     first.setSelection(['a', 'connector-1']);
@@ -207,8 +240,18 @@ describe('cross-tab clipboard', () => {
     );
     const second = createEditor(board([]));
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
 
     first.setSelection(['f']);
@@ -234,8 +277,18 @@ describe('cross-tab clipboard', () => {
     );
     const second = createEditor(board([]));
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
 
     first.setSelection(['m']);
@@ -254,12 +307,22 @@ describe('cross-tab clipboard', () => {
     const first = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
     const second = createEditor(board([]));
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
     const message = clipboardMessage(
       { shapes: [rectangle({ id: 'a', x: 80, y: 80 })] },
-      'one'
+      { boardId: 'board-1', origin: 'one' }
     );
 
     channel.post({ ...message, schemaVersion: SCHEMA_VERSION - 1 });
@@ -270,6 +333,48 @@ describe('cross-tab clipboard', () => {
     for (const relay of relays) {
       relay.close();
     }
+  });
+
+  it('refuses another board’s fragment, so the wrong board is never pasted into', () => {
+    const channel = sharedChannel();
+    const first = createEditor(board([rectangle({ id: 'a', x: 80, y: 80 })]));
+    const second = createEditor(board([]));
+    const relays = [
+      createClipboardRelay({
+        boardId: 'board-two',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-one',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
+    ];
+
+    first.setSelection(['a']);
+    first.copy();
+    second.paste();
+
+    expect(second.getBoard().shapes).toEqual([]);
+
+    for (const relay of relays) {
+      relay.close();
+    }
+  });
+
+  it('validates the board a message names before handing over its shapes', () => {
+    const message = clipboardMessage(
+      { shapes: [rectangle({ id: 'a', x: 80, y: 80 })] },
+      { boardId: 'board-1', origin: 'one' }
+    );
+    const { boardId: _boardId, ...withoutBoard } = message;
+
+    expect(readClipboardMessage(message, 'board-1')).not.toBeNull();
+    expect(readClipboardMessage(message, 'board-2')).toBeNull();
+    expect(readClipboardMessage(withoutBoard, 'board-1')).toBeNull();
   });
 
   it('is not mistaken for presence, so the two-tab handshake still yields', () => {
@@ -285,8 +390,18 @@ describe('cross-tab clipboard', () => {
     });
     createPresence({ channel, self: { id: 'first', openedAt: 1 } });
     const relays = [
-      createClipboardRelay({ channel, editor: first, origin: 'one' }),
-      createClipboardRelay({ channel, editor: second, origin: 'two' }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: first,
+        origin: 'one',
+      }),
+      createClipboardRelay({
+        boardId: 'board-1',
+        channel,
+        editor: second,
+        origin: 'two',
+      }),
     ];
 
     first.setSelection(shapes.map((shape) => shape.id));

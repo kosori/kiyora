@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -6,11 +7,7 @@ import { expect, type Page, test } from '@playwright/test';
  * to say it can act.
  */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
 };
 
 /** The starter board's rectangle, which paints first. */

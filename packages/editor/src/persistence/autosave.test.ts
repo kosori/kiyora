@@ -279,7 +279,12 @@ describe('what autosave stores', () => {
     const saved = board('Stored', { x: 3, y: 4, zoom: 2 });
     const editor = createEditor(saved);
     const { storage, writes } = memoryStorage();
-    const autosave = createAutosave({ delay: 50, editor, storage });
+    const autosave = createAutosave({
+      delay: 50,
+      editor,
+      now: () => saved.updatedAt,
+      storage,
+    });
 
     await autosave.flush();
 
@@ -302,11 +307,58 @@ describe('what autosave stores', () => {
     };
     const editor = createEditor(scrambled);
     const { storage, writes } = memoryStorage();
-    const autosave = createAutosave({ delay: 50, editor, storage });
+    const autosave = createAutosave({
+      delay: 50,
+      editor,
+      now: () => scrambled.updatedAt,
+      storage,
+    });
 
     await autosave.flush();
 
     expect(writes.at(0)).toBe(serializeBoard(scrambled));
+  });
+});
+
+describe('the save time', () => {
+  it('is stamped at write time, never into the board the editor holds', async () => {
+    const opened = board('First');
+    const editor = createEditor(opened);
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({
+      editor,
+      now: () => 42,
+      storage,
+    });
+
+    await autosave.flush();
+
+    expect(readBack(writes.at(0)).updatedAt).toBe(42);
+    expect(editor.getBoard().updatedAt).toBe(opened.updatedAt);
+  });
+
+  it('moves forward after an undo, so undo never puts an older time back', async () => {
+    const opened = board('First');
+    const editor = createEditor(opened);
+    const { storage, writes } = memoryStorage();
+    let clock = 2000;
+    const autosave = createAutosave({
+      editor,
+      now: () => clock,
+      storage,
+    });
+
+    editor.setTheme('dark');
+    await autosave.flush();
+    expect(readBack(writes.at(0)).updatedAt).toBe(2000);
+
+    editor.undo();
+    expect(editor.getBoard().updatedAt).toBe(opened.updatedAt);
+
+    clock = 3000;
+    await autosave.flush();
+
+    expect(readBack(writes.at(-1)).updatedAt).toBe(3000);
   });
 });
 
@@ -382,5 +434,72 @@ describe('a store that cannot hold images', () => {
     expect(readBack(writes.at(0)).title).toBe('Clean');
     expect(autosave.getFault()).toBeNull();
     expect(autosave.getStatus()).toBe('saved');
+  });
+
+  it('keeps the bytes the last save wrote and the board they carry', async () => {
+    const editor = createEditor(board('First'));
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ editor, storage });
+
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.bytes).toBe(writes[0]);
+    expect(autosave.getLastWrite()?.board.title).toBe('First');
+
+    editor.setBoard(board('Second'));
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.bytes).toBe(writes[1]);
+    expect(autosave.getLastWrite()?.board.title).toBe('Second');
+    expect(autosave.getLastWrite()?.preview).toBeNull();
+  });
+
+  it('keeps the picture the save wrote with its bytes', async () => {
+    const editor = createEditor(board('First'));
+    const { storage } = memoryStorage();
+    const autosave = createAutosave({
+      editor,
+      preview: () => '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+      storage,
+    });
+
+    await autosave.flush();
+
+    expect(autosave.getLastWrite()?.preview).toBe(
+      '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+    );
+  });
+
+  it('previews the next write without storing it', () => {
+    const editor = createEditor(board('First'));
+    const { storage, writes } = memoryStorage();
+    const autosave = createAutosave({ editor, storage });
+
+    editor.setBoard(board('Second'));
+
+    expect(autosave.snapshot().board.title).toBe('Second');
+    expect(writes).toEqual([]);
+  });
+
+  it('reports only a write that followed a change, not a bare flush', async () => {
+    vi.useFakeTimers();
+    const editor = createEditor(board('First'));
+    const { storage } = memoryStorage();
+    const saved: string[] = [];
+    const autosave = createAutosave({
+      delay: 50,
+      editor,
+      onSaved: (value) => saved.push(value.board.title),
+      storage,
+    });
+
+    editor.setBoard(board('Second'));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(saved).toEqual(['Second']);
+
+    await autosave.flush();
+
+    expect(saved).toEqual(['Second']);
   });
 });

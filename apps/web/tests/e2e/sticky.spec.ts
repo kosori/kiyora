@@ -1,12 +1,9 @@
-import { expect, type Page, test } from '@playwright/test';
+import { openStarterBoard } from '../fixtures/library';
+import { expect, type Page, test } from '../fixtures/offline';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
-  await page.goto('/');
-  await expect(page.getByTestId('canvas')).toHaveAttribute(
-    'data-ready',
-    'true'
-  );
+  await openStarterBoard(page);
   // The measurer wraps in the hand-drawn face; wait for it so a sticky grows by
   // the metrics it will be painted with, not the fallback's wider ones.
   await page.evaluate(async () => {

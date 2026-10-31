@@ -13,17 +13,21 @@ export type ClipboardRelay = {
 
 /**
  * Wires `editor`'s clipboard to `channel`: a copy made here becomes a message
- * for the other tabs, and a current-build message from another tab becomes this
- * tab's clipboard, ready for the paste command that already knows how to re-id
- * it. Presence reads the same channel and discards these by `type`, so a large
- * fragment is never mistaken for a handshake. `origin` is this tab's presence
- * id, so a channel that echoes — as a test one can — does not feed a copy back.
+ * for the other tabs on `boardId`, and a current-build message from one of them
+ * becomes this tab's clipboard, ready for the paste command that already knows
+ * how to re-id it. A message copied in another board is refused, so a paste
+ * never lands in the wrong document. Presence reads the same channel and
+ * discards these by `type`, so a large fragment is never mistaken for a
+ * handshake. `origin` is this tab's presence id, so a channel that echoes — as
+ * a test one can — does not feed a copy back.
  */
 export const createClipboardRelay = ({
+  boardId,
   channel,
   editor,
   origin,
 }: {
+  boardId: string;
   channel: BoardChannel;
   editor: Editor;
   origin: string;
@@ -32,14 +36,14 @@ export const createClipboardRelay = ({
     if (fragment.shapes.length === 0) {
       return;
     }
-    channel.post(clipboardMessage(fragment, origin));
+    channel.post(clipboardMessage(fragment, { boardId, origin }));
   };
 
   const receive = (message: BoardMessage): void => {
     if (message.type !== 'clipboard' || message.origin === origin) {
       return;
     }
-    const fragment = readClipboardMessage(message);
+    const fragment = readClipboardMessage(message, boardId);
     if (fragment !== null) {
       editor.receiveClipboard(fragment);
     }

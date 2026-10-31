@@ -1,5 +1,6 @@
 import {
   type Board,
+  boardViewBox,
   parseBoard,
   projectBoard,
   SCHEMA_VERSION,
@@ -55,5 +56,28 @@ describe('projecting a stroke pattern', () => {
     const svg = projectBoard(board(base), { theme: 'light' });
 
     expect(svg).not.toContain('stroke-dasharray');
+  });
+});
+
+describe('the view a viewer fits a board into', () => {
+  it('surrounds the content bounds with room on every side', () => {
+    const [x = 0, y = 0, w = 0, h = 0] = boardViewBox(board(base))
+      .split(' ')
+      .map(Number);
+
+    expect(x).toBeLessThan(0);
+    expect(y).toBeLessThan(0);
+    expect(w).toBeGreaterThan(100);
+    expect(h).toBeGreaterThan(60);
+    expect(w - 100).toBeGreaterThanOrEqual(64);
+  });
+
+  it('gives an empty board a frame to look at', () => {
+    const empty = parseBoard({
+      ...board(base),
+      shapes: [],
+    });
+
+    expect(boardViewBox(empty)).toBe('0 0 1000 700');
   });
 });
