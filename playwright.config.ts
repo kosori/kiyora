@@ -50,4 +50,11 @@ export default defineConfig({
     timeout: 180_000,
     url: E2E_BASE_URL,
   },
+  /**
+   * The server project truncates the account tables between tests, so two
+   * workers racing one database deadlock and pull sessions out from under each
+   * other. One database, one worker. The value is only pinned when that project
+   * is in the run, so the browser suite keeps its parallelism.
+   */
+  workers: E2E_SERVER_DB ? 1 : undefined,
 });
