@@ -1,3 +1,4 @@
+import { type Board, parseBoard } from '@kiyora/model';
 import { expect, type Page } from '@playwright/test';
 import { STARTER_PATH, starterBoard } from './starter-board';
 
@@ -13,6 +14,8 @@ export type SeededBoard = {
   schemaVersion?: number;
   settings?: { theme: string };
   shapes?: unknown[];
+  /** The picture the record lists, when the spec seeds one. */
+  preview?: string;
 };
 
 export type SeedStorage = 'indexeddb' | 'local';
@@ -60,10 +63,15 @@ const bytesOf = (board: SeededBoard): string =>
 /** A seeded board as the bytes of a `.kyr.json` file. */
 export const boardFileBytes = (board: SeededBoard): string => bytesOf(board);
 
+/** One seeded board as the full board the app will read. */
+export const seededBoard = (board: SeededBoard): Board =>
+  parseBoard(JSON.parse(bytesOf(board)));
+
 const entryOf = (board: SeededBoard) => ({
   id: board.id,
   title: board.title ?? 'Untitled',
   updatedAt: board.updatedAt ?? 1_700_000_000_000,
+  ...(board.preview === undefined ? {} : { preview: board.preview }),
 });
 
 /** The key one board's payload lives under. */

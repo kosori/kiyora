@@ -11,7 +11,12 @@
  */
 export type BoardStorage = {
   read: () => Promise<string | null>;
-  write: (value: string) => Promise<void>;
+  /**
+   * Writes the board's bytes, and with them the preview derived from their
+   * paint. `preview` is `null` when the preview was over its cap and must be
+   * dropped, and absent when the caller has none to offer.
+   */
+  write: (value: string, preview?: string | null) => Promise<void>;
   /** Keeps the pre-migration bytes as a recovery snapshot. */
   snapshot: (value: string) => Promise<void>;
   /** Moves unreadable bytes to a key of their own, freeing the board key. */

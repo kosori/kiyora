@@ -1,8 +1,8 @@
 import { type Board, serializeBoard } from '@kiyora/model';
 import { type BoardLoad, loadBoard } from './board';
-import type { LibraryEntry } from './library-record';
 import {
   entryOf,
+  type LibraryEntry,
   newestFirst,
   readRecord,
   rebuild,
@@ -102,11 +102,11 @@ export const createLibrary = (
 
     return {
       ...board,
-      write: async (value) => {
+      write: async (value, preview) => {
         await board.write(value);
         const entry = entryOf(id, value);
         if (entry !== null) {
-          await upsert(store, entry);
+          await upsert(store, entry, preview);
         }
       },
     };
@@ -115,13 +115,13 @@ export const createLibrary = (
   /** Writes one board's bytes, then the record entry they name. */
   const writePayload = async (
     id: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    preview?: string
   ): Promise<LibraryEntry> => {
     const bytes = JSON.stringify(payload);
     await store.put(boardKey(id), bytes);
     const entry = entryOf(id, bytes) ?? { id, title: '', updatedAt: 0 };
-    await upsert(store, entry);
-    return entry;
+    return upsert(store, entry, preview);
   };
 
   const entries = async (): Promise<LibraryEntry[]> => {
@@ -157,21 +157,30 @@ export const createLibrary = (
       await storage(board.id).write(serializeBoard(board));
     },
     duplicate: async (id) => {
-      const payload = readPayload(await store.get(boardKey(id)));
+      const [bytes, record] = await Promise.all([
+        store.get(boardKey(id)),
+        readRecord(store),
+      ]);
+      const payload = readPayload(bytes);
       if (payload === null) {
         return null;
       }
       const copyId = mintId();
       const stamp = now();
-      await writePayload(copyId, {
-        ...payload,
-        createdAt: stamp,
-        id: copyId,
-        title: copyTitle(
-          typeof payload.title === 'string' ? payload.title : ''
-        ),
-        updatedAt: stamp,
-      });
+      const preview = record?.boards.find((board) => board.id === id)?.preview;
+      await writePayload(
+        copyId,
+        {
+          ...payload,
+          createdAt: stamp,
+          id: copyId,
+          title: copyTitle(
+            typeof payload.title === 'string' ? payload.title : ''
+          ),
+          updatedAt: stamp,
+        },
+        preview
+      );
       return copyId;
     },
     entries,

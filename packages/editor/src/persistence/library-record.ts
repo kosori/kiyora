@@ -110,9 +110,7 @@ export const entryOf = (id: string, bytes: string): LibraryEntry | null => {
  * so one damaged board cannot hide the rest. Nothing is written here except
  * those quarantines.
  */
-export const scanEntries = async (
-  store: KeyValueStore
-): Promise<LibraryEntry[]> => {
+const scanEntries = async (store: KeyValueStore): Promise<LibraryEntry[]> => {
   const keys = await store.keys();
   const found = await Promise.all(
     keys.filter(isPayloadKey).map(async (key): Promise<LibraryEntry | null> => {
@@ -151,16 +149,44 @@ export const rebuild = async (
   return boards;
 };
 
-/** Writes one entry over the record, rebuilding a lost record first. */
+/** The entry with its picture replaced, removed or left as it was. */
+const withPreview = (
+  entry: LibraryEntry,
+  preview: string | null | undefined
+): LibraryEntry => {
+  if (preview === undefined) {
+    return entry;
+  }
+  const next = { ...entry };
+  if (preview === null) {
+    next.preview = undefined;
+    return next;
+  }
+  next.preview = preview;
+  return next;
+};
+
+/**
+ * Writes one entry over the record, rebuilding a lost record first. `preview`
+ * says what happens to the entry's picture: a string replaces it, `null` drops
+ * it because the board outgrew the cap, and `undefined` keeps whatever the
+ * record already carried, so a rename cannot erase the last preview.
+ */
 export const upsert = async (
   store: KeyValueStore,
-  entry: LibraryEntry
-): Promise<void> => {
+  entry: LibraryEntry,
+  preview?: string | null
+): Promise<LibraryEntry> => {
   const record = await readRecord(store);
   const boards = record?.boards ?? (await scanEntries(store));
-  const next = newestFirst([
-    ...boards.filter((board) => board.id !== entry.id),
+  const previous = boards.find((board) => board.id === entry.id);
+  const next = withPreview(
     entry,
-  ]);
-  await writeRecord(store, next);
+    preview === undefined ? previous?.preview : preview
+  );
+  await writeRecord(
+    store,
+    newestFirst([...boards.filter((board) => board.id !== entry.id), next])
+  );
+  return next;
 };
