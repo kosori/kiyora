@@ -25,6 +25,13 @@ export type AutosaveOptions = {
    * yields rather than clobbering it, and takes over once the holder leaves.
    */
   presence?: Presence;
+  /**
+   * The board's picture, derived from its own paint. It is written with the
+   * board so the library lists a preview without opening a payload. A preview
+   * that cannot be produced leaves the stored one as it was and never fails the
+   * save.
+   */
+  preview?: (board: Board) => string | null | Promise<string | null>;
 };
 
 export type Autosave = {
@@ -66,6 +73,7 @@ export const createAutosave = ({
   delay = AUTOSAVE_DELAY,
   now = Date.now,
   presence,
+  preview: previewBoardOf,
 }: AutosaveOptions): Autosave => {
   let status: SaveStatus = 'saved';
   let fault: StorageFault | null = null;
@@ -117,6 +125,24 @@ export const createAutosave = ({
       updatedAt: now(),
     });
 
+  /**
+   * The preview to store, or `undefined` when there is none to offer. A preview
+   * that throws is treated as absent rather than as a failed save: the picture
+   * is a cache, the board is not.
+   */
+  const previewOf = async (
+    board: Board
+  ): Promise<string | null | undefined> => {
+    if (previewBoardOf === undefined) {
+      return undefined;
+    }
+    try {
+      return await previewBoardOf(board);
+    } catch {
+      return undefined;
+    }
+  };
+
   const write = async (): Promise<void> => {
     if (presence !== undefined && !presence.isPrimary()) {
       setStatus('unsaved');
@@ -131,7 +157,7 @@ export const createAutosave = ({
     const writing = revision;
     setStatus('saving');
     try {
-      await storage.write(snapshot(board));
+      await storage.write(snapshot(board), await previewOf(board));
       changed = false;
       setFault(null);
       setStatus(revision === writing ? 'saved' : 'unsaved');
