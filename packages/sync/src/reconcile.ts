@@ -20,6 +20,8 @@ export type SyncRecord = {
   linked: boolean;
   /** The revision the local copy was built on, or null when it is not linked. */
   revision: number | null;
+  /** Whether the local copy holds a change its upload has not accepted. */
+  pending: boolean;
   /** The remote revision that refused a write, until a person resolves it. */
   conflict: number | null;
   /** Whether the last size check found the board over the sync limit. */
@@ -118,6 +120,9 @@ export const createSyncMachine = ({
     if (!signedIn) {
       return { status: 'signed-out' };
     }
+    if (record.pending) {
+      return { revision: record.revision ?? 0, status: 'pending' };
+    }
     return { revision: record.revision ?? 0, status: 'synced' };
   };
 
@@ -185,6 +190,7 @@ export const createSyncMachine = ({
       setRecord({
         conflict: null,
         linked: true,
+        pending: false,
         revision: result.revision,
         tooLarge: false,
       });
@@ -193,7 +199,12 @@ export const createSyncMachine = ({
     }
 
     if (result.kind === 'conflict') {
-      setRecord({ ...record, conflict: result.revision, linked: true });
+      setRecord({
+        ...record,
+        conflict: result.revision,
+        linked: true,
+        pending: false,
+      });
       if (result.payload !== null) {
         await resolutions.remember({
           payload: result.payload,
@@ -275,6 +286,9 @@ export const createSyncMachine = ({
       await start(null);
     },
     markPending: () => {
+      if (record.linked && record.conflict === null && !record.pending) {
+        setRecord({ ...record, pending: true });
+      }
       const size = utf8Length(read().bytes);
       if (size > limit) {
         setTooLarge(size);

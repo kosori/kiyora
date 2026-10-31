@@ -37,6 +37,7 @@ export type SeededBoard = {
   sync?: {
     linked?: boolean;
     revision?: number;
+    pending?: boolean;
     conflict?: number;
     tooLarge?: boolean;
   };

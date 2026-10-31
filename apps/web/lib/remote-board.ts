@@ -44,6 +44,7 @@ export const downloadRemoteBoard = async (
   await library.setSync(board.id, {
     conflict: null,
     linked: true,
+    pending: false,
     revision: downloaded.revision,
     tooLarge: false,
   });

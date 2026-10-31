@@ -236,6 +236,7 @@ export const createLibrary = (
         ...previous,
         conflict: sync.conflict ?? undefined,
         linked: sync.linked ? true : undefined,
+        pending: sync.pending ? true : undefined,
         revision: sync.linked ? (sync.revision ?? undefined) : undefined,
         tooLarge: sync.tooLarge ? true : undefined,
       });

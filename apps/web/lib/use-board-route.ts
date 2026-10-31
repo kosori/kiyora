@@ -53,6 +53,7 @@ export type BoardRouteState =
 const syncOf = (entry: LibraryEntry | undefined): SyncRecord => ({
   conflict: entry?.conflict ?? null,
   linked: entry?.linked === true && typeof entry.revision === 'number',
+  pending: entry?.pending === true,
   revision: entry?.revision ?? null,
   tooLarge: entry?.tooLarge === true,
 });

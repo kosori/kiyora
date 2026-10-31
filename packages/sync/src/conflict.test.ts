@@ -35,6 +35,7 @@ const snapshot = (value: Board = board()): SyncSnapshot => ({
 const conflicted = (): SyncRecord => ({
   conflict: 7,
   linked: true,
+  pending: false,
   revision: 2,
   tooLarge: false,
 });
@@ -234,6 +235,7 @@ describe('keep mine', () => {
     expect(saved.at(-1)).toEqual({
       conflict: null,
       linked: true,
+      pending: false,
       revision: 8,
       tooLarge: false,
     });
@@ -279,6 +281,7 @@ describe('keep mine', () => {
     expect(saved.at(-1)).toEqual({
       conflict: 9,
       linked: true,
+      pending: false,
       revision: 2,
       tooLarge: false,
     });
@@ -316,6 +319,7 @@ describe('take theirs', () => {
     expect(saved.at(-1)).toEqual({
       conflict: null,
       linked: true,
+      pending: false,
       revision: 7,
       tooLarge: false,
     });
@@ -376,6 +380,7 @@ describe('duplicate mine', () => {
     expect(conflictPorts.saveRecordFor).toHaveBeenCalledWith('copy-1', {
       conflict: null,
       linked: true,
+      pending: false,
       revision: 1,
       tooLarge: false,
     });
@@ -384,6 +389,7 @@ describe('duplicate mine', () => {
     expect(saved.at(-1)).toEqual({
       conflict: null,
       linked: true,
+      pending: false,
       revision: 7,
       tooLarge: false,
     });

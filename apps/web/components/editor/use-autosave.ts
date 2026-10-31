@@ -121,7 +121,8 @@ const retryable = (state: SyncState): boolean =>
  * A changed save wakes the reconciler in the background. A bare flush — the
  * page hiding, or a rescue rewrite — carries nothing new and does not upload.
  * The reconciler never blocks an edit and runs one upload at a time; online and
- * a returned tab retry a pending upload.
+ * a returned tab retry a pending upload. A board reopened with an upload still
+ * waiting reconciles once when the browser is online.
  */
 export const useAutosave = (
   editor: Editor,
@@ -326,6 +327,10 @@ export const useAutosave = (
     window.addEventListener('online', retry);
     document.addEventListener('visibilitychange', onVisibility);
     document.addEventListener('visibilitychange', onVisible);
+
+    if (navigator.onLine && machine.getState().status === 'pending') {
+      retry();
+    }
 
     return () => {
       cancelled = true;
