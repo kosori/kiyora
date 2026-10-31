@@ -45,6 +45,32 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:e2e
 
+  test-server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: kiyora
+          POSTGRES_PASSWORD: kiyora
+          POSTGRES_USER: kiyora
+        options: >-
+          --health-cmd "pg_isready -U kiyora"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgres://kiyora:kiyora@localhost:5432/kiyora
+      E2E_SERVER_DB: '1'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e --project=server
+
   check-budgets:
     name: Size budget
     runs-on: ubuntu-latest
