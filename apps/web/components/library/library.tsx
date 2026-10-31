@@ -7,8 +7,9 @@ import {
   type StorageFault,
 } from '@kiyora/editor';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AccountControl } from '~/components/auth/account-control';
+import { BoardFileImport } from '~/components/board-file-import';
 import { Button } from '~/components/ui/button';
 import type { AccountSummary } from '~/lib/auth/account';
 import { openStore } from '~/lib/board-storage';
@@ -46,6 +47,7 @@ export const Library = ({ account }: Props) => {
   const router = useRouter();
   const [entries, setEntries] = useState<LibraryEntry[] | null>(null);
   const [fault, setFault] = useState<StorageFault | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<LibraryEntry | null>(null);
 
@@ -84,6 +86,20 @@ export const Library = ({ account }: Props) => {
       setFault({ kind: 'unavailable' });
     }
   };
+
+  const reload = useCallback(async (): Promise<void> => {
+    try {
+      const { store } = await openStore();
+      setEntries(await createLibrary(store).entries());
+    } catch {
+      setFault({ kind: 'unavailable' });
+    }
+  }, []);
+
+  const imported = useCallback(() => {
+    setError(null);
+    reload().catch(() => undefined);
+  }, [reload]);
 
   const create = async (): Promise<void> => {
     setCreating(true);
@@ -136,6 +152,12 @@ export const Library = ({ account }: Props) => {
         <h1 className='font-semibold text-xl'>Boards</h1>
         <div className='flex items-center gap-4'>
           <AccountControl account={account} />
+          <BoardFileImport
+            buttonTestId='library-import-file'
+            inputTestId='library-file-input'
+            onFailed={setError}
+            onImported={imported}
+          />
           <Button data-testid='new-board' disabled={creating} onClick={start}>
             New board
           </Button>
@@ -144,6 +166,15 @@ export const Library = ({ account }: Props) => {
       {fault === null ? null : (
         <p className='text-destructive text-sm' role='alert'>
           {faultMessage(fault)}
+        </p>
+      )}
+      {error === null ? null : (
+        <p
+          className='text-destructive text-sm'
+          data-testid='import-error'
+          role='alert'
+        >
+          {error}
         </p>
       )}
       <div data-testid='library'>
