@@ -47,6 +47,7 @@ export const BoardRoute = ({ boardId }: { boardId: string }) => {
     <main className='h-svh overflow-hidden'>
       <Editor
         board={state.board}
+        boardId={boardId}
         fault={state.fault}
         key={boardId}
         migratedFrom={state.migratedFrom}

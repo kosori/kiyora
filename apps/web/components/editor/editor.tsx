@@ -14,6 +14,8 @@ import { EditorShell } from './editor-shell';
 
 export type EditorProps = {
   board: Board;
+  /** The board's address, so presence and the clipboard stay on this board. */
+  boardId: string;
   storage: BoardStorage;
   /** Commits a new name through the library, payload first. */
   rename: (title: string) => Promise<LibraryEntry | null>;
@@ -31,6 +33,7 @@ export type EditorProps = {
  */
 export const Editor = ({
   board,
+  boardId,
   storage,
   rename,
   fault = null,
@@ -45,6 +48,7 @@ export const Editor = ({
       <CopyPngProvider>
         <EditorShell
           autosave={{
+            boardId,
             fault,
             migratedFrom,
             rewrite,
