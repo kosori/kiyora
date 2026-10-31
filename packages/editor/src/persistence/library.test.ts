@@ -328,6 +328,43 @@ describe('duplicating a board', () => {
   });
 });
 
+describe('importing a board', () => {
+  it('keeps the file id when the library does not hold it', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store);
+
+    const entry = await library.importBoard(carried());
+
+    expect(entry).toEqual({
+      id: 'source',
+      title: 'Original',
+      updatedAt: 1_700_000_000_000,
+    });
+    expect(payloadOf(held, 'source')).toEqual(carried());
+    expect((await createLibrary(store).entries()).map(({ id }) => id)).toEqual([
+      'source',
+    ]);
+  });
+
+  it('mints a new id when the library already holds the file id, and both keep their own bytes', async () => {
+    const { held, store } = memoryStore();
+    const library = createLibrary(store, { mintId: () => 'second' });
+    await library.create(board('source', 'First', 10, [rectangle]));
+    const first = held.get(boardKey('source'));
+
+    const entry = await library.importBoard(carried());
+
+    expect(entry.id).toBe('second');
+    expect(payloadOf(held, 'source').title).toBe('First');
+    expect(payloadOf(held, 'second')).toEqual({ ...carried(), id: 'second' });
+    expect(held.get(boardKey('source'))).toBe(first);
+    expect((await library.entries()).map(({ id }) => id)).toEqual([
+      'second',
+      'source',
+    ]);
+  });
+});
+
 describe('removing a board', () => {
   it('deletes the payload, the snapshot, the quarantine and the record entry', async () => {
     const { held, store } = memoryStore();
