@@ -7,6 +7,28 @@ import type { BoardStorage, SaveStatus } from './storage';
 /** How long autosave waits after the last change before it writes. */
 export const AUTOSAVE_DELAY = 500;
 
+/** One board as a save wrote it: the bytes stored and the board they carry. */
+export type SavedBoard = {
+  board: Board;
+  bytes: string;
+};
+
+/**
+ * The board as a save writes it: the camera comes from the view, because the
+ * view is the one that moves, and the time from the write, because it belongs
+ * to the write and never to the document. Undo therefore cannot put an older
+ * camera or time back.
+ */
+export const savedBoard = (
+  board: Board,
+  camera: Board['camera'],
+  at: number
+): SavedBoard => {
+  const next = { ...board, camera, updatedAt: at };
+
+  return { board: next, bytes: serializeBoard(next) };
+};
+
 export type AutosaveOptions = {
   /** The engine whose board is written. */
   editor: Editor;
@@ -25,6 +47,12 @@ export type AutosaveOptions = {
    * yields rather than clobbering it, and takes over once the holder leaves.
    */
   presence?: Presence;
+  /**
+   * Called after a write that followed a change landed. A flush that carried
+   * nothing new is not a change, so it does not call back: a background
+   * reconciler listening here never uploads a board nobody edited.
+   */
+  onSaved?: (saved: SavedBoard) => void;
 };
 
 export type Autosave = {
@@ -34,6 +62,10 @@ export type Autosave = {
   getStatus: () => SaveStatus;
   /** The fault behind the last failed write, or null while writes land. */
   getFault: () => StorageFault | null;
+  /** The bytes the last successful write stored, or null before the first one. */
+  getLastWrite: () => SavedBoard | null;
+  /** What the next write would store, without writing it. */
+  snapshot: () => SavedBoard;
   /** Subscribes to status or fault changes. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
   /** Stops observing the board. Anything still pending is dropped unwritten. */
@@ -66,12 +98,14 @@ export const createAutosave = ({
   delay = AUTOSAVE_DELAY,
   now = Date.now,
   presence,
+  onSaved,
 }: AutosaveOptions): Autosave => {
   let status: SaveStatus = 'saved';
   let fault: StorageFault | null = null;
   let changed = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let revision = 0;
+  let lastWrite: SavedBoard | null = null;
   const listeners = new Set<() => void>();
 
   const publish = (): void => {
@@ -104,18 +138,11 @@ export const createAutosave = ({
 
   /**
    * The bytes to write: the board file, so what autosave stores and what a file
-   * save stores are one shape. The camera comes from the view, not from the
-   * board: the view is the one that moves, and the board's copy is only the
-   * snapshot the previous save left behind. The save time is stamped here for
-   * the same reason: it belongs to the write, not to the document, so undo can
-   * never put an older time back.
+   * save stores are one shape. The camera and the save time are stamped here
+   * rather than in the document, so undo can never put an older one back.
    */
-  const snapshot = (board: Board): string =>
-    serializeBoard({
-      ...board,
-      camera: editor.getView().camera,
-      updatedAt: now(),
-    });
+  const snapshot = (): SavedBoard =>
+    savedBoard(editor.getBoard(), editor.getView().camera, now());
 
   const write = async (): Promise<void> => {
     if (presence !== undefined && !presence.isPrimary()) {
@@ -129,12 +156,18 @@ export const createAutosave = ({
       return;
     }
     const writing = revision;
+    const carried = changed;
     setStatus('saving');
     try {
-      await storage.write(snapshot(board));
+      const saved = snapshot();
+      await storage.write(saved.bytes);
+      lastWrite = saved;
       changed = false;
       setFault(null);
       setStatus(revision === writing ? 'saved' : 'unsaved');
+      if (carried) {
+        onSaved?.(saved);
+      }
     } catch (error) {
       setFault(faultOf(error));
       setStatus('unsaved');
@@ -170,7 +203,9 @@ export const createAutosave = ({
       return write();
     },
     getFault: () => fault,
+    getLastWrite: () => lastWrite,
     getStatus: () => status,
+    snapshot,
     stop: () => {
       stopWatching();
       stopPresence?.();

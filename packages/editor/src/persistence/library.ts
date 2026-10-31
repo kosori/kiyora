@@ -22,9 +22,23 @@ export type LibraryEntry = {
   id: string;
   title: string;
   updatedAt: number;
+  /** Whether this board has a remote copy the local one is kept in step with. */
   linked?: boolean;
+  /** The revision the local copy was built on, when it is linked. */
+  revision?: number;
+  /** The remote revision that refused a write, until a person resolves it. */
+  conflict?: number;
+  /** Whether the board is too large for the sync limit. */
   tooLarge?: boolean;
   preview?: string;
+};
+
+/** What sync learned about one board, as the record keeps it. */
+export type LibrarySyncRecord = {
+  linked: boolean;
+  revision: number | null;
+  conflict: number | null;
+  tooLarge: boolean;
 };
 
 /** The library record: a cache of the entries, ordered by last change when read. */
@@ -45,6 +59,8 @@ export type Library = {
   storage: (id: string) => BoardStorage;
   /** Adds a board: its payload first, then its record entry. */
   create: (board: Board) => Promise<void>;
+  /** Records what sync learned about one board, keeping its other fields. */
+  setSync: (id: string, sync: LibrarySyncRecord) => Promise<void>;
 };
 
 const RECORD_VERSION = 1;
@@ -174,9 +190,10 @@ const upsert = async (
 ): Promise<void> => {
   const record = await readRecord(store);
   const boards = record?.boards ?? (await scanEntries(store));
+  const previous = boards.find((board) => board.id === entry.id);
   const next = newestFirst([
     ...boards.filter((board) => board.id !== entry.id),
-    entry,
+    previous === undefined ? entry : { ...previous, ...entry },
   ]);
   await writeRecord(store, next);
 };
@@ -227,6 +244,21 @@ export const createLibrary = (store: KeyValueStore): Library => {
     entries,
     holds,
     load: (id) => loadBoard(boardStorage(store, id)),
+    setSync: async (id, sync) => {
+      const record = await readRecord(store);
+      const boards = record?.boards ?? (await scanEntries(store));
+      const previous = boards.find((board) => board.id === id);
+      if (previous === undefined) {
+        return;
+      }
+      await upsert(store, {
+        ...previous,
+        conflict: sync.conflict ?? undefined,
+        linked: sync.linked ? true : undefined,
+        revision: sync.linked ? (sync.revision ?? undefined) : undefined,
+        tooLarge: sync.tooLarge ? true : undefined,
+      });
+    },
     storage,
   };
 };

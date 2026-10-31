@@ -149,6 +149,7 @@ export {
   parseBoardFile,
   serializeBoard,
 } from './file/board-file';
+export { utf8Length } from './format';
 export { ICON_VIEWBOX, type IconSet } from './icons/icon-set';
 export {
   addStrokePoint,

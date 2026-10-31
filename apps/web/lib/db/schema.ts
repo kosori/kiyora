@@ -1,4 +1,13 @@
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import type { Board } from '@kiyora/model';
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
 /** One account holder. Better Auth's user table. */
 export const user = pgTable('user', {
@@ -80,3 +89,31 @@ export const verification = pgTable(
 
 /** The auth tables, keyed as Better Auth's Drizzle adapter expects. */
 export const schema = { account, session, user, verification };
+
+/**
+ * One board's remote copy. Its id is the client's, minted before any server
+ * exists, and `payload` is the document of record. The other columns are a
+ * cache the server fills from the payload it just validated, so listing never
+ * parses a board.
+ */
+export const board = pgTable(
+  'board',
+  {
+    bytes: integer('bytes').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    id: text('id').primaryKey(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    payload: jsonb('payload').$type<Board>().notNull(),
+    payloadHash: text('payload_hash').notNull(),
+    previewSvg: text('preview_svg'),
+    revision: integer('revision').notNull(),
+    title: text('title').notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index('board_owner_id_idx').on(table.ownerId)]
+);

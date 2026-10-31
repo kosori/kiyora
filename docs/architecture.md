@@ -16,7 +16,19 @@ Better Auth owns four tables — `user`, `session`, `account`, `verification` �
 
 Google and GitHub are the only providers. `emailAndPassword` exists only when `AUTH_DEV_CREDENTIALS=1` and `NODE_ENV` is not production; a production boot with that flag set is refused. OAuth callbacks are smoke-tested on a hosted deploy, not walked in CI: the `server` Playwright project signs in through the dev-credentials provider against the real database.
 
-The library reads the session on the server with `auth.api.getSession({ headers: await headers() })`, so a signed-out page makes no request to its own API. Signing out drops the cookie and nothing else: every local copy and its bytes stay untouched. The board editor renders without a session and never asks who is signed in.
+The library reads the session on the server with `auth.api.getSession({ headers: await headers() })`, so a signed-out page makes no request to its own API. Signing out drops the cookie and nothing else: every local copy and its bytes stay untouched. The board page reads the same session on the server too, so the editor learns whether sync is possible without a client request.
+
+### Sync
+
+A board with an account gets a second copy. Linking is explicit: signing in uploads nothing, and the board's own **Sync this board** action is the only path from local to remote. The board page reads the session on the server, so signing out pauses sync without a request from the client.
+
+`packages/sync` is DOM-free and depends on `model` only. It owns the protocol both copies agree on — `decideSync` answers create, accept, idempotent retry, conflict, too large or invalid from the stored revision, the base revision, the payload hash and the byte count — and the state machine that runs it: local, pending, syncing, synced, conflict, too large, signed out, error. The wire is a `SyncTransport` port; `apps/web` maps it onto the route and a unit test uses a fake.
+
+The remote copy is one `board` row: the client's id as the primary key, `owner_id`, `revision`, `payload` (jsonb), `title`, `bytes`, `preview_svg`, `payload_hash`, `created_at`, `updated_at`. `title`, `bytes`, `preview_svg` and `payload_hash` are extracted from the payload the server just validated, so listing a board never parses it. Migrations under `apps/web/drizzle/` are committed and required before the app serves traffic.
+
+`POST /api/boards/:id/sync` takes `{ baseRevision, payload }`. The session is read before the database, `401` means signed out, `403` another owner's board, `413` a payload over the 4 MiB sync limit, `400` a payload the board schema rejects or one whose `schemaVersion` is not current, and `200 { revision }` on create and accept. A write built on a revision the server has moved past is `409 { revision, payload }` with the remote copy: nothing merges and nothing is last-write-wins. A retry whose hash equals the stored hash is `200` at the current revision and does not bump it. The row is locked before that revision check, so two writes cannot both be accepted from the same revision.
+
+The local copy stays the only editable one. A save marks a linked board pending and wakes the reconciler in the background; a bare flush uploads nothing, and one upload runs at a time. Reconnect and a returned tab retry a pending upload. A board over the limit is refused on the client before anything is sent, stays local and says so. A conflict is recorded with the local board — the marker and the remote revision live in the library record — and resolving it is a later cut. `LibraryEntry` carries `linked`, `revision`, `conflict` and `tooLarge`; a save keeps them, because the record merges the board's own title and time with what sync already knows.
 
 ## Workspaces
 
@@ -25,6 +37,7 @@ apps/web           the Next.js app: canvas, chrome, panels
 packages/dsl       the source grammar: text to AST with diagnostics
 packages/model     the board: schema, geometry, paint, projection and export
 packages/editor    the engine: store, gestures, persistence
+packages/sync      the reconciler: the shared protocol and its state machine
 tooling/typescript shared tsconfigs
 ```
 
@@ -32,10 +45,13 @@ Dependencies run one way and never backwards:
 
 ```
 dsl  ←  model  ←  editor  ←  apps/web
+          ↑
+         sync  ←  apps/web
 ```
 
 - A package never imports from `apps/`.
 - `model` is React-free and DOM-free. `editor` is DOM-free, with a thin React adapter under `editor/react`.
+- `sync` is DOM-free too, depends on `model` only, and never imports `editor`.
 - Packages export TypeScript source directly. There is no package build step, and therefore no stale `dist` to rebuild before the app sees a change.
 
 ## The document

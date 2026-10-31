@@ -13,6 +13,13 @@ export type SeededBoard = {
   schemaVersion?: number;
   settings?: { theme: string };
   shapes?: unknown[];
+  /** What the library record says about the board's remote copy. */
+  sync?: {
+    linked?: boolean;
+    revision?: number;
+    conflict?: number;
+    tooLarge?: boolean;
+  };
 };
 
 export type SeedStorage = 'indexeddb' | 'local';
@@ -43,8 +50,10 @@ const LEGACY_SNAPSHOT_KEY = 'kiyora:board:snapshot';
 const LEGACY_QUARANTINE_KEY = 'kiyora:board:quarantine';
 const SENTINEL = '/__kiyora_seed__';
 
-const bytesOf = (board: SeededBoard): string =>
-  JSON.stringify({
+const bytesOf = (board: SeededBoard): string => {
+  const { sync, ...payload } = board;
+
+  return JSON.stringify({
     camera: { x: 0, y: 0, zoom: 1 },
     createdAt: 1_700_000_000_000,
     deck: [],
@@ -54,13 +63,15 @@ const bytesOf = (board: SeededBoard): string =>
     shapes: [],
     title: 'Untitled',
     updatedAt: 1_700_000_000_000,
-    ...board,
+    ...payload,
   });
+};
 
 const entryOf = (board: SeededBoard) => ({
   id: board.id,
   title: board.title ?? 'Untitled',
   updatedAt: board.updatedAt ?? 1_700_000_000_000,
+  ...board.sync,
 });
 
 /** The key one board's payload lives under. */

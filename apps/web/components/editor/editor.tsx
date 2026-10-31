@@ -10,6 +10,7 @@ import type { Board } from '@kiyora/model';
 import { useState } from 'react';
 import { CopyPngProvider } from './copy-png-context';
 import { EditorShell } from './editor-shell';
+import type { AutosaveSetup } from './use-autosave';
 
 export type EditorProps = {
   board: Board;
@@ -20,6 +21,8 @@ export type EditorProps = {
   migratedFrom?: number | null;
   writable?: boolean;
   rewrite?: boolean;
+  /** The account and the sync record this board's remote copy is reconciled against. */
+  sync: AutosaveSetup['sync'];
 };
 
 /**
@@ -36,6 +39,7 @@ export const Editor = ({
   migratedFrom = null,
   writable = true,
   rewrite = false,
+  sync,
 }: EditorProps) => {
   const [editor] = useState(() => createEditor(board));
 
@@ -49,6 +53,7 @@ export const Editor = ({
             migratedFrom,
             rewrite,
             storage,
+            sync,
             writable,
           }}
         />

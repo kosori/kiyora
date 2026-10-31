@@ -170,6 +170,8 @@ export {
   type Autosave,
   type AutosaveOptions,
   createAutosave,
+  type SavedBoard,
+  savedBoard,
 } from './persistence/autosave';
 export { type BoardLoad, loadBoard, restoreBoard } from './persistence/board';
 export {
@@ -188,6 +190,7 @@ export {
   type Library,
   type LibraryEntry,
   type LibraryRecord,
+  type LibrarySyncRecord,
 } from './persistence/library';
 export {
   type BoardChannel,
