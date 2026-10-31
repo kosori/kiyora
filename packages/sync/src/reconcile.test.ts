@@ -43,6 +43,7 @@ const snapshot = (
 const unlinked: SyncRecord = {
   conflict: null,
   linked: false,
+  pending: false,
   revision: null,
   tooLarge: false,
 };
@@ -50,6 +51,7 @@ const unlinked: SyncRecord = {
 const linkedAt = (revision: number): SyncRecord => ({
   conflict: null,
   linked: true,
+  pending: false,
   revision,
   tooLarge: false,
 });
@@ -144,6 +146,40 @@ describe('the sync state machine', () => {
     );
   });
 
+  it('starts pending at the recorded revision when the local copy is ahead', () => {
+    const fake = fakeTransport();
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: { ...linkedAt(4), pending: true },
+      saveRecord: () => undefined,
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    expect(machine.getState()).toEqual(
+      expected({ revision: 4, status: 'pending' })
+    );
+  });
+
+  it('starts conflicted when a conflict and a pending save were both recorded', () => {
+    const fake = fakeTransport();
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: { ...linkedAt(4), conflict: 7, pending: true },
+      saveRecord: () => undefined,
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    expect(machine.getState()).toEqual(
+      expected({ local: 4, remote: 7, status: 'conflict' })
+    );
+  });
+
   it('links with a null base revision and records revision 1', async () => {
     const fake = fakeTransport();
     const saved: SyncRecord[] = [];
@@ -221,6 +257,43 @@ describe('the sync state machine', () => {
     );
   });
 
+  it('persists a pending marker while a save waits for its upload', () => {
+    const fake = fakeTransport();
+    const saved: SyncRecord[] = [];
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: linkedAt(1),
+      saveRecord: (record) => saved.push(record),
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    machine.markPending();
+
+    expect(saved.at(-1)).toEqual({ ...linkedAt(1), pending: true });
+  });
+
+  it('clears the pending marker after an accepted upload', async () => {
+    const fake = fakeTransport();
+    const saved: SyncRecord[] = [];
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: linkedAt(1),
+      saveRecord: (record) => saved.push(record),
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    machine.markPending();
+    await machine.reconcile();
+
+    expect(saved.at(-1)).toEqual(linkedAt(1));
+  });
+
   it('records a stale write as a conflict with the remote revision', async () => {
     const fake = fakeTransport();
     const saved: SyncRecord[] = [];
@@ -245,6 +318,7 @@ describe('the sync state machine', () => {
     expect(saved.at(-1)).toEqual({
       conflict: 7,
       linked: true,
+      pending: false,
       revision: 2,
       tooLarge: false,
     });

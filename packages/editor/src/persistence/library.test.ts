@@ -209,6 +209,7 @@ describe('the library', () => {
     await library.setSync('first', {
       conflict: null,
       linked: true,
+      pending: true,
       revision: 1,
       tooLarge: false,
     });
@@ -219,6 +220,7 @@ describe('the library', () => {
 
     expect((await library.entries()).at(0)).toMatchObject({
       linked: true,
+      pending: true,
       revision: 1,
       title: 'Renamed',
     });
@@ -232,6 +234,7 @@ describe('the library', () => {
     await library.setSync('first', {
       conflict: 7,
       linked: true,
+      pending: false,
       revision: 2,
       tooLarge: false,
     });
@@ -504,6 +507,13 @@ describe('removing a board', () => {
     const library = createLibrary(store);
     await library.create(board('doomed', 'Doomed', 10));
     await library.create(board('kept', 'Kept', 20));
+    await library.setSync('doomed', {
+      conflict: null,
+      linked: true,
+      pending: true,
+      revision: 1,
+      tooLarge: false,
+    });
     held.set(boardSnapshotKey('doomed'), 'snapshot');
     held.set(boardConflictKey('doomed'), 'conflict');
     held.set(boardQuarantineKey('doomed'), 'quarantine');

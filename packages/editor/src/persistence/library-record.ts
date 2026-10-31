@@ -17,6 +17,8 @@ export type LibraryEntry = {
   linked?: boolean;
   /** The revision the local copy was built on, when it is linked. */
   revision?: number;
+  /** Whether the local copy holds a change its upload has not accepted. */
+  pending?: boolean;
   /** The remote revision that refused a write, until a person resolves it. */
   conflict?: number;
   /** Whether the board is too large for the sync limit. */
@@ -28,6 +30,7 @@ export type LibraryEntry = {
 export type LibrarySyncRecord = {
   linked: boolean;
   revision: number | null;
+  pending: boolean;
   conflict: number | null;
   tooLarge: boolean;
 };
@@ -200,6 +203,9 @@ const withSync = (
   }
   if (!('revision' in entry)) {
     next.revision = previous.revision;
+  }
+  if (!('pending' in entry)) {
+    next.pending = previous.pending;
   }
   if (!('conflict' in entry)) {
     next.conflict = previous.conflict;

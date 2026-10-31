@@ -185,6 +185,7 @@ export const createConflictResolutions = ({
       setRecord({
         conflict: null,
         linked: true,
+        pending: false,
         revision: remote.revision,
         tooLarge: false,
       });
@@ -238,6 +239,7 @@ export const createConflictResolutions = ({
       setRecord({
         conflict: null,
         linked: true,
+        pending: false,
         revision: result.revision,
         tooLarge: false,
       });
@@ -248,7 +250,7 @@ export const createConflictResolutions = ({
     }
 
     if (result.kind === 'conflict') {
-      setRecord({ ...record(), conflict: result.revision });
+      setRecord({ ...record(), conflict: result.revision, pending: false });
       if (result.payload !== null) {
         await remember({
           payload: result.payload,
@@ -342,6 +344,7 @@ export const createConflictResolutions = ({
       .saveRecordFor(duplicated.id, {
         conflict: null,
         linked: true,
+        pending: false,
         revision: result.revision,
         tooLarge: false,
       })
