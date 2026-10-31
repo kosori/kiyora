@@ -328,6 +328,25 @@ test('a failed remote delete keeps the local copy, shows the error, and retries'
   expect((await recordOf(page)).boards).toEqual([]);
 });
 
+test('a remote copy that is already gone still allows the local delete', async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.route('**/api/boards/**', answerBoards);
+  await openLibrary(page, [board(LINKED_ID, 'Linked', 2000, true)]);
+  deleteReplies = [404];
+
+  await rowOf(page, 'Linked').getByTestId('delete-board').click();
+  const dialog = page.getByTestId('delete-dialog');
+  await dialog.getByTestId('confirm-delete').click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('delete-error')).toBeHidden();
+  await expect.poll(() => readStoredBoard(page, LINKED_ID)).toBeNull();
+  expect(deletes).toEqual([`/api/boards/${LINKED_ID}`]);
+  expect((await recordOf(page)).boards).toEqual([]);
+});
+
 test('a local-only board keeps the current wording and never calls the server', async ({
   page,
 }) => {
