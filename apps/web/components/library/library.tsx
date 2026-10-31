@@ -3,9 +3,9 @@
 import {
   createLibrary,
   type LibraryEntry,
+  type Library as LibraryStore,
   type StorageFault,
 } from '@kiyora/editor';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AccountControl } from '~/components/auth/account-control';
@@ -13,6 +13,8 @@ import { Button } from '~/components/ui/button';
 import type { AccountSummary } from '~/lib/auth/account';
 import { openStore } from '~/lib/board-storage';
 import { newBoard } from '~/lib/new-board';
+import { BoardRow } from './board-row';
+import { DeleteBoardDialog } from './delete-board-dialog';
 
 /** The fault a library carries when its storage would not open. */
 const faultMessage = (fault: StorageFault): string => {
@@ -26,27 +28,26 @@ const faultMessage = (fault: StorageFault): string => {
   }
 };
 
-const changedAt = (updatedAt: number): string =>
-  new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(updatedAt);
-
 type Props = {
   account: AccountSummary | null;
 };
 
 /**
- * Every board this browser holds, newest change first. A row names the board and
- * when it last changed, and opens that board's own address. New board writes an
- * empty board at a fresh id and goes to it, so the list never has to guess which
- * board a person meant.
+ * Every board this browser holds, newest change first. A row opens that board's
+ * own address, renames it in place, duplicates it under a new address, or asks
+ * before deleting it. New board writes an empty board at a fresh id and goes to
+ * it, so the list never has to guess which board a person meant.
+ *
+ * Every action changes the library through one write funnel — the payload first
+ * and the record after it — and then re-reads the list, so an action can never
+ * show a row the stored boards do not hold.
  */
 export const Library = ({ account }: Props) => {
   const router = useRouter();
   const [entries, setEntries] = useState<LibraryEntry[] | null>(null);
   const [fault, setFault] = useState<StorageFault | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<LibraryEntry | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +72,19 @@ export const Library = ({ account }: Props) => {
     };
   }, []);
 
+  const act = async (
+    work: (library: LibraryStore) => Promise<unknown>
+  ): Promise<void> => {
+    try {
+      const { store } = await openStore();
+      const library = createLibrary(store);
+      await work(library);
+      setEntries(await library.entries());
+    } catch {
+      setFault({ kind: 'unavailable' });
+    }
+  };
+
   const create = async (): Promise<void> => {
     setCreating(true);
     try {
@@ -86,6 +100,34 @@ export const Library = ({ account }: Props) => {
 
   const start = (): void => {
     create().catch(() => undefined);
+  };
+
+  const remove = (entry: LibraryEntry): void => {
+    setDeleting(null);
+    act((library) => library.remove(entry.id)).catch(() => undefined);
+  };
+
+  const renameBoard = (id: string, title: string): Promise<void> =>
+    act((library) => library.rename(id, title));
+
+  const duplicateBoard = (id: string): void => {
+    act((library) => library.duplicate(id)).catch(() => undefined);
+  };
+
+  const askDelete = (entry: LibraryEntry): void => {
+    setDeleting(entry);
+  };
+
+  const answerDelete = (open: boolean): void => {
+    if (!open) {
+      setDeleting(null);
+    }
+  };
+
+  const confirmDelete = (): void => {
+    if (deleting !== null) {
+      remove(deleting);
+    }
   };
 
   return (
@@ -114,28 +156,23 @@ export const Library = ({ account }: Props) => {
         ) : (
           <ul className='divide-y divide-border rounded-lg border border-border'>
             {entries.map((entry) => (
-              <li key={entry.id}>
-                <Link
-                  className='flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-muted'
-                  data-board-id={entry.id}
-                  data-testid='library-board'
-                  href={`/b/${entry.id}`}
-                >
-                  <span className='truncate font-medium'>
-                    {entry.title || 'Untitled'}
-                  </span>
-                  <time
-                    className='shrink-0 text-muted-foreground text-xs'
-                    dateTime={new Date(entry.updatedAt).toISOString()}
-                  >
-                    {changedAt(entry.updatedAt)}
-                  </time>
-                </Link>
-              </li>
+              <BoardRow
+                entry={entry}
+                key={entry.id}
+                onDelete={askDelete}
+                onDuplicate={duplicateBoard}
+                onRename={renameBoard}
+              />
             ))}
           </ul>
         )}
       </div>
+      <DeleteBoardDialog
+        onConfirm={confirmDelete}
+        onOpenChange={answerDelete}
+        open={deleting !== null}
+        title={deleting?.title ?? ''}
+      />
     </main>
   );
 };

@@ -29,6 +29,11 @@ export type BoardRouteState =
       sync: SyncRecord;
       /** Persists what the reconciler learned, beside the board's record. */
       recordSync: (record: SyncRecord) => void;
+      /**
+       * Commits a new name through the same library the list reads, payload
+       * first. Null when the library no longer holds the board.
+       */
+      rename: (title: string) => Promise<LibraryEntry | null>;
     };
 
 /** The sync record a library entry carries, read without opening a payload. */
@@ -88,6 +93,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
           fault: openFault,
           migratedFrom: loaded.migratedFrom,
           recordSync,
+          rename: (title) => library.rename(boardId, title),
           rewrite: loaded.migratedFrom !== null,
           status: 'ready',
           storage: library.storage(boardId),
@@ -103,6 +109,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
           fault: openFault,
           migratedFrom: null,
           recordSync,
+          rename: (title) => library.rename(boardId, title),
           rewrite: true,
           status: 'ready',
           storage: library.storage(boardId),
@@ -117,6 +124,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
         fault: loaded.fault,
         migratedFrom: null,
         recordSync,
+        rename: (title) => library.rename(boardId, title),
         rewrite: loaded.quarantined,
         status: 'ready',
         storage: library.storage(boardId),

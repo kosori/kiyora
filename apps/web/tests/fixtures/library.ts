@@ -1,3 +1,4 @@
+import { type Board, parseBoard } from '@kiyora/model';
 import { expect, type Page } from '@playwright/test';
 import { STARTER_PATH, starterBoard } from './starter-board';
 
@@ -20,6 +21,8 @@ export type SeededBoard = {
     conflict?: number;
     tooLarge?: boolean;
   };
+  /** The picture the record lists, when the spec seeds one. */
+  preview?: string;
 };
 
 export type SeedStorage = 'indexeddb' | 'local';
@@ -51,7 +54,7 @@ const LEGACY_QUARANTINE_KEY = 'kiyora:board:quarantine';
 const SENTINEL = '/__kiyora_seed__';
 
 const bytesOf = (board: SeededBoard): string => {
-  const { sync, ...payload } = board;
+  const { preview, sync, ...payload } = board;
 
   return JSON.stringify({
     camera: { x: 0, y: 0, zoom: 1 },
@@ -67,11 +70,16 @@ const bytesOf = (board: SeededBoard): string => {
   });
 };
 
+/** One seeded board as the full board the app will read. */
+export const seededBoard = (board: SeededBoard): Board =>
+  parseBoard(JSON.parse(bytesOf(board)));
+
 const entryOf = (board: SeededBoard) => ({
   id: board.id,
   title: board.title ?? 'Untitled',
   updatedAt: board.updatedAt ?? 1_700_000_000_000,
   ...board.sync,
+  ...(board.preview === undefined ? {} : { preview: board.preview }),
 });
 
 /** The key one board's payload lives under. */

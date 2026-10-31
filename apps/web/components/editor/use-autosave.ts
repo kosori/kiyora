@@ -13,6 +13,7 @@ import {
   type StorageFault,
   savedBoard,
 } from '@kiyora/editor';
+import { type Board, previewBoard } from '@kiyora/model';
 import {
   createSyncMachine,
   type SyncRecord,
@@ -20,8 +21,10 @@ import {
   type SyncState,
   type SyncTransport,
 } from '@kiyora/sync';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openBoardChannel } from '~/lib/board-channel';
+import { iconSetFor } from '~/lib/icon-set';
+import { createTextMeasurer } from '~/lib/text-measurer';
 
 /** Everything the shell needs to tell the truth about where the board is. */
 export type StorageHealth = {
@@ -153,6 +156,17 @@ export const useAutosave = (
     run().catch(() => undefined);
   }, [machine]);
 
+  const measure = useMemo(() => createTextMeasurer(), []);
+  const preview = useCallback(
+    async (board: Board): Promise<string | null> =>
+      previewBoard(board, {
+        icons: await iconSetFor(board),
+        measure,
+        theme: board.settings.theme,
+      }),
+    [measure]
+  );
+
   useEffect(() => {
     if (!writable) {
       return;
@@ -205,6 +219,7 @@ export const useAutosave = (
         machine.reconcile().catch(() => undefined);
       },
       presence: mine,
+      preview,
       storage,
     });
     autosave = created;
@@ -258,6 +273,7 @@ export const useAutosave = (
     initialFault,
     machine,
     migratedFrom,
+    preview,
     rewrite,
     storage,
     writable,

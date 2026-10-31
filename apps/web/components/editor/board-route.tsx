@@ -58,6 +58,7 @@ export const BoardRoute = ({
         fault={state.fault}
         key={boardId}
         migratedFrom={state.migratedFrom}
+        rename={state.rename}
         rewrite={state.rewrite}
         storage={state.storage}
         sync={{
