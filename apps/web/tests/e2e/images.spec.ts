@@ -1,5 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { openStarterBoard } from '../fixtures/library';
+import {
+  boardStorageKey,
+  openStarterBoard,
+  readStoredBoard,
+} from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /**
@@ -51,29 +55,11 @@ const saved = async (page: Page): Promise<void> => {
 };
 
 /** The board IndexedDB actually holds. */
-const storedBoard = (page: Page): Promise<StoredBoard | null> =>
-  page.evaluate(async (): Promise<StoredBoard | null> => {
-    const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 2);
-      opening.onerror = () => reject(opening.error);
-      opening.onsuccess = () => {
-        const database = opening.result;
-        if (!database.objectStoreNames.contains('boards')) {
-          resolve(null);
-          return;
-        }
-        const request = database
-          .transaction('boards', 'readonly')
-          .objectStore('boards')
-          .get('kiyora:boards:starter-board');
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () =>
-          resolve((request.result as string | undefined) ?? null);
-      };
-    });
+const storedBoard = async (page: Page): Promise<StoredBoard | null> => {
+  const bytes = await readStoredBoard(page, 'starter-board');
 
-    return bytes === null ? null : (JSON.parse(bytes) as StoredBoard);
-  });
+  return bytes === null ? null : (JSON.parse(bytes) as StoredBoard);
+};
 
 const image = (page: Page) => page.getByTestId('board').locator('image');
 
@@ -218,8 +204,9 @@ test('a board with an image is refused by the localStorage fallback, visibly', a
   await expect(status).toContainText(/Images need IndexedDB/);
   await expect(status).toContainText(/not saved/);
 
-  const written = await page.evaluate(() =>
-    localStorage.getItem('kiyora:boards:starter-board')
+  const written = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    boardStorageKey('starter-board')
   );
   const board = written === null ? null : (JSON.parse(written) as StoredBoard);
 

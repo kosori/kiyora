@@ -1,8 +1,11 @@
+import { boardSnapshotKey, LIBRARY_KEY } from '@kiyora/editor';
 import {
   boardStorageKey,
+  libraryRecord,
   openExistingBoard,
   openStarterBoard,
   quarantineKey,
+  readStoredBoard,
   seedBoards,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
@@ -45,6 +48,7 @@ const LEGACY = {
 };
 
 const legacyPath = 'M 8 8 L 128 8 L 128 88 L 8 88 Z';
+const LEGACY_ID = 'board-legacy';
 const BOARD_ID = 'starter-board';
 const BOARD_KEY = boardStorageKey(BOARD_ID);
 
@@ -74,41 +78,24 @@ const drawRectangle = async (
 const status = (page: Page) => page.getByTestId('save-status');
 
 /** The shapes the browser has actually written, read from IndexedDB. */
-const storedShapes = (page: Page) =>
-  page.evaluate(async (key): Promise<{ x: number; y: number }[]> => {
-    const bytes = await new Promise<string | null>((resolve, reject) => {
-      const opening = indexedDB.open('kiyora', 2);
-      opening.onerror = () => reject(opening.error);
-      opening.onsuccess = () => {
-        const database = opening.result;
-        if (!database.objectStoreNames.contains('boards')) {
-          resolve(null);
-          return;
-        }
-        const request = database
-          .transaction('boards', 'readonly')
-          .objectStore('boards')
-          .get(key);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () =>
-          resolve((request.result as string | undefined) ?? null);
-      };
-    });
+const storedShapes = async (
+  page: Page
+): Promise<{ x: number; y: number }[]> => {
+  const bytes = await readStoredBoard(page, BOARD_ID);
 
-    if (bytes === null) {
-      return [];
-    }
-    const board = JSON.parse(bytes) as { shapes: { x: number; y: number }[] };
-    return board.shapes.map(({ x, y }) => ({ x, y }));
-  }, BOARD_KEY);
+  if (bytes === null) {
+    return [];
+  }
+  const board = JSON.parse(bytes) as { shapes: { x: number; y: number }[] };
+  return board.shapes.map(({ x, y }) => ({ x, y }));
+};
 
 /** A library record that names `BOARD_ID`, for bytes that are not a board. */
 const corruptSeed = (bytes: string) => ({
   raw: {
-    'kiyora:library': JSON.stringify({
-      boards: [{ id: BOARD_ID, title: 'Kiyora', updatedAt: 1 }],
-      version: 1,
-    }),
+    [LIBRARY_KEY]: libraryRecord([
+      { id: BOARD_ID, title: 'Kiyora', updatedAt: 1 },
+    ]),
     [BOARD_KEY]: bytes,
   },
   record: false,
@@ -119,7 +106,7 @@ test('an older board is lifted rather than discarded, and its bytes are snapshot
 }) => {
   await seedBoards(page, [], {
     legacy: JSON.stringify(LEGACY),
-    open: '/b/board-legacy',
+    open: `/b/${LEGACY_ID}`,
     storage: 'local',
   });
 
@@ -132,7 +119,7 @@ test('an older board is lifted rather than discarded, and its bytes are snapshot
     .poll(() =>
       page.evaluate(
         (key) => localStorage.getItem(key),
-        'kiyora:boards:board-legacy:snapshot'
+        boardSnapshotKey(LEGACY_ID)
       )
     )
     .toBe(JSON.stringify(LEGACY));

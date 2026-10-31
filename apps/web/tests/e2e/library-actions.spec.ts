@@ -1,3 +1,4 @@
+import { LIBRARY_KEY } from '@kiyora/editor';
 import {
   boardStorageKey,
   openLibrary,
@@ -87,7 +88,7 @@ const storedPayload = async (page: Page, id: string) => {
 };
 
 const record = async (page: Page) => {
-  const bytes = await readStoredKey(page, 'kiyora:library');
+  const bytes = await readStoredKey(page, LIBRARY_KEY);
   return bytes === null
     ? null
     : (JSON.parse(bytes) as {

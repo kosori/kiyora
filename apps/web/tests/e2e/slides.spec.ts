@@ -1,4 +1,4 @@
-import { openStarterBoard } from '../fixtures/library';
+import { openStarterBoard, readStoredBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
@@ -79,28 +79,7 @@ const TEMPLATES = [
 ] as const;
 
 /** The board bytes the browser has written, read straight from IndexedDB. */
-const storedBoard = (page: Page) =>
-  page.evaluate(
-    async (): Promise<string | null> =>
-      new Promise<string | null>((resolve, reject) => {
-        const opening = indexedDB.open('kiyora', 2);
-        opening.onerror = () => reject(opening.error);
-        opening.onsuccess = () => {
-          const database = opening.result;
-          if (!database.objectStoreNames.contains('boards')) {
-            resolve(null);
-            return;
-          }
-          const request = database
-            .transaction('boards', 'readonly')
-            .objectStore('boards')
-            .get('kiyora:boards:starter-board');
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () =>
-            resolve((request.result as string | undefined) ?? null);
-        };
-      })
-  );
+const storedBoard = (page: Page) => readStoredBoard(page, 'starter-board');
 
 test('a template plants a slide whose frame and words paint', async ({
   page,

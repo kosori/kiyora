@@ -1,4 +1,10 @@
 import {
+  boardSnapshotKey,
+  LEGACY_BOARD_KEY,
+  LEGACY_SNAPSHOT_KEY,
+  LIBRARY_KEY,
+} from '@kiyora/editor';
+import {
   boardStorageKey,
   openExistingBoard,
   readStoredKey,
@@ -62,19 +68,17 @@ test('the single board is adopted as the first library board, and the legacy key
 
   await expect(page.getByTestId('library-board')).toContainText('Legacy');
 
-  await expect.poll(() => readStoredKey(page, 'kiyora:board')).toBeNull();
-  await expect
-    .poll(() => readStoredKey(page, 'kiyora:board:snapshot'))
-    .toBeNull();
+  await expect.poll(() => readStoredKey(page, LEGACY_BOARD_KEY)).toBeNull();
+  await expect.poll(() => readStoredKey(page, LEGACY_SNAPSHOT_KEY)).toBeNull();
   await expect
     .poll(() => readStoredKey(page, boardStorageKey(ID)))
     .toBe(PAYLOAD);
   await expect
-    .poll(() => readStoredKey(page, `${boardStorageKey(ID)}:snapshot`))
+    .poll(() => readStoredKey(page, boardSnapshotKey(ID)))
     .toBe(SNAPSHOT);
   await expect
     .poll(async () => {
-      const record = await readStoredKey(page, 'kiyora:library');
+      const record = await readStoredKey(page, LIBRARY_KEY);
       return record === null ? null : JSON.parse(record).boards;
     })
     .toEqual([{ id: ID, title: 'Legacy', updatedAt: 1_650_000_000_000 }]);
@@ -102,5 +106,5 @@ test('a later open does not adopt it again or duplicate the list entry', async (
     'Legacy'
   );
   await expect(page.getByTestId('library-board').nth(1)).toBeHidden();
-  await expect.poll(() => readStoredKey(page, 'kiyora:board')).toBeNull();
+  await expect.poll(() => readStoredKey(page, LEGACY_BOARD_KEY)).toBeNull();
 });
