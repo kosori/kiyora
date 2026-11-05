@@ -1,3 +1,17 @@
 [tools]
 bun = "1.4.3"
 node = "26.12.0"
+
+[tasks.dev]
+description = "Run the portless dev server and the Cloudflare dev tunnel together"
+run = '''
+export CLOUDFLARE_TUNNEL="${CLOUDFLARE_TUNNEL:-dev}"
+cloudflared tunnel run "$CLOUDFLARE_TUNNEL" &
+tunnel_pid=$!
+trap 'kill "$tunnel_pid" 2>/dev/null' EXIT INT TERM
+bun run dev
+'''
+
+[tasks.tunnel]
+description = "Run the Cloudflare dev tunnel in the foreground"
+run = 'cloudflared tunnel run "${CLOUDFLARE_TUNNEL:-dev}"'

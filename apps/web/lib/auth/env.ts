@@ -98,6 +98,9 @@ export const readAuthEnv = (
       originOf(baseUrl),
       'http://localhost:*',
       'http://127.0.0.1:*',
+      'https://kiyora.localhost',
+      'https://*.localhost:*',
+      'https://kiyora.ccdx.dev',
     ],
   };
 };
