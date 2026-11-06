@@ -1,0 +1,66 @@
+{
+  "exclude": [
+    ".agents/**",
+    ".github/**",
+    ".opencodereview/**",
+    "apps/web/components/ui/**",
+    "apps/web/drizzle/**",
+    "apps/web/scripts/**",
+    "apps/web/tests/**",
+    "packages/dsl/**",
+    "packages/model/src/icons/dataset.ts",
+    "**/goldens/**",
+    "tooling/**",
+    "**/package.json",
+    "**/tsconfig.json",
+    "**/vitest.config.ts",
+    "**/.gitignore",
+    "apps/web/components.json",
+    "apps/web/drizzle.config.ts",
+    "apps/web/next.config.js",
+    "apps/web/postcss.config.mjs",
+    "biome.jsonc",
+    "LICENSE",
+    "mise.toml",
+    "playwright.config.ts",
+    "skills-lock.json",
+    "turbo.json"
+  ],
+  "rules": [
+    {
+      "path": "packages/model/src/**/*.ts",
+      "merge_system_rule": true,
+      "rule": "KIYORA @kiyora/model STANDARDS:\n1. DO NOT REPORT GATE NOISE: Code passes `bun run check`, `check-types`, `check-budgets`, and `check-icons`. Do NOT flag formatting, file length, unused locals, `noShadow`, `noNestedTernary`, or `type` over `interface`. Every `biome-ignore` must include its rule and a one-line reason (flag bare suppressions).\n2. PURE PACKAGE & ONE-WAY BOUNDARIES: `model` may ONLY import from `@kiyora/dsl`. Importing `@kiyora/editor`, `@kiyora/sync`, or `apps/web` is a critical finding. `model` must be 100% pure: NO React, NO DOM, NO network, NO clock (`Date.now`), NO randomness (`Math.random`). DOM/clock/id needs must arrive as injected ports (`Measurer`, `now`, `mintId`).\n3. SINGLE SCHEMA (ADR 0002): One schema owns the board. Board types are `z.infer`red, never hand-mirrored. Flag `as unknown as` across boundaries.\n4. GLOSSARY & TYPES: Enforce strict glossary terms: `board` (never `document`), `shape` (never `element`), `paint`, `gesture`, `authored`, `derived`, `stale`, `pending`, `fault`, `linked`, `revision`, `camera` (never `viewport`). Use `type` (never `interface` unless declaration merging/generic `extends` with reason) and literal unions + `as const` (flag `enum`). Exclusive states must be discriminated unions keyed by `kind` or `status` (never bags of optional flags). Mark seam-crossing collections `readonly`.\n5. FUNCTIONS & FAILURE: Arrow functions ALWAYS—flag any `function` declaration! Named exports only (`src/index.ts` is the only barrel). Failures callers branch on return discriminated variants (`{ kind: '...' }`), while unrecoverable rejections throw named Error classes (`BoardRejection`) with `name` and `readonly` cause. Newer schemas, corrupt payloads, or over-limit boards must be refused and named, never guessed or truncated. JSDoc exported functions/types/constants and non-obvious private helpers explaining the invariant and *why*."
+    },
+    {
+      "path": "packages/sync/src/**/*.ts",
+      "merge_system_rule": true,
+      "rule": "KIYORA @kiyora/sync STANDARDS:\n1. DO NOT REPORT GATE NOISE: Do NOT flag formatting, file length, `noShadow`, `noNestedTernary`. Flag bare `biome-ignore` without a reason.\n2. PURE PACKAGE & BOUNDARIES: `sync` may ONLY import `@kiyora/model`. Importing `@kiyora/editor`, `apps/web`, React, DOM, network (`fetch`), clock, or randomness is a critical finding. Transport, clock, and IDs arrive as injected ports (`SyncTransport`, `now`, `mintId`).\n3. REVISION CHECK & GLOSSARY (ADR 0011 / 0012): Sync uses revision checks, not silent merges. Use glossary terms (`board`, `shape`, `revision`, `pending`, `stale`, `fault`). Model exclusive states (`SyncState`) as discriminated unions keyed by `kind` or `status`, never optional flag bags.\n4. FUNCTIONS & TYPES: Arrow functions ALWAYS—flag any `function` declaration! Use `type` (never `enum` or plain `interface`). Mutations live behind factories (`createSyncMachine`). Named exports only (`src/index.ts` is the only barrel). JSDoc exported functions/types/constants with invariants and *why*."
+    },
+    {
+      "path": "packages/editor/src/react/**/*.{ts,tsx}",
+      "merge_system_rule": true,
+      "rule": "KIYORA @kiyora/editor/react STANDARDS:\n1. BOUNDARIES: This is the ONLY React surface inside `packages/editor`. May import `@kiyora/model` and parent `packages/editor`, never `apps/web` or `@kiyora/sync`.\n2. HOOKS & STORE SUBSCRIPTION: Hooks reading engine state MUST subscribe with `useSyncExternalStore` and return only the named slice—never copy board state into `useState`, poll, or hand out the whole editor instance. Context uses `createContext<T | undefined>(undefined)` and a throwing `useXContext()`.\n3. FUNCTIONS & TYPES: Arrow functions ALWAYS—flag any `function` declaration! Use `PropsWithChildren` for `children`, `type` over `interface`, and named exports (`src/react/index.ts` is the only barrel)."
+    },
+    {
+      "path": "packages/editor/src/**/*.ts",
+      "merge_system_rule": true,
+      "rule": "KIYORA @kiyora/editor STANDARDS:\n1. DO NOT REPORT GATE NOISE: Do NOT flag formatting, file length, `noShadow`, `noNestedTernary`. Flag bare `biome-ignore` without a reason.\n2. DOM-FREE & REACT-FREE ENGINE: Outside `src/react/`, `editor` must have NO React and NO direct DOM/storage/network imports. Collaborators arrive as injected ports (`BoardStorage`, `Measurer`, `now`, `mintId`). May import `@kiyora/model` via package entry, never `apps/web` or `@kiyora/sync`.\n3. PORT COMPOSITION & STATE: Mutation lives behind factories (`createEditor`, `createLibrary`). Command factories take narrow ports (`board`, `change`, `select`), NEVER the whole editor or a sibling's state. Exclusive states (`Gesture`, `StorageFault`) must be discriminated unions keyed by `kind` or `status`.\n4. GLOSSARY, FUNCTIONS & FAILURE: Use glossary terms (`board` not `document`, `shape` not `element`, `camera` not `viewport`, `gesture`, `paint`, `fault`). Arrow functions ALWAYS—flag any `function` declaration! Use `type` and literal unions (flag `enum`). Adapter boundaries convert foreign errors once (`faultOf`, `faultFromException`); never silently swallow or truncate corrupt/over-limit boards (use quarantine/recovery snapshot). Named exports only (`src/index.ts` is the only barrel). JSDoc exported contracts with invariants and *why*."
+    },
+    {
+      "path": "apps/web/app/api/**/route.ts",
+      "merge_system_rule": true,
+      "rule": "KIYORA API ROUTE HANDLER STANDARDS:\n1. Export HTTP method names (`GET`, `POST`, `DELETE`) as arrow functions (flag `function` declarations). Type route params with Next global `RouteContext<'/api/...'>` (never hand-written `{ params: Promise<...> }`).\n2. Read session BEFORE database, read body once from `unknown`, and map `@kiyora/sync` or `@kiyora/model` typed decisions onto HTTP statuses.\n3. NO BUSINESS LOGIC IN HANDLERS: Re-implementing revision checks, payload parsing, or size limits inside a route handler is a finding—those belong in `@kiyora/sync` or `@kiyora/model`. No requests to third-party origins."
+    },
+    {
+      "path": "apps/web/**/*.{ts,tsx}",
+      "merge_system_rule": true,
+      "rule": "KIYORA WEB APP STANDARDS:\n1. DO NOT REPORT GATE NOISE: Do NOT flag formatting, file length, `noShadow`, `noNestedTernary`. Flag bare `biome-ignore` without a reason.\n2. PACKAGE BOUNDARIES & COMPOSITION: Import workspace packages ONLY via declared entries (`@kiyora/model`, `@kiyora/editor`, `@kiyora/editor/react`, `@kiyora/sync`, `@kiyora/model/icons`), never internal paths. Geometry, colour, text position, and layout belong in `@kiyora/model`—re-implementing them in `apps/web` is a finding. Offline by construction (ADR 0004): no third-party network calls.\n3. FUNCTIONS & COMPONENTS: Arrow functions ALWAYS—flag any `function` declaration (except class `ErrorBoundary`)! One exported component per file. Named exports everywhere except Next route files (`page.tsx`, `layout.tsx`, `loading.tsx`), which bind `const Page = ...` and `export default Page` at the bottom using `PageProps<'/route'>` / `LayoutProps<'/route'>` (no hand-written route types; await `params`/`searchParams`). `'use client'` only on browser leaf components, never on pages that can read session on the server.\n4. PROPS, HOOKS & A11Y: Props type is `Props` (or `ComponentNameProps` if exported). Never hand-write `children`—use `PropsWithChildren` from `react`. Extend DOM elements with `ComponentProps<'...'>`. Engine hooks must use `useSyncExternalStore` and return a narrow slice (never copy board state into `useState`). Every pointer control must be keyboard reachable/runnable; `tabIndex` on non-interactive elements requires a reasoned suppression.\n5. GLOSSARY & FAILURE: Use glossary terms (`board` not `document`, `shape` not `element`, `camera` not `viewport`, `paint`, `gesture`, `fault`, `revision`). Every user-visible failure must surface a fault, status, dialog, or copy—a `catch` that neither rethrows nor sets visible state is a finding. Convert foreign DOM/platform errors at the adapter boundary (`faultOf`, `faultFromException`). No comments stating what a component renders."
+    },
+    {
+      "path": "scripts/**/*.ts",
+      "merge_system_rule": true,
+      "rule": "KIYORA SCRIPTS STANDARDS:\nArrow functions always (flag `function` declarations). Use `type` over `interface`, literal unions over `enum`, and narrow `unknown` at boundaries. JSDoc exported functions/helpers with invariants and *why*."
+    }
+  ]
+}
