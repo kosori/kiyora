@@ -77,7 +77,7 @@ export type LibraryOptions = {
 };
 
 /** The title a duplicate wears, the way a file manager names a second copy. */
-const copyTitle = (title: string): string =>
+export const copyTitle = (title: string): string =>
   title.trim() === '' ? 'Untitled copy' : `${title} copy`;
 
 /** The stored payload as a JSON object, or `null` when the bytes will not read. */

@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openBoardChannel } from '~/lib/board-channel';
 import { iconSetFor } from '~/lib/icon-set';
+import { mintBoardId } from '~/lib/new-board';
 import { createTextMeasurer } from '~/lib/text-measurer';
 
 /** Everything the shell needs to tell the truth about where the board is. */
@@ -275,7 +276,7 @@ export const useAutosave = (
     };
 
     const channel = openBoardChannel(boardId);
-    const self = { id: crypto.randomUUID(), openedAt: Date.now() };
+    const self = { id: mintBoardId(), openedAt: Date.now() };
     const mine = createPresence({ channel, self });
     presence = mine;
     clipboard = createClipboardRelay({

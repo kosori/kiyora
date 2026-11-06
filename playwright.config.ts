@@ -4,12 +4,15 @@ import {
   E2E_BASE_URL,
   E2E_SERVER_COMMAND,
   E2E_SERVER_DB,
+  E2E_WEB_ENV,
 } from './apps/web/tests/e2e-server';
 
 const environment = Object.fromEntries(
-  Object.entries({ ...process.env, ...E2E_AUTH_ENV }).filter(
-    (entry): entry is [string, string] => entry[1] !== undefined
-  )
+  Object.entries({
+    ...process.env,
+    ...E2E_AUTH_ENV,
+    ...E2E_WEB_ENV,
+  }).filter((entry): entry is [string, string] => entry[1] !== undefined)
 );
 
 export default defineConfig({

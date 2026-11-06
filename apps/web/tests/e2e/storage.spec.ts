@@ -1,4 +1,5 @@
 import { boardSnapshotKey, LIBRARY_KEY } from '@kiyora/editor';
+import { crashPanelKey } from '../../lib/panel-crash';
 import {
   boardStorageKey,
   libraryRecord,
@@ -303,9 +304,9 @@ test('a second tab warns instead of clobbering the first', async ({
 test('a panel that throws leaves the board intact and says what to do next', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('kiyora:test:crash-panel:tools', '1');
-  });
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, '1');
+  }, crashPanelKey('tools'));
 
   await openStarterBoard(page);
 

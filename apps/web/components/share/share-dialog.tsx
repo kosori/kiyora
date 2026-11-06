@@ -7,6 +7,7 @@ import {
   createShare,
   readShare,
   revokeShare,
+  type ShareResult,
 } from '~/lib/share';
 
 export type ShareDialogProps = {
@@ -15,13 +16,14 @@ export type ShareDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-type Phase = 'loading' | 'ready' | 'error';
+type Phase = 'loading' | 'ready' | 'signed-out' | 'unavailable';
 
 /**
  * The board's one unlisted address: read, created, copied, regenerated or
  * revoked. Regenerating and creating are the same server call, because both
  * revoke the previous live token before returning the next one, so there is no
- * path that leaves two addresses working.
+ * path that leaves two addresses working. A signed-out answer asks for a
+ * sign-in; any other refusal says the link could not be reached.
  */
 export const ShareDialog = ({
   boardId,
@@ -38,6 +40,16 @@ export const ShareDialog = ({
   const close = useCallback(() => {
     onOpenChange(false);
   }, [onOpenChange]);
+
+  /** Puts one answer on screen, naming a sign-in apart from a failed exchange. */
+  const show = useCallback((result: ShareResult): void => {
+    if (result.status === 'ok') {
+      setToken(result.token);
+      setPhase('ready');
+      return;
+    }
+    setPhase(result.status === 'unauthorized' ? 'signed-out' : 'unavailable');
+  }, []);
 
   useEffect(() => {
     const element = dialog.current;
@@ -62,49 +74,45 @@ export const ShareDialog = ({
     setPhase('loading');
     setCopied(false);
     readShare(boardId)
-      .then((liveToken) => {
+      .then((result) => {
         if (live) {
-          setToken(liveToken);
-          setPhase('ready');
+          show(result);
         }
       })
       .catch(() => {
+        // A wiring failure still has to leave copy on screen, not a spinner.
         if (live) {
-          setPhase('error');
+          setPhase('unavailable');
         }
       });
 
     return () => {
       live = false;
     };
-  }, [boardId, open]);
+  }, [boardId, open, show]);
 
-  const run = async (action: () => Promise<string | null>): Promise<void> => {
+  const run = (action: () => Promise<ShareResult>): void => {
     setBusy(true);
     setCopied(false);
-    try {
-      setToken(await action());
-      setPhase('ready');
-    } catch {
-      setPhase('error');
-    } finally {
-      setBusy(false);
-    }
+    action()
+      .then(show)
+      .catch(() =>
+        // A wiring failure still has to leave copy on screen, not a spinner.
+        setPhase('unavailable')
+      )
+      .finally(() => setBusy(false));
   };
 
   const create = (): void => {
-    run(() => createShare(boardId)).catch(() => undefined);
+    run(() => createShare(boardId));
   };
 
   const regenerate = (): void => {
-    run(() => createShare(boardId)).catch(() => undefined);
+    run(() => createShare(boardId));
   };
 
   const revoke = (): void => {
-    run(async () => {
-      await revokeShare(boardId);
-      return null;
-    }).catch(() => undefined);
+    run(() => revokeShare(boardId));
   };
 
   const copy = useCallback((): void => {
@@ -114,7 +122,7 @@ export const ShareDialog = ({
     navigator.clipboard
       .writeText(absoluteShareUrl(token))
       .then(() => setCopied(true))
-      .catch(() => setPhase('error'));
+      .catch(() => setPhase('unavailable'));
   }, [token]);
 
   return (
@@ -135,12 +143,21 @@ export const ShareDialog = ({
       {phase === 'loading' ? (
         <p className='text-muted-foreground text-sm'>Reading the link…</p>
       ) : null}
-      {phase === 'error' ? (
+      {phase === 'unavailable' ? (
         <p className='text-destructive text-sm' data-testid='share-error'>
           The share link could not be read. Try again.
         </p>
       ) : null}
-      {phase !== 'error' && token !== null ? (
+      {phase === 'signed-out' ? (
+        <p
+          className='text-muted-foreground text-sm'
+          data-testid='share-signed-out'
+        >
+          Sign in to share this board. Share links belong to an account, and
+          nothing is shared until you create one.
+        </p>
+      ) : null}
+      {phase === 'ready' && token !== null ? (
         <div className='flex flex-col gap-3'>
           <input
             aria-label='Share link'
@@ -179,7 +196,7 @@ export const ShareDialog = ({
           </div>
         </div>
       ) : null}
-      {phase !== 'error' && phase !== 'loading' && token === null ? (
+      {phase === 'ready' && token === null ? (
         <div className='flex flex-col gap-3'>
           <p className='text-muted-foreground text-sm'>
             This board has no share link.

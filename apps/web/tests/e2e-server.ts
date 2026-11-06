@@ -42,6 +42,18 @@ export const E2E_DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://kiyora:kiyora@localhost:5432/kiyora';
 
 /**
+ * The flags the app under test runs with. `NEXT_PUBLIC_E2E` opens the
+ * panel-crash seam, which a normal build folds to false; the suite sets it so a
+ * panel can be made to throw and the error boundary proven to catch it. A
+ * client bundle inlines the value at build time, so a run against the built app
+ * (`E2E_SERVER=prod`) has to be built with the same flag:
+ * `NEXT_PUBLIC_E2E=1 bun run build`.
+ */
+export const E2E_WEB_ENV: Record<string, string> = {
+  NEXT_PUBLIC_E2E: '1',
+};
+
+/**
  * The account configuration the server project starts with. The OAuth pairs are
  * placeholders: CI never walks a provider's callback, and the dev-credentials
  * provider is the seam it does walk.
