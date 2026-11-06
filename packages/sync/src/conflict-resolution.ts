@@ -1,19 +1,12 @@
-import { type Board, utf8Length } from '@kiyora/model';
+import { type Board, faultOf, utf8Length } from '@kiyora/model';
+import {
+  type ConflictCache,
+  type ConflictCopy,
+  type ConflictCopyController,
+  createConflictCopy,
+} from './conflict-copy';
 import type { SyncRecord, SyncSnapshot, SyncState } from './reconcile';
 import type { DownloadedBoard, SyncTransport, UploadResult } from './transport';
-
-/** The remote copy a person is comparing against, as the surface shows it. */
-export type ConflictCopy =
-  | { status: 'loading' }
-  | { status: 'ready'; board: Board; revision: number }
-  | { status: 'offline' };
-
-/** Where the remote payload waits while the conflict is unresolved. */
-export type ConflictCache = {
-  read: () => Promise<DownloadedBoard | null>;
-  write: (remote: DownloadedBoard) => Promise<void>;
-  clear: () => Promise<void>;
-};
 
 /** The things a resolution does outside `sync`: storage and the open editor. */
 export type ConflictPorts = {
@@ -28,6 +21,11 @@ export type ConflictPorts = {
   duplicateLocal: (
     local: Board
   ) => Promise<{ id: string; board: Board } | null>;
+  /**
+   * Removes a duplicate's payload, snapshot, quarantine and library entry, so
+   * a resolution that cannot finish leaves nothing behind.
+   */
+  discardLocal: (id: string) => Promise<void>;
   /** Persists what sync learned about a board other than the open one. */
   saveRecordFor: (id: string, record: SyncRecord) => Promise<void>;
   /** Shows `board` through the editor's replacement path, clearing history. */
@@ -41,6 +39,8 @@ export type ConflictResolutions = {
   open: () => Promise<void>;
   /** Caches a remote copy a refused write carried, and shows it. */
   remember: (remote: DownloadedBoard) => Promise<void>;
+  /** Drops a cached copy a refusal left behind, so the next resolution re-reads. */
+  forget: () => Promise<void>;
   /** Uploads the local bytes at the remote revision. False leaves the conflict. */
   keepMine: () => Promise<boolean>;
   /** Returns the local board that was replaced, or null when nothing changed. */
@@ -61,16 +61,19 @@ export type ConflictDeps = {
   publish: () => void;
   limit: number;
   ports: ConflictPorts;
+  /** Receives a cause the surface cannot show directly. */
+  report: (error: unknown) => void;
 };
-
-const sameCopy = (left: ConflictCopy | null, right: ConflictCopy | null) =>
-  JSON.stringify(left) === JSON.stringify(right);
 
 /**
  * The conflict half of the reconciler. It owns the three resolutions and the
  * remote copy held beside the board; the surface only names one. Nothing here
- * touches storage or the DOM directly: a port does, and a failed write leaves
- * the conflict where it was.
+ * touches storage or the DOM directly: a port does.
+ *
+ * A `replaceLocal` failure leaves the conflict where it was. Once the swap has
+ * succeeded the resolution is committed: every later step is best-effort and
+ * reported, but never rolled back, so the record is written before the editor
+ * is told to adopt the new board.
  */
 export const createConflictResolutions = ({
   boardId,
@@ -83,17 +86,16 @@ export const createConflictResolutions = ({
   publish,
   limit,
   ports,
+  report,
 }: ConflictDeps): ConflictResolutions => {
-  let copy: ConflictCopy | null = null;
-  let opening = false;
-
-  const show = (next: ConflictCopy | null): void => {
-    if (sameCopy(copy, next)) {
-      return;
-    }
-    copy = next;
-    publish();
-  };
+  const copy: ConflictCopyController = createConflictCopy({
+    boardId,
+    cache: ports.cache,
+    publish,
+    record,
+    signedIn,
+    transport,
+  });
 
   const conflictState = (local: number, remote: number): SyncState => ({
     local,
@@ -106,72 +108,11 @@ export const createConflictResolutions = ({
     setState({ bytes, limit, status: 'too-large' });
   };
 
-  const readyCopy = (): Extract<ConflictCopy, { status: 'ready' }> | null =>
-    copy?.status === 'ready' ? copy : null;
-
-  const remember = async (remote: DownloadedBoard): Promise<void> => {
-    await ports.cache.write(remote).catch(() => undefined);
-    show({
-      board: remote.payload,
-      revision: remote.revision,
-      status: 'ready',
-    });
-  };
-
-  const load = async (): Promise<ConflictCopy> => {
-    const cached = await ports.cache.read();
-    const current = record();
-
-    if (
-      cached !== null &&
-      current.conflict !== null &&
-      cached.revision === current.conflict
-    ) {
-      return {
-        board: cached.payload,
-        revision: cached.revision,
-        status: 'ready',
-      };
-    }
-
-    if (!signedIn()) {
-      return { status: 'offline' };
-    }
-
-    let downloaded: DownloadedBoard | null;
+  const attempt = (step: () => void): void => {
     try {
-      downloaded = await transport.download(boardId);
-    } catch {
-      downloaded = null;
-    }
-
-    if (downloaded === null) {
-      return { status: 'offline' };
-    }
-
-    await ports.cache.write(downloaded);
-    return {
-      board: downloaded.payload,
-      revision: downloaded.revision,
-      status: 'ready',
-    };
-  };
-
-  const open = async (): Promise<void> => {
-    if (record().conflict === null || opening) {
-      return;
-    }
-    if (copy?.status === 'ready') {
-      return;
-    }
-    opening = true;
-    try {
-      show({ status: 'loading' });
-      show(await load());
-    } catch {
-      show({ status: 'offline' });
-    } finally {
-      opening = false;
+      step();
+    } catch (error) {
+      report(error);
     }
   };
 
@@ -179,28 +120,42 @@ export const createConflictResolutions = ({
     board: Board;
     revision: number;
   }): Promise<Board | null> => {
+    const current = record();
+    const local = current.revision ?? 0;
+    const previousConflict = current.conflict ?? 0;
+
+    let replaced: Board;
     try {
-      const replaced = await ports.replaceLocal(remote.board);
-      ports.adoptLocal(remote.board);
+      replaced = await ports.replaceLocal(remote.board);
+    } catch (error) {
+      report(error);
+      setState(conflictState(local, previousConflict));
+      return null;
+    }
+
+    attempt(() =>
       setRecord({
         conflict: null,
         linked: true,
         pending: false,
         revision: remote.revision,
         tooLarge: false,
-      });
-      await ports.cache.clear().catch(() => undefined);
-      show(null);
+      })
+    );
+    attempt(() => ports.adoptLocal(remote.board));
+    try {
+      await copy.forget();
+    } catch (error) {
+      report(error);
+    }
+    attempt(() =>
       setState(
         signedIn()
           ? { revision: remote.revision, status: 'synced' }
           : { status: 'signed-out' }
-      );
-      return replaced;
-    } catch {
-      setState(conflictState(record().revision ?? 0, record().conflict ?? 0));
-      return null;
-    }
+      )
+    );
+    return replaced;
   };
 
   const keepMine = async (): Promise<boolean> => {
@@ -230,7 +185,8 @@ export const createConflictResolutions = ({
         payload: board,
         preview,
       });
-    } catch {
+    } catch (error) {
+      report(error);
       setState(conflictState(current.revision ?? 0, current.conflict));
       return false;
     }
@@ -243,21 +199,22 @@ export const createConflictResolutions = ({
         revision: result.revision,
         tooLarge: false,
       });
-      await ports.cache.clear().catch(() => undefined);
-      show(null);
+      await copy.forget();
       setState({ revision: result.revision, status: 'synced' });
       return true;
     }
 
     if (result.kind === 'conflict') {
       setRecord({ ...record(), conflict: result.revision, pending: false });
-      if (result.payload !== null) {
-        await remember({
+      if (result.payload === null) {
+        await copy.forget();
+      } else {
+        await copy.remember({
           payload: result.payload,
           revision: result.revision,
         });
       }
-      setState(conflictState(current.conflict, result.revision));
+      setState(conflictState(current.revision ?? 0, result.revision));
       return false;
     }
 
@@ -279,16 +236,11 @@ export const createConflictResolutions = ({
   };
 
   const takeTheirs = async (): Promise<Board | null> => {
-    const current = record();
-    if (current.conflict === null) {
+    if (record().conflict === null) {
       return null;
     }
 
-    let ready = readyCopy();
-    if (ready === null) {
-      await open();
-      ready = readyCopy();
-    }
+    const ready = await copy.ensureReadyCopy();
     if (ready === null) {
       return null;
     }
@@ -313,12 +265,46 @@ export const createConflictResolutions = ({
       return false;
     }
 
-    const duplicated = await ports
-      .duplicateLocal(local.board)
-      .catch(() => null);
-    if (duplicated === null) {
+    let duplicated: { id: string; board: Board };
+    try {
+      const result = await ports.duplicateLocal(local.board);
+      if (result === null) {
+        return false;
+      }
+      duplicated = result;
+    } catch (error) {
+      report(error);
+      setState({ fault: faultOf(error), reason: 'fault', status: 'error' });
       return false;
     }
+
+    const rollback = async (): Promise<boolean> => {
+      let failure: unknown = null;
+      try {
+        await transport.remove(duplicated.id);
+      } catch (error) {
+        failure = error;
+        report(error);
+      }
+      try {
+        await ports.discardLocal(duplicated.id);
+      } catch (error) {
+        failure ??= error;
+        report(error);
+      }
+      if (failure === null) {
+        return true;
+      }
+      setState({ fault: faultOf(failure), reason: 'fault', status: 'error' });
+      return false;
+    };
+
+    const failed = async (): Promise<false> => {
+      if (await rollback()) {
+        setState(conflictState(record().revision ?? 0, record().conflict ?? 0));
+      }
+      return false;
+    };
 
     setState({ revision: 0, status: 'syncing' });
 
@@ -330,48 +316,50 @@ export const createConflictResolutions = ({
         payload: duplicated.board,
         preview: local.preview,
       });
-    } catch {
-      setState(conflictState(current.revision ?? 0, current.conflict));
-      return false;
+    } catch (error) {
+      report(error);
+      return await failed();
     }
 
     if (result.kind !== 'accepted') {
-      setState(conflictState(current.revision ?? 0, current.conflict));
-      return false;
+      return await failed();
     }
 
-    await ports
-      .saveRecordFor(duplicated.id, {
+    const ready = await copy.ensureReadyCopy();
+    if (ready === null) {
+      return await failed();
+    }
+
+    try {
+      await ports.saveRecordFor(duplicated.id, {
         conflict: null,
         linked: true,
         pending: false,
         revision: result.revision,
         tooLarge: false,
-      })
-      .catch(() => undefined);
-
-    let ready = readyCopy();
-    if (ready === null) {
-      await open();
-      ready = readyCopy();
-    }
-    if (ready !== null) {
-      const replaced = await applyRemote({
-        board: ready.board,
-        revision: ready.revision,
       });
-      return replaced !== null;
+    } catch (error) {
+      report(error);
+      return await failed();
     }
 
-    return false;
+    const replaced = await applyRemote({
+      board: ready.board,
+      revision: ready.revision,
+    });
+    if (replaced === null) {
+      return await failed();
+    }
+    return true;
   };
 
   return {
     duplicateMine,
-    getCopy: () => copy,
+    forget: copy.forget,
+    getCopy: copy.getCopy,
     keepMine,
-    open,
-    remember,
+    open: copy.open,
+    remember: copy.remember,
     takeTheirs,
   };
 };

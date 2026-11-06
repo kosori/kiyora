@@ -260,7 +260,8 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 | Gestures, transactions, history | `packages/editor/src/history/` |
 | Keymap, shortcut reference | `packages/editor/src/keymap.ts` |
 | Hit-testing, snapping | `packages/editor/src/geometry/` |
-| Persistence, autosave, faults | `packages/editor/src/persistence/` |
+| Persistence, autosave | `packages/editor/src/persistence/` |
+| Storage fault vocabulary | `packages/model/src/faults.ts` |
 | Library record, keys and legacy adoption | `packages/editor/src/persistence/library.ts`, `storage.ts` |
 | Browser store: IndexedDB, fallbacks and the v2 upgrade | `apps/web/lib/board-storage.ts` |
 | Library list and the board route | `apps/web/app/`, `apps/web/components/library/`, `apps/web/components/editor/board-route.tsx` |

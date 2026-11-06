@@ -5,6 +5,7 @@ export type RemoteBoardSummary = {
   id: string;
   title: string;
   revision: number;
+  /** Display-only ISO-8601 timestamp; never use it for staleness or ordering — compare `revision` (ADR-0011). */
   updatedAt: string;
   bytes: number;
   preview: string | null;
@@ -20,7 +21,12 @@ export type UploadRequest = {
   preview: string | null;
 };
 
-/** One remote copy as a download carries it: the bytes and the revision they are. */
+/**
+ * One remote copy as a download carries it: the bytes and the revision they
+ * are. Adapters MUST parse and validate the raw wire JSON into a `Board`
+ * before returning; the type is not a runtime guarantee of the wire data's
+ * shape, and the reconciler trusts the revision and payload it gets.
+ */
 export type DownloadedBoard = {
   payload: Board;
   revision: number;
@@ -33,6 +39,8 @@ export type UploadResult =
   | { kind: 'too-large'; bytes: number; limit: number }
   | { kind: 'unauthorized' }
   | { kind: 'invalid' }
+  /** A non-retryable server answer: a 5xx, a 429 or a body the adapter could not read. */
+  | { kind: 'server' }
   | { kind: 'network' };
 
 /**
@@ -51,8 +59,12 @@ export type RemoveResult =
  * can stand in for the network in a unit test.
  */
 export type SyncTransport = {
+  /** Offers one board; resolves a `kind` for every server answer and never rejects for a non-accept. */
   upload: (request: UploadRequest) => Promise<UploadResult>;
+  /** Every remote copy the caller may see, without payloads; order is not significant and unknown boards are tolerated. */
   list: () => Promise<RemoteBoardSummary[]>;
+  /** Resolves `null` when the server holds no such board, and never throws for absence. */
   download: (id: string) => Promise<DownloadedBoard | null>;
+  /** `removed` and `absent` let the caller drop its copy; `failed` leaves the remote possibly alive. */
   remove: (id: string) => Promise<RemoveResult>;
 };

@@ -1,10 +1,9 @@
+export type { ConflictCache, ConflictCopy } from './conflict-copy';
 export {
-  type ConflictCache,
-  type ConflictCopy,
   type ConflictPorts,
   type ConflictResolutions,
   createConflictResolutions,
-} from './conflict';
+} from './conflict-resolution';
 export {
   decideSync,
   type PayloadProblem,

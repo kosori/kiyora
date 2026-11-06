@@ -142,6 +142,8 @@ export {
   SvgExportRefusal,
   unsafeSvg,
 } from './export/board-svg';
+export type { CorruptReason, StorageFault } from './faults';
+export { faultOf, StorageError } from './faults';
 export {
   BOARD_FILE_EXTENSION,
   BOARD_FILE_LIMIT_BYTES,

@@ -67,7 +67,7 @@ const upload = async ({
     return { kind: 'invalid' };
   }
 
-  return { kind: 'network' };
+  return { kind: 'server' };
 };
 
 const list = async (): Promise<RemoteBoardSummary[]> => {

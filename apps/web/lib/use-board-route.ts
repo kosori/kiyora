@@ -139,6 +139,9 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
               })
             ),
         },
+        discardLocal: async (id) => {
+          await library.remove(id);
+        },
         duplicateLocal: async (local) => {
           const copy: Board = {
             ...local,
