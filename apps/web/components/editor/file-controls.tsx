@@ -2,7 +2,7 @@
 
 import type { LibraryEntry } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
-import { boardBounds, fitImageSize } from '@kiyora/model';
+import { boardBounds, fitImageSize, IMAGE_PLACEMENT_SIDE } from '@kiyora/model';
 import {
   type ChangeEvent,
   useCallback,
@@ -14,7 +14,7 @@ import { BoardFileImport } from '~/components/board-file-import';
 import { Button } from '~/components/ui/button';
 import { saveBoardFile } from '~/lib/board-file';
 import { saveBoardSvg } from '~/lib/board-svg';
-import { IMAGE_PLACEMENT_SIDE, importImage } from '~/lib/image-import';
+import { importImage } from '~/lib/image-import';
 import { createTextMeasurer } from '~/lib/text-measurer';
 import { useCopyPng } from './copy-png-context';
 import { ExportPngPanel } from './export-png-panel';
@@ -34,10 +34,11 @@ export const FileControls = () => {
   const { camera } = useView();
   const imageInput = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
-  const { clearError, error: copyError } = useCopyPng();
+  const { clearError, error: copyError, notice: copyNotice } = useCopyPng();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const shownError = error ?? copyError;
+  const shownNotice = notice ?? copyNotice;
   const [png, setPng] = useState(false);
 
   const report = useCallback(
@@ -63,6 +64,16 @@ export const FileControls = () => {
     report(null);
   }, [report]);
 
+  const showNotice = useCallback(
+    (message: string | null) => {
+      setNotice(message);
+      if (message === null) {
+        clearError();
+      }
+    },
+    [clearError]
+  );
+
   const importImported = useCallback(
     (entry: LibraryEntry) => {
       setNotice(`Imported “${entry.title || 'Untitled'}” to the library`);
@@ -76,8 +87,13 @@ export const FileControls = () => {
   }, []);
 
   const save = useCallback(() => {
-    saveBoardFile({ ...board, camera });
-  }, [board, camera]);
+    try {
+      saveBoardFile({ ...board, camera });
+      report(null);
+    } catch (thrown) {
+      report(messageOf(thrown));
+    }
+  }, [board, camera, report]);
 
   const exportSvg = useCallback(() => {
     const run = async (): Promise<void> => {
@@ -189,7 +205,7 @@ export const FileControls = () => {
           Export PNG
         </Button>
       </div>
-      {png ? <ExportPngPanel onError={report} /> : null}
+      {png ? <ExportPngPanel onError={report} onNotice={showNotice} /> : null}
       <input
         accept='image/png,image/jpeg'
         className='hidden'
@@ -198,13 +214,13 @@ export const FileControls = () => {
         ref={imageInput}
         type='file'
       />
-      {notice === null ? null : (
+      {shownNotice === null ? null : (
         <p
           className='rounded-lg border border-border bg-background/95 px-2 py-1 text-xs shadow-sm'
           data-testid='import-notice'
           role='status'
         >
-          {notice}
+          {shownNotice}
         </p>
       )}
       {shownError === null ? null : (

@@ -4,6 +4,8 @@ import {
   hasImageFiles,
   IMAGE_FILE_LIMIT_BYTES,
   IMAGE_MAX_SIDE,
+  IMAGE_PLACEMENT_SIDE,
+  IMAGE_SOURCE_LIMIT_BYTES,
   type ImageFile,
   imageMimeOf,
   parseBoard,
@@ -144,6 +146,16 @@ describe('the import ceiling', () => {
   it('reports whether a board carries a payload at all', () => {
     expect(hasImageFiles({ files: {} })).toBe(false);
     expect(hasImageFiles({ files: { abc123: raster() } })).toBe(true);
+  });
+
+  it('bounds the pick far above what a board stores, before it is decoded', () => {
+    expect(IMAGE_SOURCE_LIMIT_BYTES).toBeGreaterThan(
+      IMAGE_FILE_LIMIT_BYTES * 16
+    );
+  });
+
+  it('places a picture inside the stored raster ceiling', () => {
+    expect(IMAGE_PLACEMENT_SIDE).toBeLessThan(IMAGE_MAX_SIDE);
   });
 });
 

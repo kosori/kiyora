@@ -15,9 +15,11 @@ import { createTextMeasurer } from '~/lib/text-measurer';
 type CopyPng = {
   /** Why the last copy failed, or `null` when it worked. */
   error: string | null;
+  /** A non-blocking outcome of the last copy, such as text left in a fallback face. */
+  notice: string | null;
   /** Copies the selection as a PNG, reporting a refusal rather than dropping it. */
   copy: () => void;
-  /** Drops the last copy's refusal, so another surface can show its own. */
+  /** Drops the last copy's error and notice, so another surface can show its own. */
   clearError: () => void;
 };
 
@@ -26,6 +28,9 @@ const CopyPngContext = createContext<CopyPng | undefined>(undefined);
 /** The message a thrown value carries, so a refusal is never blank. */
 const messageOf = (thrown: unknown): string =>
   thrown instanceof Error ? thrown.message : String(thrown);
+
+const FALLBACK_NOTICE =
+  'Copied with fallback text — the vendored faces did not load';
 
 /**
  * The selection as a PNG on the system clipboard, shared by every surface that
@@ -39,8 +44,12 @@ export const CopyPngProvider = ({ children }: PropsWithChildren) => {
   const selection = useSelection();
   const measure = useMemo(() => createTextMeasurer(), []);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  const clearError = useCallback(() => setError(null), []);
+  const clearError = useCallback(() => {
+    setError(null);
+    setNotice(null);
+  }, []);
 
   const copy = useCallback(() => {
     if (selection.length === 0) {
@@ -48,9 +57,11 @@ export const CopyPngProvider = ({ children }: PropsWithChildren) => {
     }
     const run = async (): Promise<void> => {
       try {
-        await copySelectionPng(board, selection, measure);
+        const exported = await copySelectionPng(board, selection, measure);
         setError(null);
+        setNotice(exported.fallbackText ? FALLBACK_NOTICE : null);
       } catch (thrown) {
+        setNotice(null);
         setError(messageOf(thrown));
       }
     };
@@ -58,8 +69,8 @@ export const CopyPngProvider = ({ children }: PropsWithChildren) => {
   }, [board, measure, selection]);
 
   const value = useMemo(
-    () => ({ clearError, copy, error }),
-    [clearError, copy, error]
+    () => ({ clearError, copy, error, notice }),
+    [clearError, copy, error, notice]
   );
 
   return (

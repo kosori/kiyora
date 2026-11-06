@@ -7,6 +7,7 @@ import {
   type Theme,
 } from '@kiyora/model';
 import { boardFileName } from './board-file';
+import { downloadBlob } from './download';
 import { iconSetFor } from './icon-set';
 
 /**
@@ -30,6 +31,16 @@ export type PngTarget = 'board' | 'selection';
 
 /** What a raster leaves around the drawing. */
 export type PngBackground = 'solid' | 'transparent';
+
+/**
+ * One raster export: the bytes, and whether the vendored faces were missing.
+ * `fallbackText` reports that labels left in a fallback face, so the surface can
+ * say the image is not quite what the screen showed instead of staying silent.
+ */
+export type PngExport = {
+  blob: Blob;
+  fallbackText: boolean;
+};
 
 /**
  * What a PNG export lets a caller choose. The board and its measurer are the
@@ -152,15 +163,19 @@ const base64Of = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
+/** The face rules a raster carries, and whether they are missing. */
+type Faces = { fallback: boolean; markup: string };
+
 /**
  * The face rules the raster needs and the exported file must not carry. An
  * `<img>` renders an SVG with no reach into the page's stylesheets, so without
  * these a label would leave in a fallback face while the screen shows the
  * vendored one. The fetch is for the app's own asset; when it fails the raster
  * still leaves, with the fallback face, because a missing face must not cost the
- * person their image.
+ * person their image. The failure is not silent: `fallback` travels to the
+ * surface so it can say the labels changed face.
  */
-const facesMarkup = async (): Promise<string> => {
+const facesMarkup = async (): Promise<Faces> => {
   try {
     const rules = await Promise.all(
       FONT_FACES.map(async ({ family, file, weight }) => {
@@ -173,15 +188,19 @@ const facesMarkup = async (): Promise<string> => {
       })
     );
 
-    return `<style>${rules.join('')}</style>`;
+    return { fallback: false, markup: `<style>${rules.join('')}</style>` };
   } catch {
-    return '';
+    return { fallback: true, markup: '' };
   }
 };
 
-/** The projection with the page's faces carried inside it, so the raster sets the same text. */
+/**
+ * The projection with the page's faces carried inside it, so the raster sets the
+ * same text. Unanchored, so an XML prolog or leading whitespace cannot make the
+ * match miss and drop the rules: the first root `<svg ...>` is still the first.
+ */
 const withFaces = (svg: string, markup: string): string =>
-  markup === '' ? svg : svg.replace(/^(<svg\b[^>]*>)/, `$1${markup}`);
+  markup === '' ? svg : svg.replace(/(<svg\b[^>]*>)/, `$1${markup}`);
 
 /** Decodes one SVG document into an image the canvas can draw. */
 const loadImage = (svg: string): Promise<HTMLImageElement> =>
@@ -212,18 +231,33 @@ const toPng = (canvas: HTMLCanvasElement): Promise<Blob> =>
     }, 'image/png');
   });
 
+/** The canvas as PNG bytes, converting a synchronous `toBlob` throw to a refusal. */
+const pngOf = async (canvas: HTMLCanvasElement): Promise<Blob> => {
+  try {
+    return await toPng(canvas);
+  } catch (thrown) {
+    throw thrown instanceof PngExportRefusal
+      ? thrown
+      : new PngExportRefusal('the canvas would not write an image', {
+          cause: thrown,
+        });
+  }
+};
+
 /**
  * The SVG export as PNG bytes: drawn at the chosen scale, over the chosen
  * background, in the chosen theme. The size comes from the export's own viewBox
  * and the cap is checked before a canvas exists, so an over-large board reports
- * instead of writing a cropped file.
+ * instead of writing a cropped file. `fallbackText` reports a raster whose
+ * labels had to leave in a fallback face.
  */
 export const rasteriseBoard = async (
   svg: string,
   options: PngExportOptions
-): Promise<Blob> => {
+): Promise<PngExport> => {
   const { width, height } = rasterBox(svg, options.scale);
-  const image = await loadImage(withFaces(svg, await facesMarkup()));
+  const faces = await facesMarkup();
+  const image = await loadImage(withFaces(svg, faces.markup));
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -238,9 +272,15 @@ export const rasteriseBoard = async (
     context.fillRect(0, 0, width, height);
   }
 
-  context.drawImage(image, 0, 0, width, height);
+  try {
+    context.drawImage(image, 0, 0, width, height);
+  } catch (thrown) {
+    throw new PngExportRefusal('the projection would not draw', {
+      cause: thrown,
+    });
+  }
 
-  return await toPng(canvas);
+  return { blob: await pngOf(canvas), fallbackText: faces.fallback };
 };
 
 /** The board a PNG export carries: the whole board, or only the selection as a board. */
@@ -256,12 +296,14 @@ export const pngBoard = (
 /**
  * The board as the bytes a person downloads: projected through `model`'s export,
  * then rasterised. One artifact path, so the PNG and the SVG cannot disagree.
+ * The export carries whether the vendored faces were missing, so the surface can
+ * say so.
  */
 export const exportBoardPng = async (
   board: Board,
   options: PngExportOptions,
   measure?: Measurer
-): Promise<Blob> => {
+): Promise<PngExport> => {
   const icons = await iconSetFor(board);
   const svg = exportBoardSvg(board, {
     files: board.files,
@@ -304,11 +346,11 @@ export const copySelectionPng = async (
   board: Board,
   selection: readonly string[],
   measure?: Measurer
-): Promise<Blob> => {
+): Promise<PngExport> => {
   if (selection.length === 0) {
     throw new PngExportRefusal('the board draws nothing to copy');
   }
-  const blob = await exportBoardPng(
+  const exported = await exportBoardPng(
     pngBoard(board, selection, 'selection'),
     {
       background: 'transparent',
@@ -317,17 +359,13 @@ export const copySelectionPng = async (
     },
     measure
   );
-  await writePngToClipboard(blob);
+  await writePngToClipboard(exported.blob);
 
-  return blob;
+  return exported;
 };
 
 /** Writes a raster out as one PNG download, under the board's own name. */
 export const saveBoardPng = (blob: Blob, title: string): void => {
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = boardFileName(title, PNG_FILE_EXTENSION);
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(url, boardFileName(title, PNG_FILE_EXTENSION));
 };

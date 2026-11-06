@@ -19,6 +19,8 @@ export {
   IMAGE_FILE_LIMIT_BYTES,
   IMAGE_MAX_SIDE,
   IMAGE_MIME_TYPES,
+  IMAGE_PLACEMENT_SIDE,
+  IMAGE_SOURCE_LIMIT_BYTES,
   type ImageFile,
   type ImageMime,
   imageFileSchema,
