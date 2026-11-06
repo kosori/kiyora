@@ -48,9 +48,14 @@ const THEME_OPTIONS: readonly Option<Theme>[] = [
 const messageOf = (thrown: unknown): string =>
   thrown instanceof Error ? thrown.message : String(thrown);
 
+const FALLBACK_NOTICE =
+  'Exported with fallback text — the vendored faces did not load';
+
 type Props = {
   /** Names a refusal, or clears it once an export succeeds. */
   onError: (message: string | null) => void;
+  /** Names a non-blocking outcome, such as an export that lost its faces. */
+  onNotice: (message: string | null) => void;
 };
 
 /**
@@ -59,7 +64,7 @@ type Props = {
  * without a second choice, and it stays an override: the export's theme is its
  * own, so a dark board can still leave as a light image.
  */
-export const ExportPngPanel = ({ onError }: Props) => {
+export const ExportPngPanel = ({ onError, onNotice }: Props) => {
   const board = useBoard();
   const selection = useSelection();
   const platform = usePlatform();
@@ -75,14 +80,16 @@ export const ExportPngPanel = ({ onError }: Props) => {
 
   const download = useCallback(async () => {
     try {
-      const blob = await exportBoardPng(
+      const exported = await exportBoardPng(
         pngBoard(board, selection, target),
         { background, scale: Number(scale) as PngScale, theme: exportTheme },
         measure
       );
-      saveBoardPng(blob, board.title);
+      saveBoardPng(exported.blob, board.title);
       onError(null);
+      onNotice(exported.fallbackText ? FALLBACK_NOTICE : null);
     } catch (thrown) {
+      onNotice(null);
       onError(messageOf(thrown));
     }
   }, [
@@ -91,6 +98,7 @@ export const ExportPngPanel = ({ onError }: Props) => {
     exportTheme,
     measure,
     onError,
+    onNotice,
     scale,
     selection,
     target,

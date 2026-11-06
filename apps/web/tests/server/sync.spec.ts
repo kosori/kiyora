@@ -296,13 +296,18 @@ test('a second account cannot write the first account board', async () => {
     baseRevision: null,
     payload: payload({ title: 'Stolen' }),
   });
-  expect(created.status()).toBe(403);
+  expect(created.status()).toBe(409);
+  await expect(created.json()).resolves.toEqual({ payload: null, revision: 0 });
 
   const overwritten = await sync(stranger, {
     baseRevision: 1,
     payload: payload({ title: 'Stolen' }),
   });
-  expect(overwritten.status()).toBe(403);
+  expect(overwritten.status()).toBe(409);
+  await expect(overwritten.json()).resolves.toEqual({
+    payload: null,
+    revision: 0,
+  });
 
   const ownerStillWrites = await sync(owner, {
     baseRevision: 1,

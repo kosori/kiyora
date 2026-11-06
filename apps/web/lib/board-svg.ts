@@ -5,6 +5,7 @@ import {
   SVG_FILE_EXTENSION,
 } from '@kiyora/model';
 import { boardFileName } from './board-file';
+import { downloadBlob } from './download';
 import { iconSetFor } from './icon-set';
 
 /**
@@ -24,9 +25,5 @@ export const saveBoardSvg = async (
   const icons = await iconSetFor(board);
   const svg = exportBoardSvg(board, { ...context, files: board.files, icons });
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-  const link = document.createElement('a');
-  link.download = boardFileName(board.title, SVG_FILE_EXTENSION);
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(url, boardFileName(board.title, SVG_FILE_EXTENSION));
 };

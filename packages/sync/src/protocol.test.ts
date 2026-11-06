@@ -101,6 +101,19 @@ describe('the sync protocol', () => {
     });
   });
 
+  it('refuses a byte count that is not a non-negative safe integer', () => {
+    for (const bytes of [Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY]) {
+      const decision = decideSync(null, {
+        baseRevision: null,
+        bytes,
+        payload: { id: 'not-a-board' },
+        payloadHash: 'hash-1',
+      });
+
+      expect(decision).toMatchObject({ kind: 'too-large' });
+    }
+  });
+
   it('refuses a payload the board schema rejects', () => {
     const decision = decideSync(null, {
       baseRevision: null,
@@ -136,5 +149,41 @@ describe('the sync protocol', () => {
       expect(decision.board.files).toEqual({});
       expect(decision.board.schemaVersion).toBe(SCHEMA_VERSION);
     }
+  });
+
+  it.each([Number.NaN, -1, 1.5])(
+    'refuses a byte count that is not a non-negative integer (%s)',
+    (bytes) => {
+      const decision = decideSync(null, {
+        baseRevision: null,
+        bytes,
+        payload: payload(),
+        payloadHash: 'hash-1',
+      });
+
+      expect(decision.kind).toBe('too-large');
+    }
+  );
+
+  it('reports a payload with no schema version as a schema problem', () => {
+    const decision = decideSync(null, {
+      baseRevision: null,
+      bytes: 120,
+      payload: payload({ schemaVersion: undefined }),
+      payloadHash: 'hash-1',
+    });
+
+    expect(decision).toEqual({ kind: 'invalid', reason: 'schema' });
+  });
+
+  it('reports a non-numeric schema version as a schema problem', () => {
+    const decision = decideSync(null, {
+      baseRevision: null,
+      bytes: 120,
+      payload: payload({ schemaVersion: '3' }),
+      payloadHash: 'hash-1',
+    });
+
+    expect(decision).toEqual({ kind: 'invalid', reason: 'schema' });
   });
 });

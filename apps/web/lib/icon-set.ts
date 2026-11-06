@@ -9,21 +9,25 @@ import type { Board, IconSet } from '@kiyora/model';
  * `model`'s source, which keeps the dataset out of the model's public entry and
  * makes an accidental static import visible in review.
  */
-type IconModule = {
-  ICON_VIEWBOX: number;
-  ICONS: IconSet;
-};
+type IconModule = typeof import('@kiyora/model/icons');
 
 let pending: Promise<IconModule> | undefined;
 
 /** The icon dataset, fetched once and shared from then on. */
 export const loadIconModule = (): Promise<IconModule> => {
-  pending ??= import('@kiyora/model/icons').then(({ ICON_VIEWBOX, ICONS }) => ({
-    ICON_VIEWBOX,
-    ICONS,
-  }));
+  if (pending !== undefined) {
+    return pending;
+  }
 
-  return pending;
+  const loading = import('@kiyora/model/icons').catch((error: unknown) => {
+    // A failed chunk load is transient: clearing it lets the next caller retry
+    // instead of caching the rejection for the rest of the session.
+    pending = undefined;
+    throw error;
+  });
+  pending = loading;
+
+  return loading;
 };
 
 /** Whether a board draws anything from the dataset, so a fetch has a reason. */

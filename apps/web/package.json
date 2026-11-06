@@ -19,7 +19,7 @@
     "check-types": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun scripts/migrate.ts",
-    "dev": "next dev",
+    "dev": "portless kiyora next dev",
     "start": "next start"
   },
   "dependencies": {

@@ -11,8 +11,14 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ICON_NAMES } from './icon-names';
-import { checkDataset, DATASET_PATH, readIcon, renderDataset } from './icons';
+import { ICON_LIMIT, ICON_NAMES } from './icon-names';
+import {
+  checkDataset,
+  DATASET_PATH,
+  pathsOf,
+  readIcon,
+  renderDataset,
+} from './icons';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dataset = join(root, DATASET_PATH);
@@ -41,15 +47,51 @@ describe('the committed dataset', () => {
     const source = renderDataset(ICON_NAMES);
 
     expect(ICON_NAMES.length).toBeGreaterThanOrEqual(100);
-    expect(ICON_NAMES.length).toBeLessThanOrEqual(150);
+    expect(ICON_NAMES.length).toBeLessThanOrEqual(ICON_LIMIT);
     for (const name of ['arrow-right', 'file-text', 'user', 'star']) {
-      expect(source).toContain(`'${name}':`);
+      expect(source).toContain(`"${name}":`);
       expect(readIcon(name).length).toBeGreaterThan(0);
     }
   });
 
   it('refuses a name the library does not ship rather than writing a blank icon', () => {
     expect(() => readIcon('not-a-tabler-icon')).toThrow(/not in the Tabler/);
+  });
+});
+
+describe('reading a source SVG', () => {
+  it('reads attributes quoted with either quote style', () => {
+    const svg =
+      "<svg><path stroke='none' fill='none' d='M0 0h24v24H0z'/><path d='M1 1'/></svg>";
+
+    expect(pathsOf('fixture', svg)).toEqual(['M1 1']);
+  });
+
+  it('skips only the transparent backdrop, never a filled path', () => {
+    const svg =
+      '<svg><path stroke="none" fill="none" d="M0 0"/><path stroke="none" fill="currentColor" d="M1 1"/></svg>';
+
+    expect(() => pathsOf('fixture', svg)).toThrow(
+      /fill="currentColor".*cannot express/
+    );
+  });
+
+  it('refuses a visible <path> without d instead of dropping it', () => {
+    expect(() => pathsOf('fixture', '<svg><path fill="none"/></svg>')).toThrow(
+      /fixture has a <path> without a d attribute/
+    );
+  });
+
+  it('refuses a style value that only starts with none', () => {
+    expect(() =>
+      pathsOf('fixture', '<svg><path fill="noneX" d="M1 1"/></svg>')
+    ).toThrow(/fill="noneX".*cannot express/);
+  });
+
+  it('refuses a style value that is not exactly none', () => {
+    expect(() =>
+      pathsOf('fixture', '<svg><path fill="None" d="M1 1"/></svg>')
+    ).toThrow(/fill="None".*cannot express/);
   });
 });
 
@@ -69,7 +111,7 @@ describe('the --check gate', () => {
     const edited = makeEmptyRoot();
     const target = join(edited, DATASET_PATH);
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, renderDataset().replace("'M", "'M 1 1 Z M"));
+    writeFileSync(target, renderDataset().replace('"M', '"M 1 1 Z M'));
 
     expect(checkDataset(target)).toMatch(/stale/);
 

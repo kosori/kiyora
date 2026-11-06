@@ -5,10 +5,24 @@ export type RemoteBoardSummary = {
   id: string;
   title: string;
   revision: number;
+  /** Display-only ISO-8601 timestamp; never use it for staleness or ordering — compare `revision` (ADR-0011). */
   updatedAt: string;
   bytes: number;
   preview: string | null;
 };
+
+/** One page of a remote listing: how many summaries to read and where to start. */
+export type BoardPage = {
+  limit: number;
+  offset: number;
+};
+
+/** What the server answered to one page of a remote listing. */
+export type RemoteBoardList =
+  | { status: 'ok'; boards: RemoteBoardSummary[]; total: number }
+  | { status: 'unauthorized' }
+  | { status: 'server' }
+  | { status: 'network' };
 
 /** One board's bytes offered to the server, with the picture the client saved. */
 export type UploadRequest = {
@@ -20,7 +34,12 @@ export type UploadRequest = {
   preview: string | null;
 };
 
-/** One remote copy as a download carries it: the bytes and the revision they are. */
+/**
+ * One remote copy as a download carries it: the bytes and the revision they
+ * are. Adapters MUST parse and validate the raw wire JSON into a `Board`
+ * before returning; the type is not a runtime guarantee of the wire data's
+ * shape, and the reconciler trusts the revision and payload it gets.
+ */
 export type DownloadedBoard = {
   payload: Board;
   revision: number;
@@ -33,6 +52,8 @@ export type UploadResult =
   | { kind: 'too-large'; bytes: number; limit: number }
   | { kind: 'unauthorized' }
   | { kind: 'invalid' }
+  /** A non-retryable server answer: a 5xx, a 429 or a body the adapter could not read. */
+  | { kind: 'server' }
   | { kind: 'network' };
 
 /**
@@ -51,8 +72,22 @@ export type RemoveResult =
  * can stand in for the network in a unit test.
  */
 export type SyncTransport = {
+  /** Offers one board; resolves a `kind` for every server answer and never rejects for a non-accept. */
   upload: (request: UploadRequest) => Promise<UploadResult>;
-  list: () => Promise<RemoteBoardSummary[]>;
+  /**
+   * One bounded page of the remote copies the caller may see, without
+   * payloads, newest change first. `total` is the account's whole count, so the
+   * caller knows whether another page exists and never mistakes a page for the
+   * account.
+   */
+  list: (page: BoardPage) => Promise<RemoteBoardList>;
+  /**
+   * Resolves `null` only when the server holds no such board. A failed exchange
+   * — an unreachable server, an unexpected status or a body that does not carry
+   * a validated payload and a numeric revision — is thrown as a named adapter
+   * failure, never reported as absence.
+   */
   download: (id: string) => Promise<DownloadedBoard | null>;
+  /** `removed` and `absent` let the caller drop its copy; `failed` leaves the remote possibly alive. */
   remove: (id: string) => Promise<RemoveResult>;
 };

@@ -8,6 +8,7 @@ import {
   LEGACY_QUARANTINE_KEY,
   LEGACY_SNAPSHOT_KEY,
   LIBRARY_KEY,
+  type LibraryEntry,
   StorageError,
   type StorageFault,
 } from '@kiyora/editor';
@@ -55,27 +56,43 @@ const guarded = async <T>(work: () => Promise<T>): Promise<T> => {
   }
 };
 
-/** Settles an IndexedDB request as a promise, the shape the storage port wants. */
-const settle = <T>(source: IDBRequest<T>): Promise<T> =>
-  new Promise((resolve, reject) => {
-    source.onsuccess = () => resolve(source.result);
-    source.onerror = () =>
-      reject(source.error ?? new Error('indexedDB request failed'));
-  });
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
-const parseRecord = (
-  bytes: unknown
-): { boards: { id: string; title: string; updatedAt: number }[] } => {
+/** The part of a library entry the v1 upgrade needs, validated before it is read. */
+type RecordEntry = Pick<LibraryEntry, 'id' | 'title' | 'updatedAt'>;
+
+const isRecordEntry = (value: unknown): value is RecordEntry => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.title === 'string' &&
+    typeof value.updatedAt === 'number'
+  );
+};
+
+/**
+ * The record a v1 upgrade adopts into. Each entry is validated and a malformed
+ * one is dropped, so the upgrade never dereferences bytes it has not checked;
+ * the remaining boards are preserved. A record that will not parse yields no
+ * entries and is rebuilt from the board keys after the upgrade.
+ */
+const parseRecord = (bytes: unknown): { boards: RecordEntry[] } => {
   if (typeof bytes !== 'string') {
     return { boards: [] };
   }
   try {
-    const parsed = JSON.parse(bytes) as { boards?: unknown };
-    return Array.isArray(parsed.boards)
-      ? (parsed as {
-          boards: { id: string; title: string; updatedAt: number }[];
-        })
-      : { boards: [] };
+    const parsed: unknown = JSON.parse(bytes);
+    return {
+      boards:
+        isRecord(parsed) && Array.isArray(parsed.boards)
+          ? parsed.boards.filter(isRecordEntry)
+          : [],
+    };
   } catch {
     return { boards: [] };
   }
@@ -153,6 +170,7 @@ const adoptInUpgrade = (store: IDBObjectStore): void => {
 const openDatabase = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
     const opening = indexedDB.open(DATABASE, DATABASE_VERSION);
+    let settled = false;
     opening.onupgradeneeded = () => {
       const store = opening.result.objectStoreNames.contains(STORE)
         ? opening.transaction?.objectStore(STORE)
@@ -161,22 +179,50 @@ const openDatabase = (): Promise<IDBDatabase> =>
         adoptInUpgrade(store);
       }
     };
-    opening.onblocked = () =>
+    opening.onblocked = () => {
+      settled = true;
       reject(new DOMException('blocked', 'InvalidStateError'));
-    opening.onsuccess = () => resolve(opening.result);
-    opening.onerror = () =>
+    };
+    opening.onsuccess = () => {
+      // A late success after a block is a connection nobody will use; close it
+      // so it does not keep every other tab's version change blocked.
+      const { result } = opening;
+      if (settled) {
+        result.close();
+        return;
+      }
+      resolve(result);
+    };
+    opening.onerror = () => {
+      settled = true;
       reject(opening.error ?? new Error('indexedDB refused to open'));
+    };
   });
 
 const indexedDbStore = async (): Promise<KeyValueStore> => {
   const database = await openDatabase();
+  // Another tab opening a newer version asks this connection to step aside;
+  // holding it would block that upgrade for as long as this tab stays open.
+  database.onversionchange = () => database.close();
   const run = <T>(
     mode: IDBTransactionMode,
     work: (store: IDBObjectStore) => IDBRequest<T>
-  ): Promise<T> => {
-    const transaction = database.transaction(STORE, mode);
-    return settle(work(transaction.objectStore(STORE)));
-  };
+  ): Promise<T> =>
+    // A request's success is not a commit: the transaction can still abort at
+    // commit time, so the write settles only when the transaction completes.
+    new Promise<T>((resolve, reject) => {
+      const transaction = database.transaction(STORE, mode);
+      let result: T;
+      const request = work(transaction.objectStore(STORE));
+      request.onsuccess = () => {
+        ({ result } = request);
+      };
+      transaction.oncomplete = () => resolve(result);
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('indexedDB transaction aborted'));
+      transaction.onerror = () =>
+        reject(transaction.error ?? new Error('indexedDB transaction failed'));
+    });
 
   return {
     delete: (key) =>
@@ -282,9 +328,10 @@ export const openStore = async (): Promise<OpenedStore> => {
     try {
       await adoptLegacyBoard(store);
     } catch (error) {
-      fault = faultFromException(error);
+      return { fault: faultFromException(error), store };
     }
-    return { fault, store };
+    // A durable localStorage copy is not a failure, whatever IndexedDB did.
+    return { fault: null, store };
   } catch (error) {
     return {
       fault: fault ?? faultFromException(error),

@@ -1,6 +1,7 @@
 import {
   fitImageSize,
   IMAGE_FILE_LIMIT_BYTES,
+  IMAGE_SOURCE_LIMIT_BYTES,
   type ImageFile,
   type ImageMime,
   imageMimeOf,
@@ -12,9 +13,6 @@ import {
  * it, downscales it once, and hands the engine a content-hashed entry. `model`
  * stays DOM-free; only the decode, the canvas and the digest live here.
  */
-
-/** The most the placed box may span, in board units, before the picture is scaled to fit. */
-export const IMAGE_PLACEMENT_SIDE = 480;
 
 /**
  * Thrown when a pick is not a raster this build may carry, or is too heavy after
@@ -105,7 +103,21 @@ const decode = async (file: File): Promise<ImageBitmap> => {
  * reuses one payload.
  */
 export const importImage = async (file: File): Promise<ImportedImage> => {
-  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  if (file.size > IMAGE_SOURCE_LIMIT_BYTES) {
+    throw new ImageImportRefusal(
+      `the file is ${file.size} bytes, over the ${IMAGE_SOURCE_LIMIT_BYTES}-byte pick cap`
+    );
+  }
+
+  let head: Uint8Array<ArrayBuffer>;
+  try {
+    head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  } catch (error) {
+    throw new ImageImportRefusal('the browser could not read this file', {
+      cause: error,
+    });
+  }
+
   const mime: ImageMime | null = imageMimeOf(head);
 
   if (mime === null) {
@@ -117,17 +129,30 @@ export const importImage = async (file: File): Promise<ImportedImage> => {
     height: bitmap.height,
     width: bitmap.width,
   });
-  const context = canvasOf(size.width, size.height);
 
-  context.imageSmoothingQuality = 'high';
-  context.drawImage(bitmap, 0, 0, size.width, size.height);
-  bitmap.close();
+  let dataURL: string;
+  let bytes: Uint8Array<ArrayBuffer>;
 
-  const dataURL = context.canvas.toDataURL(
-    mime,
-    mime === 'image/jpeg' ? JPEG_QUALITY : undefined
-  );
-  const bytes = bytesOfDataURL(dataURL);
+  try {
+    const context = canvasOf(size.width, size.height);
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(bitmap, 0, 0, size.width, size.height);
+    dataURL = context.canvas.toDataURL(
+      mime,
+      mime === 'image/jpeg' ? JPEG_QUALITY : undefined
+    );
+    bytes = bytesOfDataURL(dataURL);
+  } catch (thrown) {
+    if (thrown instanceof ImageImportRefusal) {
+      throw thrown;
+    }
+    throw new ImageImportRefusal(
+      'the browser could not render or encode the image',
+      { cause: thrown }
+    );
+  } finally {
+    bitmap.close();
+  }
 
   if (bytes.length > IMAGE_FILE_LIMIT_BYTES) {
     throw new ImageImportRefusal(

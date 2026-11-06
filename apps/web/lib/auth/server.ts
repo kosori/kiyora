@@ -3,7 +3,12 @@ import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 import { getDatabase } from '../db';
 import { schema } from '../db/schema';
-import { AuthConfigurationError, type AuthEnv, readAuthEnv } from './env';
+import {
+  AuthConfigurationError,
+  type AuthEnv,
+  REQUIRED,
+  readAuthEnv,
+} from './env';
 
 const buildAuth = (config: AuthEnv) =>
   betterAuth({
@@ -12,9 +17,13 @@ const buildAuth = (config: AuthEnv) =>
       provider: 'pg',
       schema,
     }),
+    // readAuthEnv refuses this flag outside development/test, so the password
+    // routes can never open in a production runtime.
     emailAndPassword: { enabled: config.devCredentials },
     plugins: [nextCookies()],
     secret: config.secret,
+    // Every provider variable is required by design: a partially configured
+    // provider is never advertised, so both are registered unconditionally.
     socialProviders: {
       github: {
         clientId: config.github.clientId,
@@ -37,7 +46,8 @@ const holder = globalThis as typeof globalThis & {
 /**
  * The Better Auth instance for this process. Built on first use so importing a
  * route never requires a database; a missing configuration surfaces as an
- * `AuthConfigurationError` naming the variable, not as a stack trace.
+ * `AuthConfigurationError` naming every variable the server needs, not as a
+ * stack trace.
  */
 export const getAuth = (): Auth => {
   const existing = holder.__kiyoraAuth;
@@ -50,7 +60,7 @@ export const getAuth = (): Auth => {
 
   if (config === null) {
     throw new AuthConfigurationError(
-      'Accounts are not configured. Set DATABASE_URL, BETTER_AUTH_SECRET and BETTER_AUTH_URL to enable them.'
+      `Accounts are not configured. Set every required variable to enable them: ${REQUIRED.join(', ')}.`
     );
   }
 

@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
-import { type Board, PREVIEW_LIMIT_BYTES } from '@kiyora/model';
-import { decideSync, type RemoteBoardSummary } from '@kiyora/sync';
-import { and, desc, eq } from 'drizzle-orm';
+import { type Board, PREVIEW_LIMIT_BYTES, unsafeSvg } from '@kiyora/model';
+import {
+  type BoardPage,
+  decideSync,
+  type RemoteBoardSummary,
+} from '@kiyora/sync';
+import { and, asc, count, desc, eq } from 'drizzle-orm';
 import { readAuthEnv } from '../auth/env';
 import { getDatabase } from './index';
 import { board } from './schema';
@@ -12,7 +16,7 @@ export type BoardWrite = {
   ownerId: string;
   baseRevision: number | null;
   payload: unknown;
-  /** The picture the client saved, already validated by the route. */
+  /** The picture the client saved, already vetted by `readPreview`. */
   preview: string | null;
 };
 
@@ -21,11 +25,24 @@ export type BoardWriteResult =
   | { status: 'written'; revision: number }
   | { status: 'conflict'; revision: number; payload: Board | null }
   | { status: 'too-large'; bytes: number; limit: number }
-  | { status: 'invalid'; reason: 'schema' | 'version' }
-  | { status: 'forbidden' };
+  | { status: 'invalid'; reason: 'schema' | 'version' };
+
+/** A write the database could not complete; the route reports it as a server fault. */
+export class BoardWriteFailure extends Error {
+  constructor(cause: unknown) {
+    super('the board write could not be completed', { cause });
+    this.name = 'BoardWriteFailure';
+  }
+}
 
 /** What the store decided about one delete. */
 export type BoardDeleteResult = { status: 'deleted' } | { status: 'absent' };
+
+/** One page of an owner's remote copies and the account's whole count. */
+export type BoardList = {
+  boards: RemoteBoardSummary[];
+  total: number;
+};
 
 const hashOf = (bytes: string): string =>
   createHash('sha256').update(bytes).digest('hex');
@@ -33,17 +50,20 @@ const hashOf = (bytes: string): string =>
 /**
  * The preview a write may store, or null when it is not one this server will
  * keep. The server has no measurer, so it never paints a board itself: it only
- * checks the shape the client saved and the cap, and a preview that fails
- * either is dropped rather than failing the write. The client's projection ends
- * with a newline, so surrounding whitespace is allowed and the bytes are kept
- * as sent.
+ * checks that the client saved a bounded SVG this browser can safely render,
+ * and a preview that fails either check is dropped rather than failing the
+ * write. The client's projection ends with a newline, so surrounding whitespace
+ * is allowed and the bytes are kept as sent.
  */
 export const readPreview = (value: unknown): string | null => {
   if (typeof value !== 'string') {
     return null;
   }
   const trimmed = value.trim();
-  if (!(trimmed.startsWith('<svg') && trimmed.endsWith('</svg>'))) {
+  if (
+    !(trimmed.startsWith('<svg') && trimmed.endsWith('</svg>')) ||
+    unsafeSvg(trimmed) !== null
+  ) {
     return null;
   }
 
@@ -56,6 +76,7 @@ export type BoardDownload = {
   revision: number;
 };
 
+/** The one connection every store function reads and writes through. */
 const database = () => {
   const config = readAuthEnv();
 
@@ -67,29 +88,41 @@ const database = () => {
 };
 
 /**
- * Every remote copy this owner holds, newest change first. Only the columns the
- * library lists are selected, so listing never reads or parses a payload.
+ * One bounded page of this owner's remote copies, newest change first, with
+ * ties broken by id so a page boundary is stable. Only the columns the library
+ * lists are selected, so listing never reads or parses a payload. `total` is the
+ * account's whole count, so a short page is never mistaken for the account.
  */
 export const listBoards = async (
-  ownerId: string
-): Promise<RemoteBoardSummary[]> => {
-  const rows = await database()
-    .select({
-      bytes: board.bytes,
-      id: board.id,
-      preview: board.previewSvg,
-      revision: board.revision,
-      title: board.title,
-      updatedAt: board.updatedAt,
-    })
-    .from(board)
-    .where(eq(board.ownerId, ownerId))
-    .orderBy(desc(board.updatedAt));
+  ownerId: string,
+  page: BoardPage
+): Promise<BoardList> => {
+  const db = database();
+  const [rows, counted] = await Promise.all([
+    db
+      .select({
+        bytes: board.bytes,
+        id: board.id,
+        preview: board.previewSvg,
+        revision: board.revision,
+        title: board.title,
+        updatedAt: board.updatedAt,
+      })
+      .from(board)
+      .where(eq(board.ownerId, ownerId))
+      .orderBy(desc(board.updatedAt), asc(board.id))
+      .limit(page.limit)
+      .offset(page.offset),
+    db.select({ total: count() }).from(board).where(eq(board.ownerId, ownerId)),
+  ]);
 
-  return rows.map((row) => ({
-    ...row,
-    updatedAt: row.updatedAt.toISOString(),
-  }));
+  return {
+    boards: rows.map((row) => ({
+      ...row,
+      updatedAt: row.updatedAt.toISOString(),
+    })),
+    total: Number(counted[0]?.total ?? 0),
+  };
 };
 
 /**
@@ -119,85 +152,125 @@ export const readBoard = async ({
  * validated; the preview is the picture the client saved, because the server
  * has no measurer to paint one. Nothing is trusted from the client's claims
  * about a payload's columns.
+ *
+ * A first write inserts with `onConflictDoNothing`, because a lock cannot hold a
+ * row that does not exist yet: a lost race re-reads the real row and decides
+ * again, twice at most, then answers the stored revision as a conflict. A board
+ * another account owns is the same conflict answer, so the endpoint never
+ * confirms an id it will not write.
+ *
+ * @throws {BoardWriteFailure} when the database could not complete the write.
  */
-export const writeBoard = ({
+export const writeBoard = async ({
   id,
   ownerId,
   baseRevision,
   payload,
   preview,
 }: BoardWrite): Promise<BoardWriteResult> => {
-  const config = readAuthEnv();
+  let serialized: string;
 
-  if (config === null) {
-    throw new Error('Board sync needs the account configuration to be set.');
+  try {
+    serialized = JSON.stringify(payload);
+  } catch {
+    return { reason: 'schema', status: 'invalid' };
   }
 
-  const serialized = JSON.stringify(payload);
   const bytes = Buffer.byteLength(serialized, 'utf8');
   const payloadHash = hashOf(serialized);
-  const { db } = getDatabase(config.databaseUrl);
 
-  return db.transaction(async (tx) => {
-    const [stored] = await tx
-      .select()
-      .from(board)
-      .where(eq(board.id, id))
-      .for('update');
+  try {
+    const db = database();
 
-    if (stored !== undefined && stored.ownerId !== ownerId) {
-      return { status: 'forbidden' };
-    }
+    return await db.transaction(async (tx) => {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        // biome-ignore lint/performance/noAwaitInLoops: a lost insert race must re-read the real row before deciding again.
+        const [stored] = await tx
+          .select()
+          .from(board)
+          .where(eq(board.id, id))
+          .for('update');
 
-    const decision = decideSync(
-      stored === undefined
-        ? null
-        : { payloadHash: stored.payloadHash, revision: stored.revision },
-      { baseRevision, bytes, payload, payloadHash }
-    );
+        if (stored !== undefined && stored.ownerId !== ownerId) {
+          return { payload: null, revision: 0, status: 'conflict' };
+        }
 
-    if (decision.kind === 'too-large') {
-      return {
-        bytes: decision.bytes,
-        limit: decision.limit,
-        status: 'too-large',
-      };
-    }
+        const decision = decideSync(
+          stored === undefined
+            ? null
+            : { payloadHash: stored.payloadHash, revision: stored.revision },
+          { baseRevision, bytes, payload, payloadHash }
+        );
 
-    if (decision.kind === 'invalid') {
-      return { reason: decision.reason, status: 'invalid' };
-    }
+        if (decision.kind === 'too-large') {
+          return {
+            bytes: decision.bytes,
+            limit: decision.limit,
+            status: 'too-large',
+          };
+        }
 
-    if (decision.kind === 'conflict') {
+        if (decision.kind === 'invalid') {
+          return { reason: decision.reason, status: 'invalid' };
+        }
+
+        if (decision.kind === 'conflict') {
+          return {
+            payload: stored?.payload ?? null,
+            revision: decision.revision,
+            status: 'conflict',
+          };
+        }
+
+        if (decision.kind === 'idempotent') {
+          return { revision: decision.revision, status: 'written' };
+        }
+
+        const columns = {
+          bytes,
+          payload: decision.board,
+          payloadHash,
+          previewSvg: preview,
+          revision: decision.revision,
+          title: decision.board.title,
+          updatedAt: new Date(),
+        };
+
+        if (decision.kind === 'create') {
+          const [created] = await tx
+            .insert(board)
+            .values({ id, ownerId, ...columns })
+            .onConflictDoNothing({ target: board.id })
+            .returning({ id: board.id });
+
+          if (created !== undefined) {
+            return { revision: decision.revision, status: 'written' };
+          }
+
+          continue;
+        }
+
+        await tx.update(board).set(columns).where(eq(board.id, id));
+
+        return { revision: decision.revision, status: 'written' };
+      }
+
+      const [stored] = await tx
+        .select()
+        .from(board)
+        .where(eq(board.id, id))
+        .for('update');
+
       return {
         payload: stored?.payload ?? null,
-        revision: decision.revision,
+        revision: stored?.revision ?? 0,
         status: 'conflict',
       };
-    }
-
-    if (decision.kind === 'idempotent') {
-      return { revision: decision.revision, status: 'written' };
-    }
-
-    const columns = {
-      bytes,
-      payload: decision.board,
-      payloadHash,
-      previewSvg: preview,
-      revision: decision.revision,
-      title: decision.board.title,
-      updatedAt: new Date(),
-    };
-
-    if (decision.kind === 'create') {
-      await tx.insert(board).values({ id, ownerId, ...columns });
-    } else {
-      await tx.update(board).set(columns).where(eq(board.id, id));
-    }
-
-    return { revision: decision.revision, status: 'written' };
-  });
+    });
+  } catch (error) {
+    // biome-ignore lint/style/useErrorCause: the cause is handed to `Error.cause` by BoardWriteFailure's constructor.
+    throw new BoardWriteFailure(error);
+  }
 };
 
 /**
@@ -212,14 +285,7 @@ export const deleteBoard = async ({
   id: string;
   ownerId: string;
 }): Promise<BoardDeleteResult> => {
-  const config = readAuthEnv();
-
-  if (config === null) {
-    throw new Error('Board sync needs the account configuration to be set.');
-  }
-
-  const { db } = getDatabase(config.databaseUrl);
-  const removed = await db
+  const removed = await database()
     .delete(board)
     .where(and(eq(board.id, id), eq(board.ownerId, ownerId)))
     .returning({ id: board.id });

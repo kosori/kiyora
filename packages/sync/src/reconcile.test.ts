@@ -1,6 +1,11 @@
-import { type Board, parseBoard, SCHEMA_VERSION } from '@kiyora/model';
+import {
+  type Board,
+  parseBoard,
+  SCHEMA_VERSION,
+  StorageError,
+} from '@kiyora/model';
 import { describe, expect, it, vi } from 'vitest';
-import type { ConflictPorts } from './conflict';
+import type { ConflictPorts } from './conflict-resolution';
 import type { SyncRecord, SyncSnapshot, SyncState } from './reconcile';
 import { createSyncMachine } from './reconcile';
 import type { SyncTransport, UploadRequest, UploadResult } from './transport';
@@ -12,6 +17,7 @@ const conflictPorts = (): ConflictPorts => ({
     read: () => Promise.resolve(null),
     write: () => Promise.resolve(),
   },
+  discardLocal: () => Promise.resolve(),
   duplicateLocal: () => Promise.resolve(null),
   replaceLocal: (remote) => Promise.resolve(remote),
   saveRecordFor: () => Promise.resolve(),
@@ -60,6 +66,7 @@ type Fake = {
   transport: SyncTransport;
   uploads: UploadRequest[];
   reply: (result: UploadResult) => void;
+  fail: (error: unknown) => void;
   hold: () => void;
   release: (result: UploadResult) => void;
   mostAtOnce: () => number;
@@ -68,12 +75,16 @@ type Fake = {
 const fakeTransport = (): Fake => {
   const uploads: UploadRequest[] = [];
   const replies: UploadResult[] = [];
+  const errors: unknown[] = [];
   const waiting: ((result: UploadResult) => void)[] = [];
   let active = 0;
   let most = 0;
   let held = false;
 
   return {
+    fail: (error) => {
+      errors.push(error);
+    },
     hold: () => {
       held = true;
     },
@@ -89,13 +100,17 @@ const fakeTransport = (): Fake => {
     },
     transport: {
       download: () => Promise.resolve(null),
-      list: () => Promise.resolve([]),
+      list: async () => ({ boards: [], status: 'ok', total: 0 }),
       remove: () => Promise.resolve({ kind: 'removed' }),
       upload: async (request) => {
         uploads.push(request);
         active += 1;
         most = Math.max(most, active);
         try {
+          const failure = errors.shift();
+          if (failure !== undefined) {
+            throw failure;
+          }
           if (held) {
             return await new Promise<UploadResult>((settle) => {
               waiting.push(settle);
@@ -489,5 +504,73 @@ describe('the sync state machine', () => {
 
     expect(seen.map((state) => state.status)).toContain('pending');
     expect(seen.map((state) => state.status)).toContain('synced');
+  });
+
+  it('reports a non-retryable server answer', async () => {
+    const fake = fakeTransport();
+    fake.reply({ kind: 'server' });
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: linkedAt(1),
+      saveRecord: () => undefined,
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    await machine.reconcile();
+
+    expect(machine.getState()).toEqual(
+      expected({ reason: 'server', status: 'error' })
+    );
+  });
+
+  it('classifies a storage failure as a fault', async () => {
+    const fake = fakeTransport();
+    fake.fail(new StorageError({ kind: 'quota' }));
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: linkedAt(1),
+      saveRecord: () => undefined,
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    await machine.reconcile();
+
+    expect(machine.getState()).toEqual(
+      expected({
+        fault: { kind: 'quota' },
+        reason: 'fault',
+        status: 'error',
+      })
+    );
+  });
+
+  it('hands the swallowed cause to the reporter', async () => {
+    const fake = fakeTransport();
+    const cause = new Error('boom');
+    fake.fail(cause);
+    const report = vi.fn();
+    const machine = createSyncMachine({
+      boardId: 'board-1',
+      conflict: conflictPorts(),
+      read: () => snapshot(),
+      record: linkedAt(1),
+      report,
+      saveRecord: () => undefined,
+      signedIn: true,
+      transport: fake.transport,
+    });
+
+    await machine.reconcile();
+
+    expect(report).toHaveBeenCalledWith(cause);
+    expect(machine.getState()).toEqual(
+      expected({ reason: 'network', status: 'error' })
+    );
   });
 });

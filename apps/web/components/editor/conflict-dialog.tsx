@@ -34,6 +34,9 @@ type Props = {
 const FAILED = 'That resolution did not finish. The conflict is still here.';
 const NO_REMOTE = 'The remote copy could not be opened. Try again when online.';
 
+const messageOf = (thrown: unknown): string =>
+  thrown instanceof Error ? thrown.message : String(thrown);
+
 /** The remote board as a preview, painted through the same walker as the list. */
 const useRemotePreview = (copy: ConflictCopy | null): string | null => {
   const measure = useMemo(() => createTextMeasurer(), []);
@@ -167,8 +170,14 @@ export const ConflictDialog = ({
   }, [onClose, onDuplicateMine]);
 
   const download = useCallback(() => {
-    if (replaced !== null) {
+    if (replaced === null) {
+      return;
+    }
+    try {
       saveBoardFile(replaced);
+      setError(null);
+    } catch (thrown) {
+      setError(messageOf(thrown));
     }
   }, [replaced]);
 

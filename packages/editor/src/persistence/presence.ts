@@ -17,6 +17,37 @@ export type PresenceMessage = {
  */
 export type BoardMessage = PresenceMessage | ClipboardMessage;
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/**
+ * Whether `value` is a message this build understands, read at the seam where
+ * the platform hands one over. Another build, a devtools snippet or any script
+ * on this origin can post to a board's channel, so the payload is narrowed here
+ * rather than trusted through the event's generic. A clipboard's shapes are
+ * checked again when a tab pastes them, so a large fragment is not parsed twice.
+ */
+export const isBoardMessage = (value: unknown): value is BoardMessage => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (value.type === 'clipboard') {
+    return (
+      typeof value.boardId === 'string' &&
+      typeof value.origin === 'string' &&
+      typeof value.schemaVersion === 'number' &&
+      Array.isArray(value.shapes)
+    );
+  }
+
+  return (
+    (value.type === 'hello' || value.type === 'ack' || value.type === 'bye') &&
+    typeof value.id === 'string' &&
+    typeof value.openedAt === 'number'
+  );
+};
+
 /** A broadcast channel across tabs, as a port. The app backs it with `BroadcastChannel`. */
 export type BoardChannel = {
   post: (message: BoardMessage) => void;

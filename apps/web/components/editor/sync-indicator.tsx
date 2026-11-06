@@ -40,7 +40,11 @@ const messageOf = (state: SyncState): string => {
         ? 'Sync refused — this board is invalid'
         : state.reason === 'unauthorized'
           ? 'Signed out — sync paused'
-          : 'Sync failed — will retry';
+          : state.reason === 'server'
+            ? 'Sync failed — the server refused'
+            : state.reason === 'fault'
+              ? 'Sync failed — storage error'
+              : 'Sync failed — will retry';
     default:
       return 'Sync state unknown';
   }

@@ -30,6 +30,22 @@ export const IMAGE_FILE_LIMIT_BYTES = 2 * 1024 * 1024;
  */
 export const IMAGE_MAX_SIDE = 2048;
 
+/**
+ * The most bytes a picked file may hold before it is decoded. Well above the
+ * stored cap, because that cap applies after downscaling: a camera original is
+ * large, a board raster is not. Checked before `createImageBitmap`, so a huge
+ * pick is refused instead of being expanded at sensor resolution on its way to
+ * being refused for its stored size.
+ */
+export const IMAGE_SOURCE_LIMIT_BYTES = 64 * 1024 * 1024;
+
+/**
+ * The side a placed image may span, in board units, before it is scaled to fit.
+ * Board geometry, kept beside the raster ceiling so the stored picture and the
+ * box it is placed in cannot drift apart.
+ */
+export const IMAGE_PLACEMENT_SIDE = 480;
+
 const DATA_URL = /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/;
 
 /**

@@ -2,6 +2,7 @@ import {
   type BoardChannel,
   type BoardMessage,
   createPresence,
+  isBoardMessage,
 } from '@kiyora/editor';
 import { describe, expect, it } from 'vitest';
 
@@ -104,5 +105,31 @@ describe('two tabs on two boards', () => {
 
     expect(second.isPrimary()).toBe(true);
     expect(second.leader()).toBeNull();
+  });
+});
+
+describe('a message on the board channel', () => {
+  it('accepts a presence announcement', () => {
+    expect(isBoardMessage({ id: 'a', openedAt: 1, type: 'hello' })).toBe(true);
+  });
+
+  it('accepts a clipboard from another tab', () => {
+    expect(
+      isBoardMessage({
+        boardId: 'b',
+        origin: 'a',
+        schemaVersion: 3,
+        shapes: [],
+        type: 'clipboard',
+      })
+    ).toBe(true);
+  });
+
+  it('refuses a foreign payload, so no tab dereferences it', () => {
+    expect(isBoardMessage(null)).toBe(false);
+    expect(isBoardMessage('hello')).toBe(false);
+    expect(isBoardMessage({ type: 'unknown' })).toBe(false);
+    expect(isBoardMessage({ id: 'a', type: 'hello' })).toBe(false);
+    expect(isBoardMessage({ boardId: 'b', type: 'clipboard' })).toBe(false);
   });
 });

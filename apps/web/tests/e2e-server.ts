@@ -27,10 +27,16 @@ export const E2E_SERVER = process.env.E2E_SERVER === 'prod' ? 'prod' : 'dev';
  */
 export const E2E_SERVER_DB = process.env.E2E_SERVER_DB === '1';
 
+/**
+ * The command that serves the app under test, started directly rather than
+ * through `bun run dev`: that script fronts Next with the portless proxy, which
+ * needs a running proxy and a TTY to escalate with sudo. CI has neither, and
+ * the suite only ever talks to `localhost`, so it invokes Next itself.
+ */
 const serve = (): string =>
   E2E_SERVER === 'prod'
     ? `bunx next start --port ${E2E_PORT}`
-    : `bun run dev --port ${E2E_PORT}`;
+    : `bunx next dev --port ${E2E_PORT}`;
 
 /** The command that serves the app under test. */
 export const E2E_SERVER_COMMAND = E2E_SERVER_DB
@@ -40,6 +46,18 @@ export const E2E_SERVER_COMMAND = E2E_SERVER_DB
 /** The Postgres the server project owns. Defaults to the documented local one. */
 export const E2E_DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://kiyora:kiyora@localhost:5432/kiyora';
+
+/**
+ * The flags the app under test runs with. `NEXT_PUBLIC_E2E` opens the
+ * panel-crash seam, which a normal build folds to false; the suite sets it so a
+ * panel can be made to throw and the error boundary proven to catch it. A
+ * client bundle inlines the value at build time, so a run against the built app
+ * (`E2E_SERVER=prod`) has to be built with the same flag:
+ * `NEXT_PUBLIC_E2E=1 bun run build`.
+ */
+export const E2E_WEB_ENV: Record<string, string> = {
+  NEXT_PUBLIC_E2E: '1',
+};
 
 /**
  * The account configuration the server project starts with. The OAuth pairs are

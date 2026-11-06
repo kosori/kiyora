@@ -1,7 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { messageOf, runsAsScript, UsageError } from './cli';
 
 /**
  * Cuts the web subsets of the vendored faces from their upstream TTFs.
@@ -57,6 +64,18 @@ export const WEIGHTS = [
   },
 ] as const;
 
+/** One entry of `WEIGHTS`. */
+export type Weight = (typeof WEIGHTS)[number];
+
+/** The weights one run should cut, and whether it may reach the network. */
+export type FontRun = {
+  offline: boolean;
+  weights: readonly Weight[];
+};
+
+/** How long a TTF download may take before it is aborted. */
+export const DOWNLOAD_TIMEOUT_MS = 30_000;
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cache = join(root, '.cache', 'fonts');
 const fonts = join(root, 'apps', 'web', 'public', 'fonts');
@@ -66,29 +85,107 @@ const usage = `usage: bun scripts/subset-font.ts [weight ...] [--offline]
   weight     one or more of: ${WEIGHTS.map((weight) => weight.output.replace('.woff2', '')).join(', ')}
   --offline  do not download a missing TTF; read only the cache`;
 
+/**
+ * The weights one run should cut, parsed from `argv`. An unknown flag is a
+ * `UsageError` so `--offlin` cannot fall through to an online run, and a weight
+ * is matched by its exact name so `mono` cannot select both Geist faces.
+ */
+export const parseRun = (argv: readonly string[]): FontRun => {
+  const flags = argv.filter((arg) => arg.startsWith('-'));
+  const unknownFlags = flags.filter((flag) => flag !== '--offline');
+  if (unknownFlags.length > 0) {
+    throw new UsageError(`unknown flag(s): ${unknownFlags.join(', ')}`);
+  }
+
+  const byName = new Map<string, Weight>(
+    WEIGHTS.map((weight) => [weight.output.replace(/\.woff2$/, ''), weight])
+  );
+  const chosen: Weight[] = [];
+  const unknownNames: string[] = [];
+
+  for (const name of argv.filter((arg) => !arg.startsWith('-'))) {
+    const weight = byName.get(name);
+    if (weight === undefined) {
+      unknownNames.push(name);
+    } else {
+      chosen.push(weight);
+    }
+  }
+
+  if (unknownNames.length > 0) {
+    throw new UsageError(
+      `unknown weight(s): ${unknownNames.join(', ')}\nvalid weights: ${[...byName.keys()].join(', ')}`
+    );
+  }
+
+  return {
+    offline: flags.includes('--offline'),
+    weights: chosen.length === 0 ? [...WEIGHTS] : chosen,
+  };
+};
+
+/** The cached TTF for one weight, or `null` when only an unfinished download is present. */
+export const cachedSource = (
+  cacheDirectory: string,
+  source: string
+): string | null => {
+  const path = join(cacheDirectory, source);
+  return existsSync(path) ? path : null;
+};
+
+/**
+ * Downloads `url` to `cached` through `<cached>.partial` and an atomic rename,
+ * so an interrupted download can never be mistaken for a cached TTF. A failed
+ * or timed-out download removes its partial and throws a normal `Error`.
+ */
+export const downloadSource = async (
+  cached: string,
+  url: string,
+  request: typeof fetch = fetch
+): Promise<void> => {
+  const partial = `${cached}.partial`;
+
+  try {
+    const response = await request(url, {
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `downloading ${url} failed: ${response.status} ${response.statusText}`
+      );
+    }
+    mkdirSync(dirname(cached), { recursive: true });
+    writeFileSync(partial, Buffer.from(await response.arrayBuffer()));
+    renameSync(partial, cached);
+  } catch (error) {
+    rmSync(partial, { force: true });
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error(
+        `downloading ${url} timed out after ${DOWNLOAD_TIMEOUT_MS} ms`,
+        { cause: error }
+      );
+    }
+    throw error;
+  }
+};
+
 /** The TTF for one weight, downloaded to the cache once. */
 const sourceFor = async (
   source: string,
   upstream: string,
   offline: boolean
 ): Promise<string> => {
-  const cached = join(cache, source);
-  if (existsSync(cached)) {
+  const cached = cachedSource(cache, source);
+  if (cached !== null) {
     return cached;
   }
   if (offline) {
     throw new Error(`${source} is not cached and --offline was given`);
   }
 
-  const response = await fetch(`${upstream}/${source}`);
-  if (!response.ok) {
-    throw new Error(
-      `downloading ${source} failed: ${response.status} ${response.statusText}`
-    );
-  }
-  mkdirSync(cache, { recursive: true });
-  writeFileSync(cached, Buffer.from(await response.arrayBuffer()));
-  return cached;
+  const path = join(cache, source);
+  await downloadSource(path, `${upstream}/${source}`);
+  return path;
 };
 
 /** Cuts one weight to `apps/web/public/fonts`, or throws with what went wrong. */
@@ -118,28 +215,15 @@ const cut = (source: string, output: string): void => {
 };
 
 const main = async (): Promise<void> => {
-  const args = process.argv.slice(2);
-  const offline = args.includes('--offline');
-  const requested = args.filter((arg) => !arg.startsWith('--'));
-
-  const chosen =
-    requested.length === 0
-      ? [...WEIGHTS]
-      : WEIGHTS.filter((weight) =>
-          requested.some((name) => weight.output.includes(name))
-        );
-
-  if (chosen.length === 0) {
-    process.stderr.write(`${usage}\n`);
-    process.exitCode = 1;
-    return;
-  }
-
+  const run = parseRun(process.argv.slice(2));
   mkdirSync(fonts, { recursive: true });
   const sources = await Promise.all(
-    chosen.map((weight) => sourceFor(weight.source, weight.upstream, offline))
+    run.weights.map((weight) =>
+      sourceFor(weight.source, weight.upstream, run.offline)
+    )
   );
-  chosen.forEach((weight, index) => {
+
+  run.weights.forEach((weight, index) => {
     const source = sources[index];
     if (source !== undefined) {
       cut(source, weight.output);
@@ -147,13 +231,14 @@ const main = async (): Promise<void> => {
   });
 };
 
-const runsAsScript = (): boolean => {
-  const [, entry] = process.argv;
-  return (
-    entry !== undefined && resolve(entry) === fileURLToPath(import.meta.url)
-  );
-};
-
-if (runsAsScript()) {
-  await main();
+if (runsAsScript(import.meta.url)) {
+  try {
+    await main();
+  } catch (error) {
+    process.stderr.write(`${messageOf(error)}\n`);
+    if (error instanceof UsageError) {
+      process.stderr.write(`${usage}\n`);
+    }
+    process.exitCode = 1;
+  }
 }

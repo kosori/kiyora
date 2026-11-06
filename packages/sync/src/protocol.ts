@@ -18,9 +18,13 @@ export type SyncWrite = {
   /** The revision the local copy was built on, or null when linking. */
   baseRevision: number | null;
   payload: unknown;
-  /** The hash of the serialized payload the client sent. */
+  /**
+   * The hash of the serialized payload the client sent. The server derives it
+   * from the validated serialized payload, so this is the stored hash it is
+   * compared against rather than the client's claim (ADR-0011).
+   */
   payloadHash: string;
-  /** The UTF-8 size of that serialized payload. */
+  /** The UTF-8 size of that serialized payload. The route derives it server-side. */
   bytes: number;
 };
 
@@ -54,6 +58,9 @@ export const readSyncPayload = (
   if (!isObject(payload)) {
     return { ok: false, reason: 'schema' };
   }
+  if (typeof payload.schemaVersion !== 'number') {
+    return { ok: false, reason: 'schema' };
+  }
   if (payload.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, reason: 'version' };
   }
@@ -75,7 +82,11 @@ export const decideSync = (
   stored: StoredRemote | null,
   write: SyncWrite
 ): SyncDecision => {
-  if (write.bytes > SYNC_LIMIT_BYTES) {
+  if (
+    !Number.isSafeInteger(write.bytes) ||
+    write.bytes < 0 ||
+    write.bytes > SYNC_LIMIT_BYTES
+  ) {
     return {
       bytes: write.bytes,
       kind: 'too-large',

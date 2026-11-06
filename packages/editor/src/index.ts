@@ -186,6 +186,7 @@ export {
 } from './persistence/faults';
 export {
   adoptLegacyBoard,
+  copyTitle,
   createLibrary,
   type Library,
   type LibraryEntry,
@@ -196,6 +197,7 @@ export {
   type BoardChannel,
   type BoardMessage,
   createPresence,
+  isBoardMessage,
   type Presence,
   type PresenceMessage,
 } from './persistence/presence';

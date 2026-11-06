@@ -19,6 +19,8 @@ export {
   IMAGE_FILE_LIMIT_BYTES,
   IMAGE_MAX_SIDE,
   IMAGE_MIME_TYPES,
+  IMAGE_PLACEMENT_SIDE,
+  IMAGE_SOURCE_LIMIT_BYTES,
   type ImageFile,
   type ImageMime,
   imageFileSchema,
@@ -142,6 +144,8 @@ export {
   SvgExportRefusal,
   unsafeSvg,
 } from './export/board-svg';
+export type { CorruptReason, StorageFault } from './faults';
+export { faultOf, StorageError } from './faults';
 export {
   BOARD_FILE_EXTENSION,
   BOARD_FILE_LIMIT_BYTES,

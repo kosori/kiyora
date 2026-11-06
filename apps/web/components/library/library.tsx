@@ -15,7 +15,7 @@ import { Button } from '~/components/ui/button';
 import type { AccountSummary } from '~/lib/auth/account';
 import { openStore } from '~/lib/board-storage';
 import { newBoard } from '~/lib/new-board';
-import { downloadRemoteBoard } from '~/lib/remote-board';
+import { downloadRemoteBoard, type RemoteBoardOpen } from '~/lib/remote-board';
 import { httpSyncTransport } from '~/lib/sync/transport';
 import { BoardRow } from './board-row';
 import { DeleteBoardDialog } from './delete-board-dialog';
@@ -132,14 +132,17 @@ export const Library = ({ account }: Props) => {
   };
 
   const openRemote = useCallback(
-    async (summary: RemoteBoardSummary): Promise<boolean> => {
-      const entry = await downloadRemoteBoard(summary);
-      await reload();
-      if (entry === null) {
-        return false;
+    async (summary: RemoteBoardSummary): Promise<RemoteBoardOpen> => {
+      const result = await downloadRemoteBoard(summary);
+
+      if (result.status !== 'opened') {
+        return result;
       }
-      router.push(`/b/${entry.id}`);
-      return true;
+
+      await reload();
+      router.push(`/b/${result.entry.id}`);
+
+      return result;
     },
     [reload, router]
   );

@@ -1,10 +1,9 @@
+export type { ConflictCache, ConflictCopy } from './conflict-copy';
 export {
-  type ConflictCache,
-  type ConflictCopy,
   type ConflictPorts,
   type ConflictResolutions,
   createConflictResolutions,
-} from './conflict';
+} from './conflict-resolution';
 export {
   decideSync,
   type PayloadProblem,
@@ -23,7 +22,9 @@ export {
   type SyncState,
 } from './reconcile';
 export type {
+  BoardPage,
   DownloadedBoard,
+  RemoteBoardList,
   RemoteBoardSummary,
   RemoveResult,
   SyncTransport,

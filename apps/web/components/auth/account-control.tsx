@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '~/components/ui/button';
 import type { AccountSummary } from '~/lib/auth/account';
-import { authClient } from '~/lib/auth/client';
+import { getAuthClient } from '~/lib/auth/client';
 
 type Props = {
   account: AccountSummary | null;
@@ -24,7 +24,7 @@ export const AccountControl = ({ account }: Props) => {
     setSigningOut(true);
     setError(null);
 
-    const result = await authClient.signOut();
+    const result = await getAuthClient().signOut();
 
     if (result.error) {
       setError(result.error.message ?? 'Signing out failed');

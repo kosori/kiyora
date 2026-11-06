@@ -5,7 +5,9 @@ import {
   boardConflictKey,
   boardKey,
   boardSnapshotKey,
+  copyTitle,
   createLibrary,
+  faultOf,
   type LibraryEntry,
   type StorageFault,
 } from '@kiyora/editor';
@@ -19,13 +21,19 @@ import type { ConflictPorts, DownloadedBoard, SyncRecord } from '@kiyora/sync';
 import { useEffect, useState } from 'react';
 import { openStore } from './board-storage';
 import { iconSetFor } from './icon-set';
-import { emptyBoard, UNTITLED } from './new-board';
+import { emptyBoard, mintBoardId, UNTITLED } from './new-board';
 import { createTextMeasurer } from './text-measurer';
 
-/** What the board route shows: loading, not in this library, or one board. */
+/**
+ * What the board route shows: loading, not in this library, a storage failure
+ * that kept it from being read, or one board. A `fault` says the browser could
+ * not open its storage, so the board may still be there and the address is not
+ * reported as missing.
+ */
 export type BoardRouteState =
   | { status: 'loading' }
   | { status: 'missing' }
+  | { status: 'fault'; fault: StorageFault }
   | {
       status: 'ready';
       board: Board;
@@ -58,9 +66,8 @@ const syncOf = (entry: LibraryEntry | undefined): SyncRecord => ({
   tooLarge: entry?.tooLarge === true,
 });
 
-/** The title a conflict duplicate wears, the way the library names a copy. */
-const copyTitle = (title: string): string =>
-  title.trim() === '' ? 'Untitled copy' : `${title} copy`;
+/** The fields every ready board shares, built from the one library the route opened. */
+type ReadyState = Extract<BoardRouteState, { status: 'ready' }>;
 
 /** One remote copy cached beside its board, or null when the bytes will not read. */
 const readCached = (bytes: string | null): DownloadedBoard | null => {
@@ -95,6 +102,7 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
 
   useEffect(() => {
     let cancelled = false;
+    setState({ status: 'loading' });
 
     (async () => {
       const { fault: openFault, store } = await openStore();
@@ -112,10 +120,19 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
 
       const sync = syncOf(entry);
       const recordSync = async (record: SyncRecord): Promise<void> => {
+        // The record is a cache, so a failed write never blocks the edit; a
+        // persistent failure still merges into the board's fault surface.
         try {
           await library.setSync(boardId, record);
-        } catch {
-          // The record is a cache: the next save writes it again.
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+          setState((current) =>
+            current.status === 'ready'
+              ? { ...current, fault: current.fault ?? faultOf(error) }
+              : current
+          );
         }
       };
       const measure = createTextMeasurer();
@@ -139,11 +156,14 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
               })
             ),
         },
+        discardLocal: async (id) => {
+          await library.remove(id);
+        },
         duplicateLocal: async (local) => {
           const copy: Board = {
             ...local,
             createdAt: Date.now(),
-            id: crypto.randomUUID(),
+            id: mintBoardId(),
             title: copyTitle(local.title),
             updatedAt: Date.now(),
           };
@@ -175,19 +195,29 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
       }
 
       const title = entry?.title || UNTITLED;
+      // A board that would not read names its own fault; otherwise the fault is
+      // the one that opened this storage, so neither is ever dropped.
+      const fault = loaded.status === 'fault' ? loaded.fault : openFault;
+      const shared = {
+        conflict,
+        preview: entry?.preview,
+        recordSync,
+        rename: (next: string) => library.rename(boardId, next),
+        storage: library.storage(boardId),
+        sync,
+      } satisfies Pick<
+        ReadyState,
+        'conflict' | 'preview' | 'recordSync' | 'rename' | 'storage' | 'sync'
+      >;
+
       if (loaded.status === 'loaded') {
         setState({
+          ...shared,
           board: loaded.board,
-          conflict,
-          fault: openFault,
+          fault,
           migratedFrom: loaded.migratedFrom,
-          preview: entry?.preview,
-          recordSync,
-          rename: (title) => library.rename(boardId, title),
           rewrite: loaded.migratedFrom !== null,
           status: 'ready',
-          storage: library.storage(boardId),
-          sync,
           writable: true,
         });
         return;
@@ -195,39 +225,29 @@ export const useBoardRoute = (boardId: string): BoardRouteState => {
 
       if (loaded.status === 'empty') {
         setState({
+          ...shared,
           board: emptyBoard(boardId, Date.now(), title),
-          conflict,
-          fault: openFault,
+          fault,
           migratedFrom: null,
-          preview: entry?.preview,
-          recordSync,
-          rename: (title) => library.rename(boardId, title),
           rewrite: true,
           status: 'ready',
-          storage: library.storage(boardId),
-          sync,
           writable: true,
         });
         return;
       }
 
       setState({
+        ...shared,
         board: emptyBoard(boardId, Date.now(), title),
-        conflict,
-        fault: loaded.fault,
+        fault,
         migratedFrom: null,
-        preview: entry?.preview,
-        recordSync,
-        rename: (title) => library.rename(boardId, title),
         rewrite: loaded.quarantined,
         status: 'ready',
-        storage: library.storage(boardId),
-        sync,
         writable: loaded.quarantined,
       });
-    })().catch(() => {
+    })().catch((error: unknown) => {
       if (!cancelled) {
-        setState({ status: 'missing' });
+        setState({ fault: faultOf(error), status: 'fault' });
       }
     });
 

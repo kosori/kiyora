@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { LIBRARY_KEY } from '@kiyora/editor';
+import { crashPanelKey } from '../../lib/panel-crash';
 import {
   boardStorageKey,
   libraryRecord,
@@ -235,9 +236,9 @@ test('a storage fault reports no accessibility violations', async ({
 });
 
 test('a failed panel reports no accessibility violations', async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('kiyora:test:crash-panel:tools', '1');
-  });
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, '1');
+  }, crashPanelKey('tools'));
   await open(page);
   await expect(page.getByTestId('panel-error')).toBeVisible();
 

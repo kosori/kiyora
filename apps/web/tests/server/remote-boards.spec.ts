@@ -91,7 +91,7 @@ const boardRequests = (page: Page): string[] => {
 const answerListing =
   (boards: unknown[]) =>
   async (route: Route): Promise<void> => {
-    await route.fulfill({ json: { boards } });
+    await route.fulfill({ json: { boards, total: boards.length } });
   };
 
 const answerDownload = async (route: Route): Promise<void> => {
@@ -124,7 +124,7 @@ test.describe('signed in', () => {
   }) => {
     await signIn(page);
     const requests = boardRequests(page);
-    await page.route('**/api/boards', answerListing([summary]));
+    await page.route('**/api/boards?*', answerListing([summary]));
     await page.route('**/api/boards/*', answerDownload);
 
     await openLibrary(page, [localBoard]);
@@ -169,8 +169,8 @@ test.describe('signed in', () => {
   }) => {
     await signIn(page);
     let listed = [summary];
-    await page.route('**/api/boards', (route) =>
-      route.fulfill({ json: { boards: listed } })
+    await page.route('**/api/boards?*', (route) =>
+      route.fulfill({ json: { boards: listed, total: listed.length } })
     );
 
     await openLibrary(page, [localBoard]);
@@ -193,7 +193,7 @@ test.describe('signed in', () => {
   }) => {
     await signIn(page);
     await page.route(
-      '**/api/boards',
+      '**/api/boards?*',
       answerListing([
         summary,
         {
@@ -217,12 +217,58 @@ test.describe('signed in', () => {
     await expect(section).not.toContainText('Local only');
   });
 
+  test('asks for the next page only when Load more is chosen', async ({
+    page,
+  }) => {
+    await signIn(page);
+    const pages: string[] = [];
+    const summaries = ['One', 'Two'].map((title, index) => ({
+      bytes: 1,
+      id: `${index === 0 ? '11111111' : '22222222'}-1111-4111-8111-111111111111`,
+      preview: null,
+      revision: 1,
+      title: `Remote ${title}`,
+      updatedAt: new Date(1_700_000_000_000 + index).toISOString(),
+    }));
+
+    await page.route('**/api/boards?*', async (route) => {
+      const url = new URL(route.request().url());
+      const offset = Number(url.searchParams.get('offset') ?? '0');
+      pages.push(url.search);
+      await route.fulfill({
+        json: {
+          boards: summaries.slice(offset, offset + 1),
+          total: summaries.length,
+        },
+      });
+    });
+
+    await openLibrary(page, [localBoard]);
+
+    await expect(
+      page.getByTestId('remote-board').filter({ hasText: 'Remote One' })
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('remote-board').filter({ hasText: 'Remote Two' })
+    ).toBeHidden();
+
+    await page.getByTestId('remote-boards-more').click();
+
+    await expect(
+      page.getByTestId('remote-board').filter({ hasText: 'Remote Two' })
+    ).toBeVisible();
+    expect([...new Set(pages)]).toEqual([
+      '?limit=50&offset=0',
+      '?limit=50&offset=1',
+    ]);
+  });
+
   test('signing out hides the section and keeps the downloaded board', async ({
     page,
   }) => {
     await signIn(page);
     const requests = boardRequests(page);
-    await page.route('**/api/boards', answerListing([summary]));
+    await page.route('**/api/boards?*', answerListing([summary]));
     await page.route('**/api/boards/*', answerDownload);
 
     await openLibrary(page, [localBoard]);
@@ -272,7 +318,7 @@ test.describe('signed in', () => {
 
 test('an API failure leaves the local library usable', async ({ page }) => {
   await signIn(page);
-  await page.route('**/api/boards', (route) => route.abort());
+  await page.route('**/api/boards?*', (route) => route.abort());
 
   await openLibrary(page, [localBoard]);
 
