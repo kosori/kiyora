@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { type ChangeEvent, type FormEvent, useState } from 'react';
 import { Button } from '~/components/ui/button';
-import { authClient } from '~/lib/auth/client';
+import { getAuthClient } from '~/lib/auth/client';
 
 type Props = {
   devCredentials: boolean;
@@ -31,7 +31,7 @@ export const SignInForm = ({ devCredentials, next }: Props) => {
     setBusy(true);
     setError(null);
 
-    const result = await authClient.signIn.social({
+    const result = await getAuthClient().signIn.social({
       callbackURL: next,
       provider,
     });
@@ -53,10 +53,11 @@ export const SignInForm = ({ devCredentials, next }: Props) => {
     setBusy(true);
     setError(null);
 
+    const client = getAuthClient();
     const name = email.split('@')[0] ?? email;
     const result = create
-      ? await authClient.signUp.email({ email, name, password })
-      : await authClient.signIn.email({ email, password });
+      ? await client.signUp.email({ email, name, password })
+      : await client.signIn.email({ email, password });
 
     if (result.error) {
       setError(messageOf(result.error));

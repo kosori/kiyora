@@ -12,9 +12,9 @@ The server is optional. With no account variables set, it serves the library and
 
 ### Accounts
 
-Better Auth owns four tables — `user`, `session`, `account`, `verification` — generated into `apps/web/lib/db/schema.ts` and migrated by committed SQL under `apps/web/drizzle/`. `bun run db:migrate` applies them; the boot hook (`apps/web/instrumentation.ts`) reads the committed journal and fails the start when the database is behind it. There is one `postgres.js` client per process, kept on `globalThis` so a development reload does not leak a pool.
+Better Auth owns four tables — `user`, `session`, `account`, `verification` — generated into `apps/web/lib/db/schema.ts` and migrated by committed SQL under `apps/web/drizzle/`. `bun run db:migrate` applies them; the boot hook (`apps/web/instrumentation.ts`) reads the committed journal and fails the start when the database is behind it or its newest migration does not match. There is one `postgres.js` client per process: kept on `globalThis` outside production so a development reload does not leak a pool, and module-local in production. `closeDatabase()` closes it and forgets the handle.
 
-Google and GitHub are the only providers. `emailAndPassword` exists only when `AUTH_DEV_CREDENTIALS=1` and `NODE_ENV` is not production; a production boot with that flag set is refused. OAuth callbacks are smoke-tested on a hosted deploy, not walked in CI: the `server` Playwright project signs in through the dev-credentials provider against the real database.
+Google and GitHub are the only providers. `emailAndPassword` exists only when `AUTH_DEV_CREDENTIALS=1` and `NODE_ENV` is exactly `development` or `test`; any other environment with that flag is refused. OAuth callbacks are smoke-tested on a hosted deploy, not walked in CI: the `server` Playwright project signs in through the dev-credentials provider against the real database.
 
 The library reads the session on the server with `auth.api.getSession({ headers: await headers() })`, so a signed-out page makes no request to its own API. Signing out drops the cookie and nothing else: every local copy and its bytes stay untouched. The board page reads the same session on the server too, so the editor learns whether sync is possible without a client request.
 

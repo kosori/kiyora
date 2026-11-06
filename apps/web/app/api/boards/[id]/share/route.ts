@@ -4,6 +4,7 @@ import {
   createShareLink,
   readShareLink,
   revokeShareLink,
+  ShareConfigurationError,
   type ShareLinkLookup,
 } from '~/lib/db/share-store';
 
@@ -19,6 +20,21 @@ const answer = (lookup: ShareLinkLookup): Response => {
   }
 
   return NextResponse.json({ token: null });
+};
+
+/** Runs one share action; a server without accounts answers 503, not a 500. */
+const answerWith = async (
+  work: () => Promise<ShareLinkLookup>
+): Promise<Response> => {
+  try {
+    return answer(await work());
+  } catch (error) {
+    if (error instanceof ShareConfigurationError) {
+      return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+    }
+
+    throw error;
+  }
 };
 
 /**
@@ -38,7 +54,7 @@ export const GET = async (
 
   const { id } = await params;
 
-  return answer(await readShareLink({ boardId: id, ownerId }));
+  return answerWith(() => readShareLink({ boardId: id, ownerId }));
 };
 
 /**
@@ -57,7 +73,7 @@ export const POST = async (
 
   const { id } = await params;
 
-  return answer(await createShareLink({ boardId: id, ownerId }));
+  return answerWith(() => createShareLink({ boardId: id, ownerId }));
 };
 
 /** Revokes the board's live share link. The remote copy itself is untouched. */
@@ -73,5 +89,5 @@ export const DELETE = async (
 
   const { id } = await params;
 
-  return answer(await revokeShareLink({ boardId: id, ownerId }));
+  return answerWith(() => revokeShareLink({ boardId: id, ownerId }));
 };

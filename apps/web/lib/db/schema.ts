@@ -13,13 +13,18 @@ import {
 
 /** One account holder. Better Auth's user table. */
 export const user = pgTable('user', {
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  // Better Auth lowercases email before insert, so this unique is effectively
+  // case-insensitive; a functional lower(email) index is deferred until a caller
+  // writes the column without the adapter.
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   id: text('id').primaryKey(),
   image: text('image'),
   name: text('name').notNull(),
-  updatedAt: timestamp('updated_at')
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -29,12 +34,14 @@ export const user = pgTable('user', {
 export const session = pgTable(
   'session',
   {
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     id: text('id').primaryKey(),
     ipAddress: text('ip_address'),
     token: text('token').notNull().unique(),
-    updatedAt: timestamp('updated_at')
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -51,17 +58,23 @@ export const account = pgTable(
   'account',
   {
     accessToken: text('access_token'),
-    accessTokenExpiresAt: timestamp('access_token_expires_at'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', {
+      withTimezone: true,
+    }),
     accountId: text('account_id').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     id: text('id').primaryKey(),
     idToken: text('id_token'),
     password: text('password'),
     providerId: text('provider_id').notNull(),
     refreshToken: text('refresh_token'),
-    refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', {
+      withTimezone: true,
+    }),
     scope: text('scope'),
-    updatedAt: timestamp('updated_at')
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -69,18 +82,26 @@ export const account = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [index('account_user_id_idx').on(table.userId)]
+  (table) => [
+    index('account_user_id_idx').on(table.userId),
+    uniqueIndex('account_provider_id_account_id_idx').on(
+      table.providerId,
+      table.accountId
+    ),
+  ]
 );
 
 /** A short-lived value Better Auth may need to look up, such as a token. */
 export const verification = pgTable(
   'verification',
   {
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     id: text('id').primaryKey(),
     identifier: text('identifier').notNull(),
-    updatedAt: timestamp('updated_at')
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -102,7 +123,9 @@ export const board = pgTable(
   'board',
   {
     bytes: integer('bytes').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     id: text('id').primaryKey(),
     ownerId: text('owner_id')
       .notNull()
@@ -112,12 +135,14 @@ export const board = pgTable(
     previewSvg: text('preview_svg'),
     revision: integer('revision').notNull(),
     title: text('title').notNull(),
-    updatedAt: timestamp('updated_at')
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index('board_owner_id_idx').on(table.ownerId)]
+  (table) => [
+    index('board_owner_id_updated_at_idx').on(table.ownerId, table.updatedAt),
+  ]
 );
 
 /**
@@ -132,8 +157,10 @@ export const shareLink = pgTable(
     boardId: text('board_id')
       .notNull()
       .references(() => board.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    revokedAt: timestamp('revoked_at'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
     token: text('token').primaryKey(),
   },
   (table) => [

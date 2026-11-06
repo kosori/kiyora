@@ -1,10 +1,16 @@
+import { SessionFault } from '~/components/auth/session-fault';
 import { Library } from '~/components/library/library';
-import { currentAccount } from '~/lib/auth/session';
+import { currentSession } from '~/lib/auth/session';
 
 const Page = async () => {
-  const account = await currentAccount();
+  const { account, fault } = await currentSession();
 
-  return <Library account={account} />;
+  return (
+    <>
+      <SessionFault fault={fault} />
+      <Library account={account} />
+    </>
+  );
 };
 
 export default Page;

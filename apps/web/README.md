@@ -26,14 +26,16 @@ Accounts are optional. With no account variable set, the app runs signed out and
 
 ```sh
 export DATABASE_URL=postgres://kiyora:kiyora@localhost:5432/kiyora
-export BETTER_AUTH_SECRET=…          # at least 32 characters
+export BETTER_AUTH_SECRET=…          # at least 32 characters, not a placeholder
 export BETTER_AUTH_URL=http://localhost:3000
 export GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…
 export GITHUB_CLIENT_ID=… GITHUB_CLIENT_SECRET=…
 bun run db:migrate                    # applies apps/web/drizzle before the first request
 ```
 
-`AUTH_DEV_CREDENTIALS=1` adds the email and password form outside production, which is how the `server` project signs in. A production start with that flag is refused. The boot hook refuses to serve on a database the committed journal has not reached.
+`NEXT_PUBLIC_APP_URL` is optional; when set, the browser client calls that absolute http(s) origin instead of the one it was served from. `AUTH_TRUSTED_ORIGINS` is an optional comma-separated list of extra http(s) origins. The deployed default `https://kiyora.ccdx.dev` is always trusted; localhost and `*.localhost` are trusted only outside production.
+
+`AUTH_DEV_CREDENTIALS=1` adds the email and password form when `NODE_ENV` is exactly `development` or `test`, which is how the `server` project signs in. A production start with that flag is refused, as is an unset or unrecognised environment. The boot hook refuses to serve on a database the committed journal has not reached, or one whose newest migration does not match it.
 
 ```sh
 E2E_SERVER_DB=1 E2E_PORT=4473 bun run test:e2e --project=server

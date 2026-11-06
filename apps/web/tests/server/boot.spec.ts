@@ -28,12 +28,13 @@ const restoreEnvironment = (): void => {
 
 const COMPLETE = {
   AUTH_DEV_CREDENTIALS: '1',
-  BETTER_AUTH_SECRET: 'boot-test-secret',
+  BETTER_AUTH_SECRET: 'boot-test-secret-0123456789abcdef',
   BETTER_AUTH_URL: 'http://localhost:4473',
   GITHUB_CLIENT_ID: 'boot-test-github',
   GITHUB_CLIENT_SECRET: 'boot-test-github-secret',
   GOOGLE_CLIENT_ID: 'boot-test-google',
   GOOGLE_CLIENT_SECRET: 'boot-test-google-secret',
+  NODE_ENV: 'test',
 };
 
 test.afterEach(() => {
@@ -57,5 +58,27 @@ test.describe('the boot hook', () => {
     await expect(register()).rejects.toThrow(
       'AUTH_DEV_CREDENTIALS must not be set in production'
     );
+  });
+
+  test('refuses the dev-credentials flag when the runtime is not development or test', async () => {
+    useEnvironment({
+      ...COMPLETE,
+      DATABASE_URL: 'postgres://kiyora:kiyora@localhost:5432/kiyora',
+      NODE_ENV: 'staging',
+    });
+
+    await expect(register()).rejects.toThrow(
+      'AUTH_DEV_CREDENTIALS is only allowed'
+    );
+  });
+
+  test('refuses a session secret that is too short', async () => {
+    useEnvironment({
+      ...COMPLETE,
+      BETTER_AUTH_SECRET: 'short',
+      DATABASE_URL: 'postgres://kiyora:kiyora@localhost:5432/kiyora',
+    });
+
+    await expect(register()).rejects.toThrow('at least 32 characters');
   });
 });
