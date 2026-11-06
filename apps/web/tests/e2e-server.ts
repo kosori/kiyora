@@ -27,10 +27,16 @@ export const E2E_SERVER = process.env.E2E_SERVER === 'prod' ? 'prod' : 'dev';
  */
 export const E2E_SERVER_DB = process.env.E2E_SERVER_DB === '1';
 
+/**
+ * The command that serves the app under test, started directly rather than
+ * through `bun run dev`: that script fronts Next with the portless proxy, which
+ * needs a running proxy and a TTY to escalate with sudo. CI has neither, and
+ * the suite only ever talks to `localhost`, so it invokes Next itself.
+ */
 const serve = (): string =>
   E2E_SERVER === 'prod'
     ? `bunx next start --port ${E2E_PORT}`
-    : `bun run dev --port ${E2E_PORT}`;
+    : `bunx next dev --port ${E2E_PORT}`;
 
 /** The command that serves the app under test. */
 export const E2E_SERVER_COMMAND = E2E_SERVER_DB
