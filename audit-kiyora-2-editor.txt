@@ -1,0 +1,301 @@
+
+─── scripts/subset-font.ts:122-123 ───
+[bug · medium] Unknown/mistyped flags are silently discarded here: any `--`-prefixed arg is
+stripped, so `--offlin` falls through to a normal online run, defeating the safety intent of the
+offline mode. Reject unknown flags before proceeding.
+
++   const knownFlags = new Set(['--offline']);
++   const unknownFlags = args.filter(
++     (arg) => arg.startsWith('-') && !knownFlags.has(arg)
++   );
++   if (unknownFlags.length > 0) {
++     process.stderr.write(`unknown flag(s): ${unknownFlags.join(', ')}\n\n${usage}\n`);
++     process.exitCode = 1;
++     return;
++   }
++ 
+    const offline = args.includes('--offline');
+-   const requested = args.filter((arg) => !arg.startsWith('--'));
++   const requested = args.filter((arg) => !arg.startsWith('-'));
+
+
+─── scripts/subset-font.ts:125-130 ───
+[bug · medium] Substring matching is too loose: `'mono'` selects both Geist weights, `'balsamiq'`
+selects all four, and an unknown/typo'd name selects nothing but is silently ignored (falling
+through to the `chosen.length === 0` usage path only when *nothing* matches). Match the exact weight
+name from the usage text and report unknown names.
+
++   const byName = new Map(
++     WEIGHTS.map((weight) => [weight.output.replace('.woff2', ''), weight])
++   );
++   const unknown = requested.filter((name) => !byName.has(name));
++   if (unknown.length > 0) {
++     process.stderr.write(`unknown weight(s): ${unknown.join(', ')}\n\n${usage}\n`);
++     process.exitCode = 1;
++     return;
++   }
++ 
+    const chosen =
+      requested.length === 0
+        ? [...WEIGHTS]
+-       : WEIGHTS.filter((weight) =>
+-           requested.some((name) => weight.output.includes(name))
+-         );
++       : requested.map((name) => byName.get(name)!);
+
+
+─── scripts/subset-font.ts:89-90 ───
+[bug · medium] The TTF is written directly to its cache path. If the process is interrupted
+mid-write (or the disk fills), a truncated file is left behind and `existsSync` will trust it on
+every later run, silently producing corrupt subsets. Write to a temp file and rename atomically
+(needs `renameSync` from `node:fs`).
+
+    mkdirSync(cache, { recursive: true });
+-   writeFileSync(cached, Buffer.from(await response.arrayBuffer()));
++   const partial = `${cached}.partial`;
++   writeFileSync(partial, Buffer.from(await response.arrayBuffer()));
++   renameSync(partial, cached);
+
+
+─── scripts/subset-font.ts:157-159 ───
+[bug · medium] `await main()` has no error handling, so a failed download or a missing `pyftsubset`
+surfaces as an unhandled rejection with a raw stack trace instead of the user-friendly guidance the
+rest of the script provides. Wrap it and exit non-zero.
+
+  if (runsAsScript()) {
++   try {
+-   await main();
++     await main();
++   } catch (error) {
++     process.stderr.write(
++       `${error instanceof Error ? error.message : String(error)}\n`
++     );
++     process.exitCode = 1;
++   }
+  }
+
+
+─── scripts/subset-font.ts:83-84 ───
+[security · medium] The upstream TTF is consumed after only an HTTP status check: a
+compromised/changed upstream (or a proxy returning a 200 HTML page) is silently trusted and then
+shipped as a web asset. Pin a SHA-256 per weight in `WEIGHTS` and verify the downloaded bytes, and
+add an `AbortSignal.timeout(...)` so a stalled download cannot hang the script.
+
+
+
+─── scripts/icon-names.ts:4-4 ───
+[maintainability · medium] The list now holds exactly 150 entries, which is the hard upper bound
+asserted in `scripts/check-icons.test.ts` (`expect(ICON_NAMES.length).toBeLessThanOrEqual(150)`).
+The header promises that adding a name is "one run of `bun run icons` away from being placeable",
+but the very next addition will fail that guard test, blocking the documented workflow until the
+bound is changed. Either keep headroom in the guard (or drop the fixed cap), or state the explicit
+ceiling here and the step of raising it alongside a new name.
+
+
+
+─── scripts/icon-names.ts:8-8 ───
+[documentation · low] This rationale does not match the design: the dataset is only reached through
+a dynamic import (`apps/web/lib/icon-set.ts`, enforced by the lazy-loading test in
+`check-icons.test.ts`), so it never participates in first paint. A larger set costs extra
+download/parse when the picker is first opened, not first-paint work. Rephrase to the real
+constraint so the next editor is not misled about why the set is curated.
+
+
+
+─── scripts/icons.ts:55-55 ───
+[bug · high] `stroke="none"` does not mean the path is invisible: a filled path (`stroke="none"
+fill="currentColor"`) is a visible shape, and it is silently dropped here before the style guard
+ever runs. That produces an icon with missing geometry and no error. Only the transparent backdrop
+(`stroke="none"` **and** `fill="none"`) should be skipped; anything else that is `stroke="none"`
+should go through the normal style validation (which will refuse it explicitly) instead of
+disappearing.
+
+-     if (/\bstroke="none"/.test(attributes)) {
++     const strokeless = /\bstroke="none"/.test(attributes);
++     const fillless = /\bfill="none"/.test(attributes);
++     if (strokeless && fillless) {
+
+
+─── scripts/icons.ts:58-58 ───
+[bug · medium] Attribute extraction only recognises double-quoted values, and a path whose `d` is
+not matched is silently skipped (`return []`) rather than reported. A source SVG that uses single
+quotes, or a `<path>` without `d`, therefore yields a silently incomplete icon instead of a loud
+failure — the opposite of how `viewBoxOf`/`pathsOf` otherwise treat unexpected input. Either reject
+attributes you cannot parse, or explicitly assert that every non-backdrop `<path>` exposes a
+double-quoted `d`.
+
+      const d = /\bd="([^"]*)"/.exec(attributes)?.[1];
+
+
+─── scripts/icons.ts:62-62 ───
+[bug · low] `(?!none)` only excludes the exact string `none` at the start of the value, so values
+such as `noneX`, `None`, or `none ` (trailing space) are classified as "a style the dataset cannot
+express", while the guard also never inspects single-quoted attributes. Match the full value
+(`(?!none("|\s|$))` / `="none"`) and include the offending attribute in the error message so a
+misclassification is diagnosable.
+
+-     if (/\b(fill|stroke|stroke-width)="(?!none)/.test(attributes)) {
++     if (/\b(fill|stroke|stroke-width)="(?!none(?:"|\s))/i.test(attributes)) {
+
+
+─── scripts/icons.ts:103-103 ───
+[bug · medium] `name` and the raw path data are interpolated directly into a single-quoted TS string
+literal. A `'`, a `\`, or a newline in either value (a library change, or a future curated name)
+silently corrupts the committed module or introduces an escape sequence instead of being rejected.
+Emit them through `JSON.stringify`, or validate the values and fail with a clear message.
+
+-     return `  '${name}': '${paths}',\n`;
++     return `  ${JSON.stringify(name)}: ${JSON.stringify(paths)},\n`;
+
+
+─── scripts/icons.ts:127-129 ───
+[bug · medium] Catching every read failure and reporting it as "is missing" masks real environment
+problems: `EACCES`, `EISDIR`, or an I/O error all produce a stale-file CI message and send the
+reader to `bun run icons`, which cannot fix them. Only `ENOENT` means missing; rethrow everything
+else so the actual error surfaces.
+
+-   } catch {
++   } catch (error) {
++     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
++       throw error;
++     }
+      return `${path} is missing; run \`bun run icons\``;
+    }
+
+
+─── scripts/icons.ts:135-136 ───
+[bug · medium] `--root` parsing is duplicated verbatim between `scripts/icons.ts` (`rootFrom`) and
+`scripts/check-budgets.ts`. A bare `--root` (end of argv) yields `undefined`, and `--root --check`
+yields the string `--check`, which is then resolved as a path: the first silently falls back to the
+repository root / `process.cwd()`, the second writes to or scans the wrong tree (in `icons.ts` it
+effectively disables the check) and both still exit 0. Extract the helper to a shared script helper
+and fix both: treat a missing or `--`-prefixed value as a usage error (report it and exit non-zero),
+and in the budget gate assert that at least one source file was collected so a bad root cannot pass
+vacuously.
+
+    const flag = argv.indexOf('--root');
+-   const value = flag === -1 ? undefined : argv[flag + 1];
++   if (flag === -1) {
++     return root;
++   }
++   const value = argv[flag + 1];
++   if (value === undefined || value.startsWith('--')) {
++     throw new Error('--root needs a directory');
++   }
++   return resolve(value);
+
+
+─── scripts/icons.ts:162-162 ───
+[bug · medium] The write path is unguarded: the target directory is never created (`ENOENT` when
+`--root` points at a tree without `packages/model/src/icons`), and a `writeFileSync`/`renderDataset`
+failure escapes as a raw stack trace in both branches. Create the parent directory and translate
+failures into a `icons: <reason>` message with `process.exitCode = 1`, as the `--check` branch
+already does for stale files.
+
++     mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, renderDataset());
+
+
+─── scripts/icons.ts:72-72 ───
+[performance · low] `outlineDirectory()` re-runs `require.resolve` plus an `existsSync` stat for
+every icon (`readIcon` calls it per name), so generating the dataset repeats identical dependency
+resolution 150+ times. It also hard-codes the `../icons/icons/outline` sibling layout; resolving it
+once and caching the result (with the single check) keeps the cost O(1) and confines the brittle
+path assumption to one place.
+
+    const file = join(outlineDirectory(), `${name}.svg`);
+
+
+─── scripts/check-budgets.ts:121-121 ───
+[performance · medium] `checkRepository` reads every file collected by `collectSourceFiles`,
+including the vendored trees (`apps/web/components/ui`, `packages/dsl/src`) that `checkFiles` then
+throws away. Those are exactly the large/restored/generated directories this script is meant to
+ignore, so every gate run pays synchronous I/O for them, and a single unreadable vendored file
+aborts the whole check for no reason. Apply `isVendored` before reading (and ideally skip descending
+into vendored directories inside `walk`).
+
+
+
+─── scripts/check-budgets.ts:106-106 ───
+[bug · medium] `Dirent.isFile()` and `Dirent.isDirectory()` are both `false` for symlinks, so a
+symlinked source file is never collected (silently bypassing the budget) and a symlinked directory
+is never descended into (its whole subtree escapes the budget). Resolve the entry with
+`statSync`/`lstatSync` and decide from `isFile()`/`isDirectory()` on the stat result.
+
+
+
+─── scripts/check-budgets.ts:157-159 ───
+[bug · low] `readdirSync`/`readFileSync` throw on ENOENT (bad `--root`), EACCES, or a file deleted
+mid-walk, so the gate dies with a raw unhandled stack trace instead of a budget verdict — which is
+easy to mistake for an infrastructure failure rather than a check result. Wrap the call and emit
+`budgets: <message>` on stderr with a distinct exit code (e.g. 2) for I/O errors.
+
+
+
+─── scripts/check-budgets.ts:153-153 ───
+[bug · medium] `resolve(process.argv[1])` is compared against `fileURLToPath(import.meta.url)`,
+which the module loader already reports as a realpath. When the gate is invoked through a symlinked
+path (a symlinked `bin`/workspace entry, or `/tmp` vs `/private/tmp` on macOS) the two differ,
+`runsAsScript()` returns `false`, the module body does nothing and the process exits 0 — a gate that
+silently passes. Compare realpaths (or use Bun's `import.meta.main`, which is how the script is
+actually launched per `package.json`).
+
+-     entry !== undefined && resolve(entry) === fileURLToPath(import.meta.url)
++     entry !== undefined &&
++     realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url))
+
+
+
+──────── Project Summary ────────
+
+# Project Summary — Full Repo Scan
+
+Scope of review coverage: **all 19 comments are in `scripts/`** (build-time / CI tooling). No application source, tests, or CI config received comments, so this summary is about the developer tooling layer, not the shipped product code.
+
+### Top Issues
+
+1. **Silent failure is the default error mode across all four scripts.** Nearly every comment describes a path where bad input or an environment problem produces a plausible-looking success instead of an error. Unknown `--flags` are stripped and ignored (`scripts/subset-font.ts`); an unmatched font name selects nothing and continues; paths without a matchable `d` attribute are dropped (`scripts/icons.ts`); `readdirSync`/`readFileSync` failures in `scripts/check-budgets.ts` and unguarded writes in `scripts/icons.ts` escape as raw stack traces. Net effect: the tooling can emit corrupt assets or a false budget pass while exiting 0.
+
+2. **Verbatim argument-parsing duplication with the same defect** — `rootFrom` in `scripts/icons.ts` and `scripts/check-budgets.ts` is copy-pasted, and in both a bare `--root` yields `undefined` (silent fallback) while `--root --check` swallows the next flag as a path. Any fix must land in two places today.
+
+3. **Non-atomic writes to cached/downloaded artifacts** (`scripts/subset-font.ts`): the TTF is written straight to its cache path, so an interrupted or disk-full write leaves a truncated file that `existsSync` permanently trusts. There is no temp-file + rename, and no checksum — downloaded bytes are trusted on an HTTP 200 alone, then shipped as a web asset.
+
+4. **Generated TypeScript is built by raw string interpolation** (`scripts/icons.ts`): `name` and path data are spliced into a single-quoted literal with no escaping, so a `'`, `\`, or newline silently corrupts the committed module rather than failing generation. Combined with issue 1, this is a silent-corruption vector on a checked-in file.
+
+5. **The budget gate can be bypassed by symlinks and is paying for files it discards** (`scripts/check-budgets.ts`): `Dirent.isFile()`/`isDirectory()` are both false for symlinks, so a symlinked file or whole subtree escapes the budget entirely — a correctness gap in the check, not just a perf issue. Separately, `collectSourceFiles` reads every file under vendored trees (`apps/web/components/ui`, `packages/dsl/src`) that `checkFiles` then throws away.
+
+6. **`scripts/icon-names.ts` is pinned at exactly its hard ceiling** — 150 entries against `expect(ICON_NAMES.length).toBeLessThanOrEqual(150)` in `check-icons.test.ts`. The file's own header promises adding a name is "one run of `bun run icons` away," which is now false: the next addition fails the suite.
+
+7. **A design rationale in `scripts/icon-names.ts` contradicts the implementation.** The comment justifies the size cap by first-paint cost, but the dataset is only reachable via dynamic import in `apps/web/lib/icon-set.ts` (enforced by the lazy-loading test), so it never participates in first paint. The real cost is download/parse on picker open — a different budget than the one documented.
+
+8. **Fragile attribute parsing in `scripts/icons.ts`.** Double-quote-only extraction, full-value guards missing on `(?!none)` so `noneX`, `None`, and `none ` are misclassified as unsupported styles, and `stroke="none" fill="currentColor"` paths are dropped as invisible even though they are visible filled geometry. Single-quoted source SVGs degrade silently.
+
+### Module Hotspots
+
+- **`scripts/icons.ts` — 7 comments**, the densest file and the only one mixing correctness, escaping, error handling, perf, and path-resolution issues. Treat as the highest-risk file in the scan.
+- **`scripts/subset-font.ts` — 5 comments**, clustered on the download → verify → cache → subset pipeline; every stage has an integrity or error-reporting gap.
+- **`scripts/check-budgets.ts` — 4 comments**, all in the walk/entry-point layer (`collectSourceFiles`, `Dirent`, `readdirSync` error handling, `argv[1]` vs `import.meta.url` realpath comparison under symlinks or macOS `/tmp` vs `/private/tmp`).
+- **`scripts/icon-names.ts` — 2 comments**, but both are structural (hard cap reached, rationale wrong).
+- **`scripts/` overall: 19/19 comments.** There is no reviewed code outside this directory — flag as a coverage gap, not a quality signal.
+
+### Cross-Cutting Concerns
+
+- **Inconsistent error taxonomy.** Only `ENOENT` should mean "file missing," but `scripts/icons.ts` catches all read failures and reports "is missing," sending readers to `bun run icons`, which cannot fix `EACCES`/`EISDIR`/I/O errors. The same conflation appears when `readdirSync` throws in `scripts/check-budgets.ts`: an infrastructure fault is indistinguishable from a budget verdict.
+- **Unhandled rejections / unguarded top-level execution.** `await main()` in `scripts/subset-font.ts` has no catch; `scripts/check-budgets.ts` guards its entry point with a `resolve(process.argv[1])` comparison that fails under symlinks and macOS path aliasing, so the gate silently doesn't run. Both contradict the otherwise user-friendly CLI tone of these scripts.
+- **Loose, substring-based flag and name matching** (`'mono'` → both Geist weights, `'balsamiq'` → all four) in `scripts/subset-font.ts`, plus flag-stripping that defeats the safety intent of `--offline`. This is the same class as the `--root` parsing bug in the other two files: permissive matching where exactness is the whole point.
+- **Silent-skip patterns replace loud failure** in every script: unmatched `<path>`, undownloadable weights, symlinked entries, unknown flags. There is no shared "reject or report" convention.
+- **Redundant per-item work in generation loops**: `outlineDirectory()` re-runs `require.resolve` + `existsSync` for all 150+ icons because `readIcon` calls it per name, and it hard-codes the `../icons/icons/outline` sibling layout.
+- **Tooling invariants live in tests only, not in the scripts**: the 150-icon cap is asserted in `scripts/check-icons.test.ts` while `scripts/icon-names.ts` documents a policy that no longer holds.
+
+### Quick Wins
+
+- **Wrap the entry points.** `main().catch(err => { …; process.exit(1) })` in `scripts/subset-font.ts` and `scripts/check-budgets.ts`; translate known errors into the existing user-facing messages. Small diff, removes all raw-stack-trace failures.
+- **Extract one shared `parseArgs`/`rootFrom` helper** and have `scripts/icons.ts` and `scripts/check-budgets.ts` import it — fixes the duplicate bug and the `--root --check` swallowing in one change.
+- **`mkdirSync(dirname(target), { recursive: true })`** before the `writeFileSync` in `scripts/icons.ts`; then try/catch the write and render to emit a message instead of a trace.
+- **Narrow the catch in `scripts/icons.ts`** to `err.code === 'ENOENT'`; rethrow everything else.
+- **Hoist the vendored-directory filter** in `scripts/check-budgets.ts` so `collectSourceFiles` skips `apps/web/components/ui` and `packages/dsl/src` before reading, rather than reading then discarding.
+- **Resolve the outline directory once** in `scripts/icons.ts` and pass it into `readIcon`, removing 150+ redundant `require.resolve`/`existsSync` calls.
+- **Tighten matching:** exact weight comparison in `WEIGHTS` lookup (`scripts/subset-font.ts`), reject unknown `--flags` outright, and anchor the style guard to the full attribute value (`none` only) in `scripts/icons.ts`.
+- **Escape generated literals** in `scripts/icons.ts` (`JSON.stringify` for the string literal) — one-line change that closes the committed-module corruption path.
+- **Raise or remove the 150 cap and correct the comment** in `scripts/icon-names.ts` so the documented workflow ("one run of `bun run icons`") matches the assertion in `check-icons.test.ts`.
+- **Use `lstatSync`/`statSync` instead of `Dirent.isFile()`** in `scripts/check-budgets.ts` to stop symlinked files and subtrees from escaping the budget.

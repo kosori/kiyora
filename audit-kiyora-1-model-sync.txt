@@ -1,0 +1,297 @@
+
+─── packages/sync/src/conflict.ts:66-67 ───
+[performance · medium] `sameCopy` serialises both copies on every `show()` call. A `ConflictCopy`
+carries a full `Board`, so this deep-serialises the entire board (and its shapes) just to decide
+whether to publish, which gets expensive for large boards, especially when `open()` runs during
+editing. `JSON.stringify` is also order-sensitive and drops `undefined` values, so a semantically
+identical board with different key order publishes spuriously (and a real change that only touches
+`undefined`-valued keys is missed). Compare the discriminator plus revision and board identity
+instead.
+
+  const sameCopy = (left: ConflictCopy | null, right: ConflictCopy | null) =>
+-   JSON.stringify(left) === JSON.stringify(right);
++   left?.status === right?.status &&
++   (left?.status !== 'ready' ||
++     (right.status === 'ready' &&
++       left.revision === right.revision &&
++       left.board === right.board));
+
+
+─── packages/sync/src/conflict.ts:200-203 ───
+[bug · high] Partial-failure integrity: `replaceLocal` runs inside the same `try` as `adoptLocal`,
+`setRecord`, `cache.clear` and `setState`. If `replaceLocal` succeeds but a later step throws (e.g.
+`setRecord` persisting to storage), the local board has already been swapped and `record()` may
+already report `conflict: null`, yet the catch rebuilds a `conflict` state from those
+already-mutated values — `record().conflict ?? 0` yields `remote: 0`. The result is a record with no
+conflict while the machine reports a conflict at revision 0, and `copy` is left showing the applied
+remote. Capture the pre-mutation revision/conflict before replacing, scope the catch to the
+`replaceLocal` call, and keep the post-replacement steps non-throwing.
+
+
+
+─── packages/sync/src/conflict.ts:254-255 ───
+[bug · high] When a refused write carries no payload, the previously cached `copy` (if any) is left
+in place while the record's `conflict` is advanced to `result.revision`.
+`takeTheirs`/`duplicateMine` then take the shortcut `readyCopy()` and apply that stale copy via
+`applyRemote`, overwriting the local board with an older remote revision and recording a stale
+`revision` as synced — the newer remote content is never fetched. Clear or refresh the copy when
+`result.payload === null` so the next resolution re-`open()`s at the new conflict revision.
+
+
+
+─── packages/sync/src/conflict.ts:338-341 ───
+[bug · medium] `duplicateMine` creates the duplicate (and possibly uploads it) before the resolution
+can fail: on an upload rejection/throw it returns `false` while the duplicated board stays in
+storage, and after a successful upload it still returns `false` when no remote copy can be loaded.
+In both cases the surface is told "nothing happened" and the orphaned duplicate is never disclosed
+or cleaned up. Surface the duplicate's fate (or roll it back) so a failed resolution does not
+silently leave a stray board behind.
+
+
+
+─── packages/sync/src/conflict.ts:316-318 ───
+[bug · medium] Swallowed port failure: a `duplicateLocal` error is collapsed to `null`, so the
+caller gets `false` with no fault surfaced and no state change — the person retries blind, and a
+storage failure looks identical to "nothing to do". Log/record the fault or move the machine into an
+error state instead of discarding the rejection.
+
+
+
+─── packages/sync/src/conflict.ts:349-351 ───
+[bug · medium] `saveRecordFor` is the only place that persists the duplicate's `revision`/`linked`
+state; swallowing its rejection means the duplicate is uploaded but permanently recorded as
+unlinked, so the next session will offer to link it again (or treat it as local-only). At minimum
+surface the failure so the caller can retry persistence.
+
+
+
+─── packages/sync/src/conflict.ts:161-161 ───
+[bug · medium] `opening` only guards re-entry into `open()`, not interleaving with the resolutions.
+If `takeTheirs`/`duplicateMine` call `open()` while a load is in flight, `open()` returns
+immediately, `readyCopy()` is still `null` (the copy is `loading`), and they bail out returning
+`null`/`false` as if nothing could be done. Track the in-flight promise and await it (e.g.
+`loadOnce: () => Promise<void>`), so concurrent resolutions wait for the same load instead of
+silently failing.
+
+
+
+─── packages/sync/src/conflict.ts:152-152 ───
+[bug · low] `cache.write` here is unguarded, unlike `remember()`, so a storage failure after a
+successful download is caught by `open()` and reported as `offline` even though the remote copy was
+fetched and could be shown. Swallow the cache failure (as `remember` does) so a cache problem does
+not hide an available remote copy.
+
+
+
+─── packages/sync/src/conflict.ts:287-291 ───
+[bug · low] The "never accept a stale copy" look-up (`readyCopy()`, else `await open()`, else return
+early) is duplicated verbatim in `takeTheirs` and `duplicateMine`; the two copies can drift apart.
+Extract one helper (e.g. `ensureReadyCopy(): Promise<ReadyCopy | null>`) used by both resolutions.
+Also note that both call `open()` without checking whether the record's conflict revision still
+matches `copy.revision`, so a copy remembered before a newer refusal can be applied.
+
+
+
+─── packages/sync/src/conflict.ts:260-260 ───
+[bug · low] Inconsistent `conflictState` arguments: every other failure path passes
+`current.revision` as `local`, but here the previous conflict revision is passed as `local` and the
+new revision as `remote`. The surface renders `local`/`remote` directly, so after a second refusal
+it shows the wrong local revision. Use `current.revision ?? 0` for `local` and `result.revision` for
+`remote` to match the other paths.
+
+
+
+─── packages/sync/src/transport.ts:53-58 ───
+[documentation · medium] The members of the exported `SyncTransport` port carry no JSDoc, so adapter
+implementers get no stated contract for invariants the reconciler relies on: that `download`
+resolves `null` for a board the server does not hold (never throws for absence), that `list` is
+unordered/tolerates unknown boards, and that every `remove`/`upload` outcome maps to a `kind` rather
+than being thrown. Project rules require exported types to document invariants and *why*. Please add
+per-member JSDoc.
+
+  export type SyncTransport = {
++   /** Offers one board; resolves a `kind` for every server answer (never rejects for a non-accept). */
+    upload: (request: UploadRequest) => Promise<UploadResult>;
++   /** Every remote copy the caller may see, without payloads; order is not significant. */
+    list: () => Promise<RemoteBoardSummary[]>;
++   /** Resolves `null` when the server holds no such board; the payload is untrusted network data. */
+    download: (id: string) => Promise<DownloadedBoard | null>;
++   /** `removed`/`absent` let the caller drop its copy; `failed` leaves the remote possibly alive. */
+    remove: (id: string) => Promise<RemoveResult>;
+  };
+
+
+─── packages/sync/src/transport.ts:24-27 ───
+[security · medium] `DownloadedBoard.payload` asserts `Board` at compile time, but the value crossed
+a trust boundary (the wire). Nothing here states that adapters must parse/validate untrusted network
+JSON before casting; a malformed response will then reach the reconciler as a valid `Board`. Since
+`conflict.revision` and `revision` checks key off this data (ADR 0011), document the validation
+obligation (or model an `invalid`/parse failure) so adapters cannot skip it.
+
++ /**
++  * One remote copy as a download carries it: the bytes and the revision they are.
++  * Adapters MUST parse/validate the raw response into a `Board` before returning;
++  * the type is not a runtime guarantee of the wire data's shape.
++  */
+  export type DownloadedBoard = {
+    payload: Board;
+    revision: number;
+  };
+
+
+─── packages/sync/src/transport.ts:8-8 ───
+[documentation · low] `updatedAt: string` leaves the format unstated (adjacent code does
+`Date.parse(updatedAt)` and the `Board` model stores `updatedAt` as a number). Staleness must be
+decided from `revision` (ADR 0011), not by comparing these strings; document that `updatedAt` is
+display-only and specify its expected encoding (ISO-8601) so consumers cannot accidentally order by
+it.
+
++   /** Display-only ISO-8601 timestamp; never use it for staleness/ordering — compare `revision`. */
+    updatedAt: string;
+
+
+─── packages/sync/src/reconcile.ts:234-237 ───
+[bug · high] Coalescing loses the queued operation's intent. `queued` is only a boolean, so the
+follow-up work is always replayed as `reconcile()` → `start(record.revision)`:
+- A `link()` issued while an upload is in flight is later executed as a revision-checked sync
+instead of a `baseRevision: null` link, and because a second link typically happens before
+`record.linked` flips, the follow-up after a successful link re-uploads the same bytes and bumps the
+remote revision for no reason.
+- If that first link fails with a network error, the queued `reconcile()` sees `!record.linked` and
+overwrites `state` with `{ status: 'local' }`, hiding the failure.
+- The caller's `await start(...)` resolves with the *current* upload's promise, before its own
+upload has run (or not run at all).
+Queue the `baseRevision` (or the operation kind) instead of a flag and give the queued caller its
+own promise, e.g. `let queued: { baseRevision: number | null } | null = null;` and drain it with
+`start(queued.baseRevision)`.
+
+
+
+─── packages/sync/src/reconcile.ts:214-218 ───
+[bug · medium] The conflict state reports `baseRevision ?? 0` here, while `initial()`, `reconcile()`
+and `markPending()` all report `record.revision ?? 0` for the same `status: 'conflict'`. A link
+(`baseRevision: null`) or a retried upload can therefore surface a different `local` revision for
+the same conflict depending on which path produced it. Use `record.revision ?? 0` (the record has
+already been updated above) so the conflict shape has a single source of truth.
+
+        setState({
+-         local: baseRevision ?? 0,
++         local: record.revision ?? 0,
+          remote: result.revision,
+          status: 'conflict',
+        });
+
+
+─── packages/sync/src/reconcile.ts:184-187 ───
+[bug · medium] A bare `catch` maps every thrown error to `{ reason: 'network' }`, including
+programming errors (e.g. a `saveRecord`/serialization failure thrown from the transport adapter) and
+auth failures surfaced as exceptions. Callers then treat the failure as transient and retry forever,
+and the original cause is lost with no diagnostics. At minimum narrow the classification (or accept
+a small error-reporting port to log the cause), and only report `network` for genuinely transient
+failures.
+
+
+
+─── packages/sync/src/reconcile.ts:202-207 ───
+[maintainability · medium] `SyncRecord.pending` is documented as “the local copy holds a change its
+upload has not accepted”, but a refused write sets `pending: false` even though the local edit was
+exactly what got rejected. Any consumer reading `pending` (e.g. to warn about unsaved work or to
+schedule a retry) will now see the board as fully synced while `conflict` silently holds the only
+trace. Either keep `pending: true` alongside `conflict`, or update the `pending` JSDoc to state
+explicitly that a conflict supersedes/absorbs the pending flag, so the invariant is not violated
+implicitly.
+
+
+
+─── packages/sync/src/reconcile.ts:297-316 ───
+[maintainability · low] `markPending` re-implements the same ordered guard chain as `reconcile`
+(`blocked` → `!linked` → `!signedIn` → `conflict`), with only the final state differing (`pending`
+vs the upload). The two will drift apart as soon as one guard changes. Extract a shared
+`reportBlockedState(): boolean` helper that both call before their final step.
+
+
+
+─── packages/sync/src/protocol.ts:78-84 ───
+[security · medium] `write.bytes` is caller-supplied and only upper-bounded here. A negative or
+`NaN` value satisfies `NaN > LIMIT === false` / `-1 > LIMIT === false` and silently bypasses the 4
+MB guard, allowing an oversized payload through. Since `SyncWrite.bytes` originates from the wire
+when `decideSync` runs server-side, validate it (`Number.isFinite`, `>= 0`, integer) and prefer
+deriving the byte count from the serialized `write.payload` rather than trusting the declared value.
+
+
+
+─── packages/sync/src/protocol.ts:98-100 ───
+[bug · high] The `idempotent` branch treats a matching `payloadHash` as proof that `write.payload`
+equals what is stored, but `decideSync` never verifies that `write.payloadHash` is actually the hash
+of `write.payload` — it trusts the client's claim. A stale, reused, or forged hash for a *different*
+valid board makes the decision report `idempotent` (revision unchanged) while returning the new
+payload's board, so the stored copy is never updated and the client/ server diverge (silent data
+loss). The hash must be recomputed server-side from a canonical serialization of `write.payload` (or
+at minimum the caller must prove the correspondence) before this comparison is trusted.
+
+
+
+─── packages/sync/src/protocol.ts:57-59 ───
+[bug · low] A payload that simply lacks `schemaVersion` (or has a non-numeric value) falls into the
+same branch as an older/newer version and is reported as `reason: 'version'`, even though the JSDoc
+scopes `version` to older/newer schema versions. Malformed payloads should surface as `schema`; only
+a well-typed version mismatch should be `version`.
+
++   if (typeof payload.schemaVersion !== 'number') {
++     return { ok: false, reason: 'schema' };
++   }
+    if (payload.schemaVersion !== SCHEMA_VERSION) {
+      return { ok: false, reason: 'version' };
+    }
+
+
+
+──────── Project Summary ────────
+
+### Top Issues
+
+1. **Conflict resolution is not atomic — a mid-sequence failure leaves the local board swapped with a stale record.** In `packages/sync/src/conflict.ts`, `replaceLocal` runs inside the same `try` as `adoptLocal`, `setRecord`, `cache.clear` and `setState`. If `setRecord` throws after `replaceLocal` succeeds, the board is already replaced while `record()` still describes the pre-resolution state. Every step after the destructive write needs to be independently recoverable (or the destructive write must be last / rolled back).
+
+2. **A stale cached copy can be applied over the user's local edits.** Two related defects in `conflict.ts`: (a) on a refused write with no payload, the previously cached `copy` is kept while `conflict` advances to the new revision, so `takeTheirs`/`duplicateMine` take the `readyCopy()` shortcut and `applyRemote` an out-of-date board; (b) `opening` only guards re-entry to `open()`, not interleaving with resolutions, so a resolution racing an in-flight load sees `readyCopy() === null` and silently bails. Combined, the "never accept a stale copy" invariant is asserted but not enforced.
+
+3. **The wire/trust boundary is unvalidated in both directions.** `packages/sync/src/transport.ts` declares `DownloadedBoard.payload: Board` by cast, with nothing requiring adapters to parse untrusted JSON first, so a malformed response reaches the reconciler as a valid `Board`. Mirroring this, `packages/sync/src/protocol.ts` trusts caller-supplied `write.bytes` (a negative or `NaN` value bypasses the `> LIMIT` check entirely) and trusts `write.payloadHash` as proof of payload identity without ever hashing the payload — so a stale or forged hash is accepted as an idempotent replay.
+
+4. **Failures are swallowed at exactly the points where state must be persisted.** In `conflict.ts`, `duplicateLocal` errors collapse to `null` (caller gets `false`, user retries blind, a storage fault is indistinguishable from "nothing to do"), and a rejected `saveRecordFor` leaves the duplicate uploaded but permanently recorded as unlinked — it will be re-offered for linking every session. `cache.write` in `open()` is unguarded where `remember()` guards the same operation, so a cache fault is misreported as `offline` after a successful download.
+
+5. **A bare `catch` in `packages/sync/src/reconcile.ts` classifies every thrown error as `{ reason: 'network' }`.** Programming errors (serialization, `saveRecord` failures) and auth errors surfaced as exceptions are therefore treated as transient and retried forever, and the surface shows a connectivity message for a client bug.
+
+6. **Queue coalescing discards the queued operation's intent.** `queued` is a boolean in `reconcile.ts`, so a `link()` issued during an in-flight upload is later replayed as `reconcile()` → `start(record.revision)` instead of a `baseRevision`-checked link. Relatedly, `SyncRecord.pending` is documented as "the local copy holds a change its upload has not accepted" but a refused write sets `pending: false` — the exact case the field exists to describe.
+
+7. **The same decision is re-implemented in several places and already reports different answers.** `reconcile.ts` returns `baseRevision ?? 0` for `local` in one conflict path while `initial()`, `reconcile()` and `markPending()` return `record.revision ?? 0`; `markPending` duplicates the ordered `blocked → !linked → !signedIn → conflict` guard chain from `reconcile`; `takeTheirs` and `duplicateMine` share a verbatim copy of the `readyCopy()`/`await open()`/early-return lookup. `conflict.ts` also passes inconsistent `local`/`remote` arguments to `conflictState` on a second refusal, which the UI renders directly.
+
+8. **`duplicateMine` commits side effects before it knows the resolution can succeed** (`conflict.ts`): the duplicate is created (and possibly uploaded) before the resolution can fail, yet the function returns `false` on upload rejection and also returns `false` after a *successful* upload when no remote copy loads. The caller cannot distinguish these, and one of them is a success.
+
+9. **`sameCopy` deep-serialises an entire `Board` on every `show()` call** (`conflict.ts`). Since `open()` runs during editing, this cost recurs on large boards just to decide whether to publish. Serialise a cheap discriminator (revision/updatedAt/hash) instead.
+
+### Module Hotspots
+
+- `packages/sync/src/conflict.ts` — 10 of 21 comments, and the highest-severity cluster: atomicity, stale-copy application, swallowed storage failures, and duplicated resolution logic all land in this one file. This is the module to prioritise for refactor and for state-machine tests.
+- `packages/sync/src/reconcile.ts` — 5 comments, all on the same theme: error classification, queue intent, and inconsistent conflict reporting.
+- `packages/sync/src/protocol.ts` — 3 comments, all about trusting caller-supplied input (`bytes`, `payloadHash`) and about malformed payloads being reported as `reason: 'version'`.
+- `packages/sync/src/transport.ts` — 3 comments, all contract-documentation/validation gaps on the port interface.
+
+The whole scan is confined to `packages/sync/src`; no other package surfaced a comment.
+
+### Cross-Cutting Concerns
+
+- **Swallowed or misclassified errors at persistence boundaries.** `duplicateLocal` → `null`, `saveRecordFor` rejection ignored, unguarded `cache.write`, and the bare `catch` in `reconcile` all convert a hard fault into either a silent no-op or a retryable "network" state. Representative paths: `packages/sync/src/conflict.ts`, `packages/sync/src/reconcile.ts`.
+- **Untrusted data crossing into typed domain models without validation.** `DownloadedBoard.payload` (`transport.ts`), `SyncWrite.bytes` and `write.payloadHash` (`protocol.ts`). No file in this set parses or rejects malformed input before it reaches the reconciler.
+- **Duplicated control flow that is already drifting.** Three instances: the `readyCopy()`-else-`open()` lookup (`takeTheirs`/`duplicateMine`), the guard chain (`reconcile`/`markPending`), and the `local`/`remote` revision reporting across four conflict-producing sites. Each pair has diverged or will.
+- **Undocumented port contracts.** `SyncTransport`'s methods carry no JSDoc, so invariants the reconciler depends on — `download` resolves `null` for absence rather than throwing, `list` is unordered and list-tolerant, `updatedAt` is display-only and staleness must be decided from `revision` per ADR 0011 — exist only in the reconciler's assumptions.
+
+### Quick Wins
+
+- Add JSDoc to each `SyncTransport` member in `transport.ts` stating the absence/throw, ordering, and `updatedAt`-is-display-only invariants, plus an explicit requirement that adapters validate wire JSON before casting to `Board`.
+- Harden the size guard in `protocol.ts`: `Number.isFinite(write.bytes) && write.bytes >= 0 && write.bytes <= LIMIT`, so `NaN`/negatives cannot bypass it.
+- In `conflict.ts`, move the `replaceLocal` call out of the shared `try` (or make post-swap steps non-throwing), so a `setRecord` failure cannot leave a swapped board with a stale record.
+- Extract `ensureReadyCopy(): Promise<ReadyCopy | null>` in `conflict.ts` and use it in both `takeTheirs` and `duplicateMine` — removes the verbatim duplicate and gives staleness a single place to be enforced.
+- Extract a shared `reportBlockedState(...)` helper used by `reconcile()` and `markPending()` so the guard order is defined once.
+- Wrap `cache.write` in `open()` the same way `remember()` does, so a cache failure no longer surfaces as `offline` after a successful download.
+- Normalise the `local` argument on every `status: 'conflict'` path to `record.revision ?? 0` (fix the `baseRevision ?? 0` site and the second-refusal `conflictState` call together — same one-line class of fix).
+- Replace the `sameCopy` full-`Board` serialisation with a cheap identity check (revision/`updatedAt`/cached hash).
+- Distinct `reason` for malformed payloads in `protocol.ts` instead of reusing `'version'`, so callers stop treating corruption as a version mismatch.

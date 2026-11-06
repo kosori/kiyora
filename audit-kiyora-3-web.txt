@@ -1,0 +1,1238 @@
+
+─── apps/web/lib/auth/client.ts:1-1 ───
+[maintainability · medium] This module is browser-only (it eagerly builds a React-hooks-based auth
+client at import time) but carries no `'use client'` boundary, so the only thing keeping it out of
+the server/RSC graph is the discipline of its two current consumers (`sign-in-form.tsx`,
+`account-control.tsx`). A future import from a server component or a shared `lib/` module would
+silently pull `better-auth/react` (and `window`-dependent code) into SSR. Mark the module as a
+client boundary so the rule is enforced by the framework rather than by convention.
+
++ 'use client';
++ 
+  import { createAuthClient } from 'better-auth/react';
+
+
+─── apps/web/lib/auth/client.ts:4-4 ───
+[bug · medium] `createAuthClient()` is called with no `baseURL`/`basePath`, while the server in
+`lib/auth/server.ts` is explicitly configured with `config.baseUrl` (from `BETTER_AUTH_URL`) and
+`trustedOrigins`. The two halves then derive their origin from different sources (window origin vs.
+env), so any deployment where they diverge — reverse proxy, different port, `localhost` vs. custom
+host — makes OAuth `callbackURL`/cookie handling fail at runtime with an opaque better-auth error
+and no fault or status surfaced. Pass the same origin the server trusts, e.g. `createAuthClient({
+baseURL: process.env.NEXT_PUBLIC_APP_URL })` (and `basePath` if the route ever moves off the default
+`/api/auth`).
+
+
+
+─── apps/web/lib/auth/session.ts:11-11 ───
+[bug · high] `getSession` is a database/network call that can reject (expired DB pool, transient
+outage, invalid cookie payload). Nothing in this module handles that failure, so a transient auth
+error escapes as an untyped foreign error and rejects the whole page render in `app/page.tsx` /
+`app/b/[id]/page.tsx` instead of resolving to a handled identity state. Convert it at this adapter
+boundary (e.g. `faultFromException`) and decide explicitly whether a failed lookup means "signed
+out" or a surfaced fault — do not let the raw Better Auth error bubble into render.
+
+-   return getAuth().api.getSession({ headers: await headers() });
++   try {
++     return await getAuth().api.getSession({ headers: await headers() });
++   } catch (error) {
++     // Convert at the adapter boundary so callers surface a fault (or a
++     // deliberate signed-out state) instead of rejecting the whole render.
++     throw faultFromException(error);
++   }
+
+
+─── apps/web/lib/auth/session.ts:6-6 ───
+[performance · medium] `currentAccount` and `currentUserId` both call `readSession`, and several
+routes/pages call one of them multiple times per request (e.g. `api/boards/[id]/route.ts` calls
+`currentUserId` twice). Without per-request memoization each call re-queries the session (DB
+round-trip) and re-reads cookies via `headers()`. Wrapping the lookup in React's `cache` dedupes it
+for the lifetime of a single request.
+
+- const readSession = async () => {
++ const readSession = cache(async () => {
+
+
+─── apps/web/lib/auth/session.ts:26-26 ───
+[bug · low] Consider whether `session.user.name`/`email` can be empty for provider-backed accounts
+(GitHub users without a public display name). `AccountSummary` declares both as concrete strings, so
+an empty value silently renders as a blank account label. Falling back to the email local part (or
+the email itself) keeps the header readable.
+
+
+
+─── apps/web/lib/auth/server.ts:15-15 ───
+[security · medium] Password authentication is gated only by `config.devCredentials`, which is
+derived from `AUTH_DEV_CREDENTIALS === '1'`. The only production defence is `source.NODE_ENV ===
+'production'` inside `readAuthEnv`, which does not cover deployments where `NODE_ENV` is unset or
+set to something other than the literal `production` (e.g. a hand-rolled container start script).
+Since `emailAndPassword.enabled` also opens the `/sign-up/email` route to anonymous callers, this
+boundary should be fail-closed: only admit dev credentials when the runtime is positively known to
+be development/test, otherwise refuse to build the auth instance. Consider having `readAuthEnv`
+throw unless `NODE_ENV` is `development`/`test` when the flag is present, and documenting that
+guarantee next to this line.
+
+
+
+─── apps/web/lib/auth/server.ts:19-22 ───
+[maintainability · low] Both OAuth providers are registered unconditionally. That is safe today only
+because `readAuthEnv` requires every `GOOGLE_*`/`GITHUB_*` variable, meaning an operator must create
+OAuth apps for both providers even when only one sign-in method is intended (extra sign-in surface
+and extra secrets to keep correct). Consider registering a provider only when its credentials are
+present (and relaxing the env requirements accordingly) so a partially configured provider can never
+be advertised in `/api/auth/*` provider listings or produce a confusing provider-not-configured
+error at redirect time.
+
+
+
+─── apps/web/lib/auth/server.ts:52-54 ───
+[documentation · low] This message is the first error an operator sees, but it names only three of
+the seven variables `readAuthEnv` actually requires. Following it exactly leads to a second error
+(`Accounts are configured but missing GOOGLE_CLIENT_ID, ...`). Name the full set (or reference the
+complete list of required variables) so the guidance is actionable in one step.
+
+
+
+─── apps/web/lib/board-channel.ts:16-16 ───
+[bug · medium] `BroadcastChannel` is constructed unconditionally, so this adapter throws a bare
+`ReferenceError` in any environment without it (SSR/no-DOM import path, older Safari,
+sandboxed/iframe contexts) instead of a diagnosable failure. Per the adapter-boundary rule, the
+platform failure should be detected and converted into a typed/visible fault here rather than
+escaping as a foreign `ReferenceError` into `openBoardChannel`'s caller.
+
++   if (typeof BroadcastChannel === 'undefined') {
++     // Surface a named, diagnosable failure so the caller can show a fault
++     // instead of a raw ReferenceError from the platform.
++     throw new Error('board channel unavailable: BroadcastChannel unsupported');
++   }
+    const channel = new BroadcastChannel(channelName(boardId));
+
+
+─── apps/web/lib/board-channel.ts:20-20 ───
+[bug · medium] `post` is forwarded without any lifecycle guard: calling it after `close()` throws
+`InvalidStateError` synchronously out of the adapter, and callers (e.g. presence `bye` fired on
+`pagehide` after teardown) have no way to observe or recover from that. Track the closed state and
+drop/report posts on a closed channel instead of letting the platform throw.
+
+-     post: (message: BoardMessage) => channel.postMessage(message),
++     post: (message: BoardMessage) => {
++       if (closed) {
++         return;
++       }
++       channel.postMessage(message);
++     },
+
+
+─── apps/web/lib/board-channel.ts:22-23 ───
+[bug · medium] `event.data` is trusted purely through the `MessageEvent<BoardMessage>` generic — a
+compile-time assertion, not a runtime check. Anything else on this origin posting to
+`kiyora:board:<id>` (older/newer app version, devtools, another script) flows straight into
+`createPresence`/`createClipboardRelay`, where `message.type`/`message.id` are dereferenced on
+unvalidated input. This is the boundary where the platform value should be validated; preferably
+export a `type`-discriminating guard from `@kiyora/editor` (the schema owner) and use it here
+instead of re-declaring the shape in `apps/web`.
+
+-       const onMessage = (event: MessageEvent<BoardMessage>) =>
++       const onMessage = (event: MessageEvent<unknown>) => {
++         if (!isBoardMessage(event.data)) {
++           return;
++         }
+          listener(event.data);
++       };
+
+
+─── apps/web/lib/auth/env.ts:97-104 ───
+[security · high] The trusted-origins allow-list is environment-agnostic and partly hardcoded. In
+production this still trusts `http://localhost:*`, `http://127.0.0.1:*`, `https://kiyora.localhost`,
+and `https://*.localhost:*` (any local page/process can then pass Better Auth's origin check against
+the deployed server), and the production host is a hardcoded literal `https://kiyora.ccdx.dev`
+rather than deployment configuration. Gate the localhost entries on `NODE_ENV !== 'production'` and
+read additional production origins from an env variable (e.g. `AUTH_TRUSTED_ORIGINS`) instead of
+hardcoding a domain.
+
+      trustedOrigins: [
+        originOf(baseUrl),
++       ...(source.NODE_ENV === 'production'
++         ? []
++         : [
+-       'http://localhost:*',
++             'http://localhost:*',
+-       'http://127.0.0.1:*',
++             'http://127.0.0.1:*',
+-       'https://kiyora.localhost',
++             'https://kiyora.localhost',
+-       'https://*.localhost:*',
++             'https://*.localhost:*',
+-       'https://kiyora.ccdx.dev',
++           ]),
++       ...(source.AUTH_TRUSTED_ORIGINS?.split(',')
++         .map((origin) => origin.trim())
++         .filter((origin) => origin !== '') ?? []),
+      ],
+
+
+─── apps/web/lib/auth/env.ts:40-49 ───
+[security · high] Only "parses as an absolute URL" is validated. Non-HTTP(S) values such as
+`file:///etc/passwd` or `javascript:alert(1)` parse successfully and yield `origin === 'null'`,
+which is then inserted into `trustedOrigins`, weakening origin/callback validation. Validate the
+protocol explicitly; note the check must run outside the `try` (or the catch must rethrow
+`AuthConfigurationError`) so the new error is not re-wrapped as "must be an absolute URL".
+
+  const originOf = (baseUrl: string): string => {
++   let url: URL;
+    try {
+-     return new URL(baseUrl).origin;
++     url = new URL(baseUrl);
+    } catch (error) {
+      throw new AuthConfigurationError(
+        `BETTER_AUTH_URL must be an absolute URL, received "${baseUrl}".`,
+        { cause: error }
++     );
++   }
++ 
++   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
++     throw new AuthConfigurationError(
++       `BETTER_AUTH_URL must use http or https, received "${url.protocol}".`
+      );
+    }
++ 
++   return url.origin;
+  };
+
+
+─── apps/web/lib/auth/env.ts:61-62 ───
+[bug · medium] `AUTH_DEV_CREDENTIALS=1` by itself makes `configured` true, but the following
+`missing` check still requires every OAuth credential, so a dev-credentials-only setup (the
+documented way the `server` project / local development signs in: "emailAndPassword exists only when
+AUTH_DEV_CREDENTIALS=1") fails at boot. Either drop `devFlag` from `configured`, or skip the OAuth
+entries in `missing` when dev credentials are enabled. Confirm which behaviour is intended and
+encode it.
+
++   const required = devFlag
++     ? REQUIRED.filter((name) => !name.startsWith('GOOGLE_') && !name.startsWith('GITHUB_'))
++     : REQUIRED;
+    const configured =
+-     devFlag || REQUIRED.some((name) => readValue(source, name) !== null);
++     devFlag || required.some((name) => readValue(source, name) !== null);
+
+
+─── apps/web/lib/auth/env.ts:96-96 ───
+[security · medium] `BETTER_AUTH_SECRET` is only required to be non-empty, so placeholder/weak
+values (e.g. `secret`, `changeme`, or a 4-character string) are accepted as the session-signing key.
+Add a strength check at boot (minimum length such as 32 characters and rejection of obvious
+placeholders) and surface it as `AuthConfigurationError` so misconfiguration fails fast rather than
+producing weak sessions.
+
+
+
+─── apps/web/lib/auth/env.ts:82-82 ───
+[maintainability · low] After the `missing` check every required value is guaranteed non-null, so
+the `?? ''` fallbacks on `baseUrl`, `databaseUrl`, `secret`, and the OAuth fields are unreachable
+and silently mask future validation regressions. Read the values once after validation (typing them
+as non-null) instead of re-reading with defensive fallbacks. Also `baseUrl.replace(/\/$/, '')`
+strips only one trailing slash, so `https://host//` keeps a trailing slash; use `replace(/\/+$/,
+'')`.
+
+
+
+─── apps/web/lib/board-file.ts:44-44 ───
+[bug · medium] `file.text()` can reject with a raw platform `DOMException` (`NotReadableError`,
+`SecurityError`, a file removed mid-read) and nothing at this adapter boundary converts it, so it
+escapes as a foreign error and the caller ends up rendering platform wording (or `error.message`
+verbatim) to the person instead of a kiyora fault — standards rule 5 requires exactly one conversion
+here. This affects `lib/board-file.ts` (`parseBoardFile(await file.text())`) and
+`lib/board-import.ts` (`openBoardFile`). Wrap only the read and rethrow a typed read fault (mirror
+`BoardFileFault` in `@kiyora/model`, carrying the file name for the surface), leaving parse refusals
+(`BoardFileFault`, `BoardRejection`) untouched.
+
+-   return parseBoardFile(await file.text());
++   let bytes: string;
++   try {
++     bytes = await file.text();
++   } catch (error) {
++     throw new BoardFileReadFault(file.name, error);
++   }
++   return parseBoardFile(bytes);
+
+
+─── apps/web/lib/board-file.ts:30-31 ───
+[bug · medium] The download handlers revoke the object URL synchronously right after `link.click()`
+and never attach the anchor to the document. Safari/Firefox can abort or silently drop the download
+because the blob is gone before the transfer actually starts, Firefox requires the anchor to be in
+the document for a programmatic click to trigger a save, the leaked node is never removed, and if
+`click()` throws the revocation is skipped entirely. Append the anchor, click, remove it, and revoke
+on a later task (`finally`/deferred tick). This applies to `saveBoardFile` (`lib/board-file.ts`),
+the SVG export (`lib/board-svg.ts`) and `saveBoardPng` (`lib/board-png.ts`).
+
+    link.click();
+-   URL.revokeObjectURL(url);
++   setTimeout(() => URL.revokeObjectURL(url), 0);
+
+
+─── apps/web/lib/board-file.ts:23-23 ───
+[bug · medium] This `void` function can throw synchronously: `serializeBoard` runs
+`boardSchema.parse` (a raw `ZodError` on a board that fails the schema) and `URL.createObjectURL`
+can throw. Both call sites (`file-controls.tsx` `save`, `conflict-dialog.tsx`) invoke it bare inside
+a React handler, so a refusal becomes an uncaught error with nothing surfaced to the person — the
+failure standard wants a fault/status/copy. Make the failure path part of the contract: throw a
+typed fault (e.g. a `BoardFileFault`-style error) that callers report through their existing
+`report(...)`/notice surface, and document that this function may throw.
+
+
+
+─── apps/web/lib/board-import.ts:12-12 ───
+[bug · high] `openStore()` reports a `fault` when the browser blocks IndexedDB and localStorage and
+it falls back to the per-tab memory store. Dropping it here means an import into that volatile store
+resolves successfully and returns an entry, but the board is gone on reload — the person is told the
+import worked, with no fault, status, or copy. Per the failure rule this must surface; throw/return
+the fault so the caller (`onFailed`) can show it.
+
+-   const { store } = await openStore();
++   const { store, fault } = await openStore();
++   if (fault !== null) {
++     throw new StorageError(fault);
++   }
+
+
+─── apps/web/lib/db/index.ts:20-24 ───
+[bug · high] The cache is keyed only on existence, not on `databaseUrl`. Once a connection exists,
+every later call returns it regardless of the URL passed in, so a test suite that switches
+`config.databaseUrl` (or any runtime reconfiguration / multi-tenant path) silently reads and writes
+the *first* database. Store the URL with the connection and either reuse only on a match or throw a
+clear fault on a mismatch.
+
+```ts
+type Connection = {
+  client: postgres.Sql;
+  db: ReturnType<typeof drizzle<typeof schema>>;
+  url: string;
+};
+
+const existing = holder.__kiyoraDatabase;
+
+if (existing) {
+  if (existing.url !== databaseUrl) {
+    throw new Error(
+      `Database connection already initialised for a different URL; got ${databaseUrl}`,
+    );
+  }
+
+  return existing;
+}
+```
+
+
+
+─── apps/web/lib/db/index.ts:26-26 ───
+[performance · medium] `max: 1` serialises *all* database work in the process onto a single
+connection. If any code path opens a transaction (`db.transaction(...)`) and runs additional queries
+outside that transaction's client while it is held, it deadlocks at runtime. It also means
+concurrent request handlers queue behind one another. Please confirm this is deliberate for the
+deployment target; if the runtime is not connection-constrained, size the pool (e.g. a small `max`
+driven by config) instead of hardcoding 1.
+
+
+
+─── apps/web/lib/db/index.ts:30-30 ───
+[maintainability · low] The client is cached on `globalThis` unconditionally and there is no way to
+close it. The doc comment frames this as a development-hot-reload optimisation, but the behaviour
+applies in every environment: test files that import this module share one connection across cases
+(leaking state and leaving handles open), and there is no shutdown hook for graceful teardown.
+Consider gating the global cache on `process.env.NODE_ENV !== 'production'` and exporting a
+`closeDatabase()` that calls `client.end()`.
+
+
+
+─── apps/web/lib/board-png.ts:241-243 ───
+[bug · medium] Foreign platform errors escape the adapter boundary here: `drawImage` and the
+synchronous throw of `canvas.toBlob` (e.g. a `SecurityError` if the projection ever references a
+tainting resource) reject with a raw `DOMException` instead of a `PngExportRefusal`. Callers then
+surface an ungoverned platform message. Wrap the draw and the `toPng` call and convert to a refusal,
+as the rest of this module does.
+
++   try {
+-   context.drawImage(image, 0, 0, width, height);
++     context.drawImage(image, 0, 0, width, height);
++   } catch (thrown) {
++     throw new PngExportRefusal('the projection would not draw', {
++       cause: thrown,
++     });
++   }
+  
+    return await toPng(canvas);
+
+
+─── apps/web/lib/board-png.ts:176-179 ───
+[maintainability · medium] This `catch` neither rethrows nor records anything, so a failed font
+fetch is invisible: the person gets an image whose labels are in fallback faces while the screen
+shows the vendored ones, with no fault, status or copy. Either return whether the faces loaded so
+the caller can surface a status (e.g. "exported with fallback text"), or accept a reporter and
+report the failure; silently returning `''` contradicts the failure-visibility rule.
+
+
+
+─── apps/web/lib/board-png.ts:183-184 ───
+[bug · low] The face injection assumes the projection starts with `<svg` and that no attribute value
+contains `>`. Any XML prolog, leading whitespace/newline, or such an attribute makes the
+`^`-anchored match fail, and the font rules are dropped with no signal, so the raster silently
+diverges from the screen. Drop the anchor so the first root `<svg ...>` opening tag is found
+regardless of what precedes it (the first match is still the root tag).
+
+  const withFaces = (svg: string, markup: string): string =>
+-   markup === '' ? svg : svg.replace(/^(<svg\b[^>]*>)/, `$1${markup}`);
++   markup === '' ? svg : svg.replace(/(<svg\b[^>]*>)/, `$1${markup}`);
+
+
+─── apps/web/lib/db/board-store.ts:193-195 ───
+[bug · high] Create race: `SELECT ... FOR UPDATE` cannot lock a row that does not exist yet, so two
+concurrent first writes for the same `id` both read `stored === undefined`, both take the `create`
+branch, and the second `insert` fails on the primary key. That error escapes the `BoardWriteResult`
+union, propagates as a raw 500 (the route has no try/catch), and the losing client never gets the
+`conflict` answer the protocol expects. Make the insert race-safe, e.g.
+`insert(...).onConflictDoNothing({ target: board.id }).returning({ id: board.id })`, and when no row
+comes back re-read with `for('update')` and re-run `decideSync` (or reply `conflict`).
+
+
+
+─── apps/web/lib/db/board-store.ts:45-48 ───
+[security · high] `preview_svg` stores an arbitrary client-supplied SVG: the only server-side check
+(`writeBoard` in `lib/db/board-store.ts`) is a `<svg` … `</svg>` prefix/suffix test plus a byte cap,
+yet the column comment in `lib/db/schema.ts` claims it is a cache of markup "the server has just
+validated". SVG can carry `<script>`, `on*` handlers, `<foreignObject>` and external `<use href>`,
+so this column is a stored-XSS carrier for every surface that renders it (share pages, library
+listings). `@kiyora/model` already exports exactly the needed guard (`unsafeSvg`, the same one
+exports and `BoardPreview` use) — reject unsafe markup at ingest with it and document the invariant
+on the column, instead of relying on every future reader to re-apply the check.
+
+-   const trimmed = value.trim();
+-   if (!(trimmed.startsWith('<svg') && trimmed.endsWith('</svg>'))) {
++   if (unsafeSvg(value) !== null) {
+      return null;
+    }
+
+
+─── apps/web/lib/db/board-store.ts:136-137 ───
+[bug · medium] `JSON.stringify` runs before any validation, so a payload the store cannot serialize
+(circular reference, `BigInt`, a `toJSON` that throws) throws out of `writeBoard` instead of
+reaching `decideSync`, which would have answered `{ status: 'invalid', reason: 'schema' }`. The
+function's contract is a closed result union, so serialization and the transaction should be wrapped
+and mapped onto that union (or at least to a fault the route can report) rather than surfacing as an
+opaque 500 with no body.
+
+
+
+─── apps/web/lib/db/board-store.ts:148-150 ───
+[security · medium] `forbidden` tells the caller that this `id` exists but belongs to another
+account, which contradicts the non-enumeration stance the rest of this file documents: `readBoard`
+returns `null` and `deleteBoard` returns `absent` for a foreign board precisely so an id cannot be
+confirmed. A write to a foreign `id` should be indistinguishable from a write to a free `id` (e.g.
+report `conflict`/`absent`) so the sync endpoint cannot be used as an id oracle.
+
+
+
+─── apps/web/lib/db/board-store.ts:86-87 ───
+[performance · medium] This query has no `LIMIT`, so an account's listing grows without bound: every
+request reads all of the owner's rows and sorts them in memory-of-the-DB (`board_owner_id_idx`
+covers only `owner_id`), and the whole set is serialized into one response. Add pagination
+(`limit`/`offset` or a keyset on `(updated_at, id)`) plus a matching composite index so listing
+stays bounded as boards accumulate.
+
+
+
+─── apps/web/lib/db/board-store.ts:221-222 ───
+[maintainability · low] Environment/connection resolution is repeated instead of resolved once. In
+`lib/db/board-store.ts` the `readAuthEnv()` null check plus `getDatabase(...)` block is copied
+verbatim into `database()`, `writeBoard` and `deleteBoard` (three copies of the same error message
+and failure mode); since `database()` already returns the handle, the writers can just call it. In
+`lib/db/share-store.ts`, `resolveShareLink` calls `readAuthEnv()` and then `database()` re-parses
+the environment again, so a change between the two reads turns the deliberate `null` degradation
+into a thrown 500. Resolve once and use the single connection as the only guard.
+
+-   const { db } = getDatabase(config.databaseUrl);
++   const db = database();
+    const removed = await db
+
+
+─── apps/web/lib/db/migrate-check.ts:42-42 ───
+[bug · high] The guard only compares counts. A database that has the same number of rows but a
+different migration set (branch switch, renumbered/renamed migrations, an extra out-of-band
+migration plus a missing committed one, or a stale journal) passes, so the server can boot against a
+schema that does not match the committed journal. Compare the applied migration identities instead —
+the `drizzle.__drizzle_migrations` table stores `hash`/`created_at`, so the newest journal entry can
+be matched, or use `!==` plus reported drift.
+
+-     if (applied < expected) {
++     if (applied !== expected) {
+
+
+─── apps/web/lib/db/migrate-check.ts:56-58 ───
+[bug · high] `await client.end()` runs in `finally`, so if closing the connection rejects (network
+drop, pool already terminated) the cleanup error replaces the `AuthConfigurationError` that explains
+the real problem. Boot logs then lose the actionable "run db:migrate" message, and the original
+error is only available as a swallowed cause. Swallow/attach the close failure so the primary
+failure always propagates.
+
+    } finally {
++     try {
+-     await client.end();
++       await client.end();
++     } catch {
++       // Closing the boot-time probe connection must never mask the real failure.
++     }
+    }
+
+
+─── apps/web/lib/db/migrate-check.ts:14-16 ───
+[bug · medium] `JSON.parse(raw)` is trusted via a type annotation and never validated. A journal
+without an `entries` array (older drizzle format, hand-edited file, truncated write) throws
+`TypeError`, which is then reported as "could not be read" — hiding that the journal is malformed
+rather than unreadable, and any non-array `entries` value with a `.length` property silently yields
+a bogus expected count. Validate the shape before use.
+
+-     const journal: Journal = JSON.parse(raw);
++     const journal: unknown = JSON.parse(raw);
++ 
++     if (
++       typeof journal !== 'object' ||
++       journal === null ||
++       !('entries' in journal) ||
++       !Array.isArray(journal.entries)
++     ) {
++       throw new Error('the journal has no entries array');
++     }
+  
+      return journal.entries.length;
+
+
+─── apps/web/lib/db/migrate-check.ts:11-11 ───
+[bug · medium] The journal path is resolved against `process.cwd()`, which is only the package root
+when the server is started from `apps/web`. Under `next build --output standalone` (or any container
+whose working directory is not the repo app root) `drizzle/` is not part of the traced output, so
+this read fails and boot is blocked for the wrong reason ("journal could not be read") on an
+otherwise healthy deployment. Resolve relative to the module instead (`new
+URL('../../drizzle/meta/_journal.json', import.meta.url)`) and ensure the journal is included in the
+standalone trace.
+
+-       join(process.cwd(), 'drizzle', 'meta', '_journal.json'),
++       fileURLToPath(new URL('../../drizzle/meta/_journal.json', import.meta.url)),
+
+
+─── apps/web/lib/db/migrate-check.ts:34-34 ───
+[bug · medium] `postgres(databaseUrl, { max: 1 })` is constructed outside the `try`, so a
+malformed/unsupported `DATABASE_URL` that throws during client construction escapes unwrapped — the
+operator gets a raw driver error with no "run db:migrate"/configuration context, unlike every other
+failure in this function. Move the construction inside the `try` (and guard the close in `finally`,
+since the client may then never exist).
+
+-   const client = postgres(databaseUrl, { max: 1 });
++   let client: ReturnType<typeof postgres> | undefined;
+
+
+─── apps/web/lib/db/schema.ts:17-17 ───
+[bug · medium] `text('email').unique()` is case-sensitive in Postgres, so `Alice@x.com` and
+`alice@x.com` can both register and end up as two accounts that are ambiguous at sign-in (and a
+password reset for one will not match the other). Enforce case-insensitive uniqueness at the DB
+layer: either use `citext`, or add a functional unique index on `lower(email)` and normalise the
+address before insert.
+
+-   email: text('email').notNull().unique(),
++   email: text('email').notNull(),
+
+
+─── apps/web/lib/db/schema.ts:72-72 ───
+[bug · high] The `account` table has no unique constraint on the identity pair. Better Auth's
+reference schema requires `uniqueIndex('account_provider_id_account_id_idx').on(providerId,
+accountId)`; without it two rows can claim the same OAuth identity (or the same provider twice for
+one user), leaving sign-in resolution dependent on row order and allowing duplicate/broken
+credential rows.
+
+-   (table) => [index('account_user_id_idx').on(table.userId)]
++   (table) => [
++     index('account_user_id_idx').on(table.userId),
++     uniqueIndex('account_provider_id_account_id_idx').on(
++       table.providerId,
++       table.accountId
++     ),
++   ]
+
+
+─── apps/web/lib/db/schema.ts:15-16 ───
+[bug · medium] `timestamp()` without `{ withTimezone: true }` maps to `timestamp without time zone`,
+while `defaultNow()` uses the session-local `now()`. Any DB-side comparison (raw SQL, expiry sweeps,
+`where expires_at < now()`) or non-Drizzle client will be off by the server timezone offset, which
+silently mis-expires sessions, verification values and share tokens. Use `timestamptz` for every
+timestamp column in this file.
+
+  export const user = pgTable('user', {
+-   createdAt: timestamp('created_at').defaultNow().notNull(),
++   createdAt: timestamp('created_at', { withTimezone: true })
++     .defaultNow()
++     .notNull(),
+
+
+─── apps/web/lib/db/schema.ts:120-120 ───
+[performance · low] The library listing filters on `owner_id` and orders by `updated_at desc`, so
+the single-column index forces an in-memory sort of the owner's rows. A composite index on
+`(owner_id, updated_at)` serves both the filter and the ordering.
+
+-   (table) => [index('board_owner_id_idx').on(table.ownerId)]
++   (table) => [
++     index('board_owner_id_updated_at_idx').on(table.ownerId, table.updatedAt),
++   ]
+
+
+─── apps/web/lib/icon-set.ts:21-24 ───
+[bug · high] `pending ??=` permanently caches the promise, including a rejected one. If the
+`@kiyora/model/icons` chunk fails to load once (offline blip, CDN/route chunk error, deploy skew),
+every later `loadIconModule()` call resolves to the same rejected promise, so icons stay broken for
+the rest of the session with no retry — and the picker's `.catch(() => undefined)` hides it. Clear
+the cache on rejection so the next caller retries.
+
+-   pending ??= import('@kiyora/model/icons').then(({ ICON_VIEWBOX, ICONS }) => ({
+-     ICON_VIEWBOX,
+-     ICONS,
+-   }));
++   pending ??= import('@kiyora/model/icons')
++     .then(({ ICON_VIEWBOX, ICONS }) => ({ ICON_VIEWBOX, ICONS }))
++     .catch((error: unknown) => {
++       // A transient chunk-load fault must not poison the cache for the session.
++       pending = undefined;
++       throw error;
++     });
+
+
+─── apps/web/lib/icon-set.ts:12-15 ───
+[maintainability · low] `IconModule` hand-writes the shape of the `@kiyora/model/icons` entry. If
+that module's exports change (e.g. the viewBox becomes a string, or a new icon field appears), this
+duplicate declaration silently drifts and the runtime contract is no longer checked. Derive the type
+from the actual module instead.
+
+- type IconModule = {
+-   ICON_VIEWBOX: number;
+-   ICONS: IconSet;
+- };
++ type IconModule = typeof import('@kiyora/model/icons');
+
+
+─── apps/web/lib/db/share-store.ts:21-21 ───
+[bug · medium] Both share adapters surface failures as untagged errors. `lib/db/share-store.ts`
+throws a bare `Error('Share links need the account configuration to be set.')` (and `database()`
+re-parses the environment, so a missing config behaves differently here than in `resolveShareLink`,
+which deliberately degrades to `null`). `lib/share.ts` lets `fetch` reject with a raw `TypeError`
+and throws `new Error(`share request failed with ${status}`)`, whose only payload is a status
+embedded in an English internal string. Callers (`app/api/boards/[id]/share/route.ts`, the share
+dialog) therefore render a generic error/500 with no copy distinguishing signed-out from server
+failure. Convert both at the adapter boundary into the typed discriminator style
+`lib/sync/transport.ts` already uses (`{ kind: 'network' }` / `{ kind: 'unauthorized' }`).
+
+-     throw new Error('Share links need the account configuration to be set.');
++     throw new StorageError(faultFromException(new Error('Share links need the account configuration to be set.')));
+
+
+─── apps/web/lib/db/share-store.ts:108-115 ───
+[maintainability · medium] `createShareLink` and `revokeShareLink` repeat the entire
+lock-owner-revoke sequence (board `for('update')`, ownership guard, `revokedAt` update). Any future
+change to the authorization or revocation rule must be made twice, and a divergence would silently
+create an auth/integrity gap. Extract it into one helper, e.g. `const lockOwnedBoard = async (tx,
+boardId, ownerId) => ...`, and let both callers reuse it.
+
+
+
+─── apps/web/lib/db/share-store.ts:97-98 ───
+[bug · low] `token` is the primary key of `share_link`, so an (admittedly unlikely) collision raises
+a unique violation and fails the whole regeneration with a raw Postgres error after the previous
+token has already been revoked in the same transaction. Handle `23505` by retrying with a fresh
+token (bounded retries) so regeneration is deterministic.
+
+
+
+─── apps/web/lib/db/share-store.ts:52-54 ───
+[bug · low] The ownership decision and the token read are two independent statements, so a delete or
+ownership change committed between them makes the returned token inconsistent with the authorization
+check. One joined query (`shareLink` inner join `board`, selecting `board.ownerId` and
+`shareLink.token`) removes the window and saves a round-trip.
+
+
+
+─── apps/web/lib/board-storage.ts:177-178 ───
+[bug · high] The write/delete path settles on the request's `success` event, not on transaction
+completion. A transaction can still abort after a request succeeds (quota rejection at commit time,
+another request in the transaction failing, a version-change abort from another tab), so
+`put`/`delete` can resolve while the bytes were rolled back — the caller marks the board saved and
+the user never sees the fault. Settle on `transaction.oncomplete` and reject on `onabort`/`onerror`.
+
++     new Promise<T>((resolve, reject) => {
+-     const transaction = database.transaction(STORE, mode);
++       const transaction = database.transaction(STORE, mode);
+-     return settle(work(transaction.objectStore(STORE)));
++       let result!: T;
++       const request = work(transaction.objectStore(STORE));
++       request.onsuccess = () => {
++         result = request.result;
++       };
++       transaction.oncomplete = () => resolve(result);
++       transaction.onabort = () =>
++         reject(
++           transaction.error ?? new Error('indexedDB transaction aborted')
++         );
++       transaction.onerror = () =>
++         reject(
++           transaction.error ?? new Error('indexedDB transaction failed')
++         );
++     });
+
+
+─── apps/web/lib/board-storage.ts:164-166 ───
+[bug · high] Rejecting the open promise on `blocked` does not cancel the open request. Once the
+other tab releases its connection, `onsuccess` still fires; by then the caller has already fallen
+back to localStorage, so the resolved `IDBDatabase` is dropped without being closed — a leaked
+connection that keeps future version changes blocked in every tab. Also, because the caller has
+fallen back, this tab writes to localStorage while the background upgrade migrates the legacy board
+into IndexedDB, so the two backends diverge until the next load. Close the connection when the
+promise was already rejected.
+
+-     opening.onblocked = () =>
++     let settled = false;
++     opening.onblocked = () => {
++       settled = true;
+        reject(new DOMException('blocked', 'InvalidStateError'));
+-     opening.onsuccess = () => resolve(opening.result);
++     };
++     opening.onsuccess = () => {
++       if (settled) {
++         opening.result.close();
++         return;
++       }
++       resolve(opening.result);
++     };
+
+
+─── apps/web/lib/board-storage.ts:172-172 ───
+[bug · medium] The connection is kept open forever and no `onversionchange` handler is installed.
+When another tab opens a newer database version, this connection blocks it indefinitely (surfacing
+as the blocked path above), and this tab's dead connection is what keeps it blocked. Close the
+database when a version change is requested.
+
+    const database = await openDatabase();
++   database.onversionchange = () => database.close();
+
+
+─── apps/web/lib/board-storage.ts:281-287 ───
+[bug · high] `fault` still holds the IndexedDB failure when execution reaches this point, so a
+successful, durable localStorage store is returned together with a fault. This contradicts the
+invariant stated in the doc comment above (`A fallback that still persists a durable copy is not a
+failure`) and surfaces a false user-visible storage failure, since callers do `setFault(openFault)`.
+Reset the fault when the fallback is durable and only report the migration failure.
+
+      const store = localStorageStore();
+      try {
+        await adoptLegacyBoard(store);
+      } catch (error) {
+-       fault = faultFromException(error);
++       return { fault: faultFromException(error), store };
+      }
+-     return { fault, store };
++     return { fault: null, store };
+
+
+─── apps/web/lib/board-storage.ts:73-74 ───
+[bug · medium] `parseRecord` only checks that `boards` is an array; it does not validate the entries
+the way the engine's `readRecord`/`isEntry` does. `adoptInUpgrade` then dereferences `board.id` and
+`right.updatedAt` in a request `success` handler: a `null`/malformed entry throws a `TypeError`
+there, which does not abort the upgrade transaction — the adopted board is silently left out of the
+library and the legacy keys are never deleted (and no upgrade runs on the next load, since the
+version is already 2). Additionally, an unreadable/foreign record yields `{ boards: [] }` and the
+upgrade then overwrites it with a record naming only the adopted board, hiding every other board
+from the library. Validate entries and skip adoption (or preserve the record) when the existing
+record cannot be read.
+
+      const parsed = JSON.parse(bytes) as { boards?: unknown };
+      return Array.isArray(parsed.boards)
++       ? {
++           boards: parsed.boards.filter(isLibraryEntry),
++         }
++       : { boards: [] };
+
+
+─── apps/web/lib/panel-crash.ts:7-7 ───
+[security · medium] This seam is bundled into every build, so any real user can write
+`kiyora:test:crash-panel:<name>=1` and force a panel to throw. The crash is contained by the
+boundary, but a user-writable localStorage key should not be able to drive production behaviour of a
+shipped component. Either gate it behind an explicit test flag that the e2e harness enables (e.g.
+`process.env.NEXT_PUBLIC_E2E === '1'`) so the check compiles to a constant `false` in normal builds,
+or document in this file why shipping it ungated is acceptable.
+
+
+
+─── apps/web/lib/panel-crash.ts:12-12 ───
+[maintainability · low] The key format is a hardcoded literal that is duplicated in
+`apps/web/tests/e2e/a11y.spec.ts:239` and `apps/web/tests/e2e/storage.spec.ts:307`. If the prefix or
+the `'1'` sentinel ever changes, the specs will silently stop crashing the panel and the boundary
+tests will quietly pass for the wrong reason. Export a small key builder (or the prefix constant)
+and have the specs use it.
+
+-     return localStorage.getItem(`kiyora:test:crash-panel:${name}`) === '1';
++ export const crashPanelKey = (name: string): string => `kiyora:test:crash-panel:${name}`;
++ 
++     return localStorage.getItem(crashPanelKey(name)) === '1';
+
+
+─── apps/web/lib/panel-crash.ts:13-15 ───
+[documentation · low] The catch is intentionally fail-safe (storage unavailable ⇒ treat as "do not
+crash"), but as written it reads like swallowed error handling against the project rule that a
+`catch` must surface something. Add a one-line comment stating the fail-safe intent so a future
+reader does not "fix" it by throwing or by surfacing a fault in the middle of panel rendering.
+
+
+
+─── apps/web/lib/image-import.ts:17-17 ───
+[maintainability · medium] `IMAGE_PLACEMENT_SIDE` is board-unit geometry exported from `apps/web`,
+while every other raster constant (`IMAGE_MAX_SIDE`, `IMAGE_FILE_LIMIT_BYTES`) lives in
+`@kiyora/model`. It is consumed together with `fitImageSize` from model, so a later change to the
+model ceiling silently breaks the relationship between the stored raster and the placed box. Move it
+next to `IMAGE_MAX_SIDE` in `packages/model/src/board/image.ts` and re-export via `@kiyora/model`.
+
+- export const IMAGE_PLACEMENT_SIDE = 480;
++ export { IMAGE_PLACEMENT_SIDE } from '@kiyora/model';
+
+
+─── apps/web/lib/image-import.ts:108-108 ───
+[bug · medium] Platform calls in this adapter reject with raw `DOMException`s instead of the
+`ImageImportRefusal` sentence callers display: `file.slice(...).arrayBuffer()` (RangeError on an
+unreadable/locked file, or a platform read error) and `context.canvas.toDataURL`/`atob`
+(`SecurityError`, `InvalidCharacterError`, `IndexSizeError`). Wrap both steps and rethrow a typed
+reason. While here: `fitImageSize(size.width, size.height)` returns the stored pixels, so a detailed
+2048² PNG can legitimately exceed the 2 MiB cap and is refused outright even though a smaller render
+would fit — consider shrinking and re-encoding once before refusing.
+
+-   const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
++   let head: Uint8Array<ArrayBuffer>;
++ 
++   try {
++     head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
++   } catch (error) {
++     throw new ImageImportRefusal('the browser could not read this file', {
++       cause: error,
++     });
++   }
+
+
+─── apps/web/lib/image-import.ts:123-124 ───
+[bug · high] The `ImageBitmap` is only closed on the success path. If `canvasOf` (no 2D context) or
+`drawImage` throws, `bitmap.close()` is skipped and the decoded pixels stay alive until GC — for a
+camera-sized source that is tens of megabytes. Wrap the draw in `try/finally`.
+
++   try {
++     context.imageSmoothingQuality = 'high';
+-   context.drawImage(bitmap, 0, 0, size.width, size.height);
++     context.drawImage(bitmap, 0, 0, size.width, size.height);
++   } finally {
+-   bitmap.close();
++     bitmap.close();
++   }
+
+
+─── apps/web/lib/image-import.ts:115-115 ───
+[performance · medium] Nothing bounds the *source* file before it is fully decoded. A 200 MB pick is
+read and expanded by `createImageBitmap` at full sensor resolution (then re-rendered on a canvas)
+just to be refused on the encoded size afterwards, which can OOM the tab. Add a generous source-size
+guard (well above `IMAGE_FILE_LIMIT_BYTES`, since the stored cap applies after downscaling) and
+refuse with an `ImageImportRefusal` before reading the bytes.
+
++   if (file.size > IMAGE_SOURCE_LIMIT_BYTES) {
++     throw new ImageImportRefusal(
++       `the file is ${file.size} bytes, over the ${IMAGE_SOURCE_LIMIT_BYTES}-byte pick cap`
++     );
++   }
++ 
+    const bitmap = await decode(file);
+
+
+─── apps/web/lib/new-board.ts:33-33 ───
+[bug · medium] `crypto.randomUUID` only exists in secure contexts (https / localhost). Served over
+plain http (LAN preview, an embedded webview, or an older WebView) `crypto.randomUUID` is
+`undefined`, so `newBoard()` throws a bare `TypeError` instead of returning a board — and the caller
+in the library reports that as an `unavailable` storage fault, which misattributes the cause. Guard
+the call and fall back to `crypto.getRandomValues` (available in insecure contexts), or add an
+explicit fault when minting fails.
+
+- export const newBoard = (): Board => emptyBoard(crypto.randomUUID());
++ const mintId = (): string => {
++   if (typeof crypto.randomUUID === 'function') {
++     return crypto.randomUUID();
++   }
++ 
++   const bytes = crypto.getRandomValues(new Uint8Array(16));
++   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
++     ''
++   );
++ };
++ 
++ export const newBoard = (): Board => emptyBoard(mintId());
+
+
+─── apps/web/lib/new-board.ts:16-16 ───
+[maintainability · low] `emptyBoard` is documented as returning a `Board`, but `parseBoard` throws
+`BoardRejection` when the literals above drift from the schema (e.g. the next schema bump adds a
+required field). That failure mode is invisible from the signature/doc, and every call site treats
+the function as total (`useBoardRoute` calls it directly inside an async effect with no local
+`catch`). Either document the `@throws` contract so callers surface it as a fault, or make the drift
+impossible to miss by letting the type checker reject the literal (the `Board` return type already
+does that) instead of validating constants at runtime.
+
++   /** @throws {BoardRejection} when the literals below no longer satisfy the board schema. */
+    parseBoard({
+
+
+─── apps/web/lib/new-board.ts:12-14 ───
+[documentation · low] The doc comment describes `createdAt`/`updatedAt` but says nothing about the
+`now` and `title` parameters, so a reader cannot tell whether `title` may be blank or that `now`
+exists for tests/duplicate flows. Add one line covering both, and note that `title` defaults to
+`UNTITLED` (the schema accepts an empty string, so a caller passing `''` silently produces an
+untitled-looking board with an empty title).
+
+
+
+─── apps/web/lib/remote-board.ts:35-35 ───
+[security · high] The payload's identity is never checked against the requested `summary.id`.
+`transport.download(summary.id)` bytes are untrusted: the parsed board keeps whatever `id` it
+carries, is stored under that id, and is then marked linked at `downloaded.revision`. A mismatched
+(or malicious) response therefore writes a local board under an unexpected id while recording the
+revision of a different remote copy, which later makes the reconciler upload those bytes to the
+wrong remote board. Reject the payload unless `board.id === summary.id`.
+
+    const board = lift(downloaded.payload);
++ 
++   if (board.id !== summary.id) {
++     throw new Error(
++       `the downloaded board ${board.id} is not the requested ${summary.id}`
++     );
++   }
+
+
+─── apps/web/lib/remote-board.ts:39-39 ───
+[bug · medium] `holds` and `create` are two separate awaits with no mutual exclusion, so this is a
+check-then-act race: two concurrent downloads of the same board (two clicks, or a download
+overlapping a local import of the same id) both see the board absent and both write it. Depending on
+interleaving the second `create` overwrites the first copy's bytes or duplicates the record entry.
+Guard downloads per id with a module-level in-flight map, or have the library expose an atomic
+create-if-absent.
+
+
+
+─── apps/web/lib/remote-board.ts:43-43 ───
+[bug · medium] `create` commits the board bytes and record entry, then `setSync` writes the link
+metadata in a second, independent store write. If `setSync` rejects (quota, IndexedDB abort, tab
+closed) the download rejects while the board is already stored and shows up in the library as a
+plain local copy — the person is told the download failed but now owns a duplicate local board with
+no link. Roll the write back (or at least `remove` it) when the metadata write fails, or record the
+link in the same storage transaction as the payload.
+
+    await library.create(board);
++ 
++   try {
++     await library.setSync(board.id, {
++       conflict: null,
++       linked: true,
++       pending: false,
++       revision: downloaded.revision,
++       tooLarge: false,
++     });
++   } catch (error) {
++     await library.remove(board.id);
++     throw error;
++   }
+
+
+─── apps/web/lib/remote-board.ts:29-29 ───
+[maintainability · medium] Every failure here (transport rejection, `parseBoardFile` refusal,
+`openStore`/`create`/`setSync` storage errors) escapes as a raw platform error with no conversion at
+this adapter boundary, and `null` conflates two very different outcomes — "gone remotely" and
+"already held locally" — so a caller cannot tell the person which happened. Per the failure rule,
+convert these into a fault (e.g. `faultOf`/`faultFromException`) or return a discriminated result so
+the surface has copy to show; today the only caller swallows the rejection entirely.
+`listRemoteBoards` has the same unhandled-rejection shape.
+
+
+
+─── apps/web/lib/share.ts:14-16 ───
+[bug · medium] Two problems here: (1) `response.json()` is unguarded — an empty body or an
+HTML/proxy error page that still returns 2xx will reject with a raw `SyntaxError` instead of a
+controlled failure (compare `jsonOf` in `lib/sync/transport.ts`, which catches parse errors); (2)
+`typeof body.token === 'string' ? body.token : null` collapses a malformed/unexpected payload into
+the same `null` that means "no live address yet", so backend contract drift is silently reported to
+the user as "this board has no share link". Distinguish an absent token (`null`) from an invalid
+token shape (throw), and guard the parse.
+
+
+
+─── apps/web/lib/share.ts:32-33 ───
+[bug · medium] `window` is not defined during SSR/pre-render, so any call to `absoluteShareUrl`
+outside a browser (a server component, `generateMetadata` for the `/s/[token]` page, or a non-DOM
+test) throws a `ReferenceError` — this module has no `'use client'` boundary to prevent that. Make
+the origin injectable (or fall back to a relative `/s/${token}` URL) so the helper is safe to import
+anywhere.
+
+- export const absoluteShareUrl = (token: string): string =>
+-   new URL(`/s/${encodeURIComponent(token)}`, window.location.origin).href;
++ export const absoluteShareUrl = (
++   token: string,
++   origin: string = window.location.origin
++ ): string =>
++   new URL(`/s/${encodeURIComponent(token)}`, origin).href;
+
+
+─── apps/web/lib/share.ts:6-6 ───
+[maintainability · low] API route paths are hardcoded in the client, duplicating the route
+definitions: `/api/boards/:id/share` and `/s/` in `lib/share.ts`, and `/api/boards` four times
+(upload, list, download, remove) in `lib/sync/transport.ts`. A route rename or prefix change has to
+be found in every copy and silently 404s if one is missed. Extract a single endpoint helper at
+module scope (e.g. `boardUrl(id?)`, `shareUrl(...)`) and use it for all of them, including the
+`/s/[token]` page URLs.
+
+
+
+─── apps/web/lib/text-measurer.ts:32-32 ───
+[performance · medium] `getContext('2d')` can legitimately return `null` (headless/blocked canvas,
+resource exhaustion). With `??=` that `null` is written back to `context`, so the null case is never
+memoised: every single `measure()` call on a board with text allocates a fresh `<canvas>` element
+and retries context creation. Measure runs are the hot path of label wrapping (once per token), so
+this turns a one-off failure into per-token DOM allocation. Guard the attempt with a flag (or throw,
+see the fallback comment below) instead of re-running the factory.
+
+-     context ??= document.createElement('canvas').getContext('2d');
++     if (!attempted) {
++       attempted = true;
++       context = document.createElement('canvas').getContext('2d');
++     }
+
+
+─── apps/web/lib/text-measurer.ts:33-35 ───
+[bug · high] Returning `0` here hides a measurement failure: every run reports zero width, so labels
+and chart ticks silently wrap/truncate to the wrong layout while painting still succeeds at the
+original size — the width a label wraps at is no longer the width it draws at. Project rule 5
+requires user-visible failures to surface (fault/status), and `@kiyora/model` already fails loudly
+when a measurer is missing (`paint.ts` throws `painting text needs a measurer on the context`).
+Throw here (or convert to a fault) rather than fabricating a width.
+
+      if (context === null) {
+-       return 0;
++       throw new Error('text measurement needs a 2D canvas context');
+      }
+
+
+─── apps/web/lib/text-measurer.ts:18-18 ───
+[maintainability · medium] The font-family choice is re-implemented here: `@kiyora/model` exports
+`fontFamilyOf(run)` (`packages/model/src/text/font.ts`) which does exactly `run.code ?
+CODE_FONT_FAMILY : TEXT_FONT_FAMILY`. Per the package-boundary rule, text/font selection belongs in
+`@kiyora/model`; duplicating it means a future change to the model's font mapping silently
+desynchronises measurement from rendering. Import `fontFamilyOf` from `@kiyora/model` (and drop the
+two constant imports) instead.
+
+-     run.code ? CODE_FONT_FAMILY : TEXT_FONT_FAMILY,
++     fontFamilyOf(run),
+
+
+─── apps/web/lib/text-measurer.ts:36-36 ───
+[performance · medium] `fontOf` rebuilds the array/filter/join and `context.font` is reassigned on
+every single measurement, even though consecutive runs almost always share the same font. Assigning
+`font` forces the canvas to re-parse and re-resolve the font shorthand, and wrapping calls the
+measurer once per token, so this is measurable per-frame work. Cache the last applied font string
+and skip both the rebuild and the assignment when it is unchanged.
+
+-     context.font = fontOf(run);
++     const font = fontOf(run);
++     if (font !== lastFont) {
++       context.font = font;
++       lastFont = font;
++     }
+
+
+─── apps/web/lib/text-measurer.ts:26-27 ───
+[documentation · low] The comment promises SSR safety that the code does not provide: the lazy
+initialiser only defers the DOM access, it does not guard it. A single measurement during a server
+render throws a raw `ReferenceError: document is not defined` from far inside `@kiyora/model`'s
+wrapping code, which is hard to attribute and is not a fault the app can surface. Either guard with
+`typeof document === 'undefined'` and throw a descriptive error, or state explicitly in the comment
+that measuring on the server is unsupported.
+
+
+
+─── apps/web/lib/sync/transport.ts:38-41 ───
+[bug · high] The transport silently fabricates values for a body that does not match the route
+contract, and the fabricated value is then persisted. An `accepted` answer without a numeric
+`revision` becomes `1`; a 409 without one becomes revision `0`, which `createConflictResolutions`
+stores, so the next `keepMine` upload at `baseRevision: 0` is refused again and the person is stuck
+in an unresolvable conflict; a 200 download body with `payload === undefined` is reported as `null`,
+i.e. "the board is gone remotely", and its missing `revision` is recorded as `0`, guaranteeing the
+next conflict. The conflict `payload` is also cast `as Board | null` with no runtime check, so
+malformed bytes flow straight into the conflict cache and comparison surface. Guard the parse
+(`jsonOf`), distinguish a malformed body from 404, and treat a body without the required fields as a
+failed exchange instead of inventing a revision or an absent copy.
+
++     if (typeof body.revision !== 'number') {
++       return { kind: 'network' };
++     }
++ 
+      return {
+        kind: 'accepted',
+-       revision: typeof body.revision === 'number' ? body.revision : 1,
++       revision: body.revision,
+      };
+
+
+─── apps/web/lib/sync/transport.ts:74-74 ───
+[bug · medium] `list` bypasses `jsonOf` and calls `fetch` unguarded, so a non-JSON body rejects with
+a raw `SyntaxError` and a network failure escapes as a raw `TypeError` — neither is a typed sync
+failure, and the 401 the route returns for a signed-out session is indistinguishable from a server
+fault (both render as "Your boards are unavailable"). Separately, a 200 whose body has no `boards`
+array is reported as "this account holds no boards", so contract drift or a proxy error page looks
+like a correct empty state and the person is told every board is already in this browser. Reuse the
+`jsonOf` guard, wrap the fetch so every escape is deliberate, and throw/return `unavailable` when
+`boards` is not an array.
+
+
+
+─── apps/web/lib/sync/transport.ts:70-71 ───
+[bug · medium] Every unexpected status collapses to `network`, so a 5xx, a 429 or an intermediary
+error page is reported as the person's connectivity failing. The reconciler treats `network` as
+retryable offline state and will keep retrying a server-side fault, and `SyncState`/copy shown to
+the user blames the connection. Prefer mapping `>= 500` and `429` to a distinct (or non-retryable)
+outcome rather than the offline result; at least keep 401 handled before this fallthrough and
+document why unknown statuses are treated as offline.
+
+
+
+─── apps/web/lib/use-board-route.ts:96-97 ───
+[bug · high] The effect never resets the state when `boardId` changes. The effect explicitly re-runs
+on a new id (it has `[boardId]` deps and a cancellation flag), but the previous board's `ready`
+state stays rendered until the async open finishes — including its `storage`, `rename` and
+`conflict` ports, which are bound to the *old* board id. Today `BoardRoute` happens to be keyed by
+the id so it remounts, but any caller that changes the id in place would let the user edit and
+autosave the wrong board under the new URL. Reset to `loading` at the start of the effect.
+
+    useEffect(() => {
+      let cancelled = false;
++     setState({ status: 'loading' });
+
+
+─── apps/web/lib/use-board-route.ts:228-232 ───
+[bug · high] This catch maps *every* failure (IndexedDB/localStorage I/O, quota, a corrupted library
+record, `library.load` throwing) to `status: 'missing'`, so the UI tells the person "this browser
+does not hold a board at this address" when the real cause is a storage fault. That hides the
+failure and invites the user to think their board was deleted. `openStore()` already offers
+`faultFromException`; add a `{ status: 'fault'; fault: StorageFault }` variant to `BoardRouteState`
+(and handle it in the route component) so an open failure surfaces as a fault, and keep `'missing'`
+only for the `entry === undefined && stored === null` case.
+
+
+
+─── apps/web/lib/use-board-route.ts:217-217 ───
+[bug · medium] This branch drops `openFault`, while the `loaded` and `empty` branches pass it.
+`openFault` is non-null exactly when `openStore` fell back to the volatile in-memory store (see
+`board-storage.ts`), i.e. when nothing will survive the tab — and here it is silently discarded in
+the one branch (quarantine failed, board read-only) where the diagnostics matter most. Combine both
+faults so the open fault is never lost.
+
+-         fault: loaded.fault,
++         fault: loaded.fault ?? openFault,
+
+
+─── apps/web/lib/use-board-route.ts:114-120 ───
+[bug · medium] `recordSync` swallows every `library.setSync` failure with only a comment. The
+assumption in the comment ("the next save writes it again") does not hold when the failure is
+persistent — e.g. a quota-exceeded store — in which case a recorded conflict/revision is lost across
+reloads and the user is never told. Per the project's failure rule, a catch that neither rethrows
+nor sets visible state is a finding: at minimum return a success flag (or surface a non-blocking
+`fault`/status) so the surface can report that the sync record could not be persisted.
+
+
+
+─── apps/web/lib/use-board-route.ts:155-158 ───
+[bug · medium] `replaceLocal` re-reads the board from storage (`store.get` + `library.load`, two
+reads of the same key) instead of using the board the user is actually looking at. The editor
+autosaves behind a debounce, so the stored bytes can be older than the live board: the recovery
+snapshot written here and the `Board` returned to the caller (offered back as a download) may not be
+the copy that is being replaced, and the conflict flow has no way to notice. Pass the live
+serialized bytes/preview into the port (or snapshot them from the open board) rather than reading
+storage, and use a single timestamp source if a fallback board is needed.
+
+
+
+─── apps/web/lib/use-board-route.ts:196-197 ───
+[maintainability · medium] The three `setState(...)` blocks for `ready` are near-duplicates (only
+`board`, `fault`, `rewrite` and `writable` differ), which is what let the `openFault` inconsistency
+creep into the third one. Build the shared payload once (e.g. `const ready = { conflict, preview:
+entry?.preview, recordSync, rename: (next: string) => library.rename(boardId, next), storage:
+library.storage(boardId), sync }`) and spread it in each branch with the branch-specific fields.
+
+
+
+─── apps/web/lib/use-board-route.ts:62-63 ───
+[maintainability · low] `copyTitle` duplicates the identical private helper in
+`packages/editor/src/persistence/library.ts` (same strings, same trim rule). Two implementations of
+the copy-naming rule can drift, so a board duplicated through the library and one duplicated through
+a conflict would get different titles. Export the helper from `@kiyora/editor` and import it here
+instead of re-implementing it in the web app.
+
+
+
+
+──────── Project Summary ────────
+
+# Project Summary — Full-Repo Scan
+
+Scope: 84 comments across 23 files, overwhelmingly concentrated in `apps/web/lib` (auth, db, storage/sync adapters). The findings cluster into a small number of root causes rather than isolated bugs.
+
+### Top Issues
+
+1. **Foreign platform errors escape adapter boundaries everywhere.** This is the single most repeated finding: `DOMException`, `TypeError`, `ReferenceError`, `SyntaxError` and `ZodError` propagate untranslated into UI code that renders `error.message` to the person. Representative sites: `apps/web/lib/board-file.ts` (`file.text()`, `serializeBoard`/`createObjectURL` throwing synchronously out of a `void` function), `apps/web/lib/board-png.ts` (`drawImage`, `toBlob` `SecurityError`), `apps/web/lib/image-import.ts` (`slice().arrayBuffer()`, `toDataURL`), `apps/web/lib/board-channel.ts` (`BroadcastChannel` construction → bare `ReferenceError`), `apps/web/lib/remote-board.ts`, `apps/web/lib/share.ts`, `apps/web/lib/sync/transport.ts`, `apps/web/lib/new-board.ts` (`crypto.randomUUID` undefined outside secure contexts), `apps/web/lib/auth/session.ts`. The fix is uniform: a typed refusal type per adapter, converted at the boundary.
+
+2. **Storage faults are silently dropped, creating invisible data-loss paths.** `apps/web/lib/board-storage.ts` returns a durable localStorage store while `fault` still holds the IndexedDB failure (contradicting its own documented invariant); `apps/web/lib/board-import.ts` discards `openStore()`'s fault so an import into the volatile in-memory store "succeeds" and vanishes on reload; `apps/web/lib/use-board-route.ts` drops `openFault` in one of three near-identical `setState` branches and swallows `library.setSync` errors in `recordSync`. Combined effect: the person is told a board is saved when it is not.
+
+3. **Auth environment/security configuration is under-validated.** `apps/web/lib/auth/env.ts` hardcodes `localhost`/`127.0.0.1`/`*.localhost` into `trustedOrigins` in production, accepts non-HTTP(S) values whose `origin` becomes `'null'`, and accepts placeholder `BETTER_AUTH_SECRET` values. `apps/web/lib/auth/server.ts` gates password auth only on `AUTH_DEV_CREDENTIALS`, relying on `NODE_ENV === 'production'` (unset `NODE_ENV` = dev credentials live), and registers both OAuth providers unconditionally. The boot error message also names 3 of the 7 required variables, so a correct fix produces a second error.
+
+4. **Database schema lacks several integrity constraints.** `apps/web/lib/db/schema.ts`: case-sensitive `email` uniqueness (`Alice@x.com` vs `alice@x.com` become two accounts), no `uniqueIndex` on `(providerId, accountId)` required by Better Auth's reference schema, `timestamp()` without `{ withTimezone: true }` making `expires_at` comparisons timezone-dependent, and no `(owner_id, updated_at)` composite index for the listing query.
+
+5. **Check-then-act races and coarse locking in the persistence layer.** `apps/web/lib/db/board-store.ts` `create` races on concurrent first writes (`FOR UPDATE` cannot lock a nonexistent row → PK violation escaping as a non-`BoardWriteRefusal`); `apps/web/lib/remote-board.ts` `holds`→`create` has no mutual exclusion and commits bytes separately from `setSync`, leaving orphaned boards on partial failure; `apps/web/lib/db/index.ts` caches the pool on `globalThis` regardless of `databaseUrl` and pins `max: 1`, serialising all DB work and creating deadlock exposure for any nested transaction.
+
+6. **Unbounded queries on the hot listing path.** `apps/web/lib/db/board-store.ts` `listBoards` has no `LIMIT` and sorts in DB memory; `apps/web/lib/db/share-store.ts` and `apps/web/lib/db/board-store.ts` also differ in their non-enumeration stance (`forbidden` vs `null`/`absent`).
+
+7. **Browser-only modules carry no `'use client'` boundary.** `apps/web/lib/auth/client.ts` (builds a React-hooks auth client at import time), `apps/web/lib/share.ts` (`window` in `absoluteShareUrl`), `apps/web/lib/text-measurer.ts` (despite a comment promising SSR safety), and `apps/web/lib/board-channel.ts` are kept out of the RSC graph only by consumer discipline.
+
+8. **Cross-file duplication of policy that must stay in sync.** `readAuthEnv()` + `getDatabase()` blocks copy-pasted three times in `apps/web/lib/db/board-store.ts`; `copyTitle` duplicated between `apps/web/lib/use-board-route.ts` and `packages/editor/src/persistence/library.ts`; `fontFamilyOf` re-implemented in `apps/web/lib/text-measurer.ts` instead of using `@kiyora/model`; API route paths hardcoded in `apps/web/lib/share.ts` and `apps/web/lib/sync/transport.ts`; the panel-crash key literal duplicated into two e2e specs.
+
+9. **Fail-safe `catch`es with no signal.** `apps/web/lib/board-png.ts` (font fetch failure → silently wrong raster), `apps/web/lib/text-measurer.ts` (measurement failure → returns `0`, wrong wrapping with correct painting), `apps/web/lib/use-board-route.ts` (`recordSync`), `apps/web/lib/panel-crash.ts` (undocumented fail-safe). These violate the project's "a catch must surface something" rule.
+
+10. **Sticky failure caches.** `apps/web/lib/icon-set.ts` `pending ??=` caches a rejected promise permanently (one flaky chunk load breaks icons for the session); `apps/web/lib/text-measurer.ts` writes `null` back to the context field, so the failure path is never memoised and every `measure()` allocates a canvas.
+
+### Module Hotspots
+
+- **`apps/web/lib/db/`** — highest density by far: `board-store.ts`, `share-store.ts`, `schema.ts`, `migrate-check.ts`, `index.ts` account for ~19 comments spanning security, correctness, migrations, and performance. This is the layer that most needs a design pass.
+- **`apps/web/lib/` (root adapters)** — `board-storage.ts`, `board-import.ts`, `remote-board.ts`, `board-file.ts`, `board-png.ts`, `image-import.ts`, `sync/transport.ts`, `share.ts`, `use-board-route.ts`: 9 files, all reporting the same boundary-conversion defect.
+- **`apps/web/lib/auth/`** — 4 files; small in line count but every comment is security-relevant (`env.ts`, `server.ts`, `client.ts`, `session.ts`).
+- **`apps/web/lib/db/migrate-check.ts` alone** — 5 comments (count-only guard, `finally` swallowing the real error, unvalidated journal JSON, `cwd`-relative path breaking `--output standalone`, client constructed outside `try`), i.e. the boot-check itself fails opaquely.
+
+### Cross-Cutting Concerns
+
+- **Adapter boundary contract is not enforced anywhere.** The same defect appears in 10+ files: platform/driver errors are not converted to the module's refusal type. See `board-file.ts`, `board-png.ts`, `image-import.ts`, `remote-board.ts`, `sync/transport.ts`, `share.ts`. Fixing this once (a shared "convert foreign error" helper or a lint-enforced boundary pattern) retires the majority of the comment set.
+- **Failures are reported to the person as "not found" or "offline".** `use-board-route.ts` maps storage I/O errors to `status: 'missing'`; `sync/transport.ts` maps 5xx/429 to `network`, which the reconciler then retries forever. Any storage or server fault currently reads as user-side breakage.
+- **Partial writes / non-atomic persistence.** `remote-board.ts` (`create` then `setSync`), `board-storage.ts` (settling on `request.success` rather than `transaction.complete`), `share-store.ts` (ownership check and token read as separate statements), `board-store.ts` (create race).
+- **Silent degradation instead of diagnosable state.** `board-storage.ts`, `board-import.ts`, `board-png.ts`, `text-measurer.ts`, `icon-set.ts`, `panel-crash.ts`: the system keeps painting while losing fidelity, without emitting a fault.
+- **Duplicated policy constants and helpers across packages.** `text-measurer.ts` vs `@kiyora/model`'s `fontFamilyOf`; `image-import.ts` exporting `IMAGE_PLACEMENT_SIDE` from `apps/web` while sibling raster constants live in `@kiyora/model`; `use-board-route.ts` vs `packages/editor` `copyTitle`; `board-store.ts` ×3 env resolution.
+- **Comments that assert guarantees the code does not provide.** `board-storage.ts` doc (`a fallback that persists is not a failure`), `text-measurer.ts` (SSR safety), `use-board-route.ts` `recordSync` ("the next save writes it again"), `schema.ts` (preview_svg is server-justified markup — it is not).
+
+### Quick Wins
+
+- Add `'use client'` to `apps/web/lib/auth/client.ts`, `apps/web/lib/share.ts`, and `apps/web/lib/text-measurer.ts` (or make them DOM-safe).
+- `apps/web/lib/db/schema.ts`: add `uniqueIndex('account_provider_id_account_id_idx')` and a composite `(owner_id, updated_at)` index; flip timestamps to `{ withTimezone: true }`. One migration file.
+- `apps/web/lib/db/board-store.ts`: delete the unreachable `?? ''` fallbacks in `env.ts`-derived values and add `LIMIT`/`OFFSET` to the listing query.
+- Extract the repeated `readAuthEnv()` + `getDatabase()` block in `board-store.ts` into one helper used by `database()`, `writeBoard`, `deleteBoard`.
+- `apps/web/lib/auth/utils`-side: make `readAuthEnv`'s error message enumerate all seven variables, and reject non-`http(s)` origins before they reach `trustedOrigins`.
+- `apps/web/lib/use-board-route.ts`: hoist the three duplicate `setState` payloads into one object (fixes the dropped `openFault` in the same edit); add `boardId` reset at the top of the effect.
+- `apps/web/lib/board-storage.ts`: add an `onversionchange` handler and `db.close()`; set `fault` to `null` on a successful localStorage fallback.
+- `apps/web/lib/icon-set.ts`: clear `pending` on rejection so a transient chunk failure doesn't disable icons for the session.
+- `apps/web/lib/image-import.ts`: wrap the draw in `try/finally { bitmap.close() }`; add a source-size guard before `createImageBitmap`.
+- `apps/web/lib/panel-crash.ts`: export the storage-key builder and import it from `apps/web/tests/e2e/a11y.spec.ts:239` and `storage.spec.ts:307`.
+- `apps/web/lib/board-file.ts`: attach the anchor to the document and `revokeObjectURL` on a `setTimeout`/`requestAnimationFrame` instead of synchronously (Safari/Firefox download failures).
+- Add one-line intent comments where catches are deliberately fail-safe (`panel-crash.ts`, `board-png.ts`) to satisfy the project rule without behaviour changes.
