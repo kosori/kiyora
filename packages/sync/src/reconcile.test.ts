@@ -100,7 +100,7 @@ const fakeTransport = (): Fake => {
     },
     transport: {
       download: () => Promise.resolve(null),
-      list: () => Promise.resolve([]),
+      list: async () => ({ boards: [], status: 'ok', total: 0 }),
       remove: () => Promise.resolve({ kind: 'removed' }),
       upload: async (request) => {
         uploads.push(request);

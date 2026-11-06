@@ -115,9 +115,10 @@ export const schema = { account, session, user, verification };
 
 /**
  * One board's remote copy. Its id is the client's, minted before any server
- * exists, and `payload` is the document of record. The other columns are a
- * cache the server fills from the payload it just validated, so listing never
- * parses a board.
+ * exists, and `payload` is the document of record. `title`, `bytes` and
+ * `payload_hash` are a cache the server fills from the payload it just
+ * validated; `preview_svg` is the picture the client saved, checked at ingest
+ * and again at render. Listing never parses a board.
  */
 export const board = pgTable(
   'board',
@@ -132,6 +133,7 @@ export const board = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     payload: jsonb('payload').$type<Board>().notNull(),
     payloadHash: text('payload_hash').notNull(),
+    /** Validated and capped at ingest, and re-checked at render. */
     previewSvg: text('preview_svg'),
     revision: integer('revision').notNull(),
     title: text('title').notNull(),

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { currentUserId } from '~/lib/auth/session';
-import { readPreview, writeBoard } from '~/lib/db/board-store';
+import {
+  BoardWriteFailure,
+  readPreview,
+  writeBoard,
+} from '~/lib/db/board-store';
 
 type Body = {
   baseRevision: number | null;
@@ -69,13 +73,21 @@ export const POST = async (
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
 
-  const result = await writeBoard({
-    baseRevision: body.baseRevision,
-    id,
-    ownerId,
-    payload: body.payload,
-    preview: body.preview,
-  });
+  let result: Awaited<ReturnType<typeof writeBoard>>;
+  try {
+    result = await writeBoard({
+      baseRevision: body.baseRevision,
+      id,
+      ownerId,
+      payload: body.payload,
+      preview: body.preview,
+    });
+  } catch (error) {
+    if (error instanceof BoardWriteFailure) {
+      return NextResponse.json({ error: 'server' }, { status: 503 });
+    }
+    throw error;
+  }
 
   if (result.status === 'written') {
     return NextResponse.json({ revision: result.revision });
@@ -93,10 +105,6 @@ export const POST = async (
       { bytes: result.bytes, limit: result.limit },
       { status: 413 }
     );
-  }
-
-  if (result.status === 'forbidden') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
   return NextResponse.json(

@@ -22,7 +22,9 @@ export {
   type SyncState,
 } from './reconcile';
 export type {
+  BoardPage,
   DownloadedBoard,
+  RemoteBoardList,
   RemoteBoardSummary,
   RemoveResult,
   SyncTransport,

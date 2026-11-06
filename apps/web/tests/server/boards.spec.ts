@@ -160,6 +160,72 @@ test('lists only the owner boards, without their payloads', async () => {
   expect(theirs.boards.map((board) => board.title)).toEqual(['Theirs']);
 });
 
+test('pages the listing and refuses a page that is not a count', async () => {
+  const owner = await signUp('page@kiyora.test');
+  const ids = [
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  ];
+
+  await Promise.all(
+    ids.map((id, index) =>
+      sync(owner, id, {
+        baseRevision: null,
+        payload: payload(id, {
+          title: `Paged ${index}`,
+          updatedAt: 1_700_000_000_000 + index,
+        }),
+      })
+    )
+  );
+
+  const first = await owner.get('/api/boards?limit=1&offset=0', {
+    headers: { origin: E2E_BASE_URL },
+  });
+  expect(first.status()).toBe(200);
+  const firstPage = (await first.json()) as {
+    boards: { id: string }[];
+    total: number;
+  };
+  expect(firstPage.total).toBe(3);
+  expect(firstPage.boards).toHaveLength(1);
+
+  const second = await owner.get('/api/boards?limit=1&offset=1', {
+    headers: { origin: E2E_BASE_URL },
+  });
+  const secondPage = (await second.json()) as {
+    boards: { id: string }[];
+    total: number;
+  };
+  expect(secondPage.boards).toHaveLength(1);
+
+  const paged = firstPage.boards.concat(secondPage.boards).map(({ id }) => id);
+  expect(new Set(paged).size).toBe(2);
+  expect(paged.every((id) => ids.includes(id))).toBe(true);
+
+  expect(
+    (
+      await owner.get('/api/boards?limit=many', {
+        headers: { origin: E2E_BASE_URL },
+      })
+    ).status()
+  ).toBe(400);
+  expect(
+    (
+      await owner.get('/api/boards?offset=-1', {
+        headers: { origin: E2E_BASE_URL },
+      })
+    ).status()
+  ).toBe(400);
+
+  const clamped = await owner.get('/api/boards?limit=0', {
+    headers: { origin: E2E_BASE_URL },
+  });
+  const clampedPage = (await clamped.json()) as { boards: unknown[] };
+  expect(clampedPage.boards).toHaveLength(1);
+});
+
 test('downloads the payload and revision for the owner', async () => {
   const owner = await signUp('download@kiyora.test');
   const id = '44444444-4444-4444-8444-444444444444';

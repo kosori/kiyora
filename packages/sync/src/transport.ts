@@ -11,6 +11,19 @@ export type RemoteBoardSummary = {
   preview: string | null;
 };
 
+/** One page of a remote listing: how many summaries to read and where to start. */
+export type BoardPage = {
+  limit: number;
+  offset: number;
+};
+
+/** What the server answered to one page of a remote listing. */
+export type RemoteBoardList =
+  | { status: 'ok'; boards: RemoteBoardSummary[]; total: number }
+  | { status: 'unauthorized' }
+  | { status: 'server' }
+  | { status: 'network' };
+
 /** One board's bytes offered to the server, with the picture the client saved. */
 export type UploadRequest = {
   id: string;
@@ -61,9 +74,19 @@ export type RemoveResult =
 export type SyncTransport = {
   /** Offers one board; resolves a `kind` for every server answer and never rejects for a non-accept. */
   upload: (request: UploadRequest) => Promise<UploadResult>;
-  /** Every remote copy the caller may see, without payloads; order is not significant and unknown boards are tolerated. */
-  list: () => Promise<RemoteBoardSummary[]>;
-  /** Resolves `null` when the server holds no such board, and never throws for absence. */
+  /**
+   * One bounded page of the remote copies the caller may see, without
+   * payloads, newest change first. `total` is the account's whole count, so the
+   * caller knows whether another page exists and never mistakes a page for the
+   * account.
+   */
+  list: (page: BoardPage) => Promise<RemoteBoardList>;
+  /**
+   * Resolves `null` only when the server holds no such board. A failed exchange
+   * — an unreachable server, an unexpected status or a body that does not carry
+   * a validated payload and a numeric revision — is thrown as a named adapter
+   * failure, never reported as absence.
+   */
   download: (id: string) => Promise<DownloadedBoard | null>;
   /** `removed` and `absent` let the caller drop its copy; `failed` leaves the remote possibly alive. */
   remove: (id: string) => Promise<RemoveResult>;
