@@ -1,6 +1,6 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { extname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { extname, join, relative } from 'node:path';
+import { messageOf, rootFrom, runsAsScript, UsageError } from './cli';
 
 /** Lines allowed in one source file. */
 export const SOURCE_BUDGET = 400;
@@ -37,6 +37,13 @@ const SKIPPED_DIRECTORIES = [
 ];
 
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+
+const usage = 'usage: bun scripts/check-budgets.ts [--root <directory>]';
+
+/** A root that holds no source file, so the gate would pass without checking anything. */
+class EmptyRootError extends Error {
+  readonly name = 'EmptyRootError';
+}
 
 /** One file's size against the budget it is held to. */
 export type BudgetViolation = {
@@ -90,21 +97,44 @@ export const checkFiles = (files: readonly SourceFile[]): BudgetViolation[] =>
     }))
     .filter((violation) => violation.lines > violation.budget);
 
-/** Every source file under the root, as repository-relative posix paths. */
+/**
+ * Every source file under the root, as repository-relative posix paths.
+ *
+ * A vendored tree is skipped before it is read or descended into, so the gate
+ * never pays for what it discards. Symlinks are resolved through `statSync`, so
+ * a linked file or subtree is still counted, while a directory realpath already
+ * visited is not walked again and a broken link is ignored.
+ */
 export const collectSourceFiles = (root: string): string[] => {
   const found: string[] = [];
+  const visited = new Set<string>();
 
   const walk = (directory: string): void => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (!SKIPPED_DIRECTORIES.includes(entry.name)) {
+    const real = realpathSync(directory);
+    if (visited.has(real)) {
+      return;
+    }
+    visited.add(real);
+
+    for (const name of readdirSync(directory)) {
+      const path = join(directory, name);
+      const fromRoot = toPosix(relative(root, path));
+      if (isVendored(fromRoot)) {
+        continue;
+      }
+
+      const stat = statSync(path, { throwIfNoEntry: false });
+      if (stat === undefined) {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        if (!SKIPPED_DIRECTORIES.includes(name)) {
           walk(path);
         }
         continue;
       }
-      if (entry.isFile() && SOURCE_EXTENSIONS.includes(extname(entry.name))) {
-        found.push(toPosix(relative(root, path)));
+      if (stat.isFile() && SOURCE_EXTENSIONS.includes(extname(name))) {
+        found.push(fromRoot);
       }
     }
   };
@@ -113,19 +143,19 @@ export const collectSourceFiles = (root: string): string[] => {
   return found.sort();
 };
 
-/** The budget for the whole repository under the root. */
-export const checkRepository = (root: string): BudgetViolation[] =>
-  checkFiles(
-    collectSourceFiles(root).map((path) => ({
+/** The budget for the whole repository under the root; refuses a root with nothing to check. */
+export const checkRepository = (root: string): BudgetViolation[] => {
+  const files = collectSourceFiles(root);
+  if (files.length === 0) {
+    throw new EmptyRootError(`no source files under ${root}`);
+  }
+
+  return checkFiles(
+    files.map((path) => ({
       path,
       source: readFileSync(join(root, path), 'utf8'),
     }))
   );
-
-const rootFrom = (argv: readonly string[]): string => {
-  const flag = argv.indexOf('--root');
-  const value = flag === -1 ? undefined : argv[flag + 1];
-  return value === undefined ? process.cwd() : resolve(value);
 };
 
 const report = (violations: readonly BudgetViolation[]): number => {
@@ -147,13 +177,17 @@ const report = (violations: readonly BudgetViolation[]): number => {
   return 1;
 };
 
-const runsAsScript = (): boolean => {
-  const [, entry] = process.argv;
-  return (
-    entry !== undefined && resolve(entry) === fileURLToPath(import.meta.url)
-  );
-};
-
-if (runsAsScript()) {
-  process.exitCode = report(checkRepository(rootFrom(process.argv.slice(2))));
+if (runsAsScript(import.meta.url)) {
+  try {
+    const root = rootFrom(process.argv.slice(2), process.cwd());
+    process.exitCode = report(checkRepository(root));
+  } catch (error) {
+    process.stderr.write(`budgets: ${messageOf(error)}\n`);
+    const misuse =
+      error instanceof UsageError || error instanceof EmptyRootError;
+    if (misuse) {
+      process.stderr.write(`${usage}\n`);
+    }
+    process.exitCode = misuse ? 1 : 2;
+  }
 }

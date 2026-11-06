@@ -4,9 +4,19 @@
  * name added here is one run of `bun run icons` away from being placeable.
  *
  * Every name is a Tabler outline icon. The set is curated rather than complete:
- * arrows, files, people, technology and status cover what a board needs, and a
- * complete library would be a first-paint risk with no matching benefit.
+ * arrows, files, people, technology and status cover what a board needs. The
+ * dataset is reached only through the dynamic import in
+ * `apps/web/lib/icon-set.ts`, which the lazy-loading test enforces, so it never
+ * costs first paint; its real cost is the download and parse when the picker
+ * first opens.
+ *
+ * `ICON_LIMIT` is the ceiling on this list. To add names past it, raise the
+ * constant in the same change; `check-icons.test.ts` reads it from here, so the
+ * guard follows instead of blocking the documented workflow.
  */
+export const ICON_LIMIT = 200;
+
+/** The curated icon names, at most `ICON_LIMIT` of them. */
 export const ICON_NAMES = [
   'alert-circle',
   'archive',

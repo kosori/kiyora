@@ -1,5 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   budgetFor,
   checkRepository,
+  collectSourceFiles,
   countLines,
   isTestFile,
   isVendored,
@@ -34,7 +41,7 @@ const testLines = (count: number): string =>
   "it('x', () => {});\n".repeat(count);
 
 const runGate = (root: string): ReturnType<typeof spawnSync> =>
-  spawnSync(process.execPath, [gate, '--root', root], { encoding: 'utf8' });
+  spawnSync('bun', [gate, '--root', root], { encoding: 'utf8' });
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -120,6 +127,7 @@ describe('checkRepository', () => {
     const root = makeRoot({
       'apps/web/components/ui/button.tsx': sourceLines(5000),
       'packages/dsl/src/grammar.ts': sourceLines(5000),
+      'packages/model/src/board.ts': sourceLines(400),
     });
 
     expect(checkRepository(root)).toEqual([]);
@@ -129,9 +137,60 @@ describe('checkRepository', () => {
     const root = makeRoot({
       'bun.lock': '{}\n'.repeat(5000),
       'docs/notes.md': 'a line\n'.repeat(5000),
+      'packages/model/src/board.ts': sourceLines(400),
     });
 
     expect(checkRepository(root)).toEqual([]);
+  });
+
+  it('skips a vendored tree before reading it', () => {
+    const root = makeRoot({
+      'apps/web/components/ui/button.tsx': sourceLines(5000),
+      'packages/dsl/src/grammar.ts': sourceLines(5000),
+      'packages/model/src/board.ts': sourceLines(400),
+    });
+
+    expect(collectSourceFiles(root)).toEqual(['packages/model/src/board.ts']);
+    expect(checkRepository(root)).toEqual([]);
+  });
+
+  it('counts a symlinked source file', () => {
+    const outside = makeRoot({ 'board.ts': sourceLines(401) });
+    const root = makeRoot({});
+    mkdirSync(join(root, 'packages/model/src'), { recursive: true });
+    symlinkSync(
+      join(outside, 'board.ts'),
+      join(root, 'packages/model/src/board.ts')
+    );
+
+    expect(checkRepository(root)).toEqual([
+      { budget: 400, lines: 401, path: 'packages/model/src/board.ts' },
+    ]);
+  });
+
+  it('counts a symlinked directory and its subtree', () => {
+    const outside = makeRoot({ 'board.ts': sourceLines(401) });
+    const root = makeRoot({});
+    symlinkSync(outside, join(root, 'linked'), 'dir');
+
+    expect(checkRepository(root)).toEqual([
+      { budget: 400, lines: 401, path: 'linked/board.ts' },
+    ]);
+  });
+
+  it('does not follow a symlink back to an ancestor', () => {
+    const root = makeRoot({ 'packages/model/src/board.ts': sourceLines(401) });
+    symlinkSync(root, join(root, 'loop'), 'dir');
+
+    expect(checkRepository(root)).toEqual([
+      { budget: 400, lines: 401, path: 'packages/model/src/board.ts' },
+    ]);
+  });
+
+  it('refuses a root with no source files instead of passing vacuously', () => {
+    const root = makeRoot({ 'docs/notes.md': 'a line\n' });
+
+    expect(() => checkRepository(root)).toThrow(/no source files under/);
   });
 });
 
@@ -149,5 +208,59 @@ describe('the gate', () => {
     const root = makeRoot({ 'packages/model/src/board.ts': sourceLines(400) });
 
     expect(runGate(root).status).toBe(0);
+  });
+
+  it('still runs when invoked through a symlink', () => {
+    const root = makeRoot({ 'packages/model/src/board.ts': sourceLines(401) });
+    const directory = mkdtempSync(join(tmpdir(), 'kiyora-link-'));
+    roots.push(directory);
+    const link = join(directory, 'check-budgets.ts');
+    symlinkSync(gate, link);
+
+    const run = spawnSync('bun', [link, '--root', root], {
+      encoding: 'utf8',
+    });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('packages/model/src/board.ts');
+  });
+
+  it('rejects a bare --root with the usage line', () => {
+    const run = spawnSync('bun', [gate, '--root'], {
+      encoding: 'utf8',
+    });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('usage:');
+  });
+
+  it('rejects a --root that swallowed the next flag', () => {
+    const run = spawnSync('bun', [gate, '--root', '--check'], {
+      encoding: 'utf8',
+    });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('--root needs a directory');
+  });
+
+  it('exits 2 when the root cannot be read', () => {
+    const missing = mkdtempSync(join(tmpdir(), 'kiyora-missing-'));
+    rmSync(missing, { force: true, recursive: true });
+
+    const run = spawnSync('bun', [gate, '--root', missing], {
+      encoding: 'utf8',
+    });
+
+    expect(run.status).toBe(2);
+    expect(run.stderr).toContain('budgets:');
+  });
+
+  it('exits 1 when the root holds no source files', () => {
+    const root = makeRoot({ 'docs/notes.md': 'a line\n' });
+
+    const run = runGate(root);
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('no source files');
   });
 });
