@@ -2,6 +2,7 @@
 
 import { keyshortcutsFor } from '@kiyora/editor';
 import { useEditor, useTool } from '@kiyora/editor/react';
+import { cn } from 'cn';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
 import type { RailEntry } from './tool-rail';
@@ -31,10 +32,17 @@ export const ToolRailButton = ({ entry }: Props) => {
       )}
       aria-label={label}
       aria-pressed={pressed}
+      className={cn(
+        'chrome-icon chrome-fg [&_svg]:size-[18px] [&_svg]:[stroke-width:1.75]',
+        pressed
+          ? 'hover:bg-[var(--chrome-active)]'
+          : 'chrome-hover hover:bg-[var(--chrome-hover)]'
+      )}
       onClick={select}
       size='icon'
+      style={pressed ? { backgroundColor: 'var(--chrome-active)' } : undefined}
       title={label}
-      variant={pressed ? 'secondary' : 'ghost'}
+      variant='ghost'
     >
       <Icon />
     </Button>
