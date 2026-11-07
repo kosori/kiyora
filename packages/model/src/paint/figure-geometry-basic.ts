@@ -289,7 +289,7 @@ export const BASIC_GEOMETRY = {
   rectangle: (shape) => [
     solid(
       shape.style.corner === 'rounded'
-        ? roundedRect(shape, Math.min(shape.w, shape.h) * 0.16)
+        ? roundedRect(shape, Math.min(12, Math.min(shape.w, shape.h) / 2))
         : rectanglePath(shape)
     ),
   ],

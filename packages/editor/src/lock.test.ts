@@ -130,8 +130,8 @@ describe('a locked shape', () => {
     );
     editor.setSelection(['locked', 'free']);
 
-    editor.pointerDown({ x: 300, y: 30 }, false);
-    editor.pointerMove({ x: 336, y: 30 }, none);
+    editor.pointerDown({ x: 300, y: 0 }, false);
+    editor.pointerMove({ x: 336, y: 0 }, none);
 
     const [locked, free] = editor.getBoard().shapes;
 
@@ -143,8 +143,8 @@ describe('a locked shape', () => {
     const editor = createEditor(board([rectangle({ id: 'a', locked: true })]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 50, y: -22 }, false);
-    editor.pointerMove({ x: 120, y: 30 }, none);
+    editor.pointerDown({ x: 110, y: 70 }, false);
+    editor.pointerMove({ x: 10, y: 90 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({
       rotation: 0,

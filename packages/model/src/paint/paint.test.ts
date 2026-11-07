@@ -126,7 +126,7 @@ describe('painting a board', () => {
 
     expect(rounded).not.toBe('M 0 0 L 100 0 L 100 60 L 0 60 Z');
     expect(rounded).toContain('C');
-    expect(rounded?.startsWith('M 9.6 0')).toBe(true);
+    expect(rounded?.startsWith('M 12 0')).toBe(true);
   });
 });
 

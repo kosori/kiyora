@@ -45,33 +45,30 @@ const noModifiers = {
 } as const;
 
 describe('the handles', () => {
-  it('sits one on each corner and edge midpoint, eight in all', () => {
-    expect(HANDLES).toHaveLength(8);
+  it('sits one on each corner, four in all', () => {
+    expect(HANDLES).toHaveLength(4);
     expect(handlePositions({ h: 140, w: 220, x: 80, y: 80 })).toEqual({
-      e: { x: 300, y: 150 },
-      n: { x: 190, y: 80 },
       ne: { x: 300, y: 80 },
       nw: { x: 80, y: 80 },
-      s: { x: 190, y: 220 },
       se: { x: 300, y: 220 },
       sw: { x: 80, y: 220 },
-      w: { x: 80, y: 150 },
     });
   });
 
-  it('floats the rotate handle a fixed distance above the top edge', () => {
+  it('floats the rotate handle diagonally past the bottom-right corner', () => {
     const bounds = { h: 140, w: 220, x: 80, y: 80 };
 
-    expect(rotateHandlePosition(bounds, 1)).toEqual({ x: 190, y: 58 });
-    expect(rotateHandlePosition(bounds, 2)).toEqual({ x: 190, y: 69 });
+    expect(rotateHandlePosition(bounds, 1)).toEqual({ x: 310, y: 230 });
+    expect(rotateHandlePosition(bounds, 2)).toEqual({ x: 305, y: 225 });
   });
 
   it('names the handle under the pointer', () => {
     const bounds = { h: 140, w: 220, x: 80, y: 80 };
 
     expect(handleAt(bounds, { x: 300, y: 220 }, 1)).toBe('se');
-    expect(handleAt(bounds, { x: 300, y: 150 }, 1)).toBe('e');
-    expect(handleAt(bounds, { x: 190, y: 58 }, 1)).toBe('rotate');
+    expect(handleAt(bounds, { x: 310, y: 230 }, 1)).toBe('rotate');
+    expect(handleAt(bounds, { x: 300, y: 150 }, 1)).toBeNull();
+    expect(handleAt(bounds, { x: 190, y: 80 }, 1)).toBeNull();
     expect(handleAt(bounds, { x: 190, y: 150 }, 1)).toBeNull();
   });
 
@@ -87,7 +84,7 @@ describe('the handles', () => {
 describe('resizing the selection box', () => {
   const bounds = { h: 140, w: 220, x: 80, y: 80 };
 
-  it('moves the corner an edge handle is dragged from', () => {
+  it('moves the corner a corner handle drags', () => {
     expect(resizeBounds(bounds, 'se', { x: 360, y: 300 }, noModifiers)).toEqual(
       {
         h: 220,
@@ -98,13 +95,15 @@ describe('resizing the selection box', () => {
     );
   });
 
-  it('moves only the edge an edge handle drags', () => {
-    expect(resizeBounds(bounds, 'e', { x: 360, y: 500 }, noModifiers)).toEqual({
-      h: 140,
-      w: 280,
-      x: 80,
-      y: 80,
-    });
+  it('moves only the axis the pointer moves', () => {
+    expect(resizeBounds(bounds, 'se', { x: 360, y: 220 }, noModifiers)).toEqual(
+      {
+        h: 140,
+        w: 280,
+        x: 80,
+        y: 80,
+      }
+    );
   });
 
   it('never inverts, holding a minimum size', () => {
@@ -208,8 +207,8 @@ describe('resizing a shape', () => {
         rectangle({ h: 100, id: 'b', w: 100, x: 200, y: 0 }),
       ],
       { h: 100, w: 300, x: 0, y: 0 },
-      'e',
-      { x: 600, y: 0 },
+      'se',
+      { x: 600, y: 100 },
       noModifiers
     );
 
@@ -224,8 +223,8 @@ describe('resizing a shape', () => {
         rectangle({ h: 20, id: 'b', w: 20, x: 200, y: 0 }),
       ],
       { h: 100, w: 220, x: 0, y: 0 },
-      'e',
-      { x: 11, y: 0 },
+      'se',
+      { x: 11, y: 100 },
       noModifiers
     );
 

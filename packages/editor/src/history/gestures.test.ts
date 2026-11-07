@@ -333,8 +333,8 @@ describe('resize and rotate gestures', () => {
     const editor = createEditor(board([rectangle({ id: 'a', x: 0, y: 0 })]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 50, y: -22 }, false);
-    editor.pointerMove({ x: 100, y: 30 }, NO_GESTURE_MODIFIERS);
+    editor.pointerDown({ x: 110, y: 70 }, false);
+    editor.pointerMove({ x: 10, y: 90 }, NO_GESTURE_MODIFIERS);
     editor.pointerUp();
 
     expect(editor.getBoard().shapes[0]?.rotation).not.toBe(0);

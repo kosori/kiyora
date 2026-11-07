@@ -81,19 +81,13 @@ describe('resizing a selection from a handle', () => {
     });
   });
 
-  it('moves only the edge an edge handle drags', () => {
+  it('leaves an edge midpoint to the move gesture, not a resize', () => {
     const editor = createEditor(board([starter()]));
     editor.setSelection(['a']);
 
     editor.pointerDown({ x: 300, y: 150 }, false);
-    editor.pointerMove({ x: 360, y: 500 }, none);
 
-    expect(editor.getBoard().shapes[0]).toMatchObject({
-      h: 140,
-      w: 280,
-      x: 80,
-      y: 80,
-    });
+    expect(editor.getGesture()).toEqual({ guides: [], kind: 'move' });
   });
 
   it('never lets a shape invert or vanish', () => {
@@ -215,13 +209,13 @@ describe('resizing a selection from a handle', () => {
 });
 
 describe('rotating a selection from the rotate handle', () => {
-  const starter = () => rectangle({ h: 140, id: 'a', w: 220, x: 80, y: 80 });
+  const starter = () => rectangle({ h: 200, id: 'a', w: 200, x: 0, y: 0 });
 
   it('opens a rotate on the rotate handle', () => {
     const editor = createEditor(board([starter()]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 190, y: 58 }, false);
+    editor.pointerDown({ x: 210, y: 210 }, false);
 
     expect(editor.getGesture()).toEqual({ kind: 'rotate' });
   });
@@ -230,8 +224,8 @@ describe('rotating a selection from the rotate handle', () => {
     const editor = createEditor(board([starter()]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 290, y: 150 }, none);
+    editor.pointerDown({ x: 210, y: 210 }, false);
+    editor.pointerMove({ x: 0, y: 200 }, none);
 
     expect(editor.getBoard().shapes[0]).toMatchObject({ rotation: 90 });
   });
@@ -240,8 +234,8 @@ describe('rotating a selection from the rotate handle', () => {
     const editor = createEditor(board([starter()]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 224.2, y: 56 }, shift);
+    editor.pointerDown({ x: 210, y: 210 }, false);
+    editor.pointerMove({ x: 150, y: 186.6 }, shift);
 
     expect(editor.getBoard().shapes[0]?.rotation).toBe(15);
   });
@@ -250,12 +244,12 @@ describe('rotating a selection from the rotate handle', () => {
     const editor = createEditor(board([starter()]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 290, y: 150 }, none);
+    editor.pointerDown({ x: 210, y: 210 }, false);
+    editor.pointerMove({ x: 0, y: 200 }, none);
     editor.pointerUp();
 
-    editor.pointerDown({ x: 190, y: 18 }, false);
-    editor.pointerMove({ x: 98, y: 150 }, none);
+    editor.pointerDown({ x: 210, y: 210 }, false);
+    editor.pointerMove({ x: 200, y: 0 }, none);
 
     expect(editor.getBoard().shapes[0]?.rotation).toBe(0);
   });
@@ -264,8 +258,8 @@ describe('rotating a selection from the rotate handle', () => {
     const editor = createEditor(board([starter()]));
     editor.setSelection(['a']);
 
-    editor.pointerDown({ x: 190, y: 58 }, false);
-    editor.pointerMove({ x: 290, y: 150 }, none);
+    editor.pointerDown({ x: 210, y: 210 }, false);
+    editor.pointerMove({ x: 0, y: 200 }, none);
     editor.cancelGesture();
 
     expect(editor.getBoard().shapes[0]?.rotation).toBe(0);

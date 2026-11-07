@@ -110,18 +110,14 @@ const upright = (): Shape[] => [
 
 /** A pointer clear of each handle, so the drag is unambiguous. */
 const beyond: Record<HandleKind, { x: number; y: number }> = {
-  e: { x: 450, y: 50 },
-  n: { x: 150, y: -50 },
   ne: { x: 350, y: -50 },
   nw: { x: -50, y: -50 },
-  s: { x: 150, y: 150 },
   se: { x: 450, y: 150 },
   sw: { x: -50, y: 150 },
-  w: { x: -50, y: 50 },
 };
 
 describe('an unrotated multi-selection', () => {
-  it('keeps all eight handles exact', () => {
+  it('keeps all four handles exact', () => {
     for (const handle of HANDLES) {
       const pointer = beyond[handle];
 
@@ -138,7 +134,7 @@ describe('an unrotated multi-selection', () => {
 describe('a non-uniform resize of a selection holding a rotated shape', () => {
   it('is refused at the seam with a reason, rather than skewing the box', () => {
     expect(() =>
-      resizeSelection(members(), bounds, 'e', { x: 450, y: 50 }, exact)
+      resizeSelection(members(), bounds, 'se', { x: 450, y: 100 }, exact)
     ).toThrow(/rotated shapes scale uniformly only/i);
   });
 
@@ -147,12 +143,12 @@ describe('a non-uniform resize of a selection holding a rotated shape', () => {
     editor.setSelection(['flat', 'turned']);
     const before = editor.getBoard();
 
-    editor.pointerDown({ x: 300, y: 50 }, false);
-    editor.pointerMove({ x: 450, y: 50 }, none);
+    editor.pointerDown({ x: 300, y: 100 }, false);
+    editor.pointerMove({ x: 450, y: 100 }, none);
 
     expect(editor.getBoard()).toBe(before);
     expect(editor.getGesture()).toMatchObject({
-      handle: 'e',
+      handle: 'se',
       kind: 'resize',
       refusal: expect.stringMatching(/rotated shapes scale uniformly only/i),
     });

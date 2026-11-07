@@ -229,26 +229,19 @@ describe('rotating a group', () => {
     editor.groupSelection();
     const stored = groupOf(editor.getBoard());
 
-    editor.pointerDown({ x: 175, y: -22 }, false);
+    editor.pointerDown({ x: 360, y: 110 }, false);
     expect(editor.getGesture()).toEqual({ kind: 'rotate' });
-    editor.pointerMove({ x: 350, y: 50 }, none);
+    editor.pointerMove({ x: 115, y: 235 }, none);
     editor.pointerUp();
 
     const after = editor.getBoard();
-    expect(after.shapes.find((shape) => shape.id === 'a')).toMatchObject({
-      h: 60,
-      rotation: 90,
-      w: 100,
-      x: 145,
-      y: -105,
-    });
-    expect(after.shapes.find((shape) => shape.id === 'b')).toMatchObject({
-      h: 60,
-      rotation: 90,
-      w: 100,
-      x: 105,
-      y: 145,
-    });
+    const a = after.shapes.find((shape) => shape.id === 'a');
+    const b = after.shapes.find((shape) => shape.id === 'b');
+
+    expect(a).toMatchObject({ h: 60, w: 100, x: 145, y: -105 });
+    expect(a?.rotation).toBeCloseTo(90, 9);
+    expect(b).toMatchObject({ h: 60, w: 100, x: 105, y: 145 });
+    expect(b?.rotation).toBeCloseTo(90, 9);
     expect(groupOf(after)).toEqual(stored);
   });
 });

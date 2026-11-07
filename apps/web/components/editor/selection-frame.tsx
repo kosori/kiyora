@@ -3,29 +3,31 @@
 import {
   HANDLE_SIZE,
   HANDLES,
+  type HandleKind,
   handlePositions,
   rotateHandlePosition,
   selectionBounds,
 } from '@kiyora/editor';
 import { useBoard, useSelection, useView } from '@kiyora/editor/react';
-import { paintColour } from '@kiyora/model';
+
+/** The colour the selection furniture is drawn in, whichever theme the board wears. */
+const SELECTION_COLOUR = '#4da1ff';
+
+/** The fill a handle carries, so a corner reads as open rather than as ink. */
+const HANDLE_FILL = '#ffffff';
 
 /** The resize cursor that suits where a handle sits, so its intent reads before a drag. */
-const CURSORS: Record<string, string> = {
-  e: 'ew-resize',
-  n: 'ns-resize',
+const CURSORS: Record<HandleKind, string> = {
   ne: 'nesw-resize',
   nw: 'nwse-resize',
-  s: 'ns-resize',
   se: 'nwse-resize',
   sw: 'nesw-resize',
-  w: 'ew-resize',
 };
 
 /**
- * The frame around the selection, its eight resize handles and its rotate
+ * The frame around the selection, its four corner handles and its rotate
  * handle, drawn in board coordinates inside the camera's group. Display-only:
- * none of it reaches an artifact. Handle reach and the rotate handle's offset
+ * none of it reaches an artifact. Handle size and the rotate handle's offset
  * are divided by the zoom, so they hold one size on screen at every scale, the
  * same box the engine hit-tests against.
  */
@@ -39,8 +41,8 @@ export const SelectionFrame = () => {
     return null;
   }
 
-  const colour = paintColour('blue', board.settings.theme);
   const size = HANDLE_SIZE / camera.zoom;
+  const radius = 2 / camera.zoom;
   const positions = handlePositions(bounds);
   const rotate = rotateHandlePosition(bounds, camera.zoom);
   const resizable = !board.shapes.some(
@@ -54,7 +56,7 @@ export const SelectionFrame = () => {
         fill='none'
         height={bounds.h}
         pointerEvents='none'
-        stroke={colour}
+        stroke={SELECTION_COLOUR}
         strokeWidth={1.5}
         vectorEffect='non-scaling-stroke'
         width={bounds.w}
@@ -63,16 +65,6 @@ export const SelectionFrame = () => {
       />
       {resizable ? (
         <>
-          <line
-            pointerEvents='none'
-            stroke={colour}
-            strokeWidth={1.5}
-            vectorEffect='non-scaling-stroke'
-            x1={bounds.x + bounds.w / 2}
-            x2={rotate.x}
-            y1={bounds.y}
-            y2={rotate.y}
-          />
           {HANDLES.map((kind) => {
             const point = positions[kind];
 
@@ -80,11 +72,13 @@ export const SelectionFrame = () => {
               <rect
                 data-handle={kind}
                 data-testid={`handle-${kind}`}
-                fill={colour}
+                fill={HANDLE_FILL}
                 height={size}
                 key={kind}
                 pointerEvents='all'
-                stroke={colour}
+                rx={radius}
+                ry={radius}
+                stroke={SELECTION_COLOUR}
                 strokeWidth={1}
                 style={{ cursor: CURSORS[kind] }}
                 vectorEffect='non-scaling-stroke'
@@ -99,10 +93,10 @@ export const SelectionFrame = () => {
             cy={rotate.y}
             data-handle='rotate'
             data-testid='handle-rotate'
-            fill={colour}
+            fill={HANDLE_FILL}
             pointerEvents='all'
             r={size / 2}
-            stroke={colour}
+            stroke={SELECTION_COLOUR}
             strokeWidth={1}
             style={{ cursor: 'grab' }}
             vectorEffect='non-scaling-stroke'

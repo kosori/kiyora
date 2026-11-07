@@ -4,28 +4,28 @@ import type { GestureModifiers } from '../modifiers';
 import { GRID } from './snap';
 
 /**
- * Handles: the grab points drawn around a selection. Eight resize a shape from
- * its box, one turns it. The box is axis-aligned even when a shape inside it is
- * turned, so a handle and its hit-test read the same rectangle.
+ * Handles: the grab points drawn around a selection. Four corners resize a
+ * shape from its box, one turns it. The box is axis-aligned even when a shape
+ * inside it is turned, so a handle and its hit-test read the same rectangle.
  */
 
-/** The eight resize handles, named by the corner or edge they sit on. */
-export const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
+/** The four corner resize handles, named by the corner they sit on. */
+export const HANDLES = ['nw', 'ne', 'se', 'sw'] as const;
 
-/** One of the eight resize handles. */
+/** One of the four resize handles. */
 export type HandleKind = (typeof HANDLES)[number];
 
-/** A resize handle, or the single rotate handle above the box. */
+/** A resize handle, or the single rotate handle past the box's bottom-right corner. */
 export type Handle = HandleKind | 'rotate';
 
 /** The side of a handle on screen, in pixels. */
-export const HANDLE_SIZE = 8;
+export const HANDLE_SIZE = 9;
 
 /** How far from a handle's centre a pointer still grabs it, in screen pixels. */
 export const HANDLE_REACH = 7;
 
-/** How far above the box's top edge the rotate handle floats, in screen pixels. */
-export const ROTATE_DISTANCE = 22;
+/** How far past the bottom-right corner the rotate handle floats, in screen pixels. */
+export const ROTATE_DISTANCE = 10;
 
 /** The smallest a shape's width or height may become, in board units. */
 export const MIN_SIZE = GRID;
@@ -48,28 +48,22 @@ export const handleSigns = (handle: HandleKind): HandleSigns => ({
   y: handle.includes('s') ? 1 : handle.includes('n') ? -1 : 0,
 });
 
-/** The centre of each of the eight handles on a box. */
+/** The centre of each of the four handles on a box. */
 export const handlePositions = (bounds: Bounds): Record<HandleKind, Point> => {
   const { x, y, w, h } = bounds;
-  const midX = x + w / 2;
-  const midY = y + h / 2;
 
   return {
-    e: { x: x + w, y: midY },
-    n: { x: midX, y },
     ne: { x: x + w, y },
     nw: { x, y },
-    s: { x: midX, y: y + h },
     se: { x: x + w, y: y + h },
     sw: { x, y: y + h },
-    w: { x, y: midY },
   };
 };
 
-/** Where the rotate handle floats, above the box's top edge, at any zoom. */
+/** Where the rotate handle floats, diagonally past the bottom-right corner, at any zoom. */
 export const rotateHandlePosition = (bounds: Bounds, zoom: number): Point => ({
-  x: bounds.x + bounds.w / 2,
-  y: bounds.y - ROTATE_DISTANCE / zoom,
+  x: bounds.x + bounds.w + ROTATE_DISTANCE / zoom,
+  y: bounds.y + bounds.h + ROTATE_DISTANCE / zoom,
 });
 
 /**
