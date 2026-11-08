@@ -31,6 +31,7 @@ const secondShape = (page: Page) =>
 const selectStarter = async (page: Page): Promise<void> => {
   const box = await canvasBox(page);
   await page.mouse.click(box.x + 150, box.y + 150);
+  await page.getByTestId('open-style').click();
 };
 
 const drag = async (
@@ -64,26 +65,17 @@ const setRange = async (
   }, value);
 };
 
-test('the inspector is a persistent panel, and explains an empty selection', async ({
+test('the selection bar waits for a selection and opens the style panel', async ({
   page,
 }) => {
   await open(page);
 
-  const inspector = page.getByTestId('inspector');
+  await expect(page.getByTestId('selection-toolbar')).toBeHidden();
 
-  await expect(inspector).toBeVisible();
-  await expect(page.getByTestId('inspector-empty')).toContainText(
-    /select a shape/i
-  );
-});
-
-test('selecting a shape replaces the empty state with the controls', async ({
-  page,
-}) => {
-  await open(page);
   await selectStarter(page);
 
-  await expect(page.getByTestId('inspector-empty')).toBeHidden();
+  await expect(page.getByTestId('selection-toolbar')).toBeVisible();
+  await expect(page.getByTestId('styles-panel')).toBeVisible();
   await expect(page.getByTestId('fill-blue')).toBeVisible();
   await expect(page.getByTestId('fill-style-bold')).toBeVisible();
   await expect(page.getByTestId('stroke-ink')).toBeVisible();
@@ -190,13 +182,19 @@ test('a change reaches the whole selection, not just the shape under the pointer
 
   await drag(
     page,
-    { x: box.x + 40, y: box.y + 40 },
-    { x: box.x + 700, y: box.y + 500 }
+    { x: box.x + 700, y: box.y + 500 },
+    { x: box.x + 90, y: box.y + 60 }
   );
 
-  await page.getByTestId('fill-red').click();
+  await page.getByTestId('open-style').click();
 
-  await expect(starterShape(page)).toHaveAttribute('fill', '#e03131');
+  await page.getByTestId('fill-red').click();
+  await page.getByTestId('fill-style-pastel').click();
+
+  await expect(starterShape(page)).toHaveAttribute(
+    'fill',
+    'rgba(224, 49, 49, 0.2)'
+  );
   await expect(secondShape(page)).toHaveAttribute(
     'fill',
     'rgba(224, 49, 49, 0.2)'

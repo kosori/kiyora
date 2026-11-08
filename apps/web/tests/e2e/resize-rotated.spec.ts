@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * A turned shape plus an upright one: the selection frame is axis-aligned, and
@@ -34,7 +35,7 @@ const drag = async (
 /** The starter rectangle, then the rectangle drawn beside it. */
 const shapes = (page: Page) => page.getByTestId('board').locator('path');
 
-test('an edge drag refuses to skew a selected turned shape, and says why', async ({
+test('a corner drag refuses to skew a selected turned shape, and says why', async ({
   page,
 }) => {
   await open(page);
@@ -50,17 +51,22 @@ test('an edge drag refuses to skew a selected turned shape, and says why', async
   await page.mouse.click(box.x + 150, box.y + 150);
   await drag(
     page,
-    { x: box.x + 190, y: box.y + 58 },
-    { x: box.x + 290, y: box.y + 150 }
+    { x: box.x + 310, y: box.y + 230 },
+    { x: box.x + 150, y: box.y + 210 }
   );
 
   await page.keyboard.down('Shift');
   await page.mouse.click(box.x + 450, box.y + 130);
   await page.keyboard.up('Shift');
 
-  await page.mouse.move(box.x + 500, box.y + 150);
+  const corner = page.getByTestId('handle-se');
+  const cornerX = Number(await corner.getAttribute('x')) + 4.5;
+  const cornerY = Number(await corner.getAttribute('y')) + 4.5;
+  await page.mouse.move(box.x + cornerX, box.y + cornerY);
   await page.mouse.down();
-  await page.mouse.move(box.x + 600, box.y + 150, { steps: 4 });
+  await page.mouse.move(box.x + cornerX + 120, box.y + cornerY - 40, {
+    steps: 4,
+  });
 
   const refusal = page.getByTestId('resize-refusal');
   await expect(refusal).toBeVisible();
@@ -73,7 +79,7 @@ test('an edge drag refuses to skew a selected turned shape, and says why', async
   );
   await expect(shapes(page).nth(1)).toHaveAttribute(
     'd',
-    'M 400 80 L 500 80 L 500 180 L 400 180 Z'
+    roundedRectPath(400, 80, 100, 100)
   );
 
   await page.mouse.up();

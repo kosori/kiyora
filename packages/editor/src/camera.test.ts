@@ -216,16 +216,16 @@ describe('resetting to one hundred percent', () => {
 
 describe("the grid's detail", () => {
   it('steps by halves and doubles of the base, so the grid never crowds on screen', () => {
-    expect(gridStep(1)).toBe(20);
-    expect(gridStep(0.5)).toBe(40);
-    expect(gridStep(0.1)).toBe(160);
-    expect(gridStep(4)).toBe(5);
+    expect(gridStep(1)).toBe(24);
+    expect(gridStep(0.5)).toBe(48);
+    expect(gridStep(0.1)).toBe(192);
+    expect(gridStep(4)).toBe(6);
   });
 
   it('reports the same step in screen pixels, so a renderer computes nothing', () => {
-    expect(gridSpacing(1)).toBeCloseTo(20, 6);
-    expect(gridSpacing(0.5)).toBeCloseTo(20, 6);
-    expect(gridSpacing(0.1)).toBeCloseTo(16, 6);
+    expect(gridSpacing(1)).toBeCloseTo(24, 6);
+    expect(gridSpacing(0.5)).toBeCloseTo(24, 6);
+    expect(gridSpacing(0.1)).toBeCloseTo(19.2, 6);
   });
 
   it('thins as the view zooms out, never crowding, never vanishing', () => {

@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The acceptance journey: one test that walks the whole product the way a
@@ -74,10 +76,10 @@ test('the whole journey passes with every non-localhost request aborted', async 
 
   // Draw a rectangle and an ellipse, clear of the starter board and the panels.
   await page.keyboard.press('r');
-  await drag(page, at(box, { x: 40, y: 320 }), at(box, { x: 200, y: 420 }));
+  await drag(page, at(box, { x: 80, y: 320 }), at(box, { x: 240, y: 420 }));
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 40 320 L 200 320 L 200 420 L 40 420 Z'
+    roundedRectPath(80, 320, 160, 100)
   );
 
   await drawFromPicker(
@@ -120,7 +122,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
   await page.mouse.click(box.x + 100, box.y + 340);
   await expect(page.getByTestId('selection-frame')).toBeVisible();
   await drag(page, at(box, { x: 100, y: 340 }), at(box, { x: 100, y: 300 }));
-  const MOVED = 'M 40 280 L 200 280 L 200 380 L 40 380 Z';
+  const MOVED = roundedRectPath(80, 280, 160, 100);
   await expect(clean(page, 'rectangle-1')).toHaveAttribute('d', MOVED);
 
   // Reload, and confirm the board survived exactly as it was left.
@@ -142,7 +144,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
   ).toBeVisible();
 
   // Export the board as PNG at 2×, then as SVG, and cross-check the two.
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await page.getByTestId('png-scale-2').click();
   const [png] = await Promise.all([
     page.waitForEvent('download'),
@@ -152,7 +154,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
 
   const [svgDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await svgDownload.path(), 'utf8');
   const viewBox = (/viewBox="([^"]*)"/.exec(svg)?.[1] ?? '')
@@ -165,7 +167,7 @@ test('the whole journey passes with every non-localhost request aborted', async 
   expect(svg).toContain('stroke="#1e1e1e"');
 
   // Two slides from the deck's templates, then presenting plays them fullscreen.
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await page.getByTestId('rail-tab-deck').click();
   await page.getByTestId('template-title').click();
   await page.getByTestId('template-blank').click();

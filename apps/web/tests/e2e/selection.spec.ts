@@ -172,7 +172,10 @@ test('a drag moves the whole selection, keeping relative positions', async ({
   );
   await expect(
     page.getByTestId('board').locator('path').nth(1)
-  ).toHaveAttribute('d', 'M 440 120 L 540 120 L 540 220 L 440 220 Z');
+  ).toHaveAttribute(
+    'd',
+    'M 452 120 L 528 120 C 534.627 120 540 125.373 540 132 L 540 208 C 540 214.627 534.627 220 528 220 L 452 220 C 445.373 220 440 214.627 440 208 L 440 132 C 440 125.373 445.373 120 452 120'
+  );
 });
 
 test('a drag snaps to the eight-pixel grid', async ({ page }) => {
@@ -342,7 +345,7 @@ test('a click lands where the shape appears, under a moved and zoomed camera', a
   await expect(frame(page)).toHaveAttribute('height', '140');
 });
 
-test('selecting draws the eight handles and the rotate handle', async ({
+test('selecting draws the four handles and the rotate handle', async ({
   page,
 }) => {
   await open(page);
@@ -350,11 +353,12 @@ test('selecting draws the eight handles and the rotate handle', async ({
 
   await page.mouse.click(box.x + 150, box.y + 150);
 
-  await expect(page.getByTestId('handle-se')).toHaveAttribute('x', '296');
-  await expect(page.getByTestId('handle-se')).toHaveAttribute('y', '216');
-  await expect(page.getByTestId('handle-e')).toHaveAttribute('y', '146');
-  await expect(page.getByTestId('handle-rotate')).toHaveAttribute('cx', '190');
-  await expect(page.getByTestId('handle-rotate')).toHaveAttribute('cy', '58');
+  await expect(page.getByTestId('handle-se')).toHaveAttribute('x', '295.5');
+  await expect(page.getByTestId('handle-se')).toHaveAttribute('y', '215.5');
+  await expect(page.getByTestId('handle-ne')).toHaveAttribute('y', '75.5');
+  await expect(page.getByTestId('handle-sw')).toHaveAttribute('x', '75.5');
+  await expect(page.getByTestId('handle-rotate')).toHaveAttribute('cx', '310');
+  await expect(page.getByTestId('handle-rotate')).toHaveAttribute('cy', '230');
 });
 
 test('dragging a corner handle resizes the shape', async ({ page }) => {
@@ -374,7 +378,7 @@ test('dragging a corner handle resizes the shape', async ({ page }) => {
   );
 });
 
-test('dragging an edge handle moves only that edge', async ({ page }) => {
+test('a drag from an edge midpoint moves the whole shape', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);
 
@@ -387,7 +391,7 @@ test('dragging an edge handle moves only that edge', async ({ page }) => {
 
   await expect(starterShape(page)).toHaveAttribute(
     'd',
-    'M 80 80 L 360 80 L 360 220 L 80 220 Z'
+    'M 144 80 L 364 80 L 364 220 L 144 220 Z'
   );
 });
 
@@ -493,8 +497,8 @@ test('dragging the rotate handle turns the shape', async ({ page }) => {
   await page.mouse.click(box.x + 150, box.y + 150);
   await drag(
     page,
-    { x: box.x + 190, y: box.y + 58 },
-    { x: box.x + 290, y: box.y + 150 }
+    { x: box.x + 310, y: box.y + 230 },
+    { x: box.x + 150, y: box.y + 210 }
   );
 
   await expect(starterShape(page)).toHaveAttribute(
@@ -510,14 +514,24 @@ test('a rotation can be returned to zero', async ({ page }) => {
   await page.mouse.click(box.x + 150, box.y + 150);
   await drag(
     page,
-    { x: box.x + 190, y: box.y + 58 },
-    { x: box.x + 290, y: box.y + 150 }
+    { x: box.x + 310, y: box.y + 230 },
+    { x: box.x + 150, y: box.y + 210 }
   );
-  await drag(
-    page,
-    { x: box.x + 190, y: box.y + 18 },
-    { x: box.x + 98, y: box.y + 150 }
-  );
+  const rotate = page.getByTestId('handle-rotate');
+  const frame = page.getByTestId('selection-frame');
+  const cx = Number(await rotate.getAttribute('cx'));
+  const cy = Number(await rotate.getAttribute('cy'));
+  const fx = Number(await frame.getAttribute('x'));
+  const fy = Number(await frame.getAttribute('y'));
+  const fw = Number(await frame.getAttribute('width'));
+  const fh = Number(await frame.getAttribute('height'));
+  const centre = { x: fx + fw / 2, y: fy + fh / 2 };
+  const target = {
+    x: box.x + centre.x + (cy - centre.y),
+    y: box.y + centre.y - (cx - centre.x),
+  };
+
+  await drag(page, { x: box.x + cx, y: box.y + cy }, target);
 
   await expect(starterShape(page)).toHaveAttribute(
     'd',

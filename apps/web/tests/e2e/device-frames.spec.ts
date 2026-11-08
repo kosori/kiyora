@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
 const open = async (page: Page): Promise<void> => {
@@ -53,16 +55,17 @@ const drawFrame = async (page: Page) => {
     { x: frame.x + frame.w, y: frame.y + frame.h }
   );
   await selectFrame(page);
+  await page.getByTestId('open-style').click();
 };
 
 const openInspector = async (page: Page) => {
-  await page.getByTestId('rail-tab-inspector').click();
+  await page.getByTestId('open-style').click();
 };
 
 const exportSvg = async (page: Page): Promise<string> => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
 
   return readFile(await download.path(), 'utf8');
@@ -109,8 +112,8 @@ test('the variant survives a reload, so the chrome is authored and autosaved', a
     'data-ready',
     'true'
   );
-  await openInspector(page);
   await selectFrame(page);
+  await openInspector(page);
 
   await expect(page.getByTestId('frame-variant-tablet')).toHaveAttribute(
     'aria-pressed',
@@ -147,7 +150,7 @@ test('a member at the frame\u2019s top-left stays visible after the switch, not 
   await page.keyboard.press('r');
   await drag(page, { x: 110, y: 110 }, { x: 210, y: 160 });
 
-  const memberPath = 'M 110 110 L 210 110 L 210 160 L 110 160 Z';
+  const memberPath = roundedRectPath(110, 110, 100, 50);
   await expect(clean(page, 'rectangle-1')).toHaveAttribute('d', memberPath);
 
   await selectFrame(page);

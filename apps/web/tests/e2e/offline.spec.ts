@@ -1,6 +1,7 @@
 import { copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
 
@@ -26,7 +27,7 @@ test('the exported board opens as a file with the network off, and shows the boa
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const downloaded = await download.path();
 

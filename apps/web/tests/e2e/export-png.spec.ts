@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -173,7 +174,7 @@ test('the PNG comes out at exactly the scale the panel asks for', async ({
   page,
 }) => {
   await open(page);
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
 
   await pick(page, 'png-scale', '1');
   expect(pngSize(await exportPng(page))).toEqual({ height: 140, width: 220 });
@@ -204,7 +205,7 @@ test('the export is the whole board, or just the selection', async ({
   await open(page);
   await roundShape(page);
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-scale', '1');
 
   await pick(page, 'png-target', 'selection');
@@ -220,7 +221,7 @@ test('a transparent export has transparent corners and a solid one does not', as
   await open(page);
   await roundShape(page);
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-target', 'selection');
   await pick(page, 'png-scale', '2');
 
@@ -250,7 +251,7 @@ test('the export theme is its own, so a light board can leave as a dark image', 
     page.getByTestId('board').locator('path[data-shape="ellipse-1"]').first()
   ).toHaveAttribute('stroke', '#1e1e1e');
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-target', 'selection');
   await pick(page, 'png-scale', '2');
   await pick(page, 'png-background', 'solid');
@@ -302,14 +303,14 @@ test('a refitted note exports at the box it paints, in the SVG and the PNG', asy
   const height = pathHeight(painted);
   expect(height).toBeGreaterThan(160);
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-target', 'selection');
   await pick(page, 'png-scale', '1');
   expect(pngSize(await exportPng(page)).height).toBe(Math.round(height));
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await download.path(), 'utf8');
 
@@ -328,8 +329,8 @@ test('a board past the size cap is refused, and no file is written', async ({
   await page.keyboard.press('r');
   await drag(
     page,
-    { x: box.x + 40, y: box.y + 40 },
-    { x: box.x + box.width - 40, y: box.y + box.height - 40 }
+    { x: box.x + 100, y: box.y + 100 },
+    { x: box.x + box.width - 100, y: box.y + box.height - 100 }
   );
 
   let downloaded = false;
@@ -337,7 +338,7 @@ test('a board past the size cap is refused, and no file is written', async ({
     downloaded = true;
   });
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-scale', '1');
   await page.getByTestId('download-png').click();
 
@@ -349,7 +350,7 @@ test('a PNG export asks the network for nothing but the app’s own assets', asy
   page,
 }) => {
   await open(page);
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   const bytes = await exportPng(page);
 
   expect(pngSize(bytes)).toEqual({ height: 280, width: 440 });
@@ -378,7 +379,7 @@ test('inline code leaves in the vendored mono face, not a fallback', async ({
   const pageFallback = await textWidth(page, 'ui-monospace, monospace');
   expect(onPage).not.toBeCloseTo(pageFallback, 1);
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   const raster = await captureRaster(page);
   expect(raster.startsWith('<svg')).toBe(true);
 

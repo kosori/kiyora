@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { openBoard, readStoredBoard } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 const MIB = 1024 * 1024;
 const SYNC_LIMIT = 4 * MIB;
@@ -8,7 +9,7 @@ const SYNC_LIMIT = 4 * MIB;
 const BOARD_ID = '22222222-2222-4222-8222-222222222222';
 const HUGE_ID = '33333333-3333-4333-8333-333333333333';
 
-const drawnPaint = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
+const drawnPaint = roundedRectPath(200, 150, 200, 150);
 
 const canvasBox = async (page: Page) => {
   const box = await page.getByTestId('canvas').boundingBox();

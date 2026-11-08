@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -178,7 +179,7 @@ test('a frame holds a shape drawn inside it, and dragging the frame carries it',
   );
   await expect(memberPath).toHaveAttribute(
     'd',
-    'M 150 150 L 250 150 L 250 200 L 150 200 Z'
+    roundedRectPath(150, 150, 100, 50)
   );
 
   await drag(page, at(box, { x: 450, y: 350 }), at(box, { x: 490, y: 390 }));
@@ -189,7 +190,7 @@ test('a frame holds a shape drawn inside it, and dragging the frame carries it',
   );
   await expect(memberPath).toHaveAttribute(
     'd',
-    'M 194 194 L 294 194 L 294 244 L 194 244 Z'
+    roundedRectPath(194, 194, 100, 50)
   );
 });
 
@@ -227,7 +228,7 @@ test('a frame clips a member to its own box', async ({ page }) => {
   const memberPath = paths(page).last();
   await expect(memberPath).toHaveAttribute(
     'd',
-    'M 50 150 L 150 150 L 150 200 L 50 200 Z'
+    roundedRectPath(50, 150, 100, 50)
   );
 
   const clipped = await pixelAt(page, { x: 60, y: 175 });

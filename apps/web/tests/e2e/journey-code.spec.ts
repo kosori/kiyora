@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The cut's acceptance journey: one test that walks the code panel the way a
@@ -21,7 +23,7 @@ const FRAME = { h: 300, w: 400, x: 500, y: 160 } as const;
 const FRAME_BOX = 'M 500 160 L 900 160 L 900 460 L 500 460 Z';
 
 /** Where the layout puts one node: 24 units inside the frame, 160×100. */
-const ONE_NODE = 'M 524 184 L 684 184 L 684 284 L 524 284 Z';
+const ONE_NODE = roundedRectPath(524, 184, 160, 100);
 
 /** The centre of the laid-out node, where a hand grabs it. */
 const NODE_CENTRE = { x: 604, y: 234 } as const;
@@ -30,10 +32,10 @@ const NODE_CENTRE = { x: 604, y: 234 } as const;
  * The same node after a hand drag: 40 units right, which the 8-unit grid rounds
  * to 44 because the layout's 24-unit inset leaves the node off the grid.
  */
-const ONE_NODE_MOVED = 'M 568 184 L 728 184 L 728 284 L 568 284 Z';
+const ONE_NODE_MOVED = roundedRectPath(568, 184, 160, 100);
 
 /** A second readable node on the same rank, below the first. */
-const TWO_NODES = 'M 524 324 L 684 324 L 684 424 L 524 424 Z';
+const TWO_NODES = roundedRectPath(524, 324, 160, 100);
 
 /** Two nodes and a line the parser cannot read: the error sits between them. */
 const UNREADABLE = 'Box\n->\nOther';
@@ -137,10 +139,7 @@ test('the cut journey passes with every non-localhost request aborted', async ({
   await apply(page, 'Box');
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute('d', ONE_NODE);
-  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
-    'fill',
-    'rgba(25, 113, 194, 0.2)'
-  );
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute('fill', 'none');
   await expect(clean(page, 'frame-1')).toHaveAttribute('d', FRAME_BOX);
   await expect(panel(page)).not.toContainText('Pending');
   await expect(panel(page)).not.toContainText('Stale');
@@ -189,7 +188,7 @@ test('the cut journey passes with every non-localhost request aborted', async ({
 
   // Export the result as PNG at 2× and cross-check the pixels against the SVG
   // the same board exports, so the number comes from the file, not the button.
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await page.getByTestId('png-scale-2').click();
   const [png] = await Promise.all([
     page.waitForEvent('download'),
@@ -199,7 +198,7 @@ test('the cut journey passes with every non-localhost request aborted', async ({
 
   const [svgDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await svgDownload.path(), 'utf8');
   const viewBox = (/viewBox="([^"]*)"/.exec(svg)?.[1] ?? '')

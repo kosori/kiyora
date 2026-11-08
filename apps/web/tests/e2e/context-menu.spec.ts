@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -145,7 +146,10 @@ test('a locked shape offers unlock and no arrangement that would move it', async
   await open(page);
   await selectStarter(page);
   await page.getByTestId('lock-toggle').click();
-  await expect(page.getByTestId('lock-toggle')).toHaveText('Unlock');
+  await expect(page.getByTestId('lock-toggle')).toHaveAttribute(
+    'aria-label',
+    'Unlock'
+  );
 
   await rightClickStarter(page);
 
@@ -155,7 +159,10 @@ test('a locked shape offers unlock and no arrangement that would move it', async
 
   await entry(page, 'Unlock').click();
 
-  await expect(page.getByTestId('lock-toggle')).toHaveText('Lock');
+  await expect(page.getByTestId('lock-toggle')).toHaveAttribute(
+    'aria-label',
+    'Lock'
+  );
 });
 
 test('Escape and an outside click dismiss it, and focus returns', async ({
@@ -308,7 +315,7 @@ test('near the bottom edge the menu opens upward and its last entry still runs',
   await open(page);
   const box = await canvasBox(page);
   const top = box.height - 160;
-  const drawn = `M 320 ${top} L 480 ${top} L 480 ${top + 120} L 320 ${top + 120} Z`;
+  const drawn = roundedRectPath(320, top, 160, 120);
 
   await page.keyboard.press('r');
   await page.mouse.move(box.x + 320, box.y + top);

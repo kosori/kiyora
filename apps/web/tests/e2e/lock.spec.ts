@@ -102,9 +102,9 @@ const altClick = async (
 
 const lockStarter = async (page: Page): Promise<void> => {
   await selectStarter(page);
-  await expect(lockToggle(page)).toHaveText('Lock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Lock');
   await lockToggle(page).click();
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
 };
 
 test('locking the selection is one history entry, so one undo takes it back', async ({
@@ -115,12 +115,12 @@ test('locking the selection is one history entry, so one undo takes it back', as
 
   await lockToggle(page).click();
 
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
   await expect(page.getByTestId('undo')).toBeEnabled();
 
   await page.getByTestId('undo').click();
 
-  await expect(lockToggle(page)).toHaveText('Lock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Lock');
   await expect(page.getByTestId('undo')).toBeDisabled();
 });
 
@@ -142,6 +142,7 @@ test('a locked shape resists nudge, resize, rotate and restyle', async ({
   await dragHandle(page, 'handle-rotate', 120, 120);
   expect(await starterShape(page).getAttribute('d')).toBe(before);
 
+  await page.getByTestId('open-style').click();
   await page.getByTestId('fill-blue').click();
   await expect(starterShape(page)).toHaveAttribute('fill', '#2f9e44');
 });
@@ -170,11 +171,12 @@ test('a locked shape is not picked by click or marquee, and alt reaches it to un
   await altClick(page, { x: 150, y: 150 });
 
   await expect(page.getByTestId('selection-frame')).toBeVisible();
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
 
   await lockToggle(page).click();
-  await expect(lockToggle(page)).toHaveText('Lock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Lock');
 
+  await page.getByTestId('open-style').click();
   await page.getByTestId('fill-blue').click();
   await expect(starterShape(page)).toHaveAttribute('fill', '#1971c2');
 });
@@ -198,11 +200,11 @@ test('the lock survives a reload, and alt-click reaches it to unlock', async ({
   await expect(page.getByTestId('locked-hint')).toBeVisible();
 
   await altClick(page, { x: 150, y: 150 });
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
 
   await lockToggle(page).click();
-  await expect(lockToggle(page)).toHaveText('Lock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Lock');
 
   await page.getByTestId('undo').click();
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
 });

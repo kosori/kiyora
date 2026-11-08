@@ -149,7 +149,7 @@ test('the hand tool drags the board, and hands back to select', async ({
 
   expect((await camera(page)).x).toBeCloseTo(100, 0);
 
-  await page.getByTestId('hand-tool').click();
+  await page.getByRole('button', { name: 'Select' }).click();
   await expect(page.getByTestId('hand-tool')).toHaveAttribute(
     'aria-pressed',
     'false'

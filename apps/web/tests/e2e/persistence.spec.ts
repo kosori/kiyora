@@ -4,6 +4,7 @@ import {
   readStoredBoard,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
 
@@ -50,8 +51,8 @@ const starterPaint = {
 
 /** The rectangle drawn at 200,150 → 400,300, in board units. */
 const drawnPaint = {
-  d: 'M 200 150 L 400 150 L 400 300 L 200 300 Z',
-  fill: 'rgba(25, 113, 194, 0.2)',
+  d: roundedRectPath(200, 150, 200, 150),
+  fill: 'none',
   stroke: '#1e1e1e',
 };
 

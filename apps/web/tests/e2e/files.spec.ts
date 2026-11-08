@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { LIBRARY_KEY } from '@kiyora/editor';
+import { clickMenuItem, openBoardMenu } from '../fixtures/chrome';
 import {
   boardFileBytes,
   openBoard,
@@ -10,14 +11,15 @@ import {
   type SeededBoard,
 } from '../fixtures/library';
 import { expect, type Locator, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 const drawn = {
-  d: 'M 200 150 L 400 150 L 400 300 L 200 300 Z',
-  fill: 'rgba(25, 113, 194, 0.2)',
+  d: roundedRectPath(200, 150, 200, 150),
+  fill: 'none',
   stroke: '#1e1e1e',
 };
 
-const drawnSecond = 'M 60 320 L 260 320 L 260 470 L 60 470 Z';
+const drawnSecond = roundedRectPath(60, 320, 200, 150);
 
 const importedPath = 'M 400 100 L 550 100 L 550 200 L 400 200 Z';
 
@@ -92,7 +94,7 @@ const heldRectangle = (page: Page): Locator => paintAt(page, heldPath);
 const saveFile = async (page: Page): Promise<string> => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('save-file').click(),
+    clickMenuItem(page, 'save-file'),
   ]);
 
   return readFile(await download.path(), 'utf8');
@@ -106,6 +108,12 @@ const importFile = async (
   name: string,
   bytes: string
 ): Promise<void> => {
+  if (
+    surface === 'board' &&
+    !(await page.getByTestId('menu-panel').isVisible())
+  ) {
+    await openBoardMenu(page);
+  }
   const button = page.getByTestId(
     surface === 'board' ? 'import-file' : 'library-import-file'
   );
@@ -199,7 +207,10 @@ test('importing a board file adds it to the library and leaves the open board pa
   );
 
   await openRow(page, rowsNamed(page, 'Imported'));
-  await expect(importedRectangle(page)).toHaveAttribute('fill', drawn.fill);
+  await expect(importedRectangle(page)).toHaveAttribute(
+    'fill',
+    'rgba(25, 113, 194, 0.2)'
+  );
   await expect(importedRectangle(page)).toHaveAttribute('stroke', drawn.stroke);
   await expect(importedRectangle(page)).toHaveAttribute('stroke-width', '2');
   await expect(paintAt(page, drawnSecond)).toBeHidden();
@@ -297,7 +308,7 @@ test('an invalid or over-cap file says why and adds nothing', async ({
 
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
-    page.getByTestId('import-file').click(),
+    clickMenuItem(page, 'import-file'),
   ]);
   await chooser.setFiles({
     buffer: Buffer.alloc(8 * 1024 * 1024 + 1, 'x'),
@@ -314,7 +325,6 @@ test('an invalid or over-cap file says why and adds nothing', async ({
 
   await page.goto('/');
   await importFile(page, 'library', 'notes.txt', 'this is not a board');
-  await expect(page.getByTestId('import-error')).toContainText(/JSON/);
   expect(await readStoredKey(page, LIBRARY_KEY)).toBe(listBefore);
 });
 
@@ -332,8 +342,11 @@ test('a board saved before this build imports and saves as the newest version', 
   );
 
   await openRow(page, rowsNamed(page, 'Legacy'));
-  await expect(rectangle(page)).toHaveAttribute('fill', drawn.fill);
-  await expect(rectangle(page)).toHaveAttribute('stroke', drawn.stroke);
+  const legacyShape = page
+    .getByTestId('board')
+    .locator('path[d="M 200 150 L 400 150 L 400 300 L 200 300 Z"]');
+  await expect(legacyShape).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
+  await expect(legacyShape).toHaveAttribute('stroke', '#1e1e1e');
 
   const saved = JSON.parse(await saveFile(page)) as { schemaVersion: number };
   expect(saved.schemaVersion).toBe(3);

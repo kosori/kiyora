@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 const TRANSFORM = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\((-?[\d.]+)\)/;
 
@@ -171,7 +172,7 @@ test('the camera follows a step off the edge by the least pan that shows it', as
     page.getByTestId('board').locator('path[data-shape]').nth(1)
   ).toHaveAttribute(
     'd',
-    `M ${target.x} ${target.y} L ${target.x + target.w} ${target.y} L ${target.x + target.w} ${target.y + target.h} L ${target.x} ${target.y + target.h} Z`
+    roundedRectPath(target.x, target.y, target.w, target.h)
   );
 
   // Select the starter and push the target out of the view, so the follow is

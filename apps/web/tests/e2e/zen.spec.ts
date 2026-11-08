@@ -35,11 +35,12 @@ const starterGeometry = (page: Page) =>
 
 /** The chrome that frames the board, in the order it is read. */
 const chrome = (page: Page) => [
+  page.getByTestId('menu'),
   page.getByTestId('rail'),
   page.getByTestId('save-status'),
   page.getByTestId('camera-controls'),
   page.getByTestId('undo'),
-  page.getByTestId('export-svg'),
+  page.getByTestId('help'),
 ];
 
 test('zen hides the chrome, keeps the board and the save as they were, and Escape restores it', async ({
@@ -70,12 +71,10 @@ test('zen hides the chrome, keeps the board and the save as they were, and Escap
 
   await page.keyboard.press('Backslash');
 
-  await expect
-    .poll(async () => (await canvasWidth(page)) - width)
-    .toBeGreaterThan(200);
   await Promise.all(
     chrome(page).map((surface) => expect(surface).toBeHidden())
   );
+  expect(await canvasWidth(page)).toBe(width);
 
   expect(await starterGeometry(page)).toBe(geometry);
   await page.waitForTimeout(800);
@@ -83,23 +82,21 @@ test('zen hides the chrome, keeps the board and the save as they were, and Escap
 
   await page.keyboard.press('Escape');
 
-  await expect
-    .poll(async () => Math.abs((await canvasWidth(page)) - width))
-    .toBeLessThan(1);
   await Promise.all(
     chrome(page).map((surface) => expect(surface).toBeVisible())
   );
+  expect(await canvasWidth(page)).toBe(width);
   expect(await starterGeometry(page)).toBe(geometry);
   expect(await page.getByTestId('undo').isDisabled()).toBe(undoDisabled);
 
   await page.keyboard.press('Backslash');
-  await expect
-    .poll(async () => (await canvasWidth(page)) - width)
-    .toBeGreaterThan(200);
+  await Promise.all(
+    chrome(page).map((surface) => expect(surface).toBeHidden())
+  );
   await page.keyboard.press('Backslash');
-  await expect
-    .poll(async () => Math.abs((await canvasWidth(page)) - width))
-    .toBeLessThan(1);
+  await Promise.all(
+    chrome(page).map((surface) => expect(surface).toBeVisible())
+  );
 });
 
 test('the reference teaches the zen chord, read from the keymap', async ({

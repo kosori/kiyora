@@ -139,7 +139,7 @@ test('the editor with a shape selected reports no accessibility violations', asy
   const box = await canvasBox(page);
   await page.mouse.click(box.x + 150, box.y + 150);
 
-  await expect(page.getByTestId('inspector-empty')).toBeHidden();
+  await expect(page.getByTestId('selection-toolbar')).toBeVisible();
   expect(await audit(page)).toEqual([]);
 });
 
@@ -173,6 +173,7 @@ test('a selected connector reports no accessibility violations', async ({
   await joinTwoShapes(page, box);
 
   await page.mouse.click(box.x + 400, box.y + 140);
+  await page.getByTestId('open-style').click();
   await expect(page.getByTestId('connector-controls')).toBeVisible();
 
   expect(await audit(page)).toEqual([]);
@@ -287,6 +288,7 @@ test('the inspector repaints from the keyboard', async ({ page }) => {
   await open(page);
   const box = await canvasBox(page);
   await page.mouse.click(box.x + 150, box.y + 150);
+  await page.getByTestId('open-style').click();
 
   const fill = page.getByTestId('fill-blue');
   await fill.focus();
@@ -405,15 +407,13 @@ test('the tool rail and the panels are landmarks with reachable controls', async
   await expect(tools).toBeVisible();
   await expect(tools.getByRole('toolbar', { name: 'Tools' })).toBeVisible();
 
-  const panels = page.getByRole('complementary', { name: 'Panels' });
+  const panels = page.getByRole('toolbar', { name: 'Panels' });
   await expect(panels).toBeVisible();
-  const tabs = panels.getByRole('tablist', { name: 'Panel sections' });
-  await expect(tabs).toBeVisible();
 
-  const deck = tabs.getByRole('tab', { name: 'Deck' });
+  const deck = panels.getByRole('button', { name: 'Slides' });
   await deck.focus();
   await page.keyboard.press('Enter');
-  await expect(panels.getByRole('tabpanel', { name: 'Deck' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Slides' })).toBeVisible();
 });
 
 test('the live region announces the selection a gesture makes', async ({

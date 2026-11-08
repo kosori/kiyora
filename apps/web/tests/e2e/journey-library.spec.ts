@@ -5,6 +5,7 @@ import {
   readStoredKey,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The library acceptance journey: one test that creates, draws, reloads,
@@ -14,18 +15,18 @@ import { expect, type Page, test } from '../fixtures/offline';
  */
 
 const DRAWN = {
-  d: 'M 200 150 L 400 150 L 400 300 L 200 300 Z',
-  fill: 'rgba(25, 113, 194, 0.2)',
+  d: roundedRectPath(200, 150, 200, 150),
+  fill: 'none',
 };
 
 const COPIED = {
-  d: 'M 500 150 L 650 150 L 650 250 L 500 250 Z',
-  fill: 'rgba(25, 113, 194, 0.2)',
+  d: roundedRectPath(500, 150, 150, 100),
+  fill: 'none',
 };
 
 const LATER = {
-  d: 'M 200 400 L 400 400 L 400 550 L 200 550 Z',
-  fill: 'rgba(25, 113, 194, 0.2)',
+  d: roundedRectPath(200, 400, 200, 150),
+  fill: 'none',
 };
 
 type StoredShape = {

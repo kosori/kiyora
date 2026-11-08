@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -29,7 +30,7 @@ const shapePaths = (page: Page) =>
 const STARTER = 'M 80 80 L 300 80 L 300 220 L 80 220 Z';
 
 /** A rectangle drawn over the starter's right-hand half: 150,120 at 220x140. */
-const DRAWN = 'M 150 120 L 370 120 L 370 260 L 150 260 Z';
+const DRAWN = roundedRectPath(150, 120, 220, 140);
 
 const drawOverlapping = async (page: Page): Promise<void> => {
   const box = await canvasBox(page);

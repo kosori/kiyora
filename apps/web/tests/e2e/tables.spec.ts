@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -154,7 +155,7 @@ test('the exported SVG carries the cell words at the position the canvas painted
   const at = await textAt(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await download.path(), 'utf8');
 
@@ -169,6 +170,7 @@ test('the inspector adds a row and a column, and the painted grid moves with the
   const box = await canvasBox(page);
   await placeTable(page, box);
   await page.mouse.click(box.x + 320, box.y + 200);
+  await page.getByTestId('open-style').click();
 
   await expect(page.getByTestId('table-add-row')).toBeVisible();
   await page.getByTestId('table-add-row').click();

@@ -129,6 +129,7 @@ test('the inspector chooses the route and a head per end, independently', async 
 
   await page.mouse.click(box.x + 400, box.y + 140);
 
+  await page.getByTestId('open-style').click();
   const controls = page.getByTestId('connector-controls');
   await expect(controls).toBeVisible();
 
@@ -158,6 +159,7 @@ test('the inspector fixes either end to an edge, and the paint leaves from it', 
 
   await page.mouse.click(box.x + 400, box.y + 140);
 
+  await page.getByTestId('open-style').click();
   const controls = page.getByTestId('connector-controls');
   await controls.getByTestId('edge-start-top').click();
   await controls.getByTestId('edge-end-left').click();
@@ -170,10 +172,13 @@ test('the inspector fixes either end to an edge, and the paint leaves from it', 
 
   await expect(connectorLine(page)).toHaveAttribute('d', 'M 192 80 L 500 130');
 
+  const corner = page.getByTestId('handle-ne');
+  const cornerX = Number(await corner.getAttribute('x')) + 4.5;
+  const cornerY = Number(await corner.getAttribute('y')) + 4.5;
   await drag(
     page,
-    { x: box.x + 302, y: box.y + 150 },
-    { x: box.x + 360, y: box.y + 150 }
+    { x: box.x + cornerX, y: box.y + cornerY },
+    { x: box.x + cornerX + 58, y: box.y + cornerY }
   );
 
   await expect(connectorLine(page)).toHaveAttribute('d', 'M 221 80 L 500 130');

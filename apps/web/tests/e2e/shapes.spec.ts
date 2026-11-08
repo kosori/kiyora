@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -90,7 +91,7 @@ test('a drag places a rectangle the size dragged, where the drag ended', async (
 
   await expect(placedShape(page)).toHaveAttribute(
     'd',
-    'M 200 150 L 400 150 L 400 300 L 200 300 Z'
+    roundedRectPath(200, 150, 200, 150)
   );
 });
 
@@ -105,7 +106,7 @@ test('a click places a default-sized rectangle at the click', async ({
 
   await expect(placedShape(page)).toHaveAttribute(
     'd',
-    'M 320 250 L 480 250 L 480 350 L 320 350 Z'
+    roundedRectPath(320, 250, 160, 100)
   );
 });
 
@@ -146,7 +147,7 @@ test('the last used style applies to the next shape', async ({ page }) => {
 
   const first = placedShape(page);
 
-  await expect(first).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
+  await expect(first).toHaveAttribute('fill', 'none');
   await expect(first).toHaveAttribute('stroke', '#1e1e1e');
   await expect(first).toHaveAttribute('stroke-width', '2');
 
@@ -159,7 +160,7 @@ test('the last used style applies to the next shape', async ({ page }) => {
 
   const second = placedShape(page);
 
-  await expect(second).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
+  await expect(second).toHaveAttribute('fill', 'none');
   await expect(second).toHaveAttribute('stroke', '#1e1e1e');
   await expect(second).toHaveAttribute('stroke-width', '2');
 });
@@ -200,7 +201,7 @@ test('a drag lands on the board behind the camera, not on the canvas', async ({
 
   await expect(placedShape(page)).toHaveAttribute(
     'd',
-    'M 100 100 L 300 100 L 300 250 L 100 250 Z'
+    roundedRectPath(100, 100, 200, 150)
   );
 });
 
@@ -250,7 +251,7 @@ test('choosing a kind from the picker places it, painted', async ({ page }) => {
 
   const placed = placedShape(page);
 
-  await expect(placed).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
+  await expect(placed).toHaveAttribute('fill', 'none');
   await expect(placed).toHaveAttribute('stroke', '#1e1e1e');
   await expect(placed).not.toHaveAttribute(
     'd',
@@ -280,8 +281,5 @@ test('placing from the picker behaves identically to placing from the rail', asy
   await drag(page, from, to);
 
   await expect(placedShape(page)).toHaveAttribute('d', railD ?? '');
-  await expect(placedShape(page)).toHaveAttribute(
-    'fill',
-    'rgba(25, 113, 194, 0.2)'
-  );
+  await expect(placedShape(page)).toHaveAttribute('fill', 'none');
 });

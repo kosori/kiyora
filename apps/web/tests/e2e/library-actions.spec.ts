@@ -1,4 +1,5 @@
 import { LIBRARY_KEY } from '@kiyora/editor';
+import { openBoardMenu } from '../fixtures/chrome';
 import {
   boardStorageKey,
   openLibrary,
@@ -139,6 +140,7 @@ test('a rename in the list and a rename in the editor leave one name after a rel
     .toBe('Plan');
 
   await openRow(page, 'Plan');
+  await openBoardMenu(page);
   const title = page.getByTestId('board-title');
   await expect(title).toHaveValue('Plan');
 
@@ -155,6 +157,7 @@ test('a rename in the list and a rename in the editor leave one name after a rel
 
   await openRow(page, 'Roadmap');
   await expect(painted(page, 0)).toBeVisible();
+  await openBoardMenu(page);
   await expect(page.getByTestId('board-title')).toHaveValue('Roadmap');
 });
 

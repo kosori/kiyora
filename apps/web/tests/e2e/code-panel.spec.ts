@@ -59,23 +59,24 @@ const openCode = async (page: Page) => {
 
 const source = (page: Page) => page.getByTestId('code-source');
 
-test('the rail is one tabbed column and the canvas keeps its width', async ({
+test('the rail opens one floating panel and the canvas keeps its width', async ({
   page,
 }) => {
   await open(page);
 
   const rail = page.getByTestId('rail');
-  const inspectorWidth = (await rail.boundingBox())?.width;
+  const railWidth = (await rail.boundingBox())?.width;
   const canvasWidth = (await canvasBox(page)).width;
 
-  expect(inspectorWidth).toBe(256);
+  expect(railWidth).toBe(40);
 
   await page.getByTestId('rail-tab-deck').click();
-  expect((await rail.boundingBox())?.width).toBe(inspectorWidth);
+  await expect(page.getByTestId('rail-panel')).toBeVisible();
+  expect((await rail.boundingBox())?.width).toBe(railWidth);
   expect((await canvasBox(page)).width).toBe(canvasWidth);
 
   await openCode(page);
-  expect((await rail.boundingBox())?.width).toBe(inspectorWidth);
+  expect((await rail.boundingBox())?.width).toBe(railWidth);
   expect((await canvasBox(page)).width).toBe(canvasWidth);
   await expect(page.getByTestId('code')).toBeVisible();
 });
@@ -96,12 +97,9 @@ test('a source applies to the selected frame as one undo, and survives a reload'
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
-  await expect(clean(page, 'rectangle-1')).toHaveAttribute(
-    'fill',
-    'rgba(25, 113, 194, 0.2)'
-  );
+  await expect(clean(page, 'rectangle-1')).toHaveAttribute('fill', 'none');
 
   // One undo takes the whole apply back; redo puts it back.
   await page.getByTestId('undo').click();
@@ -114,7 +112,7 @@ test('a source applies to the selected frame as one undo, and survives a reload'
   await page.getByTestId('redo').click();
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
 
   await expect(page.getByTestId('save-status')).toHaveAttribute(
@@ -132,7 +130,7 @@ test('a source applies to the selected frame as one undo, and survives a reload'
   await expect(source(page)).toHaveValue('Box [rectangle]');
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
 });
 
@@ -154,7 +152,7 @@ test('the generated figure is a member of the frame, so moving the frame carries
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 168 128 L 328 128 L 328 228 L 168 228 Z'
+    'M 180 128 L 316 128 C 322.627 128 328 133.373 328 140 L 328 216 C 328 222.627 322.627 228 316 228 L 180 228 C 173.373 228 168 222.627 168 216 L 168 140 C 168 133.373 173.373 128 180 128'
   );
 });
 
@@ -235,7 +233,7 @@ test('an error leaves the lines after it parsed and painted', async ({
   );
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
 });
 
@@ -259,7 +257,7 @@ test('an unsupported family is one diagnostic and the rest of the file still app
   await expect(diagnostics.nth(1)).toBeHidden();
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
 });
 
@@ -301,7 +299,7 @@ test('typing makes the source pending, and applying clears it', async ({
   await expect(page.getByTestId('code-pending')).toBeHidden();
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
 });
 
@@ -325,7 +323,7 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
 
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 140 120 L 300 120 L 300 220 L 140 220 Z'
+    'M 152 120 L 288 120 C 294.627 120 300 125.373 300 132 L 300 208 C 300 214.627 294.627 220 288 220 L 152 220 C 145.373 220 140 214.627 140 208 L 140 132 C 140 125.373 145.373 120 152 120'
   );
 
   // The panel follows the generated shape back to its frame.
@@ -349,7 +347,7 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
   await expect(source(page)).toHaveValue('Next');
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 140 120 L 300 120 L 300 220 L 140 220 Z'
+    'M 152 120 L 288 120 C 294.627 120 300 125.373 300 132 L 300 208 C 300 214.627 294.627 220 288 220 L 152 220 C 145.373 220 140 214.627 140 208 L 140 132 C 140 125.373 145.373 120 152 120'
   );
 
   // Confirming replaces exactly the generated shapes and clears both flags.
@@ -358,7 +356,7 @@ test('moving a generated shape makes the frame stale, and applying asks', async 
   await expect(page.getByTestId('code-confirm')).toBeHidden();
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
   await expect(page.getByTestId('code-stale')).toBeHidden();
   await expect(page.getByTestId('code-pending')).toBeHidden();
@@ -380,7 +378,7 @@ test('a hand-added shape inside the frame survives an apply', async ({
   await drag(page, { x: 340, y: 150 }, { x: 400, y: 200 });
   await expect(clean(page, 'rectangle-2')).toHaveAttribute(
     'd',
-    'M 340 150 L 400 150 L 400 200 L 340 200 Z'
+    'M 352 150 L 388 150 C 394.627 150 400 155.373 400 162 L 400 188 C 400 194.627 394.627 200 388 200 L 352 200 C 345.373 200 340 194.627 340 188 L 340 162 C 340 155.373 345.373 150 352 150'
   );
 
   await selectFrame(page);
@@ -389,11 +387,11 @@ test('a hand-added shape inside the frame survives an apply', async ({
 
   await expect(clean(page, 'rectangle-2')).toHaveAttribute(
     'd',
-    'M 340 150 L 400 150 L 400 200 L 340 200 Z'
+    'M 352 150 L 388 150 C 394.627 150 400 155.373 400 162 L 400 188 C 400 194.627 394.627 200 388 200 L 352 200 C 345.373 200 340 194.627 340 188 L 340 162 C 340 155.373 345.373 150 352 150'
   );
   await expect(clean(page, 'rectangle-1')).toHaveAttribute(
     'd',
-    'M 124 124 L 284 124 L 284 224 L 124 224 Z'
+    'M 136 124 L 272 124 C 278.627 124 284 129.373 284 136 L 284 212 C 284 218.627 278.627 224 272 224 L 136 224 C 129.373 224 124 218.627 124 212 L 124 136 C 124 129.373 129.373 124 136 124'
   );
 });
 

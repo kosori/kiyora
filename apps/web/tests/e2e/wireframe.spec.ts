@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 import { paintedDs } from './paint';
+import { roundedRectPath } from './paths';
 
 /** The control these tests place, and the two paths its paint consists of. */
-const OUTLINE = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
+const OUTLINE = roundedRectPath(200, 150, 200, 150, 27);
 const DETAIL = 'M 260 225 L 340 225';
 
 /** Wait for the surface to say it can act, so paint is on screen before a gesture. */
@@ -83,10 +85,7 @@ test('a placed button paints its own geometry, reloads, and exports the same pat
 
   const paths = placed(page);
   await expect(paths.first()).toHaveAttribute('d', OUTLINE);
-  await expect(paths.first()).toHaveAttribute(
-    'fill',
-    'rgba(25, 113, 194, 0.2)'
-  );
+  await expect(paths.first()).toHaveAttribute('fill', 'none');
   await expect(paths.nth(1)).toHaveAttribute('d', DETAIL);
   await expect(paths.nth(1)).toHaveAttribute('fill', 'none');
   expect(await paintedDs(paths)).toEqual([OUTLINE, DETAIL]);
@@ -109,7 +108,7 @@ test('a placed button paints its own geometry, reloads, and exports the same pat
   );
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await download.path(), 'utf8');
 

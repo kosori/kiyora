@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -75,6 +76,7 @@ test('a placed chart repaints when its series changes, and one undo returns it',
   expect(placed.length).toBeGreaterThan(1);
 
   await page.mouse.click(point.x, point.y);
+  await page.getByTestId('open-style').click();
   const series = page.getByTestId('chart-series');
   await expect(series).toHaveValue('4, 8, 6, 10');
 
@@ -98,6 +100,7 @@ test('a changed chart survives a reload, and its paths match the SVG export', as
 
   await placeChart(page, point);
   await page.mouse.click(point.x, point.y);
+  await page.getByTestId('open-style').click();
 
   const series = page.getByTestId('chart-series');
   await series.fill('3, 14, 2, 11');
@@ -118,7 +121,7 @@ test('a changed chart survives a reload, and its paths match the SVG export', as
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await download.path(), 'utf8');
   const exported = [...svg.matchAll(/<path d="([^"]*)"/g)].map(
@@ -135,6 +138,7 @@ test('a chart can change kind without losing its series', async ({ page }) => {
 
   await placeChart(page, point);
   await page.mouse.click(point.x, point.y);
+  await page.getByTestId('open-style').click();
   const before = await chartPaths(page);
 
   await page.getByTestId('chart-kind-pie').click();

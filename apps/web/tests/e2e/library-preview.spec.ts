@@ -8,6 +8,7 @@ import {
   seededBoard,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * Previews: each library tile is a picture of its board, derived from the
@@ -38,10 +39,24 @@ const rectangle = (id: string, x: number) => ({
   y: 0,
 });
 
-type Shape = { h: number; w: number; x: number; y: number };
+type Shape = {
+  h: number;
+  style: { corner: string };
+  w: number;
+  x: number;
+  y: number;
+};
 
-const pathOf = ({ h, w, x, y }: Shape): string =>
-  `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+const pathOf = (shape: Shape): string =>
+  shape.style.corner === 'rounded'
+    ? roundedRectPath(
+        shape.x,
+        shape.y,
+        shape.w,
+        shape.h,
+        Math.min(12, Math.min(shape.w, shape.h) / 2)
+      )
+    : `M ${shape.x} ${shape.y} L ${shape.x + shape.w} ${shape.y} L ${shape.x + shape.w} ${shape.y + shape.h} L ${shape.x} ${shape.y + shape.h} Z`;
 
 /** The preview a seeded board's record would hold, derived from its own paint. */
 const previewOf = (board: SeededBoard): string => {

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { ICONS } from '@kiyora/model/icons';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -131,7 +132,7 @@ test('the SVG export carries the icon path and no reference to the library', asy
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await download.path(), 'utf8');
 

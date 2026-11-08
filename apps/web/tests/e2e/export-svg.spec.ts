@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -62,7 +63,7 @@ const drawADiagram = async (page: Page, box: { x: number; y: number }) => {
 const exportSvg = async (page: Page): Promise<string> => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
 
   expect(download.suggestedFilename()).toBe('kiyora.svg');

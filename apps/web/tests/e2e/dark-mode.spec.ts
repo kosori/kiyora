@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem, openBoardMenu } from '../fixtures/chrome';
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -29,7 +30,11 @@ const pick = async (
   group: string,
   value: string
 ): Promise<void> => {
-  await page.getByTestId(`${group}-${value}`).click();
+  const option = page.getByTestId(`${group}-${value}`);
+  if (!(await option.isVisible())) {
+    await openBoardMenu(page);
+  }
+  await option.click();
 };
 
 /** Opens the PNG panel and takes a solid board export, as the bytes a person gets. */
@@ -148,7 +153,7 @@ test('the board theme repaints the canvas and the PNG, and one undo returns it',
   await drawRectangle(page);
   await expect(canvasFill(page)).toHaveAttribute('fill', '#ffffff');
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-scale', '1');
   await pick(page, 'png-background', 'solid');
 
@@ -226,7 +231,7 @@ test('neither setting makes a request', async ({ page }) => {
   await pick(page, 'appearance', 'dark');
   await pick(page, 'board-theme', 'dark');
   await expect(canvasFill(page)).toHaveAttribute('fill', '#1e1e1e');
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await pick(page, 'png-background', 'solid');
   await exportSolid(page);
 });

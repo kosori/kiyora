@@ -12,6 +12,7 @@ import {
   writeStoredKey,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The library: many boards, each at its own address, each saved on its own. The
@@ -296,6 +297,6 @@ test('the memory fallback keeps a board between the library and its address', as
   await expect(
     page
       .getByTestId('board')
-      .locator('path[d="M 300 250 L 440 250 L 440 350 L 300 350 Z"]')
+      .locator(`path[d="${roundedRectPath(300, 250, 140, 100)}"]`)
   ).toBeVisible();
 });

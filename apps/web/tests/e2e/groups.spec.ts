@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -91,7 +92,7 @@ test('grouping two shapes hugs both, and dragging either moves both as one undo'
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 540 120 L 640 120 L 640 220 L 540 220 Z'
+    roundedRectPath(540, 120, 100, 100)
   );
 
   await page.keyboard.press('Control+z');
@@ -102,7 +103,7 @@ test('grouping two shapes hugs both, and dragging either moves both as one undo'
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 500 80 L 600 80 L 600 180 L 500 180 Z'
+    roundedRectPath(500, 80, 100, 100)
   );
 });
 
@@ -135,11 +136,11 @@ test('a group inside a group moves as one, and ungrouping moves nothing', async 
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 501 80 L 601 80 L 601 180 L 501 180 Z'
+    roundedRectPath(501, 80, 100, 100)
   );
   await expect(shapePaths(page).nth(2)).toHaveAttribute(
     'd',
-    'M 621 400 L 701 400 L 701 460 L 621 460 Z'
+    roundedRectPath(621, 400, 80, 60)
   );
 
   await page.keyboard.press('Control+Shift+g');
@@ -151,11 +152,11 @@ test('a group inside a group moves as one, and ungrouping moves nothing', async 
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 501 80 L 601 80 L 601 180 L 501 180 Z'
+    roundedRectPath(501, 80, 100, 100)
   );
   await expect(shapePaths(page).nth(2)).toHaveAttribute(
     'd',
-    'M 621 400 L 701 400 L 701 460 L 621 460 Z'
+    roundedRectPath(621, 400, 80, 60)
   );
 });
 
@@ -181,7 +182,7 @@ test('ungrouping leaves each member exactly where it was', async ({ page }) => {
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 540 120 L 640 120 L 640 220 L 540 220 Z'
+    roundedRectPath(540, 120, 100, 100)
   );
   await expect(frame(page)).toHaveAttribute('x', '120');
   await expect(frame(page)).toHaveAttribute('width', '520');

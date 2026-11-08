@@ -10,6 +10,7 @@ import {
   seedBoards,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The failure paths, driven at the browser seam. Each fault is injected by
@@ -212,11 +213,8 @@ test('a full disk is reported as quota, and the board stays on screen', async ({
 
   const drawn = page
     .getByTestId('board')
-    .locator('path[fill="rgba(25, 113, 194, 0.2)"]');
-  await expect(drawn).toHaveAttribute(
-    'd',
-    'M 200 150 L 400 150 L 400 300 L 200 300 Z'
-  );
+    .locator(`path[d="${roundedRectPath(200, 150, 200, 150)}"]`);
+  await expect(drawn).toBeVisible();
 });
 
 test('blocked storage is reported distinctly from a full one', async ({
@@ -271,11 +269,8 @@ test('missing storage is reported as unavailable, and the board still works', as
   await drawRectangle(page, { x: 200, y: 150 }, { x: 400, y: 300 });
   const drawn = page
     .getByTestId('board')
-    .locator('path[fill="rgba(25, 113, 194, 0.2)"]');
-  await expect(drawn).toHaveAttribute(
-    'd',
-    'M 200 150 L 400 150 L 400 300 L 200 300 Z'
-  );
+    .locator(`path[d="${roundedRectPath(200, 150, 200, 150)}"]`);
+  await expect(drawn).toBeVisible();
 });
 
 test('a second tab warns instead of clobbering the first', async ({

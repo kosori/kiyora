@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openBoard, openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 import { boardOfManyStrokes, STROKE_COUNT } from './ink-board';
@@ -171,7 +172,7 @@ test('the exported SVG carries the same stroke path the canvas painted', async (
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await download.path(), 'utf8');
 

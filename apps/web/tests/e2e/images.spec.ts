@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem, openBoardMenu } from '../fixtures/chrome';
 import {
   boardStorageKey,
   openStarterBoard,
@@ -37,11 +38,13 @@ const open = async (page: Page): Promise<void> => {
 };
 
 const placeImage = async (page: Page): Promise<void> => {
+  await openBoardMenu(page);
   await page.getByTestId('image-input').setInputFiles({
     buffer: PNG,
     mimeType: 'image/png',
     name: 'photo.png',
   });
+  await page.keyboard.press('Escape');
   await expect(
     page.getByTestId('board').locator('image').first()
   ).toBeVisible();
@@ -150,11 +153,13 @@ test('placing the same raster twice keeps one payload and two shapes', async ({
 }) => {
   await open(page);
   await placeImage(page);
+  await openBoardMenu(page);
   await page.getByTestId('image-input').setInputFiles({
     buffer: PNG,
     mimeType: 'image/png',
     name: 'photo.png',
   });
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('board').locator('image').nth(1)).toBeVisible();
   await saved(page);
 
@@ -173,7 +178,7 @@ test('the board leaves as an SVG and a PNG with the raster inside it', async ({
 
   const [svgDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
   const svg = await readFile(await svgDownload.path(), 'utf8');
 
@@ -182,7 +187,7 @@ test('the board leaves as an SVG and a PNG with the raster inside it', async ({
   expect(svg).toContain('href="data:image/png;base64,');
   expect(svg).not.toContain('javascript:');
 
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   const [pngDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByTestId('download-png').click(),

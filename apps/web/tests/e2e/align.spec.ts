@@ -1,5 +1,6 @@
 import { openStarterBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * The board is server-rendered, so its paint is on screen before React is
@@ -75,10 +76,11 @@ const addToSelection = async (
 const selectPair = async (page: Page, box: { x: number; y: number }) => {
   await selectStarter(page, box);
   await addToSelection(page, box, { x: 550, y: 340 });
+  await page.getByTestId('open-style').click();
 };
 
 const ORIGINAL_STARTER = 'M 80 80 L 300 80 L 300 220 L 80 220 Z';
-const ORIGINAL_PARTNER = 'M 500 300 L 600 300 L 600 380 L 500 380 Z';
+const ORIGINAL_PARTNER = roundedRectPath(500, 300, 100, 80);
 
 test('align left and right put both shapes flush to the selection box', async ({
   page,
@@ -93,7 +95,7 @@ test('align left and right put both shapes flush to the selection box', async ({
   await expect(shapePaths(page).nth(0)).toHaveAttribute('d', ORIGINAL_STARTER);
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 80 300 L 180 300 L 180 380 L 80 380 Z'
+    roundedRectPath(80, 300, 100, 80)
   );
 
   await page.getByTestId('undo').click();
@@ -122,7 +124,7 @@ test('the centre alignments put both shapes on the selection box centre', async 
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 290 300 L 390 300 L 390 380 L 290 380 Z'
+    roundedRectPath(290, 300, 100, 80)
   );
 
   await page.getByTestId('undo').click();
@@ -134,7 +136,7 @@ test('the centre alignments put both shapes on the selection box centre', async 
   );
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 500 190 L 600 190 L 600 270 L 500 270 Z'
+    roundedRectPath(500, 190, 100, 80)
   );
 });
 
@@ -150,7 +152,7 @@ test('align top and bottom put both shapes flush to a horizontal edge', async ({
 
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 500 80 L 600 80 L 600 160 L 500 160 Z'
+    roundedRectPath(500, 80, 100, 80)
   );
 
   await page.getByTestId('undo').click();
@@ -172,17 +174,18 @@ test('distribute spaces three shapes evenly on each axis', async ({ page }) => {
   await selectStarter(page, box);
   await addToSelection(page, box, { x: 550, y: 340 });
   await addToSelection(page, box, { x: 750, y: 130 });
+  await page.getByTestId('open-style').click();
 
   await page.getByTestId('distribute-x').click();
 
   await expect(shapePaths(page).nth(0)).toHaveAttribute('d', ORIGINAL_STARTER);
   await expect(shapePaths(page).nth(1)).toHaveAttribute(
     'd',
-    'M 450 300 L 550 300 L 550 380 L 450 380 Z'
+    roundedRectPath(450, 300, 100, 80)
   );
   await expect(shapePaths(page).nth(2)).toHaveAttribute(
     'd',
-    'M 700 100 L 800 100 L 800 160 L 700 160 Z'
+    roundedRectPath(700, 100, 100, 60)
   );
 
   await page.getByTestId('undo').click();
@@ -190,7 +193,7 @@ test('distribute spaces three shapes evenly on each axis', async ({ page }) => {
 
   await expect(shapePaths(page).nth(2)).toHaveAttribute(
     'd',
-    'M 700 230 L 800 230 L 800 290 L 700 290 Z'
+    roundedRectPath(700, 230, 100, 60)
   );
 });
 
@@ -243,11 +246,12 @@ test('an alignment that moves nothing never lands in undo', async ({
     { x: box.x + 80, y: box.y + 300 },
     { x: box.x + 180, y: box.y + 380 }
   );
-  const aligned = 'M 80 300 L 180 300 L 180 380 L 80 380 Z';
+  const aligned = roundedRectPath(80, 300, 100, 80);
   await expect(shapePaths(page).nth(1)).toHaveAttribute('d', aligned);
 
   await selectStarter(page, box);
   await addToSelection(page, box, { x: 130, y: 340 });
+  await page.getByTestId('open-style').click();
   await page.getByTestId('align-left').click();
 
   await expect(shapePaths(page).nth(1)).toHaveAttribute('d', aligned);

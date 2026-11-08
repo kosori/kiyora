@@ -48,7 +48,8 @@ const labelledText = async (
   await editor.fill(words);
   await editor.blur();
   await page.mouse.click(at.x, at.y);
-  await expect(page.getByTestId('inspector-empty')).toBeHidden();
+  await page.getByTestId('open-style').click();
+  await expect(page.getByTestId('styles-panel')).toBeVisible();
 };
 
 test('the inspector sizes a selected text shape, and the canvas paints the new size', async ({
@@ -109,6 +110,7 @@ test('a shape label also aligns vertically, moving its words down the shape', as
   await editor.blur();
 
   await page.mouse.click(box.x + 300, box.y + 225);
+  await page.getByTestId('open-style').click();
 
   await expect(page.getByTestId('text-valign-bottom')).toBeVisible();
   await expect(page.getByTestId('text-valign-top')).toBeVisible();

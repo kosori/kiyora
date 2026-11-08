@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { clickMenuItem } from '../fixtures/chrome';
 import { openStarterBoard, readStoredBoard } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
 
@@ -39,7 +40,7 @@ const storedBoard = (page: Page) => readStoredBoard(page, 'starter-board');
 const exportSvg = async (page: Page): Promise<string> => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('export-svg').click(),
+    clickMenuItem(page, 'export-svg'),
   ]);
 
   return readFile(await download.path(), 'utf8');

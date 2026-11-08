@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION } from '@kiyora/model';
+import { clickMenuItem } from '../fixtures/chrome';
 import {
   openExistingBoard,
   openStarterBoard,
@@ -9,6 +10,7 @@ import {
 import { expect, type Page, test } from '../fixtures/offline';
 import { starterBoard } from '../fixtures/starter-board';
 import { expectPaintedDs } from './paint';
+import { roundedRectPath } from './paths';
 
 const STARTER = 'starter-board';
 const OTHER = 'other-board';
@@ -255,17 +257,17 @@ test('a copied frame keeps its child inside the frame in the other tab', async (
   await first.keyboard.press('f');
   await drag(
     first,
-    { x: box.x + 300, y: box.y + 40 },
-    { x: box.x + 700, y: box.y + 360 }
+    { x: box.x + 300, y: box.y + 80 },
+    { x: box.x + 700, y: box.y + 400 }
   );
   await first.keyboard.press('r');
   await drag(
     first,
-    { x: box.x + 340, y: box.y + 80 },
-    { x: box.x + 440, y: box.y + 160 }
+    { x: box.x + 340, y: box.y + 120 },
+    { x: box.x + 440, y: box.y + 200 }
   );
 
-  await first.mouse.click(box.x + 310, box.y + 50);
+  await first.mouse.click(box.x + 680, box.y + 360);
 
   await first.keyboard.press('Control+c');
   await expectClipboardMessages(second, 1);
@@ -281,7 +283,7 @@ test('a copied frame keeps its child inside the frame in the other tab', async (
     second
       .getByTestId('board')
       .locator('g[clip-path="url(#clip-frame-1)"] path[data-shape]'),
-    ['M 364 104 L 464 104 L 464 184 L 364 184 Z']
+    [roundedRectPath(364, 144, 100, 80)]
   );
 });
 
@@ -298,17 +300,17 @@ test('a copied child without its frame is re-rooted, not left naming a missing p
   await first.keyboard.press('f');
   await drag(
     first,
-    { x: box.x + 300, y: box.y + 40 },
-    { x: box.x + 700, y: box.y + 360 }
+    { x: box.x + 300, y: box.y + 80 },
+    { x: box.x + 700, y: box.y + 400 }
   );
   await first.keyboard.press('r');
   await drag(
     first,
-    { x: box.x + 340, y: box.y + 80 },
-    { x: box.x + 440, y: box.y + 160 }
+    { x: box.x + 340, y: box.y + 120 },
+    { x: box.x + 440, y: box.y + 200 }
   );
 
-  await first.mouse.click(box.x + 390, box.y + 120);
+  await first.mouse.click(box.x + 390, box.y + 160);
 
   await first.keyboard.press('Control+c');
   await expectClipboardMessages(second, 1);
@@ -321,7 +323,7 @@ test('a copied child without its frame is re-rooted, not left naming a missing p
 
   await expectPaintedDs(
     second.getByTestId('board').locator('path[data-shape="rectangle-1"]'),
-    ['M 364 104 L 464 104 L 464 184 L 364 184 Z']
+    [roundedRectPath(364, 144, 100, 80)]
   );
   await expect(
     second.getByTestId('board').locator('g[clip-path]').first()
@@ -339,7 +341,7 @@ test('copy as PNG puts the selection on the clipboard at its own size', async ({
   const box = await canvasBox(page);
 
   await page.mouse.click(box.x + 150, box.y + 150);
-  await page.getByTestId('png-options').click();
+  await clickMenuItem(page, 'png-options');
   await page.getByTestId('copy-png').click();
 
   await expect

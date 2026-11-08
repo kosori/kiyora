@@ -89,10 +89,7 @@ test('a template plants a slide whose frame and words paint', async ({
   await page.getByTestId('template-title').click();
 
   await expect(slides(page)).toHaveAttribute('data-frame-id', 'frame-1');
-  await expect(templateFramePath(page)).toHaveAttribute(
-    'fill',
-    'rgba(25, 113, 194, 0.2)'
-  );
+  await expect(templateFramePath(page)).toHaveAttribute('fill', 'none');
 
   const title = board(page).locator('text').filter({ hasText: 'Title' });
   await expect(title).toHaveAttribute('fill', '#1e1e1e');
@@ -106,10 +103,7 @@ for (const template of TEMPLATES) {
 
     await page.getByTestId(`template-${template.id}`).click();
 
-    await expect(templateFramePath(page)).toHaveAttribute(
-      'fill',
-      'rgba(25, 113, 194, 0.2)'
-    );
+    await expect(templateFramePath(page)).toHaveAttribute('fill', 'none');
 
     await expect
       .poll(async () => (await paintedLabels(page)).map((label) => label.text))
@@ -188,7 +182,7 @@ test('presenting fills the window, navigates by key and leaves with Escape', asy
       .getByTestId('present-slide')
       .locator('path[d="M 0 0 L 1280 0 L 1280 720 L 0 720 Z"]')
       .first()
-  ).toHaveAttribute('fill', 'rgba(25, 113, 194, 0.2)');
+  ).toHaveAttribute('fill', 'none');
   await expect(page.getByTestId('present-counter')).toHaveText('1 / 2');
   await expect(page.getByTestId('present-notes')).toHaveText(
     'Welcome everyone'

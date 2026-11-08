@@ -59,7 +59,10 @@ const placeText = async (
   at: { x: number; y: number },
   words: string
 ) => {
-  await page.getByRole('button', { exact: true, name: 'Text' }).click();
+  await page
+    .getByRole('navigation', { name: 'Board tools' })
+    .getByRole('button', { exact: true, name: 'Text' })
+    .click();
   await page.mouse.click(box.x + at.x, box.y + at.y);
   const editor = page.getByTestId('text-editor');
   await editor.fill(words);
@@ -231,14 +234,14 @@ test('find reaches a locked shape, because the lock protects geometry and not di
 
   await page.mouse.click(box.x + 190, box.y + 150);
   await lockToggle(page).click();
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
   await page.mouse.click(box.x + 700, box.y + 450);
 
   await page.keyboard.press('Control+f');
   await find(page).fill('plan');
 
   await expect(frame(page)).toHaveAttribute('x', String(STARTER.x));
-  await expect(lockToggle(page)).toHaveText('Unlock');
+  await expect(lockToggle(page)).toHaveAttribute('aria-label', 'Unlock');
 });
 
 test('find selects a group member by its own text, not the group that holds it', async ({

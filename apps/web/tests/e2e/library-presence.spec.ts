@@ -5,6 +5,7 @@ import {
   seedBoards,
 } from '../fixtures/library';
 import { expect, type Page, test } from '../fixtures/offline';
+import { roundedRectPath } from './paths';
 
 /**
  * Presence is a board's, not the browser's. Two tabs on two boards are each the
@@ -61,8 +62,8 @@ const geometry = (shapes: StoredShape[]) =>
 const painted = (page: Page, d: string) =>
   page.getByTestId('board').locator(`path[d="${d}"]`);
 
-const FIRST_PATH = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
-const SECOND_PATH = 'M 500 350 L 650 350 L 650 450 L 500 450 Z';
+const FIRST_PATH = roundedRectPath(200, 150, 200, 150);
+const SECOND_PATH = roundedRectPath(500, 350, 150, 100);
 
 const primary = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('save-status')).not.toHaveAttribute(
