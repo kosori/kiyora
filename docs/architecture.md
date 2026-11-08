@@ -235,7 +235,7 @@ Every change must keep these. Each one is falsifiable, and each exists because a
 
 1. **Tests assert paint and behaviour.** Never element counts, never attribute presence. A test that asserts an element exists proves nothing about what a user sees.
 2. **One schema.** Types derive from it. No hand-mirrored types, and no `as unknown as` across a package boundary.
-3. **No borrowed measurements.** No geometry, layout constant or default position is derived by measuring another product's rendering.
+3. **No borrowed measurements for board data.** No shape geometry, paint, layout constant or default shape position is derived by measuring another product's rendering. Chrome design tokens are the exception and are recorded in ADR 0014.
 4. **CI from the first commit**, and the end-to-end config proves which application it tested.
 5. **Offline by construction.** Every request that is not to localhost is aborted, by a test.
 6. **The export path sees only a board.** Nothing display-only can reach an artifact.
