@@ -28,7 +28,7 @@ const KIND_OPTIONS: readonly Option<ChartKind>[] = CHART_KINDS.map((value) => ({
   value,
 }));
 
-const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
+const HEADING = 'mb-1.5 font-medium text-muted-foreground text-xs';
 
 /** The numbers a typed series names: commas, spaces and newlines all separate. */
 const numbersOf = (text: string): number[] =>

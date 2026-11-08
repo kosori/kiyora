@@ -22,7 +22,7 @@ const Annotation = ({ arrow, children, className }: AnnotationProps) => (
   <div
     aria-hidden='true'
     className={cn(
-      'pointer-events-none absolute hidden text-[13px] text-muted-foreground/60 xl:block',
+      'pointer-events-none absolute hidden text-[14px] text-muted-foreground xl:block',
       className
     )}
   >
@@ -67,7 +67,7 @@ type ActionProps = {
 /** One empty-canvas action pill. */
 const Action = ({ children, icon, onClick, testId }: ActionProps) => (
   <Button
-    className='chrome-hover pointer-events-auto h-9 gap-2 rounded-[12px] bg-[var(--chrome-hover)] px-3 text-[13px] text-foreground shadow-[0_0_0_1px_var(--border)] hover:bg-[var(--chrome-hover)]'
+    className='chrome-hover pointer-events-auto h-9 gap-2 rounded-[12px] bg-[var(--chrome-hover)] px-3 font-medium text-[13px] text-foreground shadow-[0_0_0_1px_var(--border)] hover:bg-[var(--chrome-hover)]'
     data-testid={testId}
     onClick={onClick}
     size='default'
@@ -109,10 +109,18 @@ export const EmptyState = ({
       </p>
       <div className='flex flex-wrap items-center justify-center gap-2 text-[13px] text-muted-foreground'>
         <span>or pick a tool</span>
-        <Chip>R rectangle</Chip>
-        <Chip>O ellipse</Chip>
-        <Chip>A arrow</Chip>
-        <Chip>/ all tools</Chip>
+        <span className='inline-flex items-center gap-1.5'>
+          <Chip>R</Chip> rectangle
+        </span>
+        <span className='inline-flex items-center gap-1.5'>
+          <Chip>O</Chip> ellipse
+        </span>
+        <span className='inline-flex items-center gap-1.5'>
+          <Chip>A</Chip> arrow
+        </span>
+        <span className='inline-flex items-center gap-1.5'>
+          <Chip>/</Chip> all tools
+        </span>
       </div>
       <div className='mt-1 flex items-center gap-2'>
         <Action
@@ -138,16 +146,16 @@ export const EmptyState = ({
         </Action>
       </div>
     </div>
-    <Annotation arrow='-scale-x-100' className='top-[28%] left-6'>
+    <Annotation arrow='-scale-x-100' className='top-[28%] left-28'>
       Pick a tool from here
     </Annotation>
-    <Annotation arrow='-scale-y-100' className='top-20 right-6'>
+    <Annotation arrow='-scale-y-100' className='top-24 right-20'>
       Slides &amp; Diagrams as code
     </Annotation>
-    <Annotation arrow='-scale-x-100' className='bottom-24 left-6'>
+    <Annotation arrow='-scale-x-100' className='bottom-24 left-28'>
       Zoom &amp; reset view
     </Annotation>
-    <Annotation arrow='' className='right-6 bottom-24'>
+    <Annotation arrow='' className='right-20 bottom-24'>
       Keyboard shortcuts
     </Annotation>
   </div>

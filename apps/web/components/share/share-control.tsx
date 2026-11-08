@@ -25,10 +25,11 @@ export const ShareControl = ({ boardId, linked }: ShareControlProps) => {
   return (
     <>
       <Button
+        className='chrome-icon'
         data-testid='share-board'
         onClick={openDialog}
-        size='sm'
-        variant='outline'
+        size='xs'
+        variant='ghost'
       >
         Share
       </Button>

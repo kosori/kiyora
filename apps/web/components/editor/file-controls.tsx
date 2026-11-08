@@ -4,6 +4,12 @@ import type { LibraryEntry } from '@kiyora/editor';
 import { useBoard, useEditor, useView } from '@kiyora/editor/react';
 import { boardBounds, fitImageSize, IMAGE_PLACEMENT_SIDE } from '@kiyora/model';
 import {
+  IconDeviceFloppy,
+  IconFileTypePng,
+  IconFileTypeSvg,
+  IconPhoto,
+} from '@tabler/icons-react';
+import {
   type ChangeEvent,
   useCallback,
   useMemo,
@@ -22,6 +28,8 @@ import { ExportPngPanel } from './export-png-panel';
 const messageOf = (thrown: unknown): string =>
   thrown instanceof Error ? thrown.message : String(thrown);
 
+const ROW = 'w-full justify-start gap-2';
+
 /**
  * The board as a file: save the open board, import one into the library beside
  * it, or take this board out as an SVG or a PNG. A refused file names what was
@@ -34,11 +42,11 @@ export const FileControls = () => {
   const { camera } = useView();
   const imageInput = useRef<HTMLInputElement>(null);
   const measure = useMemo(() => createTextMeasurer(), []);
-  const { clearError, error: copyError, notice: copyNotice } = useCopyPng();
+  const { clearError } = useCopyPng();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const shownError = error ?? copyError;
-  const shownNotice = notice ?? copyNotice;
+  const shownError = error;
+  const shownNotice = notice;
   const [png, setPng] = useState(false);
 
   const report = useCallback(
@@ -162,50 +170,56 @@ export const FileControls = () => {
   );
 
   return (
-    <div className='absolute top-3 right-3 z-10 flex max-w-xs flex-col items-end gap-1'>
-      <div className='flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'>
-        <BoardFileImport
-          buttonTestId='import-file'
-          inputTestId='file-input'
-          onFailed={importFailed}
-          onImported={importImported}
-          onStarted={importStarted}
-        />
-        <Button
-          data-testid='save-file'
-          onClick={save}
-          size='sm'
-          variant='ghost'
-        >
-          Save file
-        </Button>
-        <Button
-          data-testid='place-image'
-          onClick={chooseImage}
-          size='sm'
-          variant='ghost'
-        >
-          Image
-        </Button>
-        <Button
-          data-testid='export-svg'
-          onClick={exportSvg}
-          size='sm'
-          variant='ghost'
-        >
-          Export SVG
-        </Button>
-        <Button
-          aria-expanded={png}
-          data-testid='png-options'
-          onClick={togglePng}
-          size='sm'
-          variant='ghost'
-        >
-          Export PNG
-        </Button>
-      </div>
-      {png ? <ExportPngPanel onError={report} onNotice={showNotice} /> : null}
+    <div className='flex flex-col gap-0.5' data-testid='file-controls'>
+      <BoardFileImport
+        buttonTestId='import-file'
+        className={ROW}
+        inputTestId='file-input'
+        onFailed={importFailed}
+        onImported={importImported}
+        onStarted={importStarted}
+      />
+      <Button
+        className={ROW}
+        data-testid='save-file'
+        onClick={save}
+        size='sm'
+        variant='ghost'
+      >
+        <IconDeviceFloppy />
+        Save file
+      </Button>
+      <Button
+        className={ROW}
+        data-testid='place-image'
+        onClick={chooseImage}
+        size='sm'
+        variant='ghost'
+      >
+        <IconPhoto />
+        Image
+      </Button>
+      <Button
+        className={ROW}
+        data-testid='export-svg'
+        onClick={exportSvg}
+        size='sm'
+        variant='ghost'
+      >
+        <IconFileTypeSvg />
+        Export SVG
+      </Button>
+      <Button
+        aria-expanded={png}
+        className={ROW}
+        data-testid='png-options'
+        onClick={togglePng}
+        size='sm'
+        variant='ghost'
+      >
+        <IconFileTypePng />
+        Export PNG
+      </Button>
       <input
         accept='image/png,image/jpeg'
         className='hidden'
@@ -214,9 +228,10 @@ export const FileControls = () => {
         ref={imageInput}
         type='file'
       />
+      {png ? <ExportPngPanel onError={report} onNotice={showNotice} /> : null}
       {shownNotice === null ? null : (
         <p
-          className='rounded-lg border border-border bg-background/95 px-2 py-1 text-xs shadow-sm'
+          className='px-2 py-1 text-muted-foreground text-xs'
           data-testid='import-notice'
           role='status'
         >
@@ -225,7 +240,7 @@ export const FileControls = () => {
       )}
       {shownError === null ? null : (
         <p
-          className='whitespace-pre-line rounded-lg border border-destructive/40 bg-background/95 px-2 py-1 text-destructive text-xs shadow-sm'
+          className='whitespace-pre-line px-2 py-1 text-destructive text-xs'
           data-testid='file-error'
           role='alert'
         >

@@ -21,7 +21,7 @@ type Props = {
 };
 
 const SWATCH =
-  'size-6 rounded-full border border-border outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
+  'size-7 rounded-[8px] border border-border outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
 
 /** One swatch reads as pressed when its colour is the one in force. */
 const selectedRing = (chosen: boolean): string =>

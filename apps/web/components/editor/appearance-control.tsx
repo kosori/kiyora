@@ -1,7 +1,7 @@
 'use client';
 
 import { OptionButtons } from './option-buttons';
-import { type Appearance, useAppearance } from './use-appearance';
+import type { Appearance } from './use-appearance';
 
 const OPTIONS: readonly { label: string; value: Appearance }[] = [
   { label: 'System', value: 'system' },
@@ -9,21 +9,22 @@ const OPTIONS: readonly { label: string; value: Appearance }[] = [
   { label: 'Dark', value: 'dark' },
 ];
 
+type Props = {
+  appearance: Appearance;
+  setAppearance: (next: Appearance) => void;
+};
+
 /**
- * The chrome's own appearance. It sits beside the camera because it is how the
+ * The chrome's own appearance. It lives in the board menu because it is how the
  * app is looked at, not what the board is — it writes no board setting, so it
  * never reaches autosave or an export.
  */
-export const AppearanceControl = () => {
-  const { appearance, setAppearance } = useAppearance();
-
-  return (
-    <OptionButtons
-      label='Appearance'
-      onPick={setAppearance}
-      options={OPTIONS}
-      selected={appearance}
-      testId='appearance'
-    />
-  );
-};
+export const AppearanceControl = ({ appearance, setAppearance }: Props) => (
+  <OptionButtons
+    label='Appearance'
+    onPick={setAppearance}
+    options={OPTIONS}
+    selected={appearance}
+    testId='appearance'
+  />
+);

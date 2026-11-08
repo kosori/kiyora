@@ -1,111 +1,98 @@
 'use client';
 
-import { type MouseEvent, useCallback, useState } from 'react';
+import { IconCode, IconPresentation, IconX } from '@tabler/icons-react';
+import type { MouseEvent } from 'react';
+import { Button } from '~/components/ui/button';
 import { CodePanel } from './code-panel';
 import { CrashProbe } from './crash-probe';
 import { DeckPanel } from './deck-panel';
 import { PanelBoundary } from './error-boundary';
-import { Inspector } from './inspector';
 
-/** The three panels the right rail offers, in reading order. */
-const TABS = [
-  { id: 'inspector', label: 'Inspector' },
-  { id: 'deck', label: 'Deck' },
-  { id: 'code', label: 'Code' },
+/** The two panels the rail offers, in reading order. */
+const PANELS = [
+  { icon: IconPresentation, id: 'deck', label: 'Slides' },
+  { icon: IconCode, id: 'code', label: 'Diagram as code' },
 ] as const;
 
-type Tab = (typeof TABS)[number]['id'];
+/** Which panel is open, or `null` when the rail shows only its buttons. */
+export type RailPanel = (typeof PANELS)[number]['id'] | null;
 
-/** Whether `value` names a tab, so a data attribute narrows without a cast. */
-const isTab = (value: string | undefined): value is Tab =>
-  TABS.some((tab) => tab.id === value);
+type Props = {
+  panel: RailPanel;
+  onPanelChange: (panel: RailPanel) => void;
+};
 
 /**
- * The right rail: one column, three panels. A tab decides which panel is on
- * screen, so opening the code panel never takes width from the canvas — the
- * rail keeps the column the inspector and the deck already shared. Each panel
- * stays behind its own boundary, so one crashing panel cannot take the board.
+ * The top-right rail: two floating buttons that open one panel at a time over
+ * the board. The canvas keeps its full width whatever is open, and the panel
+ * closes back to the buttons so the rail never becomes a column.
  */
-export const RightRail = () => {
-  const [active, setActive] = useState<Tab>('inspector');
-  const select = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    const next = event.currentTarget.dataset.tab;
-    if (isTab(next)) {
-      setActive(next);
+export const RightRail = ({ panel, onPanelChange }: Props) => {
+  const choose = (event: MouseEvent<HTMLButtonElement>) => {
+    const next = event.currentTarget.dataset.panel;
+    if (next === 'deck' || next === 'code') {
+      onPanelChange(panel === next ? null : next);
     }
-  }, []);
+  };
+  const close = () => onPanelChange(null);
 
   return (
-    <aside
-      aria-label='Panels'
-      className='flex h-full w-64 shrink-0 flex-col border-border border-l bg-background'
-      data-testid='rail'
-    >
+    <div className='pointer-events-none absolute top-4 right-4 z-30 flex flex-col items-end gap-2'>
       <div
-        aria-label='Panel sections'
-        className='flex shrink-0 border-border border-b'
-        role='tablist'
+        aria-label='Panels'
+        className='chrome-surface chrome-card pointer-events-auto flex w-10 flex-col gap-0.5 p-1'
+        data-testid='rail'
+        role='toolbar'
       >
-        {TABS.map((tab) => (
-          <button
-            aria-controls={`rail-panel-${tab.id}`}
-            aria-selected={active === tab.id}
-            className={`flex-1 border-b-2 px-1 py-2 text-xs ${
-              active === tab.id
-                ? 'border-primary font-medium text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-            data-tab={tab.id}
-            data-testid={`rail-tab-${tab.id}`}
-            id={`rail-tab-${tab.id}`}
-            key={tab.id}
-            onClick={select}
-            role='tab'
-            type='button'
+        {PANELS.map(({ id, label, icon: Icon }) => (
+          <Button
+            aria-controls={`rail-panel-${id}`}
+            aria-expanded={panel === id}
+            aria-label={label}
+            aria-pressed={panel === id}
+            className='chrome-icon'
+            data-panel={id}
+            data-testid={`rail-tab-${id}`}
+            key={id}
+            onClick={choose}
+            size='icon'
+            title={label}
+            variant={panel === id ? 'secondary' : 'ghost'}
           >
-            {tab.label}
-          </button>
+            <Icon />
+          </Button>
         ))}
       </div>
-      <div
-        aria-labelledby='rail-tab-inspector'
-        className='min-h-0 flex-1 overflow-hidden'
-        hidden={active !== 'inspector'}
-        id='rail-panel-inspector'
-        role='tabpanel'
-      >
-        <PanelBoundary label='Inspector'>
-          <CrashProbe name='inspector'>
-            <Inspector />
-          </CrashProbe>
-        </PanelBoundary>
-      </div>
-      <div
-        aria-labelledby='rail-tab-deck'
-        className='min-h-0 flex-1 overflow-hidden'
-        hidden={active !== 'deck'}
-        id='rail-panel-deck'
-        role='tabpanel'
-      >
-        <PanelBoundary label='Deck'>
-          <CrashProbe name='deck'>
-            <DeckPanel />
-          </CrashProbe>
-        </PanelBoundary>
-      </div>
-      <div
-        aria-labelledby='rail-tab-code'
-        className='min-h-0 flex-1 overflow-hidden'
-        hidden={active !== 'code'}
-        id='rail-panel-code'
-        role='tabpanel'
-      >
-        <PanelBoundary label='Code'>
-          <CrashProbe name='code'>
-            <CodePanel />
-          </CrashProbe>
-        </PanelBoundary>
-      </div>
-    </aside>
+      {panel === null ? null : (
+        <section
+          aria-label={panel === 'deck' ? 'Slides' : 'Diagram as code'}
+          className='chrome-surface chrome-card pointer-events-auto flex max-h-[calc(100svh-5rem)] w-[22rem] flex-col overflow-hidden'
+          data-testid='rail-panel'
+          id={`rail-panel-${panel}`}
+        >
+          <div className='flex shrink-0 items-center justify-between px-3 py-2'>
+            <h2 className='font-medium text-sm'>
+              {panel === 'deck' ? 'Slides' : 'Diagram as code'}
+            </h2>
+            <Button
+              aria-label='Close panel'
+              className='chrome-icon'
+              onClick={close}
+              size='icon-xs'
+              variant='ghost'
+            >
+              <IconX />
+            </Button>
+          </div>
+          <div className='min-h-0 flex-1 overflow-hidden'>
+            <PanelBoundary label={panel === 'deck' ? 'Deck' : 'Code'}>
+              <CrashProbe name={panel}>
+                {panel === 'deck' ? <DeckPanel /> : <CodePanel />}
+              </CrashProbe>
+            </PanelBoundary>
+          </div>
+        </section>
+      )}
+    </div>
   );
 };

@@ -1,24 +1,23 @@
-import { keyshortcutsFor, type Tool } from '@kiyora/editor';
+import { keyshortcutsFor } from '@kiyora/editor';
+import { IconMaximize, IconRefresh } from '@tabler/icons-react';
 import { Button } from '~/components/ui/button';
-import { AppearanceControl } from './appearance-control';
 import { usePlatform } from './use-platform';
 
 type Props = {
   fit: () => void;
   reset: () => void;
-  toggleTool: () => void;
-  tool: Tool;
   zoom: number;
   zoomIn: () => void;
   zoomOut: () => void;
 };
 
-/** The bottom-left cluster: how the board is looked at, the hand that moves it, and the chrome's own appearance. */
+/**
+ * The bottom-left zoom pill: how large the board is drawn. It carries no tool
+ * and no theme switch, so the canvas keeps the corner for looking, not editing.
+ */
 export const CameraControls = ({
   fit,
   reset,
-  toggleTool,
-  tool,
   zoom,
   zoomIn,
   zoomOut,
@@ -27,34 +26,27 @@ export const CameraControls = ({
 
   return (
     <div
-      className='absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'
+      aria-label='Zoom'
+      className='chrome-surface chrome-card flex h-10 items-center gap-0.5 p-1'
       data-testid='camera-controls'
+      role='toolbar'
     >
-      <Button
-        aria-label='Hand tool'
-        aria-pressed={tool === 'hand'}
-        data-testid='hand-tool'
-        onClick={toggleTool}
-        size='sm'
-        variant={tool === 'hand' ? 'secondary' : 'ghost'}
-      >
-        Hand
-      </Button>
       <Button
         aria-keyshortcuts={keyshortcutsFor(
           { action: 'zoom-out', kind: 'camera' },
           platform
         )}
         aria-label='Zoom out'
+        className='chrome-icon'
         data-testid='zoom-out'
         onClick={zoomOut}
-        size='icon-sm'
+        size='icon'
         variant='ghost'
       >
         {'\u2212'}
       </Button>
       <span
-        className='w-11 text-center text-xs tabular-nums'
+        className='w-11 text-center text-[13px] text-[var(--chrome-fg)] tabular-nums'
         data-testid='zoom-percentage'
       >
         {`${Math.round(zoom * 100)}%`}
@@ -65,27 +57,37 @@ export const CameraControls = ({
           platform
         )}
         aria-label='Zoom in'
+        className='chrome-icon'
         data-testid='zoom-in'
         onClick={zoomIn}
-        size='icon-sm'
+        size='icon'
         variant='ghost'
       >
         +
       </Button>
-      <Button data-testid='fit' onClick={fit} size='sm' variant='ghost'>
-        Fit
-      </Button>
+      <span aria-hidden='true' className='mx-1 h-4 w-px bg-border' />
       <Button
-        aria-label='Reset to one hundred percent'
-        data-testid='reset'
-        onClick={reset}
-        size='sm'
+        aria-label='Zoom to fit'
+        className='chrome-icon'
+        data-testid='fit'
+        onClick={fit}
+        size='icon'
+        title='Zoom to fit'
         variant='ghost'
       >
-        Reset
+        <IconMaximize />
       </Button>
-      <span aria-hidden='true' className='mx-1 h-4 w-px bg-border' />
-      <AppearanceControl />
+      <Button
+        aria-label='Reset view'
+        className='chrome-icon'
+        data-testid='reset'
+        onClick={reset}
+        size='icon'
+        title='Reset view'
+        variant='ghost'
+      >
+        <IconRefresh />
+      </Button>
     </div>
   );
 };

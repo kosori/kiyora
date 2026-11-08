@@ -26,12 +26,15 @@ import { CommandPalette } from './command-palette';
 import { ContextMenu } from './context-menu';
 import { useCopyPng } from './copy-png-context';
 import { DotGrid } from './dot-grid';
+import { EmptyState } from './empty-state';
 import { FindBox } from './find-box';
 import { Guides } from './guides';
+import { HistoryControls } from './history-controls';
 import { Marquee } from './marquee';
 import { PaintNode } from './paint-node';
 import { ResizeRefusal } from './resize-refusal';
 import { SelectionFrame } from './selection-frame';
+import { SelectionToolbar } from './selection-toolbar';
 import { TextEditor } from './text-editor';
 import { useBoardPointer } from './use-board-pointer';
 import { useCameraSurface } from './use-camera-surface';
@@ -40,6 +43,9 @@ import { useShortcuts } from './use-shortcuts';
 
 type Props = {
   onShowShortcuts: () => void;
+  onOpenDeck: () => void;
+  onOpenCode: () => void;
+  onImportFile: () => void;
 };
 
 /**
@@ -77,7 +83,12 @@ type Props = {
  * enters shape navigation, where the arrows step the selection spatially and
  * the camera follows; Escape leaves, and focus stays here throughout.
  */
-export const BoardCanvas = ({ onShowShortcuts }: Props) => {
+export const BoardCanvas = ({
+  onShowShortcuts,
+  onOpenDeck,
+  onOpenCode,
+  onImportFile,
+}: Props) => {
   const board = useBoard();
   const editor = useEditor();
   const selection = useSelection();
@@ -276,16 +287,37 @@ export const BoardCanvas = ({ onShowShortcuts }: Props) => {
             shapeId={editing.id}
           />
         )}
-        {surface.view.zen ? null : (
-          <CameraControls
-            fit={surface.actions.fit}
-            reset={surface.actions.reset}
-            toggleTool={surface.actions.toggleTool}
-            tool={surface.view.tool}
-            zoom={camera.zoom}
-            zoomIn={surface.actions.zoomIn}
-            zoomOut={surface.actions.zoomOut}
+        {board.shapes.length === 0 && editing === null && !surface.view.zen ? (
+          <EmptyState
+            onCreateSlides={onOpenDeck}
+            onImportFile={onImportFile}
+            onOpenCode={onOpenCode}
           />
+        ) : null}
+        {selection.length > 0 && !surface.view.zen ? (
+          <SelectionToolbar />
+        ) : null}
+        {board.shapes.some((shape) => shape.locked) &&
+        selection.length === 0 &&
+        !surface.view.zen ? (
+          <p
+            className='pointer-events-none absolute bottom-20 left-1/2 -translate-x-1/2 rounded-full bg-[var(--chrome-surface)] px-3 py-1 text-muted-foreground text-xs shadow-[0_0_0_1px_var(--chrome-ring)]'
+            data-testid='locked-hint'
+          >
+            Alt-click a locked shape to select it
+          </p>
+        ) : null}
+        {surface.view.zen ? null : (
+          <div className='absolute bottom-4 left-4 z-10 flex items-center gap-2'>
+            <CameraControls
+              fit={surface.actions.fit}
+              reset={surface.actions.reset}
+              zoom={camera.zoom}
+              zoomIn={surface.actions.zoomIn}
+              zoomOut={surface.actions.zoomOut}
+            />
+            <HistoryControls />
+          </div>
         )}
       </div>
       <CommandPalette

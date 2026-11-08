@@ -34,7 +34,7 @@ export const FrameControls = ({ shape }: Props) => {
 
   return (
     <section>
-      <h3 className='mb-1.5 text-muted-foreground text-xs uppercase tracking-wide'>
+      <h3 className='mb-1.5 font-medium text-muted-foreground text-xs'>
         Frame
       </h3>
       <OptionButtons

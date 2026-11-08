@@ -85,7 +85,7 @@ export const BoardTitle = ({ rename }: BoardTitleProps) => {
     <div className='flex min-w-0 items-center'>
       <input
         aria-label='Board title'
-        className='w-56 min-w-0 rounded-lg bg-transparent px-2 py-1 font-medium text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+        className='w-full min-w-0 rounded-[8px] bg-transparent px-2 py-1.5 font-medium text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
         data-testid='board-title'
         onBlur={blur}
         onChange={change}

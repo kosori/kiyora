@@ -2,6 +2,7 @@
 
 import { keyshortcutsFor } from '@kiyora/editor';
 import { useEditor, useHistory } from '@kiyora/editor/react';
+import { IconArrowBackUp, IconArrowForwardUp } from '@tabler/icons-react';
 import { useCallback } from 'react';
 import { Button } from '~/components/ui/button';
 import { usePlatform } from './use-platform';
@@ -21,30 +22,34 @@ export const HistoryControls = () => {
   return (
     <div
       aria-label='History'
-      className='absolute bottom-14 left-3 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-background/90 p-1 shadow-sm backdrop-blur'
+      className='chrome-surface chrome-card flex h-10 items-center gap-0.5 p-1'
       role='toolbar'
     >
       <Button
         aria-keyshortcuts={keyshortcutsFor({ kind: 'undo' }, platform)}
         aria-label='Undo'
+        className='chrome-icon'
         data-testid='undo'
         disabled={!history.canUndo}
         onClick={undo}
-        size='sm'
+        size='icon'
+        title='Undo'
         variant='ghost'
       >
-        Undo
+        <IconArrowBackUp />
       </Button>
       <Button
         aria-keyshortcuts={keyshortcutsFor({ kind: 'redo' }, platform)}
         aria-label='Redo'
+        className='chrome-icon'
         data-testid='redo'
         disabled={!history.canRedo}
         onClick={redo}
-        size='sm'
+        size='icon'
+        title='Redo'
         variant='ghost'
       >
-        Redo
+        <IconArrowForwardUp />
       </Button>
     </div>
   );

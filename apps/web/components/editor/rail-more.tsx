@@ -2,7 +2,11 @@
 
 import { keyshortcutsFor, type Platform, type Tool } from '@kiyora/editor';
 import { useEditor, useTool } from '@kiyora/editor/react';
-import { IconDots, IconHighlight, type TablerIcon } from '@tabler/icons-react';
+import {
+  IconHighlight,
+  IconLayoutGridAdd,
+  type TablerIcon,
+} from '@tabler/icons-react';
 import { cn } from 'cn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
@@ -124,7 +128,7 @@ export const RailMore = () => {
         title='More'
         variant='ghost'
       >
-        <IconDots />
+        <IconLayoutGridAdd />
       </Button>
       <span
         aria-hidden='true'

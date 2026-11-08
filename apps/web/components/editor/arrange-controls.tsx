@@ -33,7 +33,7 @@ const ALIGN_OPTIONS: readonly AlignOption[] = [
   { alignment: 'bottom', label: 'Bottom', name: 'Align bottom' },
 ];
 
-const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
+const HEADING = 'mb-1.5 font-medium text-muted-foreground text-xs';
 
 const BUTTON =
   'rounded-md border border-transparent px-2 py-1 text-xs outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50';

@@ -3,18 +3,15 @@
 import { arrangementOf } from '@kiyora/editor';
 import { useBoard, useSelection } from '@kiyora/editor/react';
 import { ArrangeControls } from './arrange-controls';
-import { BoardTheme } from './board-theme';
 import { ChartControls } from './chart-controls';
 import { ConnectorStyle } from './connector-style';
 import { FrameControls } from './frame-controls';
-import { LockControl } from './lock-control';
 import { SelectionStyle } from './selection-style';
 import { TableControls } from './table-controls';
 
 /**
- * The right-hand panel: the selection's style, always in view, plus a
- * connector's own route and heads. With nothing selected it says so rather than
- * showing controls that cannot act.
+ * The selection's style controls, rendered inside the floating style panel.
+ * With nothing selected it says so rather than showing controls that cannot act.
  */
 export const Inspector = () => {
   const board = useBoard();
@@ -22,15 +19,10 @@ export const Inspector = () => {
   const selected = board.shapes.filter((shape) => selection.includes(shape.id));
   const [first] = selected;
   const { canAlign, canDistribute } = arrangementOf(board, selection);
-  const anyLocked = selected.some((shape) => shape.locked);
   const hasLocked = board.shapes.some((shape) => shape.locked);
 
   return (
-    <section
-      className='flex h-full flex-col gap-3 overflow-y-auto p-3'
-      data-testid='inspector'
-    >
-      <h2 className='font-heading font-medium text-sm'>Style</h2>
+    <section className='flex flex-col gap-3 px-3 pb-3' data-testid='inspector'>
       {first === undefined ? (
         <div className='flex flex-col gap-2'>
           <p
@@ -50,7 +42,6 @@ export const Inspector = () => {
         </div>
       ) : (
         <div className='flex flex-col gap-4'>
-          <LockControl locked={anyLocked} />
           {canAlign ? <ArrangeControls canDistribute={canDistribute} /> : null}
           {first.kind === 'frame' ? <FrameControls shape={first} /> : null}
           {first.kind === 'data-table' ? <TableControls shape={first} /> : null}
@@ -59,7 +50,6 @@ export const Inspector = () => {
           <SelectionStyle shape={first} theme={board.settings.theme} />
         </div>
       )}
-      <BoardTheme />
     </section>
   );
 };

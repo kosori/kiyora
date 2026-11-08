@@ -20,11 +20,11 @@ export const BoardTheme = () => {
 
   return (
     <section
-      aria-label='Board'
-      className='flex flex-col gap-2 border-border border-t pt-3'
+      aria-label='Board theme'
+      className='flex flex-col gap-2 px-2 py-1'
       data-testid='board-settings'
     >
-      <h2 className='font-heading font-medium text-sm'>Board</h2>
+      <h2 className='font-medium text-muted-foreground text-xs'>Board theme</h2>
       <OptionButtons
         label='Board theme'
         onPick={editor.setTheme}
@@ -32,9 +32,6 @@ export const BoardTheme = () => {
         selected={board.settings.theme}
         testId='board-theme'
       />
-      <p className='text-muted-foreground text-xs'>
-        Saved with the board and used by its exports.
-      </p>
     </section>
   );
 };

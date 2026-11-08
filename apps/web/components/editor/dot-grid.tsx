@@ -25,7 +25,12 @@ export const DotGrid = ({ camera, theme }: Props) => {
           patternUnits='userSpaceOnUse'
           width={spacing}
         >
-          <circle cx={0} cy={0} fill={paintColour('gray', theme, 0.5)} r={1} />
+          <circle
+            cx={spacing / 2}
+            cy={spacing / 2}
+            fill={paintColour('gray', theme, 0.26)}
+            r={1}
+          />
         </pattern>
       </defs>
       <rect fill='url(#kiyora-dot-grid)' height='100%' width='100%' />

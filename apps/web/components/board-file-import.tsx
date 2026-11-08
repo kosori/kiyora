@@ -1,6 +1,7 @@
 'use client';
 
 import type { LibraryEntry } from '@kiyora/editor';
+import { IconFolderOpen } from '@tabler/icons-react';
 import { type ChangeEvent, useCallback, useRef } from 'react';
 import { Button } from '~/components/ui/button';
 import { importBoardFile } from '~/lib/board-import';
@@ -19,6 +20,8 @@ type Props = {
   onFailed: (message: string) => void;
   /** Runs before the file is read, so a stale message can be dropped. */
   onStarted?: () => void;
+  /** Extra classes for the trigger, so a menu row can fill its column. */
+  className?: string;
 };
 
 /**
@@ -32,6 +35,7 @@ export const BoardFileImport = ({
   onImported,
   onFailed,
   onStarted,
+  className,
 }: Props) => {
   const input = useRef<HTMLInputElement>(null);
 
@@ -59,11 +63,13 @@ export const BoardFileImport = ({
   return (
     <>
       <Button
+        className={className}
         data-testid={buttonTestId}
         onClick={choose}
         size='sm'
         variant='ghost'
       >
+        <IconFolderOpen />
         Import file
       </Button>
       <input

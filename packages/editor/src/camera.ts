@@ -22,7 +22,7 @@ export const MAX_ZOOM = 8;
 export const ZOOM_STEP = 1.2;
 
 /** The grid's spacing in board units, before the view's zoom bands it. */
-export const GRID_BASE_STEP = 20;
+export const GRID_BASE_STEP = 24;
 
 /** The closest two grid dots may sit on screen, in pixels. */
 export const MIN_GRID_SPACING = 16;

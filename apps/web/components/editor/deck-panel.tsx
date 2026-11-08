@@ -13,7 +13,7 @@ import { Button } from '~/components/ui/button';
 import { SlideNotes } from './slide-notes';
 import { usePlatform } from './use-platform';
 
-const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
+const HEADING = 'mb-1.5 font-medium text-muted-foreground text-xs';
 
 /**
  * The deck panel: the board's slides in order, their notes, and the templates a

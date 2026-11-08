@@ -56,12 +56,22 @@ export const SelectionFrame = () => {
         fill='none'
         height={bounds.h}
         pointerEvents='none'
-        stroke={SELECTION_COLOUR}
-        strokeWidth={1.5}
-        vectorEffect='non-scaling-stroke'
+        stroke='none'
         width={bounds.w}
         x={bounds.x}
         y={bounds.y}
+      />
+      <rect
+        data-testid='selection-outline'
+        fill='none'
+        height={bounds.h - 2 * (1 / camera.zoom)}
+        pointerEvents='none'
+        stroke={SELECTION_COLOUR}
+        strokeWidth={1.5}
+        vectorEffect='non-scaling-stroke'
+        width={bounds.w - 2 * (1 / camera.zoom)}
+        x={bounds.x + 1 / camera.zoom}
+        y={bounds.y + 1 / camera.zoom}
       />
       {resizable ? (
         <>

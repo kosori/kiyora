@@ -38,6 +38,7 @@ export const ToolRailButton = ({ entry }: Props) => {
           ? 'hover:bg-[var(--chrome-active)]'
           : 'chrome-hover hover:bg-[var(--chrome-hover)]'
       )}
+      data-testid={value === 'hand' ? 'hand-tool' : undefined}
       onClick={select}
       size='icon'
       style={pressed ? { backgroundColor: 'var(--chrome-active)' } : undefined}

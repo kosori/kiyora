@@ -41,7 +41,7 @@ const FILL_OPTIONS = optionsOf<FillStyle>(FILL_STYLES);
 const DASH_OPTIONS = optionsOf<Dash>(DASHES);
 const CORNER_OPTIONS = optionsOf<Corner>(cornerSchema.options);
 
-const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
+const HEADING = 'mb-1.5 font-medium text-muted-foreground text-xs';
 
 /** The style controls for the selection. Every change goes through the store. */
 export const SelectionStyle = ({ shape, theme }: Props) => {

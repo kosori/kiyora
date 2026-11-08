@@ -26,7 +26,7 @@ type Option<T extends string> = {
 
 type EdgeChoice = Edge | 'auto';
 
-const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
+const HEADING = 'mb-1.5 font-medium text-muted-foreground text-xs';
 
 /** The grammar's head tokens read as words in the panel. */
 const headLabel = (head: Head): string =>

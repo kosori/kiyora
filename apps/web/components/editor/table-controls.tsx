@@ -27,7 +27,7 @@ export const TableControls = ({ shape }: Props) => {
 
   return (
     <section>
-      <h3 className='mb-1.5 text-muted-foreground text-xs uppercase tracking-wide'>
+      <h3 className='mb-1.5 font-medium text-muted-foreground text-xs'>
         Table
       </h3>
       <div className='grid grid-cols-2 gap-1.5'>

@@ -208,7 +208,7 @@ export const ContextMenu = ({ at, host, onClose }: Props) => {
       {sections.map((section) => (
         <div key={section.label} role='presentation'>
           <p
-            className='px-2 py-1 text-muted-foreground text-xs uppercase tracking-wide'
+            className='px-2 py-1 font-medium text-muted-foreground text-xs'
             role='presentation'
           >
             {section.label}

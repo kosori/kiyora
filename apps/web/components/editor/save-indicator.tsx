@@ -50,10 +50,8 @@ export const SaveIndicator = (health: StorageHealth) => {
     <p
       aria-live='polite'
       className={cn(
-        'absolute right-3 bottom-3 rounded-full border px-2.5 py-1 text-xs shadow-sm backdrop-blur',
-        fault === null && !secondary
-          ? 'border-border bg-background/90 text-muted-foreground'
-          : 'border-destructive/40 bg-destructive/10 text-destructive'
+        'chrome-surface chrome-icon flex h-8 max-w-72 items-center truncate px-2.5 text-[13px]',
+        fault === null && !secondary ? 'chrome-muted' : 'text-destructive'
       )}
       data-fault={fault?.kind}
       data-migrated={migratedFrom === null ? undefined : migratedFrom}

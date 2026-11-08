@@ -48,7 +48,7 @@ const VALIGN_OPTIONS: readonly Option<TextVerticalAlign>[] = TEXT_VALIGNS.map(
   (value) => ({ label: VALIGN_LABELS[value], value })
 );
 
-const HEADING = 'mb-1.5 text-muted-foreground text-xs uppercase tracking-wide';
+const HEADING = 'mb-1.5 font-medium text-muted-foreground text-xs';
 
 /** The preset a stored size names, or `null` when it names no preset. */
 const presetOf = (size: number): SizePreset | null => {

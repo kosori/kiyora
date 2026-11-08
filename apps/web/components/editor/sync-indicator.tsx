@@ -96,14 +96,12 @@ export const SyncIndicator = ({
     state.status === 'error';
 
   return (
-    <div className='absolute right-3 bottom-11 z-10 flex items-center gap-2'>
+    <div className='flex items-center gap-2'>
       <p
         aria-live='polite'
         className={cn(
-          'rounded-full border px-2.5 py-1 text-xs shadow-sm backdrop-blur',
-          attention
-            ? 'border-destructive/40 bg-destructive/10 text-destructive'
-            : 'border-border bg-background/90 text-muted-foreground'
+          'chrome-surface chrome-icon flex h-8 items-center px-2.5 text-[13px]',
+          attention ? 'text-destructive' : 'chrome-muted'
         )}
         data-bytes={state.status === 'too-large' ? state.bytes : undefined}
         data-limit={state.status === 'too-large' ? state.limit : undefined}
@@ -119,10 +117,11 @@ export const SyncIndicator = ({
       </p>
       {canLink ? (
         <Button
+          className='chrome-icon'
           data-testid='link-board'
           onClick={onLink}
-          size='sm'
-          variant='outline'
+          size='xs'
+          variant='ghost'
         >
           Sync this board
         </Button>
@@ -133,10 +132,11 @@ export const SyncIndicator = ({
       />
       {conflict ? (
         <Button
+          className='chrome-icon'
           data-testid='open-conflict'
           onClick={onResolve}
-          size='sm'
-          variant='outline'
+          size='xs'
+          variant='ghost'
         >
           Resolve
         </Button>
