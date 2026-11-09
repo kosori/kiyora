@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { roundedRectPath } from '../e2e/paths';
 import { E2E_BASE_URL } from '../e2e-server';
 import {
   openBoard,
@@ -16,7 +17,7 @@ const NAME = 'Sync Account';
 const LINKED_ID = '44444444-4444-4444-8444-444444444444';
 const OTHER_ID = '55555555-5555-4555-8555-555555555555';
 
-const drawnPaint = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
+const drawnPaint = roundedRectPath(200, 150, 200, 150);
 
 type Upload = {
   baseRevision: number | null;

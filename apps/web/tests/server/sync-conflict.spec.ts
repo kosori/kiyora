@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { Page, Route } from '@playwright/test';
+import { roundedRectPath } from '../e2e/paths';
 import { E2E_BASE_URL } from '../e2e-server';
 import {
   conflictKey,
@@ -42,7 +43,7 @@ const remoteShape = {
   y: 40,
 };
 
-const localPaint = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
+const localPaint = roundedRectPath(200, 150, 200, 150);
 const remotePaint = 'M 40 40 L 160 40 L 160 120 L 40 120 Z';
 
 const remoteSource: SeededBoard = {

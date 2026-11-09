@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { roundedRectPath } from '../e2e/paths';
 import { E2E_BASE_URL } from '../e2e-server';
 import { readStoredBoard } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
@@ -8,14 +9,14 @@ const NAME = 'journey-sync';
 const EMAIL = `${NAME}@kiyora.test`;
 const PASSWORD = 'correct-horse-battery';
 
-const FILL = 'rgba(25, 113, 194, 0.2)';
+const FILL = 'none';
 
-const FIRST = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
-const SECOND = 'M 450 150 L 600 150 L 600 250 L 450 250 Z';
-const MINE = 'M 200 350 L 400 350 L 400 500 L 200 500 Z';
-const OFFLINE = 'M 650 350 L 800 350 L 800 450 L 650 450 Z';
-const STALE = 'M 450 350 L 600 350 L 600 450 L 450 450 Z';
-const INTRUDER = 'M 500 400 L 650 400 L 650 500 L 500 500 Z';
+const FIRST = roundedRectPath(200, 150, 200, 150);
+const SECOND = roundedRectPath(450, 150, 150, 100);
+const MINE = roundedRectPath(200, 350, 200, 150);
+const OFFLINE = roundedRectPath(650, 350, 150, 100);
+const STALE = roundedRectPath(450, 350, 150, 100);
+const INTRUDER = roundedRectPath(500, 400, 150, 100);
 
 type Rectangle = {
   h: number;

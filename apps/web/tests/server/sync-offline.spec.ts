@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { roundedRectPath } from '../e2e/paths';
 import { E2E_BASE_URL } from '../e2e-server';
 import { openBoard, readStoredKey } from '../fixtures/library';
 import { expect, test } from '../fixtures/offline';
@@ -10,7 +11,7 @@ const NAME = 'Sync Offline';
 
 const BOARD_ID = '66666666-6666-4666-8666-666666666666';
 
-const drawnPaint = 'M 200 150 L 400 150 L 400 300 L 200 300 Z';
+const drawnPaint = roundedRectPath(200, 150, 200, 150);
 
 type Upload = {
   baseRevision: number | null;
